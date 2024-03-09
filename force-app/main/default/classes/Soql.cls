@@ -48,24 +48,22 @@ public inherited sharing virtual class Soql {
     }
 
     // **** Building a Query **** //
-    public virtual String getFrom() {
-        return this.fromSObjectName;
-    }
-
-    public virtual String getSelect() {
-        return String.join(new List<String>(this.selectClauses), ', ');
-    }
+    
 
     // **** PRIVATE **** //
-    private String constructClause(String prefix, Object value) {
+    protected String constructClause(String prefix, Object value) {
         return (value != null) ? (prefix + ' ' + value?.toString()) : null;
     }
 
-    private String getGroupBy() {
+    protected virtual String getFrom() {
+        return this.fromSObjectName;
+    }
+
+    protected String getGroupBy() {
         return (this.groupByClauses?.isEmpty() == false) ? 'GROUP BY ' + String.join(this.groupByClauses, ', ') : null;
     }
 
-    private String getOptionalArgs() {
+    protected String getOptionalArgs() {
         List<String> args = new List<String>();
         for (String arg : new List<String>{
             this.constructClause('USING SCOPE', this.scope),
@@ -85,7 +83,11 @@ public inherited sharing virtual class Soql {
 		return String.join(args, ' ');
 	}
 
-    private String getUsage() {
+    protected virtual String getSelect() {
+        return String.join(new List<String>(this.selectClauses), ', ');
+    }
+
+    protected String getUsage() {
         return this.usage?.toString()?.replace('_', ' ');
     }
 
