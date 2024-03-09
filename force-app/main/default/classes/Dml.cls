@@ -1,238 +1,157 @@
-global with sharing virtual class Dml {
-    // **** CORE/VIRTUAL METHODS **** //
-    global virtual List<Object> doDml(
+public with sharing virtual class Dml {
+    static final System.AccessLevel DEFAULT_ACCESS_LEVEL = System.AccessLevel.USER_MODE;
+
+    protected System.AccessLevel accessLevel;
+    protected Database.DmlOptions dmlOptions;
+    protected SObjectField externalIdField;
+
+    public Dml() {
+        this.toDefaultState();
+    }
+
+    // **** VIRTUAL **** //
+    public virtual List<Object> doDml(
         Operation operation, 
-        List<SObject> records, 
-        Options options
+        List<SObject> records 
     ) {
         if (operation == Dml.Operation.DO_INSERT) {
-            return this.doInsert(records, options);
+            return this.doInsert(records);
         } else if (operation == Dml.Operation.DO_UPDATE) {
-            return this.doUpdate(records, options);
+            return this.doUpdate(records);
         } else if (operation == Dml.Operation.DO_UPSERT) {
-            return this.doUpsert(records, options);
+            return this.doUpsert(records);
         } else if (operation == Dml.Operation.DO_DELETE) {
-            return this.doDelete(records, options);
+            return this.doDelete(records);
         } else if (operation == Dml.Operation.DO_UNDELETE) {
-            return this.doUndelete(records, options);
+            return this.doUndelete(records);
         } else {
             throw new System.DmlException('Unsupported Dml.Operation: ' + operation);
         }
     }
 
-    global virtual List<Database.SaveResult> doInsert(List<SObject> records, Options options) {
-        Database.DmlOptions dmlOptions = options?.getDmlOptions();
-        System.AccessLevel accessLevel = options?.getAccessLevel();
-        return Database.insert(records, dmlOptions, accessLevel);
+    public virtual List<Database.SaveResult> doInsert(List<SObject> records) {
+        return Database.insert(records, this.getDmlOptions(), this.getAccessLevel());
     }
 
-    global virtual List<Database.SaveResult> doUpdate(List<SObject> records, Options options) {
-        Database.DmlOptions dmlOptions = options?.getDmlOptions();
-        System.AccessLevel accessLevel = options?.getAccessLevel();
-        return Database.update(records, dmlOptions, accessLevel);
+    public virtual List<Database.SaveResult> doUpdate(List<SObject> records) {
+        return Database.update(records, this.getDmlOptions(), this.getAccessLevel());
     }
 
-    global virtual List<Database.UpsertResult> doUpsert(List<SObject> records, Options options) {
-        try {
-            UpsertOptions upsertOptions = (UpsertOptions) options; 
-            return this.doUpsert(records, upsertOptions);
-        } catch (System.TypeException error) {
-            // Not an UpsertOptions object; use vanilla DmlOptions
-            Boolean allOrNone = options?.getDmlOptions()?.OptAllOrNone ?? true;
-            System.AccessLevel accessLevel = options?.getAccessLevel();
-            return Database.upsert(records, allOrNone, accessLevel);
-        }
-    }
-
-    global virtual List<Database.UpsertResult> doUpsert(List<SObject> records, UpsertOptions options) {
-        Boolean allOrNone = options?.getDmlOptions()?.OptAllOrNone ?? true;
-        System.AccessLevel accessLevel = options?.getAccessLevel();
-        SObjectField field = options?.getExternalIdField();
+    public virtual List<Database.UpsertResult> doUpsert(List<SObject> records) {
         // Note: Supplying a null ExternalIdField value to Database.upsert will result in an Exception
         // To avoid this, call the correct overload depending on the supplied field value
-        return (field != null) 
-            ? Database.upsert(records, field, allOrNone, accessLevel)
-            : Database.upsert(records, allOrNone, accessLevel);
+        return (this.externalIdField != null) 
+            ? Database.upsert(records, this.externalIdField, this.getAllOrNone(), this.getAccessLevel())
+            : Database.upsert(records, this.getAllOrNone(), this.getAccessLevel());
     }
 
-    global virtual List<Database.DeleteResult> doDelete(List<Id> recordIds, Options options) {
-        Boolean allOrNone = options?.getAllOrNone();
-        System.AccessLevel accessLevel = options?.getAccessLevel();
-        return Database.delete(recordIds, allOrNone, accessLevel);
+    public virtual List<Database.DeleteResult> doDelete(List<Id> recordIds) {
+        return Database.delete(recordIds, this.getAllOrNone(), this.getAccessLevel());
     }
 
-    global virtual List<Database.UndeleteResult> doUndelete(List<Id> recordIds, Options options) {
-        Boolean allOrNone = options?.getAllOrNone();
-        System.AccessLevel accessLevel = options?.getAccessLevel();
-        return Database.undelete(recordIds, allOrNone, accessLevel);
+    public virtual List<Database.UndeleteResult> doUndelete(List<Id> recordIds) {
+        return Database.undelete(recordIds, this.getAllOrNone(), this.getAccessLevel());
     }
 
-    // **** OVERLOADS **** //
-    global List<Object> doDml(Operation operation, List<SObject> records) {
-        Options options = new Options();
-        return this.doDml(operation, records, options);
-    }
-
-    global Object doDml(Operation operation, SObject record, Options options) {
+    // **** PUBLIC **** //
+    public Object doDml(Operation operation, SObject record) {
         List<SObject> records = new List<SObject>{ record };
-        return this.doDml(operation, records, options)[0];
+        return this.doDml(operation, records)[0];
     }
 
-    global Object doDml(Operation operation, SObject record) {
-        Options options = new Options();
-        return this.doDml(operation, record, options);
+    public Database.SaveResult doInsert(SObject record) {
+        return this.doInsert(new List<SObject>{ record })[0];
     }
 
-    global List<Database.SaveResult> doInsert(List<SObject> records) {
-        return (List<Database.SaveResult>) this.doDml(Dml.Operation.DO_INSERT, records);
+    public Database.SaveResult doUpdate(SObject record) {
+        return this.doUpdate(new List<SObject>{ record })[0];
     }
 
-    global Database.SaveResult doInsert(SObject record, Options options) {
-        return (Database.SaveResult) this.doDml(Dml.Operation.DO_INSERT, record, options);
+    public Database.UpsertResult doUpsert(SObject record) {
+        return this.doUpsert(new List<SObject>{ record })[0];
     }
 
-    global Database.SaveResult doInsert(SObject record) {
-        return (Database.SaveResult) this.doDml(Dml.Operation.DO_INSERT, record);
+    public Database.DeleteResult doDelete(Id recordId) {
+        return this.doDelete(new List<Id>{ recordId })[0];
     }
 
-    global List<Database.SaveResult> doUpdate(List<SObject> records) {
-        return (List<Database.SaveResult>) this.doDml(Dml.Operation.DO_UPDATE, records);
+    public Database.DeleteResult doDelete(SObject record) {
+        return this.doDelete(record?.Id);
     }
 
-    global Database.SaveResult doUpdate(SObject record, Options options) {
-        return (Database.SaveResult) this.doDml(Dml.Operation.DO_UPDATE, record, options);
+    public List<Database.DeleteResult> doDelete(List<SObject> records) {
+        List<Id> recordIds = this.getListOfIds(records);
+        return this.doDelete(recordIds);
     }
 
-    global Database.SaveResult doUpdate(SObject record) {
-        return (Database.SaveResult) this.doDml(Dml.Operation.DO_UPDATE, record);
+    public Database.UndeleteResult doUndelete(Id recordId) {
+        return this.doUndelete(new List<Id>{ recordId })[0];
     }
 
-    global List<Database.UpsertResult> doUpsert(List<SObject> records) {
-        return (List<Database.UpsertResult>) this.doDml(Dml.Operation.DO_UPSERT, records);
+    public Database.UndeleteResult doUndelete(SObject record) {
+        return this.doUndelete(record?.Id);
     }
 
-    global Database.UpsertResult doUpsert(SObject record, Options options) {
-        return (Database.UpsertResult) this.doDml(Dml.Operation.DO_UPSERT, record, options);
+    public List<Database.UndeleteResult> doUndelete(List<SObject> records) {
+        List<Id> recordIds = this.getListOfIds(records);
+        return this.doUndelete(recordIds);
     }
 
-    global Database.UpsertResult doUpsert(SObject record) {
-        return (Database.UpsertResult) this.doDml(Dml.Operation.DO_UPSERT, record);
+    public System.AccessLevel getAccessLevel() {
+        return this.accessLevel ?? DEFAULT_ACCESS_LEVEL;
     }
 
-    global List<Database.DeleteResult> doDelete(List<SObject> records, Options options) {
-        List<Id> recordIds = new List<Id>(new Map<Id, SObject>(records)?.keySet());
-        return this.doDelete(recordIds, options);
+    public Boolean getAllOrNone() {
+        // Default to `true` to mirror the behavior of Database.Dml methods 
+        return this.getDmlOptions()?.OptAllOrNone ?? true;
     }
 
-    global List<Database.DeleteResult> doDelete(List<SObject> records) {
-        return (List<Database.DeleteResult>) this.doDml(Dml.Operation.DO_DELETE, records);
+    public Database.DmlOptions getDmlOptions() {
+        return this.dmlOptions ?? new Database.DmlOptions();
     }
 
-    global Database.DeleteResult doDelete(SObject record, Options options) {
-        return (Database.DeleteResult) this.doDml(Dml.Operation.DO_DELETE, record, options);
+    public SObjectField getExternalIdField() {
+        return this.externalIdField;
     }
 
-    global Database.DeleteResult doDelete(SObject record) {
-        return (Database.DeleteResult) this.doDml(Dml.Operation.DO_DELETE, record);
+    public Dml setAccessLevel(System.AccessLevel level) {
+        this.accessLevel = level;
+        return this; 
     }
 
-    global List<Database.UndeleteResult> doUndelete(List<SObject> records, Options options) {
-        List<Id> recordIds = new List<Id>(new Map<Id, SObject>(records)?.keySet());
-        return this.doUndelete(recordIds, options);
+    public Dml setAllOrNone(Boolean value) {
+        this.getDmlOptions().OptAllOrNone = value;
+        return this; 
     }
 
-    global List<Database.UndeleteResult> doUndelete(List<SObject> records) {
-        return (List<Database.UndeleteResult>) this.doDml(Dml.Operation.DO_UNDELETE, records);
+    public Dml setDmlOptions(Database.DmlOptions dmlOptions) {
+        this.dmlOptions = dmlOptions;
+        return this; 
     }
 
-    global Database.UndeleteResult doUndelete(SObject record, Options options) {
-        return (Database.UndeleteResult) this.doDml(Dml.Operation.DO_UNDELETE, record, options);
+    public Dml setExternalIdField(SObjectField field) {
+        this.externalIdField = field;
+        return this;
     }
 
-    global Database.UndeleteResult doUndelete(SObject record) {
-        return (Database.UndeleteResult) this.doDml(Dml.Operation.DO_UNDELETE, record);
+    public Dml toDefaultState() {
+        this.setAccessLevel(DEFAULT_ACCESS_LEVEL);
+        this.setDmlOptions(new Database.DmlOptions());
+        this.setExternalIdField(null);
+        return this;
+    }
+
+    // **** PRIVATE **** //
+    private List<Id> getListOfIds(List<SObject> records) {
+        return new List<Id>(new Map<Id, SObject>(records)?.keySet());
     }
 
     // **** INNER **** //
-    global enum Operation {
+    public enum Operation {
         DO_INSERT,
         DO_UPDATE,
         DO_UPSERT,
         DO_DELETE,
         DO_UNDELETE
-    }
-
-    global virtual class Options {
-        // This object wraps the Database.DmlOptions class
-        // Frustratingly, this class is not universally used across all Database DML methods
-        // It also promotes the System.AccessLevel to a first-class class citizen
-        global System.AccessLevel accessLevel { get; private set; }
-        global Database.DmlOptions dmlOptions { get; private set; }
-
-        global Options() {
-            // 0-arg constructor is always available
-            this.accessLevel = System.AccessLevel.USER_MODE;
-            this.dmlOptions = new Database.DmlOptions();
-        }
-
-        global System.AccessLevel getAccessLevel() {
-            return this.accessLevel ?? System.AccessLevel.SYSTEM_MODE;
-        }
-
-        global Boolean getAllOrNone() {
-            return this.getDmlOptions()?.OptAllOrNone ?? true; 
-        }
-
-        global Database.DmlOptions getDmlOptions() {
-            return this.dmlOptions ?? new Database.DmlOptions();
-        }
-
-        global Options setAccessLevel(System.AccessLevel level) {
-            this.accessLevel = level; 
-            return this; 
-        }
-
-        global Options setAllOrNone(Boolean value) {
-            this.getDmlOptions().OptAllOrNone = value;
-            return this; 
-        }
-
-        global Options setAssignmentRuleHeader(Database.DmlOptions.AssignmentRuleHeader header) {
-            this.getDmlOptions().AssignmentRuleHeader = header;
-            return this; 
-        }
-
-        global Options setDmlOptions(Database.DmlOptions dmlOptions) {
-            this.dmlOptions = dmlOptions;
-            return this; 
-        }
-
-        global Options setEmailHeader(Database.DmlOptions.EmailHeader header) {
-            this.getDmlOptions().EmailHeader = header;
-            return this; 
-        }
-
-        global Options setFieldTruncation(Boolean value) {
-            this.getDmlOptions().AllowFieldTruncation = value; 
-            return this; 
-        }
-
-        global Options setLocaleOptions(String locale) {
-            this.getDmlOptions().LocaleOptions = locale;
-            return this; 
-        }
-    }
-
-    global class UpsertOptions extends Options {
-        SObjectField externalIdField { get; set; }
-
-        global SObjectField getExternalIdField() {
-            return this.externalIdField;
-        }
-
-        global UpsertOptions setExternalIdField(SObjectField field) {
-            this.externalIdField = field; 
-            return this; 
-        }
     }
 }
