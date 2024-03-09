@@ -8,7 +8,7 @@ public inherited sharing virtual class Soql {
 	public ConditionalLogic whereCriteria { get; protected set; }
 	public List<String> groupByClauses { get; protected set; }
 	public ConditionalLogic havingCriteria { get; protected set; }
-	public Soql.OrderBy orderByClause { get; protected set; }
+	public Soql.OrderByClause orderByClause { get; protected set; }
 	public Integer rowLimit { get; protected set; }
 	public Integer rowOffset { get; protected set; }
 	public Soql.Usage usage { get; protected set; }
@@ -125,7 +125,7 @@ public inherited sharing virtual class Soql {
 		return this;
 	}
 
-    public Soql orderBy(Soql.OrderBy orderByClause) {
+    public Soql orderBy(Soql.OrderByClause orderByClause) {
 		this.orderByClause = orderByClause;
 		return this;
 	}
@@ -238,6 +238,16 @@ public inherited sharing virtual class Soql {
 		SUM
     }
 
+    public enum NullOrder {
+        NULLS_FIRST,
+        NULLS_LAST
+    }
+
+    public enum SortOrder {
+        ASCENDING,
+        DESCENDING
+    }
+
 	public enum Scope {
 		// https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_select_using_scope.htm
 		DELEGATED,
@@ -297,8 +307,48 @@ public inherited sharing virtual class Soql {
 		}
     }
 
-    public class OrderBy {
-        // TODO!
+    public class OrderByClause {
+        List<String> fieldNames = new List<String>();
+        SortOrder direction = SortOrder.ASCENDING;
+        NullOrder nullBehavior = NullOrder.NULLS_LAST;
+
+        public OrderByClause(List<String> fieldNames, SortOrder direction) {
+            this.fieldNames = fieldNames;
+            this.direction = direction;
+        }
+
+        public OrderByClause(String fieldName, SortOrder direction) {
+            this(new List<String>{ fieldName }, direction);
+        }
+
+        public OrderByClause(List<SObjectField> fields, SortOrder direction) {
+            for (SObjectField field : fields) {
+                this.fieldNames?.add(field?.toString());
+            }
+            this.direction = direction;
+        }
+
+        public OrderByClause(SObjectField field, SortOrder direction) {
+            this(new List<SObjectField>{ field }, direction);
+        }
+
+        public OrderByClause setNullBehavior(NullOrder nullBehavior) {
+            this.nullBehavior = nullBehavior;
+            return this; 
+        }
+
+        public override String toString() {
+            String orderByFields = String.join(fieldNames, ', ');
+            return String.join(new List<String>{ orderByFields, this.getDirection(), this.getNullOrder() }, ' ');
+        }
+
+        private String getDirection() {
+            return this.direction?.name()?.replace('ENDING', '');
+        }
+
+        private String getNullOrder() {
+            return this.nullBehavior?.name()?.replace('_', '');
+        }
     }
 
     public class Subquery extends Soql {
