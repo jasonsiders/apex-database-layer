@@ -288,7 +288,37 @@ public inherited sharing virtual class Soql {
     }
 
     public class Subquery extends Soql {
-        // TODO!
+        String relationshipName;
+
+        public SubQuery(Schema.ChildRelationship relationship) {
+            this.relationship = relationship?.getRelationshipName();
+        }
+
+        public SubQuery(SObjectField lookupField) {
+            Schema.ChildRelationship relationship = this.getChildRelationshipFrom(lookupField);
+            this(relationship);
+        }
+
+        public override String toString() {
+            return '(' + super.toString() + ')';
+        }
+
+        public override String getFrom() {
+            return this.relationshipName;
+        }
+
+        private Schema.ChildRelationship getChildRelationshipFrom(SObjectField lookupField) {
+            List<ChildRelationship> relationships = lookupField?.getDescribe()?.getSObjectType()?.getDescribe()?.getChildRelationships();
+            relationships = relationships ?? new List<ChildRelationship>();
+            for (ChildRelationship relationship : relationships) {
+                // No way of telling if a Schema.ChildRelationship matches w/out manually iterating & checking their fields
+                SObjectField relationshipField = relationship?.getField();
+                if (relationshipField == lookupField) {
+                    return relationship;
+                }
+            }
+            return null;
+        }
     }
 
     public class WithClause {
