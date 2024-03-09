@@ -214,6 +214,16 @@ public inherited sharing virtual class Soql {
 	}
 
 	// **** INNER *** //
+    public enum AggregateFunction {
+        AVG,
+		COUNT,
+		COUNT_DISTINCT,
+		FORMAT,
+		MIN,
+		MAX,
+		SUM
+    }
+
 	public enum Scope {
 		// https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_select_using_scope.htm
 		DELEGATED,
@@ -236,7 +246,35 @@ public inherited sharing virtual class Soql {
 	}
 
     public class Aggregation {
-        // TODO!
+        AggregateFunction function;
+        String fieldName;
+        String alias;
+
+        public Aggregation(AggregateFunction function, String fieldName, String alias) {
+            this.function = function;
+            this.fieldName = fieldName;
+            this.alias = alias;
+        }
+
+        public Aggregation(AggregateFunction function, String fieldName) {
+            this(function, fieldName, '');
+        }
+
+        public Aggregation(AggregateFunction function, SObjectField field, String alias) {
+            this(function, field?.toString(), alias);
+        }
+    
+        public Aggregation(AggregateFunction function, SObjectField field) {
+            this(function, field?.toString());
+        }
+
+        public override String toString() {
+            String formatted = String.format(
+                '{0}({1}) {2}',
+                new List<String>{ this.function?.toString(), this.fieldName, this.alias }
+            );
+            return formatted?.trim();
+        }
     }
 
     public class AggregateFilter extends Condition {
