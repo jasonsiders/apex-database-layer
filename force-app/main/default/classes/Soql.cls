@@ -1,19 +1,19 @@
 public inherited sharing virtual class Soql {
 	static final String ID_REFERENCE = 'Id';
 
-	public Set<String> selectClauses { get; private set; }
-	public String fromSObject { get; private set; }
-	public Soql.Scope scope { get; private set; }
-	public Soql.WithClause withExpression { get; private set; }
-	public ConditionalLogic whereCriteria { get; private set; }
-	public List<String> groupByClauses { get; private set; }
-	public ConditionalLogic havingCriteria { get; private set; }
-	public Soql.OrderBy orderByClause { get; private set; }
-	public Integer rowLimit { get; private set; }
-	public Integer rowOffset { get; private set; }
-	public Soql.Usage usage { get; private set; }
-	public System.AccessLevel accessLevel { get; private set; }
-	public Map<String, Object> binds { get; private set; }
+	public Set<String> selectClauses { get; protected set; }
+	public String fromSObject { get; protected set; }
+	public Soql.Scope scope { get; protected set; }
+	public Soql.WithClause withExpression { get; protected set; }
+	public ConditionalLogic whereCriteria { get; protected set; }
+	public List<String> groupByClauses { get; protected set; }
+	public ConditionalLogic havingCriteria { get; protected set; }
+	public Soql.OrderBy orderByClause { get; protected set; }
+	public Integer rowLimit { get; protected set; }
+	public Integer rowOffset { get; protected set; }
+	public Soql.Usage usage { get; protected set; }
+	public System.AccessLevel accessLevel { get; protected set; }
+	public Map<String, Object> binds { get; protected set; }
 
 	public Soql(SObjectType objectType) {
 		this(); 
