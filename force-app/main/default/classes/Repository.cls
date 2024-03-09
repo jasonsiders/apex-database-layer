@@ -1,8 +1,8 @@
-global virtual class Repository {
-    global final Dml dml { get; protected set; }
-    global final Soql soql { get; protected set; }
+public virtual class Repository {
+    public final Dml dml { get; protected set; }
+    public final Soql soql { get; protected set; }
 
-    global Repository() {
+    public Repository() {
         this.dml = new Dml();
         this.soql = new Soql();
     }
