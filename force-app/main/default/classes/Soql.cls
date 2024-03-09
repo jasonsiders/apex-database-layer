@@ -213,6 +213,20 @@ public inherited sharing virtual class Soql {
 		return this.usage?.toString()?.replace('_', ' ');
 	}
 
+    // **** STATIC **** //
+    static Schema.ChildRelationship getChildRelationshipFrom(SObjectField lookupField) {
+        List<ChildRelationship> relationships = lookupField?.getDescribe()?.getSObjectType()?.getDescribe()?.getChildRelationships();
+        relationships = relationships ?? new List<ChildRelationship>();
+        for (ChildRelationship relationship : relationships) {
+            // No way of telling if a Schema.ChildRelationship matches w/out manually iterating & checking their fields
+            SObjectField relationshipField = relationship?.getField();
+            if (relationshipField == lookupField) {
+                return relationship;
+            }
+        }
+        return null;
+    }
+
 	// **** INNER *** //
     public enum AggregateFunction {
         AVG,
@@ -291,12 +305,11 @@ public inherited sharing virtual class Soql {
         String relationshipName;
 
         public SubQuery(Schema.ChildRelationship relationship) {
-            this.relationship = relationship?.getRelationshipName();
+            this.relationshipName = relationship?.getRelationshipName();
         }
 
         public SubQuery(SObjectField lookupField) {
-            Schema.ChildRelationship relationship = this.getChildRelationshipFrom(lookupField);
-            this(relationship);
+            this(Soql.getChildRelationshipFrom(lookupField));
         }
 
         public override String toString() {
@@ -305,19 +318,6 @@ public inherited sharing virtual class Soql {
 
         public override String getFrom() {
             return this.relationshipName;
-        }
-
-        private Schema.ChildRelationship getChildRelationshipFrom(SObjectField lookupField) {
-            List<ChildRelationship> relationships = lookupField?.getDescribe()?.getSObjectType()?.getDescribe()?.getChildRelationships();
-            relationships = relationships ?? new List<ChildRelationship>();
-            for (ChildRelationship relationship : relationships) {
-                // No way of telling if a Schema.ChildRelationship matches w/out manually iterating & checking their fields
-                SObjectField relationshipField = relationship?.getField();
-                if (relationshipField == lookupField) {
-                    return relationship;
-                }
-            }
-            return null;
         }
     }
 
