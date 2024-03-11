@@ -1,25 +1,9 @@
-public inherited sharing virtual class Soql {
+public inherited sharing virtual class Soql extends Soql.Builder {
 	static final String ID_REFERENCE = 'Id';
 
-	public Set<String> selectClauses { get; protected set; }
-	public String fromSObject { get; protected set; }
-	public Soql.Scope scope { get; protected set; }
-	public ConditionalLogic whereCriteria { get; protected set; }
-	public List<String> groupByClauses { get; protected set; }
-	public ConditionalLogic havingCriteria { get; protected set; }
-	public Soql.OrderByClause orderByClause { get; protected set; }
-	public Integer rowLimit { get; protected set; }
-	public Integer rowOffset { get; protected set; }
-	public Soql.Usage usage { get; protected set; }
-	public System.AccessLevel accessLevel { get; protected set; }
-	public Map<String, Object> binds { get; protected set; }
-
-	public Soql(SObjectType objectType) {
-		this(); 
-		this.fromSObject(objectType);
-	}
-
-	protected Soql() {
+    @TestVisible
+	protected Soql(SObjectType objectType) {
+        this.fromSObject(objectType);
 		this.selectClauses = new Set<String>{ID_REFERENCE};
 		this.whereCriteria = new AndLogic();
 		this.groupByClauses = new List<String>();
@@ -28,7 +12,6 @@ public inherited sharing virtual class Soql {
 		this.binds = new Map<String, Object>(); 
 	}
 
-	// **** Running a Query **** //
 	public virtual List<SObject> query() {
 		// Run the current query object through the database
 		String theQuery = this.toString();
@@ -50,164 +33,9 @@ public inherited sharing virtual class Soql {
 		return JSON.deserialize(JSON.serialize(this.query()), returnType);
 	}
 
-	public virtual override String toString() {
-		// Outputs a SOQL Query string, following the syntax defined here:
-		// https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_select.htm#:~:text=SOQL%20query%20syntax%20consists%20of,typeOfField%20whenExpression%5B...%5D
-		List<String> queryArgs = new List<String>{ this.getSelect(), this.getFrom(), this.getOptionalArgs() };
-		return String.format('SELECT {0} FROM {1} {2}', queryArgs)?.trim();
-	}
-
-	// **** Building a Query **** //
-    public Soql deselectId() {
-		// By default, Id will always be included in queries
-		// Occasionally, (i.e., aggregate & inner queries), this isn't desirable
-		this.selectClauses?.remove(ID_REFERENCE);
-		return this;
-	}
-
-    public Soql selectAll() {
-        List<DescribeSObjectResult> describes = Schema.describeSObjects(new List<String>{ this.fromSObject });
-        DescribeSObjectResult describe = describes?.isEmpty() == false ? describes[0] : null;
-        List<SObjectField> allFields = describe?.fields?.getMap()?.values() ?? new List<SObjectField>();
-        for (SObjectField field : allFields) {
-            this.selecting(field);
-        }
-		return this;
-	}
-
-	public Soql selecting(SObjectField field) {
-		this.selectClauses.add(field?.toString());
-        return this; 
-	}
-
-	public Soql selecting(String fieldName) {
-		this.selectClauses.add(fieldName);
-        return this; 
-	}
-
-	public Soql selecting(Soql.Aggregation aggregation) {
-		// Note: Id should never be included in the SELECT clause for Aggregate queries
-		return this.deselectId()?.selecting(aggregation?.toString());
-	}
-
-    public Soql selecting(Soql.SubQuery subQuery) {
-		return this.selecting(subQuery.toString());
-	}
-
-	public Soql fromSObject(SObjectType objectType) {
-		this.fromSObject = objectType?.toString();
-		return this;
-	}
-
-	public Soql usingScope(Scope scope) {
-		this.scope = scope;
-		return this;
-	}
-
-	public Soql given(ICriteria criteria) {
-		this.whereCriteria?.addCriteria(criteria);
-        return this; 
-	}
-
-	public Soql groupBy(SObjectField field) {
-		this.groupByClauses?.add(field?.toString());
-        return this;
-	}
-
-	public Soql andHaving(Soql.AggregateFilter aggregateCriteria) {
-		this.havingCriteria?.addCriteria(aggregateCriteria);
-		return this;
-	}
-
-    public Soql orderBy(Soql.OrderByClause orderByClause) {
-		this.orderByClause = orderByClause;
-		return this;
-	}
-
-	public Soql setHavingLogic(Type newLogicType) {
-		List<ICriteria> filters = this.havingCriteria?.getCriteria();
-        ConditionalLogic newLogic = (ConditionalLogic) newLogicType?.newInstance();
-        newLogic?.addCriteria(filters);
-        this.havingCriteria = newLogic;
-		return this;
-	}
-
-    public Soql setWhereLogic(Type newLogicType) {
-		List<ICriteria> filters = this.whereCriteria?.getCriteria();
-        ConditionalLogic newLogic = (ConditionalLogic) newLogicType?.newInstance();
-        newLogic?.addCriteria(filters);
-        this.whereCriteria = newLogic;
-		return this;
-	}
-
-	public Soql setRowLimit(Integer rowLimit) {
-		this.rowLimit = rowLimit;
-		return this;
-	}
-
-	public Soql setRowOffset(Integer rowOffset) {
-		this.rowOffset = rowOffset;
-		return this;
-	}
-
-	public Soql withUsage(Soql.Usage usage) {
-		this.usage = usage;
-		return this;
-	}
-
-	public Soql bind(String key, Object value) {
-		this.binds?.put(key, value);
-        return this;
-	}
-
-	public Soql setAccessLevel(System.AccessLevel accessLevel) {
-		this.accessLevel = accessLevel;
-		return this;
-	}
-
-	// **** PRIVATE **** //
-    protected String constructClause(String prefix, Object value) {
-        // Returns a specific SOQL clause (ex., "WHERE {value}"), provided that `value` is not null
-        return (value != null) ? (prefix + ' ' + value?.toString()) : null;
-    }
-
-	protected String getOptionalArgs() {
-        List<String> args = new List<String>();
-        for (String arg : new List<String>{
-            this.constructClause('USING SCOPE', this.scope),
-            this.constructClause('WHERE', this.whereCriteria),
-            this.getGroupBy(),
-            this.constructClause('HAVING', this.havingCriteria),
-            this.constructClause('ORDER BY', this.orderByClause),
-            this.constructClause('LIMIT', this.rowLimit),
-            this.constructClause('OFFSET', this.rowOffset),
-            this.getUsage()
-        }) {
-            if (arg != null) {
-                args?.add(arg);
-            }
-        }
-		return String.join(args, ' ');
-	}
-
-	protected virtual String getSelect() {
-		return String.join(new List<String>(this.selectClauses), ', ');
-	}
-
-	protected virtual String getFrom() {
-		return this.fromSObject?.toString();
-	}
-
-	protected virtual String getGroupBy() {
-		return (this.groupByClauses?.isEmpty() == false) ? 'GROUP BY ' + String.join(this.groupByClauses, ', ') : null;
-	}
-
-	protected virtual String getUsage() {
-		return this.usage?.toString()?.replace('_', ' ');
-	}
-
     // **** STATIC **** //
     static Schema.ChildRelationship getChildRelationshipFrom(SObjectField lookupField) {
+        // TODO: Consider moving this to some utility class
         List<ChildRelationship> relationships = lookupField?.getDescribe()?.getSObjectType()?.getDescribe()?.getChildRelationships();
         relationships = relationships ?? new List<ChildRelationship>();
         for (ChildRelationship relationship : relationships) {
@@ -300,6 +128,176 @@ public inherited sharing virtual class Soql {
 		}
     }
 
+    public abstract class Builder {
+        public Set<String> selectClauses { get; protected set; }
+        public String fromSObject { get; protected set; }
+        public Soql.Scope scope { get; protected set; }
+        public ConditionalLogic whereCriteria { get; protected set; }
+        public List<String> groupByClauses { get; protected set; }
+        public ConditionalLogic havingCriteria { get; protected set; }
+        public Soql.OrderByClause orderByClause { get; protected set; }
+        public Integer rowLimit { get; protected set; }
+        public Integer rowOffset { get; protected set; }
+        public Soql.Usage usage { get; protected set; }
+        public System.AccessLevel accessLevel { get; protected set; }
+        public Map<String, Object> binds { get; protected set; }
+
+        public virtual override String toString() {
+            // Outputs a SOQL Query string, following the syntax defined here:
+            // https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_select.htm#:~:text=SOQL%20query%20syntax%20consists%20of,typeOfField%20whenExpression%5B...%5D
+            List<String> queryArgs = new List<String>{ this.getSelect(), this.getFrom(), this.getOptionalArgs() };
+            return String.format('SELECT {0} FROM {1} {2}', queryArgs)?.trim();
+        }
+
+        public Soql.Builder deselectId() {
+            // By default, Id will always be included in queries
+            // Occasionally, (i.e., aggregate & inner queries), this isn't desirable
+            this.selectClauses?.remove(ID_REFERENCE);
+            return this;
+        }
+    
+        public Soql.Builder selectAll() {
+            List<DescribeSObjectResult> describes = Schema.describeSObjects(new List<String>{ this.fromSObject });
+            DescribeSObjectResult describe = describes?.isEmpty() == false ? describes[0] : null;
+            List<SObjectField> allFields = describe?.fields?.getMap()?.values() ?? new List<SObjectField>();
+            for (SObjectField field : allFields) {
+                this.selecting(field);
+            }
+            return this;
+        }
+    
+        public Soql.Builder selecting(SObjectField field) {
+            this.selectClauses.add(field?.toString());
+            return this; 
+        }
+    
+        public Soql.Builder selecting(String fieldName) {
+            this.selectClauses.add(fieldName);
+            return this; 
+        }
+    
+        public Soql.Builder selecting(Soql.Aggregation aggregation) {
+            // Note: Id should never be included in the SELECT clause for Aggregate queries
+            return this.deselectId()?.selecting(aggregation?.toString());
+        }
+    
+        public Soql.Builder selecting(Soql.SubQuery subQuery) {
+            return this.selecting(subQuery.toString());
+        }
+    
+        public Soql.Builder fromSObject(SObjectType objectType) {
+            this.fromSObject = objectType?.toString();
+            return this;
+        }
+    
+        public Soql.Builder usingScope(Scope scope) {
+            this.scope = scope;
+            return this;
+        }
+    
+        public Soql.Builder given(ICriteria criteria) {
+            this.whereCriteria?.addCriteria(criteria);
+            return this; 
+        }
+    
+        public Soql.Builder groupBy(SObjectField field) {
+            this.groupByClauses?.add(field?.toString());
+            return this;
+        }
+    
+        public Soql.Builder andHaving(Soql.AggregateFilter aggregateCriteria) {
+            this.havingCriteria?.addCriteria(aggregateCriteria);
+            return this;
+        }
+    
+        public Soql.Builder orderBy(Soql.OrderByClause orderByClause) {
+            this.orderByClause = orderByClause;
+            return this;
+        }
+    
+        public Soql.Builder setHavingLogic(Type newLogicType) {
+            List<ICriteria> filters = this.havingCriteria?.getCriteria();
+            ConditionalLogic newLogic = (ConditionalLogic) newLogicType?.newInstance();
+            newLogic?.addCriteria(filters);
+            this.havingCriteria = newLogic;
+            return this;
+        }
+    
+        public Soql.Builder setWhereLogic(Type newLogicType) {
+            List<ICriteria> filters = this.whereCriteria?.getCriteria();
+            ConditionalLogic newLogic = (ConditionalLogic) newLogicType?.newInstance();
+            newLogic?.addCriteria(filters);
+            this.whereCriteria = newLogic;
+            return this;
+        }
+    
+        public Soql.Builder setRowLimit(Integer rowLimit) {
+            this.rowLimit = rowLimit;
+            return this;
+        }
+    
+        public Soql.Builder setRowOffset(Integer rowOffset) {
+            this.rowOffset = rowOffset;
+            return this;
+        }
+    
+        public Soql.Builder withUsage(Soql.Usage usage) {
+            this.usage = usage;
+            return this;
+        }
+    
+        public Soql.Builder bind(String key, Object value) {
+            this.binds?.put(key, value);
+            return this;
+        }
+    
+        public Soql.Builder setAccessLevel(System.AccessLevel accessLevel) {
+            this.accessLevel = accessLevel;
+            return this;
+        }
+    
+        // **** PRIVATE **** //
+        protected String constructClause(String prefix, Object value) {
+            // Returns a specific SOQL clause (ex., "WHERE {value}"), provided that `value` is not null
+            return (value != null) ? (prefix + ' ' + value?.toString()) : null;
+        }
+    
+        protected String getOptionalArgs() {
+            List<String> args = new List<String>();
+            for (String arg : new List<String>{
+                this.constructClause('USING SCOPE', this.scope),
+                this.constructClause('WHERE', this.whereCriteria),
+                this.getGroupBy(),
+                this.constructClause('HAVING', this.havingCriteria),
+                this.constructClause('ORDER BY', this.orderByClause),
+                this.constructClause('LIMIT', this.rowLimit),
+                this.constructClause('OFFSET', this.rowOffset),
+                this.getUsage()
+            }) {
+                if (arg != null) {
+                    args?.add(arg);
+                }
+            }
+            return String.join(args, ' ');
+        }
+    
+        protected virtual String getSelect() {
+            return String.join(new List<String>(this.selectClauses), ', ');
+        }
+    
+        protected virtual String getFrom() {
+            return this.fromSObject?.toString();
+        }
+    
+        protected virtual String getGroupBy() {
+            return (this.groupByClauses?.isEmpty() == false) ? 'GROUP BY ' + String.join(this.groupByClauses, ', ') : null;
+        }
+    
+        protected virtual String getUsage() {
+            return this.usage?.toString()?.replace('_', ' ');
+        }
+    }
+
     public class OrderByClause {
         List<String> fieldNames = new List<String>();
         SortOrder direction = SortOrder.ASCENDING;
@@ -344,7 +342,7 @@ public inherited sharing virtual class Soql {
         }
     }
 
-    public class Subquery extends Soql {
+    public class Subquery extends Soql.Builder {
         String relationshipName;
 
         public SubQuery(Schema.ChildRelationship relationship) {
