@@ -4,7 +4,6 @@ public inherited sharing virtual class Soql {
 	public Set<String> selectClauses { get; protected set; }
 	public String fromSObject { get; protected set; }
 	public Soql.Scope scope { get; protected set; }
-	public Soql.WithClause withExpression { get; protected set; }
 	public ConditionalLogic whereCriteria { get; protected set; }
 	public List<String> groupByClauses { get; protected set; }
 	public ConditionalLogic havingCriteria { get; protected set; }
@@ -105,11 +104,6 @@ public inherited sharing virtual class Soql {
 		return this;
 	}
 
-	public Soql with(Soql.WithClause withExpression) {
-		this.withExpression = withExpression;
-		return this;
-	}
-
 	public Soql given(ICriteria criteria) {
 		this.whereCriteria?.addCriteria(criteria);
         return this; 
@@ -182,7 +176,6 @@ public inherited sharing virtual class Soql {
         for (String arg : new List<String>{
             this.constructClause('USING SCOPE', this.scope),
             this.constructClause('WHERE', this.whereCriteria),
-            this.constructClause('WITH', this.withExpression),
             this.getGroupBy(),
             this.constructClause('HAVING', this.havingCriteria),
             this.constructClause('ORDER BY', this.orderByClause),
@@ -369,9 +362,5 @@ public inherited sharing virtual class Soql {
         public override String getFrom() {
             return this.relationshipName;
         }
-    }
-
-    public class WithClause {
-        // TODO!
     }
 }
