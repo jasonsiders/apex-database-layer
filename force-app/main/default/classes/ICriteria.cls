@@ -1,4 +1,4 @@
 public interface ICriteria {
-    Boolean meetsCriteria(SObject record);
+    Boolean meetsCriteria(Object obj);
     String toString();
 }

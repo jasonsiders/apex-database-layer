@@ -9,7 +9,7 @@ public abstract class ConditionalLogic implements ICriteria {
         this.predicate = predicate;
     }
 
-    public abstract Boolean meetsCriteria(SObject record);
+    public abstract Boolean meetsCriteria(Object obj);
 
     public ConditionalLogic addCriteria(List<ICriteria> criterion) {
         this.criterion?.addAll(criterion);
@@ -42,10 +42,10 @@ public abstract class ConditionalLogic implements ICriteria {
             super(AND_PREDICATE); 
         }
     
-        public override Boolean meetsCriteria(SObject record) {
+        public override Boolean meetsCriteria(Object obj) {
             // Returns true if any of the criterion returns true
             for (ICriteria criteria : this.getCriteria()) {
-                if (criteria?.meetsCriteria(record) == false) {
+                if (criteria?.meetsCriteria(obj) == false) {
                     return false;
                 }
             }
@@ -58,10 +58,10 @@ public abstract class ConditionalLogic implements ICriteria {
             super(OR_PREDICATE);
         }
     
-        public override Boolean meetsCriteria(SObject record) {
+        public override Boolean meetsCriteria(Object obj) {
             // Returns true if any of the criterion returns true
             for (ICriteria criteria : this.getCriteria()) {
-                if (criteria?.meetsCriteria(record) == true) {
+                if (criteria?.meetsCriteria(obj) == true) {
                     return true;
                 }
             }

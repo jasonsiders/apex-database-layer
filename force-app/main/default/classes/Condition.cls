@@ -35,6 +35,12 @@ public virtual class Condition implements ICriteria {
         return this.operator?.meetsCriteria(recordValue, this.value);
     }
 
+	public Boolean meetsCriteria(Object obj) {
+		Map<String, Object> params = (Map<String, Object>) JSON.deserializeUntyped(JSON.serialize(obj));
+		Object objValue = params?.get(this.property);
+		return this.operator?.meetsCriteria(objValue, this.value);
+	}
+
     public override String toString() {
         List<String> parts = new List<String>{
 			this.property,
