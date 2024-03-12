@@ -3,13 +3,8 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
     @TestVisible
 	protected Soql(SObjectType objectType) {
-        this.fromSObject(objectType);
-		this.selectClauses = new Set<String>{ID_REFERENCE};
-		this.whereCriteria = new AndLogic();
-		this.groupByClauses = new List<String>();
-		this.havingCriteria = new AndLogic(); 
-		this.accessLevel = System.AccessLevel.USER_MODE;
-		this.binds = new Map<String, Object>(); 
+        super();
+        this.fromEntity(objectType);
 	}
 
     public virtual Integer countQuery() {
@@ -57,7 +52,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         List<ChildRelationship> relationships = lookupField?.getDescribe()?.getSObjectType()?.getDescribe()?.getChildRelationships();
         relationships = relationships ?? new List<ChildRelationship>();
         for (ChildRelationship relationship : relationships) {
-            // No way of telling if a Schema.ChildRelationship matches w/out manually iterating & checking their fields
+            // Unfortunately, no way of telling if a Schema.ChildRelationship matches w/out manually iterating & checking their fields
             SObjectField relationshipField = relationship?.getField();
             if (relationshipField == lookupField) {
                 return relationship;
@@ -66,7 +61,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         return null;
     }
 
-	// **** INNER *** //
+	// **** ENUMS *** //
     public enum AggregateFunction {
         AVG,
 		COUNT,
@@ -75,6 +70,14 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		MIN,
 		MAX,
 		SUM
+    }
+
+    public enum Context {
+        // Note: Believe it or not, SYSTEM_MODE and USER_MODE aren't enum values; 
+        // they're static properties of the AccessLevel class!
+        SECURITY_ENFORCED,
+        SYSTEM_MODE,
+        USER_MODE
     }
 
     public enum NullOrder {
@@ -108,6 +111,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		FOR_UPDATE
 	}
 
+    // **** INNER **** //
     public class Aggregation {
         AggregateFunction function;
         String fieldName;
@@ -140,17 +144,18 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         }
     }
 
-    public class AggregateFilter extends Condition {
-        public AggregateFilter(Soql.Aggregation agg, Condition.Operator operator, Object value) {
+    public class AggregateCondition extends Condition {
+        public AggregateCondition(Soql.Aggregation agg, Condition.Operator operator, Object value) {
 			super(agg?.toString(), operator, value);
 		}
     }
 
     public abstract class Builder {
         public Set<String> selectClauses { get; protected set; }
-        public String fromSObject { get; protected set; }
+        public String entity { get; protected set; }
         public Soql.Scope scope { get; protected set; }
         public ConditionalLogic whereCriteria { get; protected set; }
+        public WithClause withClause { get; protected set; }
         public List<String> groupByClauses { get; protected set; }
         public ConditionalLogic havingCriteria { get; protected set; }
         public Soql.OrderByClause orderByClause { get; protected set; }
@@ -160,6 +165,10 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         public System.AccessLevel accessLevel { get; protected set; }
         public Map<String, Object> binds { get; protected set; }
 
+        protected Builder() {
+            this.clear();
+        }
+
         public virtual override String toString() {
             // Outputs a SOQL Query string, following the syntax defined here:
             // https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_select.htm#:~:text=SOQL%20query%20syntax%20consists%20of,typeOfField%20whenExpression%5B...%5D
@@ -167,15 +176,43 @@ public inherited sharing virtual class Soql extends Soql.Builder {
             return String.format('SELECT {0} FROM {1} {2}', queryArgs)?.trim();
         }
 
-        public Soql.Builder deselectId() {
-            // By default, Id will always be included in queries
-            // Occasionally, (i.e., aggregate & inner queries), this isn't desirable
-            this.selectClauses?.remove(ID_REFERENCE);
+        public Soql.Builder bind(Map<String, Object> bindMap) {
+            this.binds?.putAll(bindMap); 
             return this;
         }
+
+        public Soql.Builder bind(String key, Object value) {
+            return this.bind(new Map<String, Object>{ key => value });
+        }
+
+        public Soql.Builder clear() {
+            this.selectClauses = new Set<String>{ ID_REFERENCE };
+            this.whereCriteria = new AndLogic();
+            this.groupByClauses = new List<String>();
+            this.havingCriteria = new AndLogic(); 
+            this.accessLevel = System.AccessLevel.USER_MODE;
+            this.binds = new Map<String, Object>(); 
+            return this;
+        }
+
+        public Soql.Builder deselect(String fieldName) {
+            // Remove a field from the current query
+            this.selectClauses?.remove(fieldName);
+            return this;
+        }
+
+        public Soql.Builder defineAccess(System.AccessLevel accessLevel) {
+            this.accessLevel = accessLevel;
+            return this;
+        }
+
+        public Soql.Builder deselect(SObjectField field) {
+            return this.deselect(field?.toString());
+        }
     
+        // * SELECT *
         public Soql.Builder selectAll() {
-            List<DescribeSObjectResult> describes = Schema.describeSObjects(new List<String>{ this.fromSObject });
+            List<DescribeSObjectResult> describes = Schema.describeSObjects(new List<String>{ this.entity });
             DescribeSObjectResult describe = describes?.isEmpty() == false ? describes[0] : null;
             List<SObjectField> allFields = describe?.fields?.getMap()?.values() ?? new List<SObjectField>();
             for (SObjectField field : allFields) {
@@ -196,43 +233,57 @@ public inherited sharing virtual class Soql extends Soql.Builder {
     
         public Soql.Builder selecting(Soql.Aggregation aggregation) {
             // Note: Id should never be included in the SELECT clause for Aggregate queries
-            return this.deselectId()?.selecting(aggregation?.toString());
+            return this.deselect(ID_REFERENCE)?.selecting(aggregation?.toString());
         }
     
         public Soql.Builder selecting(Soql.SubQuery subQuery) {
             return this.selecting(subQuery.toString());
         }
     
-        public Soql.Builder fromSObject(SObjectType objectType) {
-            this.fromSObject = objectType?.toString();
+        // * FROM *
+        public Soql.Builder fromEntity(SObjectType objectType) {
+            this.entity = objectType?.toString();
             return this;
         }
     
+        // * USING SCOPE *
         public Soql.Builder usingScope(Scope scope) {
             this.scope = scope;
             return this;
         }
     
+        // * WHERE *
         public Soql.Builder given(ICriteria criteria) {
             this.whereCriteria?.addCriteria(criteria);
             return this; 
         }
-    
+
+        public Soql.Builder setWhereLogic(Type newLogicType) {
+            List<ICriteria> filters = this.whereCriteria?.getCriteria();
+            ConditionalLogic newLogic = (ConditionalLogic) newLogicType?.newInstance();
+            newLogic?.addCriteria(filters);
+            this.whereCriteria = newLogic;
+            return this;
+        }
+
+        // * WITH *
+        public Soql.Builder with(WithClause withClause) {
+            this.withClause = withClause;
+            return this; 
+        }
+
+        // * GROUP BY *
         public Soql.Builder groupBy(SObjectField field) {
             this.groupByClauses?.add(field?.toString());
             return this;
         }
-    
-        public Soql.Builder andHaving(Soql.AggregateFilter aggregateCriteria) {
+
+        // * HAVING *
+        public Soql.Builder has(Soql.AggregateCondition aggregateCriteria) {
             this.havingCriteria?.addCriteria(aggregateCriteria);
             return this;
         }
-    
-        public Soql.Builder orderBy(Soql.OrderByClause orderByClause) {
-            this.orderByClause = orderByClause;
-            return this;
-        }
-    
+
         public Soql.Builder setHavingLogic(Type newLogicType) {
             List<ICriteria> filters = this.havingCriteria?.getCriteria();
             ConditionalLogic newLogic = (ConditionalLogic) newLogicType?.newInstance();
@@ -241,36 +292,27 @@ public inherited sharing virtual class Soql extends Soql.Builder {
             return this;
         }
     
-        public Soql.Builder setWhereLogic(Type newLogicType) {
-            List<ICriteria> filters = this.whereCriteria?.getCriteria();
-            ConditionalLogic newLogic = (ConditionalLogic) newLogicType?.newInstance();
-            newLogic?.addCriteria(filters);
-            this.whereCriteria = newLogic;
+        // * ORDER BY * 
+        public Soql.Builder orderBy(Soql.OrderByClause orderByClause) {
+            this.orderByClause = orderByClause;
             return this;
         }
-    
+
+        // * LIMIT *
         public Soql.Builder setRowLimit(Integer rowLimit) {
             this.rowLimit = rowLimit;
             return this;
         }
     
+        // * OFFSET *
         public Soql.Builder setRowOffset(Integer rowOffset) {
             this.rowOffset = rowOffset;
             return this;
         }
     
-        public Soql.Builder withUsage(Soql.Usage usage) {
+        // * USAGE *
+        public Soql.Builder setUsage(Soql.Usage usage) {
             this.usage = usage;
-            return this;
-        }
-    
-        public Soql.Builder bind(String key, Object value) {
-            this.binds?.put(key, value);
-            return this;
-        }
-    
-        public Soql.Builder setAccessLevel(System.AccessLevel accessLevel) {
-            this.accessLevel = accessLevel;
             return this;
         }
     
@@ -279,12 +321,21 @@ public inherited sharing virtual class Soql extends Soql.Builder {
             // Returns a specific SOQL clause (ex., "WHERE {value}"), provided that `value` is not null
             return (value != null) ? (prefix + ' ' + value?.toString()) : null;
         }
+
+        protected virtual String getFrom() {
+            return this.entity?.toString();
+        }
+    
+        protected virtual String getGroupBy() {
+            return (this.groupByClauses?.isEmpty() == false) ? 'GROUP BY ' + String.join(this.groupByClauses, ', ') : null;
+        }
     
         protected String getOptionalArgs() {
             List<String> args = new List<String>();
             for (String arg : new List<String>{
                 this.constructClause('USING SCOPE', this.scope),
                 this.constructClause('WHERE', this.whereCriteria),
+                this.constructClause('WITH', this.withClause),
                 this.getGroupBy(),
                 this.constructClause('HAVING', this.havingCriteria),
                 this.constructClause('ORDER BY', this.orderByClause),
@@ -301,14 +352,6 @@ public inherited sharing virtual class Soql extends Soql.Builder {
     
         protected virtual String getSelect() {
             return String.join(new List<String>(this.selectClauses), ', ');
-        }
-    
-        protected virtual String getFrom() {
-            return this.fromSObject?.toString();
-        }
-    
-        protected virtual String getGroupBy() {
-            return (this.groupByClauses?.isEmpty() == false) ? 'GROUP BY ' + String.join(this.groupByClauses, ', ') : null;
         }
     
         protected virtual String getUsage() {
@@ -377,6 +420,22 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
         public override String getFrom() {
             return this.relationshipName;
+        }
+    }
+
+    public class WithClause {
+        String clause; 
+
+        public WithClause(Soql.Context context) {
+            this.clause = context?.name();
+        }
+
+        public WithClause(ICriteria dataCategoryCriteria) {
+            this.clause = dataCategoryCriteria?.toString();
+        }
+
+        public override String toString() {
+            return this.clause;
         }
     }
 }
