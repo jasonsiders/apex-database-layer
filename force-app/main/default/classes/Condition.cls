@@ -16,9 +16,9 @@ public virtual class Condition implements ICriteria {
 	public static final Operator NOT_CONTAINS = new NotContainsOperator();
 
     // **** MEMBER **** //
-    protected final String property;
-    protected final Operator operator;
-    protected final Object value; 
+    public final String property { get; protected set; }
+    public final Operator operator { get; protected set; }
+    public final Object value { get; protected set; }
 
     public Condition(String property, Operator operator, Object value) {
         this.property = property;
@@ -26,20 +26,9 @@ public virtual class Condition implements ICriteria {
         this.value = value;
     }
 
-    public Condition(SObject field, Operator operator, Object value) {
+    public Condition(SObjectField field, Operator operator, Object value) {
         this(field?.toString(), operator, value);
     }
-
-    public Boolean meetsCriteria(SObject record) {
-        Object recordValue = record?.get(this.property);
-        return this.operator?.meetsCriteria(recordValue, this.value);
-    }
-
-	public Boolean meetsCriteria(Object obj) {
-		Map<String, Object> params = (Map<String, Object>) JSON.deserializeUntyped(JSON.serialize(obj));
-		Object objValue = params?.get(this.property);
-		return this.operator?.meetsCriteria(objValue, this.value);
-	}
 
     public override String toString() {
         List<String> parts = new List<String>{
@@ -116,41 +105,9 @@ public virtual class Condition implements ICriteria {
 		return '(' + String.join(results, ', ') + ')';
 	}
 
-    // **** STATIC **** //
-    static Boolean greaterThan(Object value, Object comparison) {
-        if (value instanceOf DateTime && comparison instanceOf DateTime) {
-            DateTime dateValue = (DateTime) value;
-            DateTime comparisonDate = (DateTime) comparison;
-            return (dateValue > comparisonDate);
-        } else if (value instanceOf Double && comparison instanceOf Double) {
-            Double dubValue = (Double) value;
-            Double comparisonDub = (Double) value;
-            return dubValue > comparisonDub;
-        } else {
-            // Types are null or not comparable - return false
-            return false;
-        }
-    }
-
-    static Boolean lessThan(Object value, Object comparison) {
-        if (value instanceOf DateTime && comparison instanceOf DateTime) {
-            DateTime dateValue = (DateTime) value;
-            DateTime comparisonDate = (DateTime) comparison;
-            return (dateValue < comparisonDate);
-        } else if (value instanceOf Double && comparison instanceOf Double) {
-            Double dubValue = (Double) value;
-            Double comparisonDub = (Double) value;
-            return dubValue < comparisonDub;
-        } else {
-            // Types are null or not comparable - return false
-            return false;
-        }
-    }
-
     // **** INNER **** //
     public abstract class Operator {
 		public abstract String getToken();
-		public abstract Boolean meetsCriteria(Object value, Object comparison);
 
 		public virtual String processStringValue(String value) {
 			return '\'' + value + '\'';
@@ -161,20 +118,11 @@ public virtual class Condition implements ICriteria {
 		public override String getToken() {
 			return '=';
 		}
-
-		public override Boolean meetsCriteria(Object value, Object comparison) {
-			return value == comparison;
-		}
 	}
 
 	private class NotEqualsOperator extends Operator {
 		public override String getToken() {
 			return '!=';
-		}
-
-		public override Boolean meetsCriteria(Object value, Object comparison) {
-			Operator inverse = new EqualsOperator();
-			return inverse?.meetsCriteria(value, comparison) == false;
 		}
 	}
 
@@ -182,29 +130,11 @@ public virtual class Condition implements ICriteria {
 		public override String getToken() {
 			return 'IN';
 		}
-
-		public override Boolean meetsCriteria(Object value, Object comparison) {
-            if (value != null && value instanceOf List<Object>) {
-                List<Object> valueList = (List<Object>) comparison;
-                return valueList?.contains(value) == true; 
-            } else {
-                // Note: We cannot convert a Map/Set of a given type to a Map/Set<Object>, ex.:
-				// ! Invalid conversion from runtime type Map<Id,Opportunity> to Map<ANY,ANY>
-				// Unfortunately, Apex's type system seems to be "broken": https://salesforce.stackexchange.com/questions/106068/apex-string-instanceof-object
-				// ...but it still works for lists! If a non-list collection is provided, throw an error
-				throw new System.IllegalArgumentException('IN_COLLECTION operations must use a List type');
-            }
-		}
 	}
 
 	private class NotInCollectionOperator extends Operator {
 		public override String getToken() {
 			return 'NOT IN';
-		}
-
-		public override Boolean meetsCriteria(Object value, Object comparison) {
-			Operator inverse = new InCollectionOperator();
-			return (value != null && comparison != null) ? inverse?.meetsCriteria(value, comparison) == false : false;
 		}
 	}
 
@@ -212,20 +142,11 @@ public virtual class Condition implements ICriteria {
 		public override String getToken() {
 			return '>';
 		}
-
-		public override Boolean meetsCriteria(Object value, Object comparison) {
-			return Condition.greaterThan(value, comparison);
-		}
 	}
 
 	private class GreaterOrEqualOperator extends Operator {
 		public override String getToken() {
 			return '>=';
-		}
-
-		public override Boolean meetsCriteria(Object value, Object comparison) {
-			Operator inverse = new LessThanOperator();
-			return Condition.greaterThan(value, comparison) || value == comparison;
 		}
 	}
 
@@ -233,33 +154,17 @@ public virtual class Condition implements ICriteria {
 		public override String getToken() {
 			return '<';
 		}
-
-		public override Boolean meetsCriteria(Object value, Object comparison) {
-			return Condition.lessThan(value, comparison);
-		}
 	}
 
 	private class LessOrEqualOperator extends Operator {
 		public override String getToken() {
 			return '<=';
 		}
-
-		public override Boolean meetsCriteria(Object value, Object comparison) {
-			Operator inverse = new GreaterThanOperator();
-			return Condition.lessThan(value, comparison) || value == comparison;
-		}
 	}
 
 	private class StartsWithOperator extends Operator {
 		public override String getToken() {
 			return 'LIKE';
-		}
-
-		public override Boolean meetsCriteria(Object value, Object comparison) {
-			// All types (including numbers) must be cast to string for this operation
-			String valueString = String.valueOf(value);
-			String comparisonString = String.valueOf(comparison);
-			return value != null && comparison != null && valueString?.startsWithIgnoreCase(comparisonString);
 		}
 
 		public override String processStringValue(String value) {
@@ -272,11 +177,6 @@ public virtual class Condition implements ICriteria {
 			return 'NOT LIKE';
 		}
 
-		public override Boolean meetsCriteria(Object value, Object comparison) {
-			Operator inverse = new StartsWithOperator();
-			return (value != null && comparison != null) ? inverse?.meetsCriteria(value, comparison) == false : false;
-		}
-
 		public override String processStringValue(String value) {
 			return '\'' + value + '%\'';
 		}
@@ -285,13 +185,6 @@ public virtual class Condition implements ICriteria {
 	private class EndsWithOperator extends Operator {
 		public override String getToken() {
 			return 'LIKE';
-		}
-
-		public override Boolean meetsCriteria(Object value, Object comparison) {
-			// All types (including numbers) must be cast to string for this operation
-			String valueString = String.valueOf(value);
-			String comparisonString = String.valueOf(comparison);
-			return value != null && comparison != null && valueString?.endsWithIgnoreCase(comparisonString);
 		}
 
 		public override String processStringValue(String value) {
@@ -304,11 +197,6 @@ public virtual class Condition implements ICriteria {
 			return 'NOT LIKE';
 		}
 
-		public override Boolean meetsCriteria(Object value, Object comparison) {
-			Operator inverse = new EndsWithOperator();
-			return (value != null && comparison != null) ? inverse?.meetsCriteria(value, comparison) == false : false;
-		}
-
 		public override String processStringValue(String value) {
 			return '\'%' + value + '\'';
 		}
@@ -319,13 +207,6 @@ public virtual class Condition implements ICriteria {
 			return 'LIKE';
 		}
 
-		public override Boolean meetsCriteria(Object value, Object comparison) {
-			// All types (including numbers) must be cast to string for this operation
-			String valueString = String.valueOf(value);
-			String comparisonString = String.valueOf(comparison);
-			return value != null && comparison != null && valueString?.containsIgnoreCase(comparisonString);
-		}
-
 		public override String processStringValue(String value) {
 			return '\'%' + value + '%\'';
 		}
@@ -334,11 +215,6 @@ public virtual class Condition implements ICriteria {
 	private class NotContainsOperator extends Operator {
 		public override String getToken() {
 			return 'NOT LIKE';
-		}
-
-		public override Boolean meetsCriteria(Object value, Object comparison) {
-			Operator inverse = new ContainsOperator();
-			return (value != null && comparison != null) ? inverse?.meetsCriteria(value, comparison) == false : false;
 		}
 
 		public override String processStringValue(String value) {
