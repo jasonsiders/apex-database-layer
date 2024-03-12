@@ -187,9 +187,9 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
         public Soql.Builder clear() {
             this.selectClauses = new Set<String>{ ID_REFERENCE };
-            this.whereCriteria = new AndLogic();
+            this.whereCriteria = new ConditionalLogic.All();
             this.groupByClauses = new List<String>();
-            this.havingCriteria = new AndLogic(); 
+            this.havingCriteria = new ConditionalLogic.All(); 
             this.accessLevel = System.AccessLevel.USER_MODE;
             this.binds = new Map<String, Object>(); 
             return this;

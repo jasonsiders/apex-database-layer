@@ -1,4 +1,7 @@
 public abstract class ConditionalLogic implements ICriteria {
+    static final String AND_PREDICATE = 'AND';
+    static final String OR_PREDICATE = 'OR'; 
+
     protected List<ICriteria> criterion = new List<ICriteria>();
     protected final String predicate;
 
@@ -32,5 +35,37 @@ public abstract class ConditionalLogic implements ICriteria {
 			criteriaStrings?.add(criteriaString);
 		}
 		return String.join(criteriaStrings, delimiter);
+    }
+
+    public class All extends ConditionalLogic {
+        public All() {
+            super(AND_PREDICATE); 
+        }
+    
+        public override Boolean meetsCriteria(SObject record) {
+            // Returns true if any of the criterion returns true
+            for (ICriteria criteria : this.getCriteria()) {
+                if (criteria?.meetsCriteria(record) == false) {
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+
+    public class One extends ConditionalLogic {
+        public One() {
+            super(OR_PREDICATE);
+        }
+    
+        public override Boolean meetsCriteria(SObject record) {
+            // Returns true if any of the criterion returns true
+            for (ICriteria criteria : this.getCriteria()) {
+                if (criteria?.meetsCriteria(record) == true) {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 }
