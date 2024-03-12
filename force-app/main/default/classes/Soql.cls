@@ -12,18 +12,30 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		this.binds = new Map<String, Object>(); 
 	}
 
+    public virtual Integer countQuery() {
+        try {
+            return Database.countQueryWithBinds(this.toString(), this.binds, this.accessLevel);
+        } catch (System.QueryException error) {
+			this.handleQueryError(error);
+            throw error;
+		}
+    }
+
+    public virtual Database.QueryLocator getQueryLocator() {
+        try {
+            return Database.getQueryLocatorWithBinds(this.toString(), this.binds, this.accessLevel);
+        } catch (System.QueryException error) {
+            this.handleQueryError(error);
+            throw error;
+        }
+    }
+
 	public virtual List<SObject> query() {
-		// Run the current query object through the database
-		String theQuery = this.toString();
 		try {
-			return this.binds?.isEmpty() == false
-				? Database.queryWithBinds(theQuery, this.binds, this.accessLevel)
-				: Database.query(theQuery, this.accessLevel);
+			return Database.queryWithBinds(this.toString(), this.binds, this.accessLevel);
 		} catch (System.QueryException error) {
-            // Attach the original query to the Exception for easier debugging
-			String augmentedMsg = error?.getMessage() + '\nQuery: [' + theQuery + ']';
-			error?.setMessage(augmentedMsg);
-			throw error;
+			this.handleQueryError(error);
+            throw error;
 		}
 	}
 
@@ -32,6 +44,12 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		// Mostly useful for returning Aggregate Query results as a wrapper type
 		return JSON.deserialize(JSON.serialize(this.query()), returnType);
 	}
+
+    private void handleQueryError(Exception error) {
+        // Attach the original query to the Exception for easier debugging
+        String augmentedMsg = error?.getMessage() + '\nQuery: [' + this.toString() + ']';
+        error?.setMessage(augmentedMsg);
+    }
 
     // **** STATIC **** //
     static Schema.ChildRelationship getChildRelationshipFrom(SObjectField lookupField) {
