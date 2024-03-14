@@ -1,6 +1,4 @@
 public inherited sharing virtual class Soql extends Soql.Builder {
-    static final Soql.LogicType DEFAULT_LOGIC_TYPE = Soql.LogicType.ALL_CONDITIONS;
-	static final String ID_REFERENCE = 'Id';
     public static final Operator EQUALS = new Soql.EqualsOperator();
 	public static final Operator NOT_EQUALS = new Soql.NotEqualsOperator();
 	public static final Operator IN_COLLECTION = new Soql.InCollectionOperator();
@@ -15,6 +13,8 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 	public static final Operator NOT_ENDS_WITH = new Soql.NotEndsWithOperator();
 	public static final Operator CONTAINS = new Soql.ContainsOperator();
 	public static final Operator NOT_CONTAINS = new Soql.NotContainsOperator();
+    static final Soql.LogicType DEFAULT_LOGIC_TYPE = Soql.LogicType.ALL_CONDITIONS;
+	static final String ID_REFERENCE = 'Id';
 
     @TestVisible
 	protected Soql(SObjectType objectType) {
@@ -284,6 +284,16 @@ public inherited sharing virtual class Soql extends Soql.Builder {
             return this; 
         }
 
+        public Soql.Builder given(String fieldName, Soql.Operator operator, Object value) {
+            // Shorthand overload constructs a Condition object for the caller
+            return this.given(new Soql.Condition(fieldName, operator, value));
+        }
+
+        public Soql.Builder given(SObjectField field, Soql.Operator operator, Object value) {
+            // Shorthand overload constructs a Condition object for the caller
+            return this.given(field?.toString(), operator, value);
+        }
+
         public Soql.Builder setWhereLogic(Soql.LogicType newLogicType) {
             this.whereCriteria?.setLogicType(newLogicType);
             return this;
@@ -305,6 +315,11 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         public Soql.Builder has(Soql.AggregateCondition aggregateCriteria) {
             this.havingCriteria?.addCriteria(aggregateCriteria);
             return this;
+        }
+
+        public Soql.Builder has(Soql.Aggregation agg, Soql.Operator operator, Object value) {
+            // Shorthand overload constructs the AggregateCondition for the caller
+            return this.has(new Soql.AggregateCondition(agg, operator, value));
         }
 
         public Soql.Builder setHavingLogic(Soql.LogicType newLogicType) {
