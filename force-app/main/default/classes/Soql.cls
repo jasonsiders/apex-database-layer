@@ -1,5 +1,20 @@
 public inherited sharing virtual class Soql extends Soql.Builder {
+    static final Soql.LogicType DEFAULT_LOGIC_TYPE = Soql.LogicType.ALL_CONDITIONS;
 	static final String ID_REFERENCE = 'Id';
+    public static final Operator EQUALS = new Soql.EqualsOperator();
+	public static final Operator NOT_EQUALS = new Soql.NotEqualsOperator();
+	public static final Operator IN_COLLECTION = new Soql.InCollectionOperator();
+	public static final Operator NOT_IN_COLLECTION = new Soql.NotInCollectionOperator();
+	public static final Operator GREATER_THAN = new Soql.GreaterThanOperator();
+	public static final Operator GREATER_OR_EQUAL = new Soql.GreaterOrEqualOperator();
+	public static final Operator LESS_THAN = new Soql.LessThanOperator();
+	public static final Operator LESS_OR_EQUAL = new Soql.LessOrEqualOperator();
+	public static final Operator STARTS_WITH = new Soql.StartsWithOperator();
+	public static final Operator NOT_STARTS_WITH = new Soql.NotStartsWithOperator();
+	public static final Operator ENDS_WITH = new Soql.EndsWithOperator();
+	public static final Operator NOT_ENDS_WITH = new Soql.NotEndsWithOperator();
+	public static final Operator CONTAINS = new Soql.ContainsOperator();
+	public static final Operator NOT_CONTAINS = new Soql.NotContainsOperator();
 
     @TestVisible
 	protected Soql(SObjectType objectType) {
@@ -80,6 +95,11 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         USER_MODE
     }
 
+    public enum LogicType {
+        ALL_CONDITIONS,
+        ANY_CONDITIONS
+    }
+
     public enum NullOrder {
         NULLS_FIRST,
         NULLS_LAST
@@ -110,6 +130,12 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		FOR_REFERENCE,
 		FOR_UPDATE
 	}
+    
+    // **** INTERFACE **** //
+    public interface ICriteria {
+        // Mostly a marker interface, but also used to coerce toString()
+        String toString();
+    }
 
     // **** INNER **** //
     public class Aggregation {
@@ -144,8 +170,8 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         }
     }
 
-    public class AggregateCondition extends Condition {
-        public AggregateCondition(Soql.Aggregation agg, Condition.Operator operator, Object value) {
+    public class AggregateCondition extends Soql.Condition {
+        public AggregateCondition(Soql.Aggregation agg, Soql.Operator operator, Object value) {
 			super(agg?.toString(), operator, value);
 		}
     }
@@ -154,10 +180,10 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         public Set<String> selectClauses { get; protected set; }
         public String entity { get; protected set; }
         public Soql.Scope scope { get; protected set; }
-        public ConditionalLogic whereCriteria { get; protected set; }
+        public Soql.ConditionalLogic whereCriteria { get; protected set; }
         public WithClause withClause { get; protected set; }
         public List<String> groupByClauses { get; protected set; }
-        public ConditionalLogic havingCriteria { get; protected set; }
+        public Soql.ConditionalLogic havingCriteria { get; protected set; }
         public Soql.OrderByClause orderByClause { get; protected set; }
         public Integer rowLimit { get; protected set; }
         public Integer rowOffset { get; protected set; }
@@ -187,9 +213,9 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
         public Soql.Builder clear() {
             this.selectClauses = new Set<String>{ ID_REFERENCE };
-            this.whereCriteria = new ConditionalLogic.All();
+            this.whereCriteria = new Soql.ConditionalLogic(DEFAULT_LOGIC_TYPE);
             this.groupByClauses = new List<String>();
-            this.havingCriteria = new ConditionalLogic.All(); 
+            this.havingCriteria = new Soql.ConditionalLogic(DEFAULT_LOGIC_TYPE);
             this.accessLevel = System.AccessLevel.USER_MODE;
             this.binds = new Map<String, Object>(); 
             return this;
@@ -253,16 +279,13 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         }
     
         // * WHERE *
-        public Soql.Builder given(ICriteria criteria) {
+        public Soql.Builder given(Soql.ICriteria criteria) {
             this.whereCriteria?.addCriteria(criteria);
             return this; 
         }
 
-        public Soql.Builder setWhereLogic(Type newLogicType) {
-            List<ICriteria> filters = this.whereCriteria?.getCriteria();
-            ConditionalLogic newLogic = (ConditionalLogic) newLogicType?.newInstance();
-            newLogic?.addCriteria(filters);
-            this.whereCriteria = newLogic;
+        public Soql.Builder setWhereLogic(Soql.LogicType newLogicType) {
+            this.whereCriteria?.setLogicType(newLogicType);
             return this;
         }
 
@@ -284,11 +307,8 @@ public inherited sharing virtual class Soql extends Soql.Builder {
             return this;
         }
 
-        public Soql.Builder setHavingLogic(Type newLogicType) {
-            List<ICriteria> filters = this.havingCriteria?.getCriteria();
-            ConditionalLogic newLogic = (ConditionalLogic) newLogicType?.newInstance();
-            newLogic?.addCriteria(filters);
-            this.havingCriteria = newLogic;
+        public Soql.Builder setHavingLogic(Soql.LogicType newLogicType) {
+            this.havingCriteria?.setLogicType(newLogicType);
             return this;
         }
     
@@ -359,6 +379,248 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         }
     }
 
+    public virtual class Condition implements Soql.ICriteria {
+        public final String property { get; protected set; }
+        public final Soql.Operator operator { get; protected set; }
+        public final Object value { get; protected set; }
+
+        public Condition(String property, Soql.Operator operator, Object value) {
+            this.property = property;
+            this.operator = operator;
+            this.value = value;
+        }
+    
+        public Condition(SObjectField field, Soql.Operator operator, Object value) {
+            this(field?.toString(), operator, value);
+        }
+    
+        public override String toString() {
+            List<String> parts = new List<String>{
+                this.property,
+                this.operator?.getToken(),
+                this.formatValue()
+            };
+            return String.join(parts, ' ');
+        }
+        
+        protected String formatValue() {
+            // Note: System.Type cannot be used directly in switch expressions
+            if (this.value == null) {
+                return 'null';
+            } else if (this.value instanceOf Date) {
+                return this.processDate((Date) this.value);
+            } else if (this.value instanceOf Iterable<Date>) {
+                return this.processDates((Iterable<Date>) this.value);
+            } else if (this.value instanceOf DateTime) {
+                return this.processDateTime((DateTime) this.value);
+            } else if (this.value instanceOf Iterable<DateTime>) {
+                return this.processDateTimes((Iterable<DateTime>) this.value);
+            } else if (this.value instanceOf String) {
+                return this.processString((String) this.value);
+            } else if (this.value instanceOf Iterable<String>) {
+                return this.processStrings((Iterable<String>) this.value);
+            } else if (this.value instanceOf Soql) {
+                // Inner queries must be wrapped in parentheses to avoid syntax errors in SOQL
+                return String.format('({0})', new List<String>{ this.value?.toString() });
+            } else {
+                return String.valueOf(this.value);
+            }
+        }
+    
+        private String processString(String value) {
+            // Allow special modifiers (bind variables & relative date operators) to pass through unmodified
+            Boolean specialModifier = value?.startsWithIgnoreCase('LAST_N_DAYS') || value?.startsWith(':');
+            return (specialModifier) ? value : this.operator?.processStringValue(value);
+        }
+    
+        private String processDate(Date value) {
+            String soqlFormat = 'yyyy-MM-dd';
+            DateTime dateTimeValue = DateTime.newInstance(value.year(), value.month(), value.day());
+            return dateTimeValue?.formatGmt(soqlFormat);
+        }
+    
+        private String processDateTime(DateTime value) {
+            String soqlFormat = 'yyyy-MM-dd\'T\'HH:mm:ss\'Z\'';
+            return value?.formatGmt(soqlFormat);
+        }
+    
+        private String processStrings(Iterable<String> items) {
+            List<String> results = new List<String>();
+            for (String item : items) {
+                String result = this.processString(item);
+                results.add(result);
+            }
+            return '(' + String.join(results, ', ') + ')';
+        }
+    
+        private String processDates(Iterable<Date> items) {
+            List<String> results = new List<String>();
+            for (Date item : items) {
+                results.add(this.processDate(item));
+            }
+            return '(' + String.join(results, ', ') + ')';
+        }
+    
+        private String processDateTimes(Iterable<DateTime> items) {
+            List<String> results = new List<String>();
+            for (DateTime item : items) {
+                results.add(this.processDateTime(item));
+            }
+            return '(' + String.join(results, ', ') + ')';
+        }
+    }
+
+    public class ConditionalLogic implements Soql.ICriteria {
+        List<Soql.ICriteria> criterion = new List<Soql.ICriteria>();
+        Soql.LogicType logicType;
+
+        public ConditionalLogic(Soql.LogicType logicType) {
+            this.setLogicType(logicType);
+        }
+
+        public ConditionalLogic addCriteria(List<Soql.ICriteria> criterion) {
+            this.criterion?.addAll(criterion);
+            return this; 
+        }
+
+        public ConditionalLogic addCriteria(Soql.ICriteria criteria) {
+            return this.addCriteria(new List<Soql.ICriteria>{ criteria });
+        }
+
+        public ConditionalLogic setLogicType(Soql.LogicType logicType) {
+            this.logicType = logicType; 
+            return this;
+        }
+
+        public override String toString() {
+            String delimiter = ' ' + this.getPredicate() + ' ';
+            List<String> criteriaStrings = new List<String>();
+            for (Soql.ICriteria criteria : this.criterion) {
+                // Wrap inner ConditionalLogic objects in parentheses
+                String criteriaString = (criteria instanceof ConditionalLogic)
+                    ? '(' + criteria?.toString() + ')'
+                    : criteria?.toString();
+                criteriaStrings?.add(criteriaString);
+            }
+            return String.join(criteriaStrings, delimiter);
+        }
+
+        private String getPredicate() {
+            return (logicType == Soql.LogicType.ANY_CONDITIONS) ? 'OR' : 'AND';
+        }
+    }
+
+    public class ContainsOperator extends Soql.Operator {
+		public override String getToken() {
+			return 'LIKE';
+		}
+
+		public override String processStringValue(String value) {
+			return '\'%' + value + '%\'';
+		}
+	}
+
+    public class EndsWithOperator extends Soql.Operator {
+		public override String getToken() {
+			return 'LIKE';
+		}
+
+		public override String processStringValue(String value) {
+			return '\'%' + value + '\'';
+		}
+	}
+
+    public class EqualsOperator extends Soql.Operator {
+		public override String getToken() {
+			return '=';
+		}
+	}
+
+    public class GreaterOrEqualOperator extends Soql.Operator {
+		public override String getToken() {
+			return '>=';
+		}
+	}
+
+    public class GreaterThanOperator extends Soql.Operator {
+		public override String getToken() {
+			return '>';
+		}
+	}
+
+    public class InCollectionOperator extends Soql.Operator {
+		public override String getToken() {
+			return 'IN';
+		}
+	}
+
+    public class LessOrEqualOperator extends Soql.Operator {
+		public override String getToken() {
+			return '<=';
+		}
+	}
+
+    public class LessThanOperator extends Soql.Operator {
+		public override String getToken() {
+			return '<';
+		}
+	}
+
+    public class NotContainsOperator extends Soql.Operator {
+		public override String getToken() {
+			return 'NOT LIKE';
+		}
+
+		public override String processStringValue(String value) {
+			return '\'%' + value + '%\'';
+		}
+	}
+
+    public class NotEndsWithOperator extends Soql.Operator {
+		public override String getToken() {
+			return 'NOT LIKE';
+		}
+
+		public override String processStringValue(String value) {
+			return '\'%' + value + '\'';
+		}
+	}
+
+    public class NotEqualsOperator extends Soql.Operator {
+		public override String getToken() {
+			return '!=';
+		}
+	}
+
+    public class NotInCollectionOperator extends Soql.Operator {
+		public override String getToken() {
+			return 'NOT IN';
+		}
+	}
+
+    public class NotStartsWithOperator extends Soql.Operator {
+		public override String getToken() {
+			return 'NOT LIKE';
+		}
+
+		public override String processStringValue(String value) {
+			return '\'' + value + '%\'';
+		}
+	}
+
+    public abstract class Operator {
+        protected Operator() {
+            // Callers shouldn't construct an Operator object directly;
+            // Instead, refer to the static final types listed in this file
+        }
+
+        public abstract String getToken();
+
+		public virtual String processStringValue(String value) {
+			return '\'' + value + '\'';
+		}
+    }
+
     public class OrderByClause {
         List<String> fieldNames = new List<String>();
         SortOrder direction = SortOrder.ASCENDING;
@@ -403,6 +665,16 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         }
     }
 
+    public class StartsWithOperator extends Soql.Operator {
+		public override String getToken() {
+			return 'LIKE';
+		}
+
+		public override String processStringValue(String value) {
+			return '\'' + value + '%\'';
+		}
+	}
+
     public class Subquery extends Soql.Builder {
         String relationshipName;
 
@@ -430,7 +702,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
             this.clause = context?.name();
         }
 
-        public WithClause(ICriteria dataCategoryCriteria) {
+        public WithClause(Soql.ICriteria dataCategoryCriteria) {
             this.clause = dataCategoryCriteria?.toString();
         }
 
