@@ -8,8 +8,55 @@ private class SoqlTest {
     // * AGGREGATE CONDITION
     // * CONDITIONAL LOGIC
     // * CONDITION
-    // * OPERATOR
-    // * OPERATOR SUBTYPES
+    // * OPERATORS
+    @IsTest 
+    static void shouldOutputExactMatchString() {
+        Soql.Operator operator = Soql.EQUALS;
+        String value = 'foo';
+
+        Test.startTest();
+        String result = operator?.processStringValue(value);
+        Test.stopTest();
+
+        Assert.areEqual('\'' + value + '\'', result, 'Wrong string value');
+    }
+   
+    @IsTest 
+    static void shouldOuptutStartsWithString() {
+        Soql.Operator operator = Soql.STARTS_WITH;
+        String value = 'foo';
+
+        Test.startTest();
+        String result = operator?.processStringValue(value);
+        Test.stopTest();
+
+        Assert.areEqual('\'' + value + '%\'', result, 'Wrong string value');
+    }
+
+    @IsTest 
+    static void shouldOuptutEndsWithString() {
+        Soql.Operator operator = Soql.ENDS_WITH;
+        String value = 'foo';
+
+        Test.startTest();
+        String result = operator?.processStringValue(value);
+        Test.stopTest();
+
+        Assert.areEqual('\'%' + value + '\'', result, 'Wrong string value');
+    }
+
+    @IsTest 
+    static void shouldOuptutContainsString() {
+        Soql.Operator operator = Soql.CONTAINS;
+        String value = 'foo';
+
+        Test.startTest();
+        String result = operator?.processStringValue(value);
+        Test.stopTest();
+
+        Assert.areEqual('\'%' + value + '%\'', result, 'Wrong string value');
+    }
+
     // * AGGREGATION
     @IsTest 
     static void shouldCreateAggregateClause() {
