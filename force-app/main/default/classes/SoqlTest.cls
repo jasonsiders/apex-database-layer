@@ -11,6 +11,18 @@ private class SoqlTest {
     // * OPERATOR
     // * OPERATOR SUBTYPES
     // * AGGREGATION
+    @IsTest 
+    static void shouldCreateAggregateClause() {
+        String value = new Soql.Aggregation(Soql.AggregateFunction.COUNT, Account.Id)?.toString();
+        Assert.areEqual('COUNT(Id)', value, 'Wrong toString() value');
+    }
+
+    @IsTest 
+    static void shouldCreateAggregateClauseWithAlias() {
+        String value = new Soql.Aggregation(Soql.AggregateFunction.COUNT, Account.Id)?.withAlias('num')?.toString();
+        Assert.areEqual('COUNT(Id) num', value, 'Wrong toString() value');
+    }
+
     // * BINDER
     @IsTest 
     static void shouldCreateBinderObject() {
@@ -27,7 +39,7 @@ private class SoqlTest {
     }
 
     @IsTest 
-    static void shouldCreateEmtpyBinder() {
+    static void shouldCreateEmptyBinder() {
         String key = 'ownerIds';
 
         Test.startTest();

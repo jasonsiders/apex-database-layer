@@ -139,22 +139,14 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
     // **** INNER **** //
     public class Aggregation {
-        Soql.AggregateFunction function;
-        String fieldName;
         String alias;
-
-        public Aggregation(Soql.AggregateFunction function, String fieldName, String alias) {
-            this.function = function;
-            this.fieldName = fieldName;
-            this.alias = alias;
-        }
+        String fieldName;
+        AggregateFunction function;
 
         public Aggregation(Soql.AggregateFunction function, String fieldName) {
-            this(function, fieldName, '');
-        }
-
-        public Aggregation(Soql.AggregateFunction function, SObjectField field, String alias) {
-            this(function, field?.toString(), alias);
+            this.alias = '';
+            this.fieldName = fieldName;
+            this.function = function;
         }
     
         public Aggregation(Soql.AggregateFunction function, SObjectField field) {
@@ -167,6 +159,11 @@ public inherited sharing virtual class Soql extends Soql.Builder {
                 new List<String>{ this.function?.toString(), this.fieldName, this.alias }
             );
             return formatted?.trim();
+        }
+
+        public Aggregation withAlias(String alias) {
+            this.alias = alias;
+            return this;
         }
     }
 
