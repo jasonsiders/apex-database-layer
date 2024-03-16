@@ -1,7 +1,16 @@
 @IsTest 
 private class SoqlTest {
-    @IsTest 
-    static void test1() {
-        Assert.fail('You still need to build this test class');
-    }
+    // * MAIN METHODS
+    // * BUILDER
+    // * INNER QUERY
+    // * SUBQUERY
+    // * WITH CLAUSE
+    // * AGGREGATE CONDITION
+    // * CONDITIONAL LOGIC
+    // * CONDITION
+    // * OPERATOR
+    // * OPERATOR SUBTYPES
+    // * AGGREGATION
+    // * BINDER
+    // * ORDER BY CLAUSE
 }
