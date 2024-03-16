@@ -139,25 +139,25 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
     // **** INNER **** //
     public class Aggregation {
-        AggregateFunction function;
+        Soql.AggregateFunction function;
         String fieldName;
         String alias;
 
-        public Aggregation(AggregateFunction function, String fieldName, String alias) {
+        public Aggregation(Soql.AggregateFunction function, String fieldName, String alias) {
             this.function = function;
             this.fieldName = fieldName;
             this.alias = alias;
         }
 
-        public Aggregation(AggregateFunction function, String fieldName) {
+        public Aggregation(Soql.AggregateFunction function, String fieldName) {
             this(function, fieldName, '');
         }
 
-        public Aggregation(AggregateFunction function, SObjectField field, String alias) {
+        public Aggregation(Soql.AggregateFunction function, SObjectField field, String alias) {
             this(function, field?.toString(), alias);
         }
     
-        public Aggregation(AggregateFunction function, SObjectField field) {
+        public Aggregation(Soql.AggregateFunction function, SObjectField field) {
             this(function, field?.toString());
         }
 
@@ -180,13 +180,13 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         public String key { get; private set; }
         List<Object> values { get; private set; }
 
-        public Binder(String key) {
+        public Binder(String key, List<Object> values) {
             this.key = key;
+            this.setValues(values);
         }
 
-        public Binder(String key, List<Object> values) {
-            this(key);
-            this.setValues(values);
+        public Binder(String key) {
+            this(key, new List<Object>());
         }
 
         public String getKey() {
@@ -205,10 +205,6 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         public override String toString() {
             return ':' + this.getKey();
         }
-
-        public override Integer hashCode() {
-            return this.key?.hashCode();
-        }
     }
 
     public abstract class Builder {
@@ -219,7 +215,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         public WithClause withClause { get; protected set; }
         public List<String> groupByClauses { get; protected set; }
         public Soql.ConditionalLogic havingCriteria { get; protected set; }
-        public Soql.OrderByClause orderByClause { get; protected set; }
+        public Soql.OrderBy OrderBy { get; protected set; }
         public Integer rowLimit { get; protected set; }
         public Integer rowOffset { get; protected set; }
         public Soql.Usage usage { get; protected set; }
@@ -376,8 +372,8 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         }
     
         // * ORDER BY * 
-        public Soql.Builder orderBy(Soql.OrderByClause orderByClause) {
-            this.orderByClause = orderByClause;
+        public Soql.Builder orderBy(Soql.OrderBy OrderBy) {
+            this.OrderBy = OrderBy;
             return this;
         }
 
@@ -421,7 +417,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
                 this.constructClause('WITH', this.withClause),
                 this.getGroupBy(),
                 this.constructClause('HAVING', this.havingCriteria),
-                this.constructClause('ORDER BY', this.orderByClause),
+                this.constructClause('ORDER BY', this.OrderBy),
                 this.constructClause('LIMIT', this.rowLimit),
                 this.constructClause('OFFSET', this.rowOffset),
                 this.getUsage()
@@ -619,33 +615,33 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         }
     }
 
-    public class OrderByClause {
+    public class OrderBy {
         List<String> fieldNames = new List<String>();
-        SortOrder direction = SortOrder.ASCENDING;
-        NullOrder nullBehavior = NullOrder.NULLS_LAST;
+        Soql.SortOrder direction = Soql.SortOrder.ASCENDING;
+        Soql.NullOrder nullOrder = Soql.NullOrder.NULLS_LAST;
 
-        public OrderByClause(List<String> fieldNames, SortOrder direction) {
+        public OrderBy(List<String> fieldNames, Soql.SortOrder direction) {
             this.fieldNames = fieldNames;
             this.direction = direction;
         }
 
-        public OrderByClause(String fieldName, SortOrder direction) {
+        public OrderBy(String fieldName, Soql.SortOrder direction) {
             this(new List<String>{ fieldName }, direction);
         }
 
-        public OrderByClause(List<SObjectField> fields, SortOrder direction) {
+        public OrderBy(List<SObjectField> fields, Soql.SortOrder direction) {
             for (SObjectField field : fields) {
                 this.fieldNames?.add(field?.toString());
             }
             this.direction = direction;
         }
 
-        public OrderByClause(SObjectField field, SortOrder direction) {
+        public OrderBy(SObjectField field, Soql.SortOrder direction) {
             this(new List<SObjectField>{ field }, direction);
         }
 
-        public OrderByClause setNullBehavior(NullOrder nullBehavior) {
-            this.nullBehavior = nullBehavior;
+        public OrderBy setNullOrder(Soql.NullOrder nullOrder) {
+            this.nullOrder = nullOrder;
             return this; 
         }
 
@@ -659,7 +655,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         }
 
         private String getNullOrder() {
-            return this.nullBehavior?.name()?.replace('_', '');
+            return this.nullOrder?.name()?.replace('_', ' ');
         }
     }
 
