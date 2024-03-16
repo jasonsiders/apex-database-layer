@@ -482,7 +482,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
                 return this.processString((String) this.value);
             } else if (this.value instanceOf Iterable<String>) {
                 return this.processStrings((Iterable<String>) this.value);
-            } else if (this.value instanceOf Soql) {
+            } else if (this.value instanceOf Soql.Builder) {
                 // Inner queries must be wrapped in parentheses to avoid syntax errors in SOQL
                 return String.format('({0})', new List<String>{ this.value?.toString() });
             } else {
