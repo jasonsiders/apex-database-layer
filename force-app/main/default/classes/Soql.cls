@@ -323,14 +323,6 @@ public inherited sharing virtual class Soql extends Soql.Builder {
             return this; 
         }
 
-        public Soql.Builder given(String fieldName, Soql.Operator operator, Soql.Binder binder) {
-            return this.given(fieldName, operator, binder?.toString())?.bind(binder);
-        }
-
-        public Soql.Builder given(SObjectField field, Soql.Operator operator, Soql.Binder binder) {
-            return this.given(field?.toString(), operator, binder); 
-        }
-
         public Soql.Builder given(String fieldName, Soql.Operator operator, Object value) {
             // Shorthand overload constructs a Condition object for the caller
             return this.given(new Soql.Condition(fieldName, operator, value));
@@ -339,6 +331,15 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         public Soql.Builder given(SObjectField field, Soql.Operator operator, Object value) {
             // Shorthand overload constructs a Condition object for the caller
             return this.given(field?.toString(), operator, value);
+        }
+
+        public Soql.Builder given(String fieldName, Soql.Operator operator, Soql.Binder binder) {
+            // If the current object is a Binder, bind the values so that callers don't need to do so manually
+            return this.given(fieldName, operator, binder?.toString())?.bind(binder);
+        }
+
+        public Soql.Builder given(SObjectField field, Soql.Operator operator, Soql.Binder binder) {
+            return this.given(field?.toString(), operator, binder); 
         }
 
         public Soql.Builder setWhereLogic(Soql.LogicType newLogicType) {
@@ -615,6 +616,14 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			return 'IN';
 		}
 	}
+
+    public class InnerQuery extends Soql.Builder {
+        // Inner queries must contain a single key field, and this is typically not the Id
+        // ex., `SELECT AccountId FROM Case WHERE X`
+        public InnerQuery() {
+            this.deselect(ID_REFERENCE);
+        }
+    }
 
     public class LessOrEqualOperator extends Soql.Operator {
 		public override String getToken() {
