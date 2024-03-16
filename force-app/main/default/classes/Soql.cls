@@ -1,18 +1,18 @@
 public inherited sharing virtual class Soql extends Soql.Builder {
-    public static final Operator EQUALS = new Soql.EqualsOperator();
-	public static final Operator NOT_EQUALS = new Soql.NotEqualsOperator();
-	public static final Operator IN_COLLECTION = new Soql.InCollectionOperator();
-	public static final Operator NOT_IN_COLLECTION = new Soql.NotInCollectionOperator();
-	public static final Operator GREATER_THAN = new Soql.GreaterThanOperator();
-	public static final Operator GREATER_OR_EQUAL = new Soql.GreaterOrEqualOperator();
-	public static final Operator LESS_THAN = new Soql.LessThanOperator();
-	public static final Operator LESS_OR_EQUAL = new Soql.LessOrEqualOperator();
-	public static final Operator STARTS_WITH = new Soql.StartsWithOperator();
-	public static final Operator NOT_STARTS_WITH = new Soql.NotStartsWithOperator();
-	public static final Operator ENDS_WITH = new Soql.EndsWithOperator();
-	public static final Operator NOT_ENDS_WITH = new Soql.NotEndsWithOperator();
-	public static final Operator CONTAINS = new Soql.ContainsOperator();
-	public static final Operator NOT_CONTAINS = new Soql.NotContainsOperator();
+    public static final Operator EQUALS = new Soql.Operator('=');
+	public static final Operator NOT_EQUALS = new Soql.Operator('!=');
+	public static final Operator IN_COLLECTION = new Soql.Operator('IN');
+	public static final Operator NOT_IN_COLLECTION = new Soql.Operator('NOT IN');
+	public static final Operator GREATER_THAN = new Soql.Operator('>');
+	public static final Operator GREATER_OR_EQUAL = new Soql.Operator('>=');
+	public static final Operator LESS_THAN = new Soql.Operator('<');
+	public static final Operator LESS_OR_EQUAL = new Soql.Operator('<=');
+	public static final Operator STARTS_WITH = new Soql.StartsWithOperator('LIKE');
+	public static final Operator NOT_STARTS_WITH = new Soql.StartsWithOperator('NOT LIKE');
+	public static final Operator ENDS_WITH = new Soql.EndsWithOperator('LIKE');
+	public static final Operator NOT_ENDS_WITH = new Soql.EndsWithOperator('NOT LIKE');
+	public static final Operator CONTAINS = new Soql.ContainsOperator('LIKE');
+	public static final Operator NOT_CONTAINS = new Soql.ContainsOperator('NOT LIKE');
     static final Soql.LogicType DEFAULT_LOGIC_TYPE = Soql.LogicType.ALL_CONDITIONS;
 	static final String ID_REFERENCE = 'Id';
 
@@ -132,7 +132,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 	}
     
     // **** INTERFACE **** //
-    public interface ICriteria {
+    public interface Criteria {
         // Mostly a marker interface, but also used to coerce toString()
         String toString();
     }
@@ -318,7 +318,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         }
     
         // * WHERE *
-        public Soql.Builder given(Soql.ICriteria criteria) {
+        public Soql.Builder given(Soql.Criteria criteria) {
             this.whereCriteria?.addCriteria(criteria);
             return this; 
         }
@@ -442,7 +442,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         }
     }
 
-    public virtual class Condition implements Soql.ICriteria {
+    public virtual class Condition implements Soql.Criteria {
         public final String property { get; protected set; }
         public final Soql.Operator operator { get; protected set; }
         public final Object value { get; protected set; }
@@ -460,7 +460,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         public override String toString() {
             List<String> parts = new List<String>{
                 this.property,
-                this.operator?.getToken(),
+                this.operator?.toString(),
                 this.formatValue()
             };
             return String.join(parts, ' ');
@@ -533,21 +533,21 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         }
     }
 
-    public class ConditionalLogic implements Soql.ICriteria {
-        List<Soql.ICriteria> criterion = new List<Soql.ICriteria>();
+    public class ConditionalLogic implements Soql.Criteria {
+        List<Soql.Criteria> criterion = new List<Soql.Criteria>();
         Soql.LogicType logicType;
 
         public ConditionalLogic(Soql.LogicType logicType) {
             this.setLogicType(logicType);
         }
 
-        public ConditionalLogic addCriteria(List<Soql.ICriteria> criterion) {
+        public ConditionalLogic addCriteria(List<Soql.Criteria> criterion) {
             this.criterion?.addAll(criterion);
             return this; 
         }
 
-        public ConditionalLogic addCriteria(Soql.ICriteria criteria) {
-            return this.addCriteria(new List<Soql.ICriteria>{ criteria });
+        public ConditionalLogic addCriteria(Soql.Criteria criteria) {
+            return this.addCriteria(new List<Soql.Criteria>{ criteria });
         }
 
         public ConditionalLogic setLogicType(Soql.LogicType logicType) {
@@ -558,7 +558,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         public override String toString() {
             String delimiter = ' ' + this.getPredicate() + ' ';
             List<String> criteriaStrings = new List<String>();
-            for (Soql.ICriteria criteria : this.criterion) {
+            for (Soql.Criteria criteria : this.criterion) {
                 // Wrap inner ConditionalLogic objects in parentheses
                 String criteriaString = (criteria instanceof ConditionalLogic)
                     ? '(' + criteria?.toString() + ')'
@@ -573,10 +573,10 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         }
     }
 
-    public class ContainsOperator extends Soql.Operator {
-		public override String getToken() {
-			return 'LIKE';
-		}
+    public virtual class ContainsOperator extends Soql.Operator {
+		private ContainsOperator(String token) {
+            super(token);
+        }
 
 		public override String processStringValue(String value) {
 			return '\'%' + value + '%\'';
@@ -584,36 +584,12 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 	}
 
     public class EndsWithOperator extends Soql.Operator {
-		public override String getToken() {
-			return 'LIKE';
+		private EndsWithOperator(String token) {
+            super(token);
 		}
 
 		public override String processStringValue(String value) {
 			return '\'%' + value + '\'';
-		}
-	}
-
-    public class EqualsOperator extends Soql.Operator {
-		public override String getToken() {
-			return '=';
-		}
-	}
-
-    public class GreaterOrEqualOperator extends Soql.Operator {
-		public override String getToken() {
-			return '>=';
-		}
-	}
-
-    public class GreaterThanOperator extends Soql.Operator {
-		public override String getToken() {
-			return '>';
-		}
-	}
-
-    public class InCollectionOperator extends Soql.Operator {
-		public override String getToken() {
-			return 'IN';
 		}
 	}
 
@@ -625,71 +601,22 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         }
     }
 
-    public class LessOrEqualOperator extends Soql.Operator {
-		public override String getToken() {
-			return '<=';
-		}
-	}
+    public virtual class Operator {
+        String token;
 
-    public class LessThanOperator extends Soql.Operator {
-		public override String getToken() {
-			return '<';
-		}
-	}
-
-    public class NotContainsOperator extends Soql.Operator {
-		public override String getToken() {
-			return 'NOT LIKE';
-		}
-
-		public override String processStringValue(String value) {
-			return '\'%' + value + '%\'';
-		}
-	}
-
-    public class NotEndsWithOperator extends Soql.Operator {
-		public override String getToken() {
-			return 'NOT LIKE';
-		}
-
-		public override String processStringValue(String value) {
-			return '\'%' + value + '\'';
-		}
-	}
-
-    public class NotEqualsOperator extends Soql.Operator {
-		public override String getToken() {
-			return '!=';
-		}
-	}
-
-    public class NotInCollectionOperator extends Soql.Operator {
-		public override String getToken() {
-			return 'NOT IN';
-		}
-	}
-
-    public class NotStartsWithOperator extends Soql.Operator {
-		public override String getToken() {
-			return 'NOT LIKE';
-		}
-
-		public override String processStringValue(String value) {
-			return '\'' + value + '%\'';
-		}
-	}
-
-    public abstract class Operator {
-        protected Operator() {
+        protected Operator(String token) {
             // Callers shouldn't construct an Operator object directly;
             // Instead, refer to the static final types listed in this file
+            this.token = token;
         }
-
-        public abstract String getToken();
 
 		public virtual String processStringValue(String value) {
 			return '\'' + value + '\'';
 		}
+
+        public override String toString() {
+            return this.token;
+        }
     }
 
     public class OrderByClause {
@@ -737,9 +664,9 @@ public inherited sharing virtual class Soql extends Soql.Builder {
     }
 
     public class StartsWithOperator extends Soql.Operator {
-		public override String getToken() {
-			return 'LIKE';
-		}
+		private StartsWithOperator(String token) {
+            super(token);
+        }
 
 		public override String processStringValue(String value) {
 			return '\'' + value + '%\'';
@@ -773,7 +700,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
             this.clause = context?.name();
         }
 
-        public WithClause(Soql.ICriteria dataCategoryCriteria) {
+        public WithClause(Soql.Criteria dataCategoryCriteria) {
             this.clause = dataCategoryCriteria?.toString();
         }
 
