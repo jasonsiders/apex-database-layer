@@ -176,6 +176,41 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		}
     }
 
+    public class Binder {
+        public String key { get; private set; }
+        List<Object> values { get; private set; }
+
+        public Binder(String key) {
+            this.key = key;
+        }
+
+        public Binder(String key, List<Object> values) {
+            this(key);
+            this.setValues(values);
+        }
+
+        public String getKey() {
+            return this.key;
+        }
+
+        public List<Object> getValues() {
+            return this.values ?? new List<Object>();
+        }
+
+        public Binder setValues(List<Object> values) {
+            this.values = values;
+            return this; 
+        }
+
+        public override String toString() {
+            return ':' + this.getKey();
+        }
+
+        public override Integer hashCode() {
+            return this.key?.hashCode();
+        }
+    }
+
     public abstract class Builder {
         public Set<String> selectClauses { get; protected set; }
         public String entity { get; protected set; }
@@ -209,6 +244,10 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
         public Soql.Builder bind(String key, Object value) {
             return this.bind(new Map<String, Object>{ key => value });
+        }
+
+        public Soql.Builder bind(Soql.Binder binder) {
+            return this.bind(binder?.getKey(), binder?.getValues());
         }
 
         public Soql.Builder clear() {
@@ -282,6 +321,14 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         public Soql.Builder given(Soql.ICriteria criteria) {
             this.whereCriteria?.addCriteria(criteria);
             return this; 
+        }
+
+        public Soql.Builder given(String fieldName, Soql.Operator operator, Soql.Binder binder) {
+            return this.given(fieldName, operator, binder?.toString())?.bind(binder);
+        }
+
+        public Soql.Builder given(SObjectField field, Soql.Operator operator, Soql.Binder binder) {
+            return this.given(field?.toString(), operator, binder); 
         }
 
         public Soql.Builder given(String fieldName, Soql.Operator operator, Object value) {
