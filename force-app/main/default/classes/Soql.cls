@@ -454,39 +454,29 @@ public inherited sharing virtual class Soql extends Soql.Builder {
             List<String> parts = new List<String>{
                 this.property,
                 this.operator?.toString(),
-                this.formatValue()
+                this.formatValue(this.value)
             };
             return String.join(parts, ' ');
         }
         
-        protected String formatValue() {
-            // Note: System.Type cannot be used directly in switch expressions
-            if (this.value == null) {
-                return 'null';
-            } else if (this.value instanceOf Date) {
-                return this.processDate((Date) this.value);
-            } else if (this.value instanceOf Iterable<Date>) {
-                return this.processDates((Iterable<Date>) this.value);
-            } else if (this.value instanceOf DateTime) {
-                return this.processDateTime((DateTime) this.value);
-            } else if (this.value instanceOf Iterable<DateTime>) {
-                return this.processDateTimes((Iterable<DateTime>) this.value);
-            } else if (this.value instanceOf String) {
-                return this.processString((String) this.value);
-            } else if (this.value instanceOf Iterable<String>) {
-                return this.processStrings((Iterable<String>) this.value);
-            } else {
-                return String.valueOf(this.value);
-            }
+        protected String formatValue(Object value) {
+			if (value == null) {
+				return 'null';
+			} else if (value instanceOf Date) {
+				return this.processDate((Date) value);
+			} else if (value instanceOf DateTime) {
+				return this.processDateTime((DateTime) value);
+			} else if (value instanceOf Iterable<Object>) {
+				Iterable<Object> valueSet = (Iterable<Object>) value;
+				return this.processIterable(valueSet);
+			} else if (value instanceOf String) {
+				return this.processString((String) value);
+			} else {
+				return String.valueOf(value);
+			}
         }
-    
-        private String processString(String value) {
-            // Allow special modifiers (bind variables & relative date operators) to pass through unmodified
-            Boolean specialModifier = value?.startsWithIgnoreCase('LAST_N_DAYS') || value?.startsWith(':');
-            return (specialModifier) ? value : this.operator?.processStringValue(value);
-        }
-    
-        private String processDate(Date value) {
+
+		private String processDate(Date value) {
             String soqlFormat = 'yyyy-MM-dd';
             DateTime dateTimeValue = DateTime.newInstance(value.year(), value.month(), value.day());
             return dateTimeValue?.formatGmt(soqlFormat);
@@ -496,30 +486,20 @@ public inherited sharing virtual class Soql extends Soql.Builder {
             String soqlFormat = 'yyyy-MM-dd\'T\'HH:mm:ss\'Z\'';
             return value?.formatGmt(soqlFormat);
         }
+
+		protected String processIterable(Iterable<Object> values) {
+			List<String> outputs = new List<String>();
+			for (Object value : values) {
+				String output = this.formatValue(value);
+				outputs?.add(output);
+			}
+			return '(' + String.join(outputs, ', ') + ')';
+		}
     
-        private String processStrings(Iterable<String> items) {
-            List<String> results = new List<String>();
-            for (String item : items) {
-                String result = this.processString(item);
-                results.add(result);
-            }
-            return '(' + String.join(results, ', ') + ')';
-        }
-    
-        private String processDates(Iterable<Date> items) {
-            List<String> results = new List<String>();
-            for (Date item : items) {
-                results.add(this.processDate(item));
-            }
-            return '(' + String.join(results, ', ') + ')';
-        }
-    
-        private String processDateTimes(Iterable<DateTime> items) {
-            List<String> results = new List<String>();
-            for (DateTime item : items) {
-                results.add(this.processDateTime(item));
-            }
-            return '(' + String.join(results, ', ') + ')';
+        private String processString(String value) {
+            // Allow special modifiers (bind variables & relative date operators) to pass through unmodified
+            Boolean specialModifier = value?.startsWithIgnoreCase('LAST_N_DAYS') || value?.startsWith(':');
+            return (specialModifier) ? value : this.operator?.processStringValue(value);
         }
     }
 
@@ -569,7 +549,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         }
 
 		public override String processStringValue(String value) {
-			return '\'%' + value + '%\'';
+			return '\'%' + String.escapeSingleQuotes(value) + '%\'';
 		}
 	}
 
@@ -579,11 +559,11 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		public override String processStringValue(String value) {
-			return '\'%' + value + '\'';
+			return '\'%' + String.escapeSingleQuotes(value) + '\'';
 		}
 	}
 
-    public class InnerQuery extends Soql.Builder {
+    public virtual class InnerQuery extends Soql.Builder {
         // Inner queries must contain a single key field, and this is typically not the Id
         // ex., `SELECT AccountId FROM Case WHERE X`
         public InnerQuery() {
@@ -605,7 +585,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         }
 
 		public virtual String processStringValue(String value) {
-			return '\'' + value + '\'';
+			return '\'' + String.escapeSingleQuotes(value) + '\'';
 		}
 
         public override String toString() {
@@ -663,7 +643,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         }
 
 		public override String processStringValue(String value) {
-			return '\'' + value + '%\'';
+			return '\'' + String.escapeSingleQuotes(value) + '%\'';
 		}
 	}
 
