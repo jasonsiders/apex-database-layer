@@ -475,9 +475,6 @@ public inherited sharing virtual class Soql extends Soql.Builder {
                 return this.processString((String) this.value);
             } else if (this.value instanceOf Iterable<String>) {
                 return this.processStrings((Iterable<String>) this.value);
-            } else if (this.value instanceOf Soql.Builder) {
-                // Inner queries must be wrapped in parentheses to avoid syntax errors in SOQL
-                return String.format('({0})', new List<String>{ this.value?.toString() });
             } else {
                 return String.valueOf(this.value);
             }
@@ -592,6 +589,10 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         public InnerQuery() {
             this.deselect(ID_REFERENCE);
         }
+
+        public override String toString() {
+            return '(' + super.toString() + ')';
+        }
     }
 
     public virtual class Operator {
@@ -666,7 +667,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		}
 	}
 
-    public class Subquery extends Soql.Builder {
+    public class Subquery extends Soql.InnerQuery {
         String relationshipName;
 
         public SubQuery(Schema.ChildRelationship relationship) {
@@ -675,10 +676,6 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
         public SubQuery(SObjectField lookupField) {
             this(Soql.getChildRelationshipFrom(lookupField));
-        }
-
-        public override String toString() {
-            return '(' + super.toString() + ')';
         }
 
         public override String getFrom() {
