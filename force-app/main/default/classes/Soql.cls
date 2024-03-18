@@ -467,8 +467,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			} else if (value instanceOf DateTime) {
 				return this.processDateTime((DateTime) value);
 			} else if (value instanceOf Iterable<Object>) {
-				Iterable<Object> valueSet = (Iterable<Object>) value;
-				return this.processIterable(valueSet);
+				return this.processIterable((Iterable<Object>) value);
 			} else if (value instanceOf String) {
 				return this.processString((String) value);
 			} else {

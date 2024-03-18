@@ -1,6 +1,6 @@
 @IsTest 
 private class SoqlTest {
-    // * MAIN METHODS
+    // * QUERY METHODS
     // * BUILDER
     // * INNER QUERY
     // * SUBQUERY
@@ -339,7 +339,6 @@ private class SoqlTest {
         Assert.areEqual(expected, result, 'Unexpected condition output');
     }
 
-    // * OPERATORS
     @IsTest 
     static void shouldOutputExactMatchString() {
         Soql.Operator operator = Soql.EQUALS;
