@@ -62,6 +62,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
     }
 
     // **** STATIC **** //
+    @TestVisible
     static Schema.ChildRelationship getChildRelationshipFrom(SObjectField lookupField) {
         // TODO: Consider moving this to some utility class
         List<ChildRelationship> relationships = lookupField?.getDescribe()?.getSObjectType()?.getDescribe()?.getChildRelationships();
@@ -570,8 +571,13 @@ public inherited sharing virtual class Soql extends Soql.Builder {
     public virtual class InnerQuery extends Soql.Builder {
         // Inner queries must contain a single key field, and this is typically not the Id
         // ex., `SELECT AccountId FROM Case WHERE X`
-        public InnerQuery() {
+        protected InnerQuery() {
             this.deselect(ID_REFERENCE);
+        }
+
+        public InnerQuery(SObjectType objectType) {
+            this();
+            this.fromEntity(objectType);
         }
 
         public override String toString() {

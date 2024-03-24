@@ -2,8 +2,38 @@
 private class SoqlTest {
     // * QUERY METHODS
     // * BUILDER
-    // * INNER QUERY
-    // * SUBQUERY
+    @IsTest 
+    static void shouldGenerateInnerQuery() {
+        Test.startTest();
+        String result = new Soql.InnerQuery(Account.SObjectType)?.selecting(Account.OwnerId)?.toString();
+        Test.stopTest();
+
+        String expected = '(SELECT OwnerId FROM Account)';
+        Assert.areEqual(expected, result, 'Unexpected inner query output');
+    }
+
+    @IsTest 
+    static void shouldGenerateSubqueryFromChildRelationship() {
+        Schema.ChildRelationship rel = Soql.getChildRelationshipFrom(Case.AccountId);
+        
+        Test.startTest();
+        String result = new Soql.Subquery(rel)?.selecting(Case.Id)?.toString();
+        Test.stopTest();
+
+        String expected = '(SELECT Id FROM Cases)';
+        Assert.areEqual(expected, result, 'Unexpected inner query output');
+    }
+
+    @IsTest 
+    static void shouldGenerateSubqueryFromLookupField() {
+        Test.startTest();
+        String result = new Soql.Subquery(Case.AccountId)?.selecting(Case.Id)?.toString();
+        Test.stopTest();
+
+        String expected = '(SELECT Id FROM Cases)';
+        Assert.areEqual(expected, result, 'Unexpected inner query output');
+    }
+
     @IsTest 
     static void shouldOutputLogicWithSingleCondition() {
         Soql.Condition condition1 = new Soql.Condition(Account.Id, Soql.EQUALS, null);
