@@ -213,7 +213,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         public String entity { get; protected set; }
         public Soql.Scope scope { get; protected set; }
         public Soql.ConditionalLogic whereCriteria { get; protected set; }
-        public WithClause withClause { get; protected set; }
+        public String withClause { get; protected set; }
         public List<String> groupByClauses { get; protected set; }
         public Soql.ConditionalLogic havingCriteria { get; protected set; }
         public Soql.OrderBy OrderBy { get; protected set; }
@@ -345,8 +345,13 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         }
 
         // * WITH *
-        public Soql.Builder with(WithClause withClause) {
-            this.withClause = withClause;
+        public Soql.Builder with(Soql.Context context) {
+            this.withClause = context?.toString();
+            return this; 
+        }
+
+        public Soql.Builder with(Soql.Condition dataCategoryCondition) {
+            this.withClause = dataCategoryCondition?.toString();
             return this; 
         }
 
@@ -659,22 +664,6 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
         public override String getFrom() {
             return this.relationshipName;
-        }
-    }
-
-    public class WithClause {
-        String clause; 
-
-        public WithClause(Soql.Context context) {
-            this.clause = context?.name();
-        }
-
-        public WithClause(Soql.Criteria dataCategoryCriteria) {
-            this.clause = dataCategoryCriteria?.toString();
-        }
-
-        public override String toString() {
-            return this.clause;
         }
     }
 }

@@ -4,7 +4,6 @@ private class SoqlTest {
     // * BUILDER
     // * INNER QUERY
     // * SUBQUERY
-    // * WITH CLAUSE
     @IsTest 
     static void shouldOutputLogicWithSingleCondition() {
         Soql.Condition condition1 = new Soql.Condition(Account.Id, Soql.EQUALS, null);
