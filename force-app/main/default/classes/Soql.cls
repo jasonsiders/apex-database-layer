@@ -153,6 +153,10 @@ public inherited sharing virtual class Soql extends Soql.Builder {
             this(function, field?.toString());
         }
 
+        public Aggregation(Soql.AggregateFunction function) {
+            this(function, '');
+        }
+
         public override String toString() {
             String formatted = String.format(
                 '{0}({1}) {2}',
@@ -245,9 +249,9 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
         public Soql.Builder clear() {
             this.selectClauses = new Set<String>{ ID_REFERENCE };
-            this.whereCriteria = new Soql.ConditionalLogic(DEFAULT_LOGIC_TYPE);
+            this.whereCriteria = new Soql.ConditionalLogic();
             this.groupByClauses = new List<String>();
-            this.havingCriteria = new Soql.ConditionalLogic(DEFAULT_LOGIC_TYPE);
+            this.havingCriteria = new Soql.ConditionalLogic();
             this.accessLevel = System.AccessLevel.USER_MODE;
             this.binds = new Map<String, Object>(); 
             return this;
@@ -312,7 +316,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
     
         // * WHERE *
         public Soql.Builder given(Soql.Criteria criteria) {
-            this.whereCriteria?.addCriteria(criteria);
+            this.whereCriteria?.addCondition(criteria);
             return this; 
         }
 
@@ -354,7 +358,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
         // * HAVING *
         public Soql.Builder has(Soql.AggregateCondition aggregateCriteria) {
-            this.havingCriteria?.addCriteria(aggregateCriteria);
+            this.havingCriteria?.addCondition(aggregateCriteria);
             return this;
         }
 
@@ -504,19 +508,15 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
     public class ConditionalLogic implements Soql.Criteria {
         List<Soql.Criteria> criterion = new List<Soql.Criteria>();
-        Soql.LogicType logicType;
+        Soql.LogicType logicType = Soql.LogicType.ALL_CONDITIONS;
 
-        public ConditionalLogic(Soql.LogicType logicType) {
-            this.setLogicType(logicType);
-        }
-
-        public ConditionalLogic addCriteria(List<Soql.Criteria> criterion) {
+        public ConditionalLogic addCondition(List<Soql.Criteria> criterion) {
             this.criterion?.addAll(criterion);
             return this; 
         }
 
-        public ConditionalLogic addCriteria(Soql.Criteria criteria) {
-            return this.addCriteria(new List<Soql.Criteria>{ criteria });
+        public ConditionalLogic addCondition(Soql.Criteria criteria) {
+            return this.addCondition(new List<Soql.Criteria>{ criteria });
         }
 
         public ConditionalLogic setLogicType(Soql.LogicType logicType) {

@@ -5,9 +5,68 @@ private class SoqlTest {
     // * INNER QUERY
     // * SUBQUERY
     // * WITH CLAUSE
-    // * AGGREGATE CONDITION
-    // * CONDITIONAL LOGIC
-    // * CONDITION
+    @IsTest 
+    static void shouldOutputLogicWithSingleCondition() {
+        Soql.Condition condition1 = new Soql.Condition(Account.Id, Soql.EQUALS, null);
+
+        Test.startTest();
+        String result = new Soql.ConditionalLogic().addCondition(condition1)?.toString();
+        Test.stopTest();
+
+        // If only one condition, should just display the inner condition
+        String expected = condition1?.toString();
+        Assert.areEqual(expected, result, 'Unexpected logic output');
+    }
+
+    @IsTest 
+    static void shouldOutputLogicWithMultipleConditions() {
+        Soql.Condition condition1 = new Soql.Condition(Account.Id, Soql.EQUALS, null);
+        Soql.Condition condition2 = new Soql.Condition(Account.OwnerId, Soql.NOT_EQUALS, null);
+
+        Test.startTest();
+        String result = new Soql.ConditionalLogic()?.addCondition(condition1)?.addCondition(condition2)?.toString();
+        Test.stopTest();
+
+        String expected = 'Id = null AND OwnerId != null';
+        Assert.areEqual(expected, result, 'Unexpected logic output');
+    }
+
+    @IsTest 
+    static void shouldOutputOrLogicWithMultipleConditions() {
+        Soql.Condition condition1 = new Soql.Condition(Account.Id, Soql.EQUALS, null);
+        Soql.Condition condition2 = new Soql.Condition(Account.OwnerId, Soql.NOT_EQUALS, null);
+
+        Test.startTest();
+        String result = new Soql.ConditionalLogic()
+            ?.addCondition(condition1)
+            ?.addCondition(condition2)
+            ?.setLogicType(Soql.LogicType.ANY_CONDITIONS)
+            ?.toString();
+        Test.stopTest();
+
+        String expected = 'Id = null OR OwnerId != null';
+        Assert.areEqual(expected, result, 'Unexpected logic output');
+    }
+
+    @IsTest 
+    static void shouldOutputNestedConditionalLogic() {
+        Soql.ConditionalLogic nested = new Soql.ConditionalLogic()
+            ?.addCondition(new Soql.Condition(Account.Id, Soql.EQUALS, null))
+            ?.addCondition(new Soql.Condition(Account.OwnerId, Soql.NOT_EQUALS, null))
+            ?.setLogicType(Soql.LogicType.ANY_CONDITIONS);
+        Soql.Condition otherCondition = new Soql.Condition(Account.Name, Soql.STARTS_WITH, 'test');
+
+        Test.startTest();
+        String result = new Soql.ConditionalLogic()
+            ?.addCondition(nested)
+            ?.addCondition(otherCondition)
+            ?.toString();
+        Test.stopTest();
+
+        String expected = '(Id = null OR OwnerId != null) AND Name LIKE \'test%\'';
+        Assert.areEqual(expected, result, 'Unexpected logic output');
+    }
+    
     @IsTest 
     static void shouldOutputBooleanCondition() {
         Object value = true;
@@ -340,6 +399,18 @@ private class SoqlTest {
     }
 
     @IsTest 
+    static void shouldOutputAggregateCondition() {
+        Soql.Aggregation agg = new Soql.Aggregation(Soql.AggregateFunction.COUNT, Account.Id);
+        
+        Test.startTest();
+        String result = new Soql.AggregateCondition(agg, Soql.GREATER_THAN, 1)?.toString();
+        Test.stopTest();
+
+        String expected = 'COUNT(Id) > 1';
+        Assert.areEqual(expected, result, 'Unexpected condition output');
+    }
+
+    @IsTest 
     static void shouldOutputExactMatchString() {
         Soql.Operator operator = Soql.EQUALS;
         String value = 'foo';
@@ -397,6 +468,12 @@ private class SoqlTest {
     static void shouldCreateAggregateClauseWithAlias() {
         String value = new Soql.Aggregation(Soql.AggregateFunction.COUNT, Account.Id)?.withAlias('num')?.toString();
         Assert.areEqual('COUNT(Id) num', value, 'Wrong toString() value');
+    }
+
+    @IsTest 
+    static void shouldCreateAggregateClauseWithoutInnerField() {
+        String value = new Soql.Aggregation(Soql.AggregateFunction.COUNT)?.toString();
+        Assert.areEqual('COUNT()', value, 'Wrong toString() value');
     }
 
     @IsTest 
