@@ -54,6 +54,127 @@ private class SoqlTest {
 
     // * BUILDER
     @IsTest 
+    static void shouldBindVariableToQuery() {
+        Assert.fail('You still need to build this test'); 
+    }
+
+    @IsTest 
+    static void shouldResetQuery() {
+        Assert.fail('You still need to build this test');
+    }
+
+    @IsTest
+    static void shouldDeselectAllFields() {
+        Assert.fail('You still need to build this test');
+    }
+
+    @IsTest 
+    static void shouldDeselectField() {
+        Assert.fail('You still need to build this test');
+    }
+
+    @IsTest 
+    static void shouldSetAccessLevel() {
+        Assert.fail('You still need to build this test');
+    }
+
+    @IsTest 
+    static void shouldSelectAllFields() {
+        Assert.fail('You still need to build this test');
+    }
+
+    @IsTest 
+    static void shouldSelectSpecificFields() {
+        Assert.fail('You still need to build this test');
+    }
+
+    @IsTest 
+    static void shouldSelectFieldWithAlias() {
+        Assert.fail('You still need to build this test');
+    }
+
+    @IsTest 
+    static void shouldSelectAggregation() {
+        Assert.fail('You still need to build this test');
+    }
+
+    @IsTest 
+    static void shouldSelectSubquery() {
+        Assert.fail('You still need to build this test');
+    }
+
+    @IsTest 
+    static void shouldChangeFromEntity() {
+        Assert.fail('You still need to build this test');
+    }
+
+    @IsTest 
+    static void shouldSetQueryScope() {
+        Assert.fail('You still need to build this test');
+    }
+
+    @IsTest 
+    static void shouldAddCriteriaToWhereClause() {
+        Assert.fail('You still need to build this test');
+    }
+
+    @IsTest 
+    static void shouldAddCriteriaWithBindToWhereClause() {
+        Assert.fail('You still need to build this test');
+    }
+
+    @IsTest 
+    static void shouldSetWhereClauseOuterLogic() {
+        Assert.fail('You still need to build this test');
+    }
+    
+    @IsTest 
+    static void shouldSetWithContextClause() {
+        Assert.fail('You still need to build this test');
+    }
+
+    @IsTest 
+    static void shouldSetWithDataCategoryClause() {
+        Assert.fail('You still need to build this test');
+    }
+
+    @IsTest 
+    static void shouldGroupByField() {
+        Assert.fail('You still need to build this test');
+    }
+
+    @IsTest 
+    static void shouldAddHavingClause() {
+        Assert.fail('You still need to build this test');
+    }
+
+    @IsTest 
+    static void shouldSetOuterHavingLogic() {
+        Assert.fail('You still need to build this test');
+    }
+
+    @IsTest 
+    static void shouldSetOrderByClause() {
+        // Note: Re-work the class to support multiple OrderBy clauses
+        Assert.fail('You still need to build this test');
+    }
+
+    @IsTest 
+    static void shouldSetRowLimit() {
+        Assert.fail('You still need to build this test');
+    }
+
+    @IsTest 
+    static void shouldSetRowOffset() {
+        Assert.fail('You still need to build this test');
+    }
+
+    @IsTest 
+    static void shouldSetUsage() {
+        Assert.fail('You still need to build this test');
+    }
+
+    @IsTest 
     static void shouldGenerateInnerQuery() {
         Test.startTest();
         String result = new Soql.InnerQuery(Account.SObjectType)?.selecting(Account.OwnerId)?.toString();

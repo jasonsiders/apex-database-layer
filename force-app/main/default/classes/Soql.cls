@@ -279,13 +279,13 @@ public inherited sharing virtual class Soql extends Soql.Builder {
             return this;
         }
 
+        public Soql.Builder deselect(SObjectField field) {
+            return this.deselect(field?.toString());
+        }
+
         public Soql.Builder defineAccess(System.AccessLevel accessLevel) {
             this.accessLevel = accessLevel;
             return this;
-        }
-
-        public Soql.Builder deselect(SObjectField field) {
-            return this.deselect(field?.toString());
         }
     
         // * SELECT *
