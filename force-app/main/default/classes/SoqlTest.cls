@@ -1,6 +1,57 @@
 @IsTest 
 private class SoqlTest {
     // * QUERY METHODS
+    @IsTest 
+    static void shouldCountQuery() {
+        Soql soql = (Soql) new Soql(User.SObjectType)?.given('Profile.Name', Soql.EQUALS, 'System Administrator');
+
+        Test.startTest();
+        Integer results = soql?.countQuery();
+        Test.stopTest();
+
+        Integer expected = Database.countQuery('SELECT COUNT() FROM User WHERE Profile.Name = \'System Administrator\'');
+        Assert.areEqual(expected, results, 'Wrong # of countQuery results');
+    }
+
+    @IsTest 
+    static void shouldGetQueryLocator() {
+        Soql soql = new Soql(User.SObjectType);
+
+        Test.startTest();
+        Database.QueryLocator locator = soql?.getQueryLocator();
+        Test.stopTest();
+
+        Assert.areEqual(soql?.toString(), locator?.getQuery(), 'QueryLocator does not match query');
+    }
+
+    @IsTest 
+    static void shouldQueryRecords() {
+        Soql soql = new Soql(User.SObjectType);
+
+        Test.startTest();
+        List<User> users = soql?.query();
+        Test.stopTest();
+
+        Integer expected = Database.countQuery('SELECT COUNT() FROM User');
+        Assert.areEqual(expected, users?.size(), 'Wrong # of Users returned'); 
+    }
+
+    @IsTest 
+    static void shouldQueryRecordsAndCastToType() {
+        Soql.Aggregation count = new Soql.Aggregation(Soql.AggregateFunction.COUNT, User.Id)?.withAlias('numRecords');
+        Soql soql = (Soql) new Soql(User.SObjectType)
+            ?.selecting('Profile.Name', 'profileName')
+            ?.selecting(count)
+            ?.groupBy('Profile.Name');
+
+        Test.startTest();
+        List<SampleWrapper> results = (List<SampleWrapper>) soql?.query(List<SampleWrapper>.class);
+        Test.stopTest();
+
+        List<AggregateResult> raw = [SELECT Profile.Name, COUNT(Id) FROM User GROUP BY Profile.Name];
+        Assert.areEqual(raw?.size(), results?.size(), 'Wrong # of results returned'); 
+    }
+
     // * BUILDER
     @IsTest 
     static void shouldGenerateInnerQuery() {
@@ -544,5 +595,11 @@ private class SoqlTest {
             ?.setNullOrder(Soql.NullOrder.NULLS_FIRST)
             ?.toString();
         Assert.areEqual('CreatedDate DESC NULLS FIRST', value, 'Wrong value');
+    }
+
+    // **** INNER **** //
+    private class SampleWrapper {
+        public Integer numRecords;
+        public String profileName;
     }
 }

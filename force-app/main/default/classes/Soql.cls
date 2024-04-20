@@ -24,7 +24,11 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
     public virtual Integer countQuery() {
         try {
-            return Database.countQueryWithBinds(this.toString(), this.binds, this.accessLevel);
+            // Note: A count query must not contain any fields, other than COUNT() aggregation
+            // Avoid errors and simplify query construction by handling this in a temporary copy of the current query
+            Soql.Aggregation count = new Soql.Aggregation(Soql.AggregateFunction.COUNT);
+            Soql tempCopy = (Soql) this.clone()?.deselectAll()?.selecting(count);
+            return Database.countQueryWithBinds(tempCopy?.toString(), this.binds, this.accessLevel);
         } catch (System.QueryException error) {
 			this.handleQueryError(error);
             throw error;
@@ -263,6 +267,12 @@ public inherited sharing virtual class Soql extends Soql.Builder {
             return this;
         }
 
+        public Soql.Builder deselectAll() {
+            // Remove all SELECT fields from the current query
+            this.selectClauses?.clear();
+            return this; 
+        }
+
         public Soql.Builder deselect(String fieldName) {
             // Remove a field from the current query
             this.selectClauses?.remove(fieldName);
@@ -288,15 +298,23 @@ public inherited sharing virtual class Soql extends Soql.Builder {
             }
             return this;
         }
-    
-        public Soql.Builder selecting(SObjectField field) {
-            this.selectClauses.add(field?.toString());
-            return this; 
+
+        public Soql.Builder selecting(String fieldName, String alias) {
+            String clause = String.join(new List<String>{ fieldName, alias }, ' ')?.trim();
+            this.selectClauses?.add(clause);
+            return this;
+        }
+
+        public Soql.Builder selecting(SObjectField field, String alias) {
+            return this.selecting(field?.toString(), alias);
+        }
+
+        public Soql.Builder selecting(String fieldName) {
+            return this.selecting(fieldName, '');
         }
     
-        public Soql.Builder selecting(String fieldName) {
-            this.selectClauses.add(fieldName);
-            return this; 
+        public Soql.Builder selecting(SObjectField field) {
+            return this.selecting(field?.toString());
         }
     
         public Soql.Builder selecting(Soql.Aggregation aggregation) {
@@ -362,9 +380,13 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         }
 
         // * GROUP BY *
+        public Soql.Builder groupBy(String fieldName) {
+            this.groupByClauses?.add(fieldName);
+            return this; 
+        }
+
         public Soql.Builder groupBy(SObjectField field) {
-            this.groupByClauses?.add(field?.toString());
-            return this;
+            return this.groupBy(field?.toString());
         }
 
         // * HAVING *
