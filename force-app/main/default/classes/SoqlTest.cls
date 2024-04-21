@@ -1,9 +1,8 @@
 @IsTest 
 private class SoqlTest {
-    // * QUERY METHODS
     @IsTest 
     static void shouldCountQuery() {
-        Soql soql = (Soql) new Soql(User.SObjectType)?.given('Profile.Name', Soql.EQUALS, 'System Administrator');
+        Soql soql = (Soql) new Soql(User.SObjectType)?.addWhere('Profile.Name', Soql.EQUALS, 'System Administrator');
 
         Test.startTest();
         Integer results = soql?.countQuery();
@@ -72,8 +71,8 @@ private class SoqlTest {
     static void shouldQueryRecordsAndCastToType() {
         Soql.Aggregation count = new Soql.Aggregation(Soql.AggregateFunction.COUNT, User.Id)?.withAlias('numRecords');
         Soql soql = (Soql) new Soql(User.SObjectType)
-            ?.selecting('Profile.Name', 'profileName')
-            ?.selecting(count)
+            ?.addSelect('Profile.Name', 'profileName')
+            ?.addSelect(count)
             ?.groupBy('Profile.Name');
 
         Test.startTest();
@@ -125,7 +124,6 @@ private class SoqlTest {
         Assert.areEqual(UserInfo.getUsername(), user?.Username, 'Wrong Username');
     }
 
-    // * BUILDER
     @IsTest 
     static void shouldSetAccessLevel() {
         System.AccessLevel level = System.AccessLevel.SYSTEM_MODE; 
@@ -137,8 +135,8 @@ private class SoqlTest {
     static void shouldBindVariableToQuery() {
         Soql.Binder binder = new Soql.Binder('userId', UserInfo.getUserId());
         Soql soql = (Soql) new Soql(User.SObjectType)
-            ?.selecting(User.Username)
-            ?.given(User.Id, Soql.EQUALS, binder);
+            ?.addSelect(User.Username)
+            ?.addWhere(User.Id, Soql.EQUALS, binder);
         String expected = 'SELECT Id, Username FROM User WHERE Id = :userId'; 
 
         Test.startTest();
@@ -184,7 +182,7 @@ private class SoqlTest {
 
     @IsTest 
     static void shouldSelectSpecificFields() {
-        Soql soql = (Soql) new Soql(User.SObjectType)?.selecting(User.FirstName)?.setRowLimit(1);
+        Soql soql = (Soql) new Soql(User.SObjectType)?.addSelect(User.FirstName)?.setRowLimit(1);
         String expected = 'SELECT Id, FirstName FROM User LIMIT 1';
 
         Test.startTest();
@@ -194,7 +192,7 @@ private class SoqlTest {
 
     @IsTest 
     static void shouldSelectFieldWithAlias() {
-        Soql soql = (Soql) new Soql(User.SObjectType)?.selecting(User.ProfileId, 'profile')?.groupBy(User.ProfileId);
+        Soql soql = (Soql) new Soql(User.SObjectType)?.addSelect(User.ProfileId, 'profile')?.groupBy(User.ProfileId);
         String expected = 'SELECT ProfileId profile FROM User GROUP BY ProfileId';
 
         Test.startTest();
@@ -205,7 +203,7 @@ private class SoqlTest {
     @IsTest 
     static void shouldSelectAggregation() {
         Soql.Aggregation count = new Soql.Aggregation(Soql.AggregateFunction.COUNT, User.Id);
-        Soql soql = (Soql) new Soql(User.SObjectType)?.selecting(count);
+        Soql soql = (Soql) new Soql(User.SObjectType)?.addSelect(count);
         String expected = 'SELECT COUNT(Id) FROM User';
 
         Test.startTest();
@@ -216,7 +214,7 @@ private class SoqlTest {
     @IsTest 
     static void shouldSelectSubquery() {
         Soql.Subquery subquery = new Soql.Subquery(User.ProfileId);
-        Soql soql = (Soql) new Soql(Profile.SObjectType)?.selecting(subquery)?.setRowLimit(1);
+        Soql soql = (Soql) new Soql(Profile.SObjectType)?.addSelect(subquery)?.setRowLimit(1);
         String expected = 'SELECT Id, (SELECT Id FROM Users) FROM Profile LIMIT 1';
 
         Test.startTest();
@@ -236,7 +234,7 @@ private class SoqlTest {
 
     @IsTest 
     static void shouldAddCriteriaToWhereClause() {
-        Soql soql = (Soql) new Soql(User.SObjectType)?.given(User.IsActive, Soql.EQUALS, true)?.setRowLimit(1);
+        Soql soql = (Soql) new Soql(User.SObjectType)?.addWhere(User.IsActive, Soql.EQUALS, true)?.setRowLimit(1);
         String expected = 'SELECT Id FROM User WHERE IsActive = true LIMIT 1';
 
         Test.startTest();
@@ -247,7 +245,7 @@ private class SoqlTest {
     @IsTest 
     static void shouldAddCriteriaWithBindToWhereClause() {
         Soql.Binder binder = new Soql.Binder('userId', UserInfo.getUserId());
-        Soql soql = (Soql) new Soql(User.SObjectType)?.given(User.Id, Soql.EQUALS, binder);
+        Soql soql = (Soql) new Soql(User.SObjectType)?.addWhere(User.Id, Soql.EQUALS, binder);
         String expected = 'SELECT Id FROM User WHERE Id = :userId';
 
         Test.startTest();
@@ -258,8 +256,8 @@ private class SoqlTest {
     @IsTest 
     static void shouldHandleMultipleWhereClauses() {
         Soql soql = (Soql) new Soql(User.SObjectType)
-            ?.given(User.IsActive, Soql.EQUALS, true)
-            ?.given('Profile.Name', Soql.EQUALS, 'System Administrator')
+            ?.addWhere(User.IsActive, Soql.EQUALS, true)
+            ?.addWhere('Profile.Name', Soql.EQUALS, 'System Administrator')
             ?.setRowLimit(1);
         String expected = 'SELECT Id FROM User WHERE IsActive = true AND Profile.Name = \'System Administrator\' LIMIT 1';
 
@@ -271,8 +269,8 @@ private class SoqlTest {
     @IsTest 
     static void shouldSetWhereClauseOuterLogic() { 
         Soql soql = (Soql) new Soql(User.SObjectType)
-            ?.given(User.IsActive, Soql.EQUALS, true)
-            ?.given('Profile.Name', Soql.EQUALS, 'System Administrator')
+            ?.addWhere(User.IsActive, Soql.EQUALS, true)
+            ?.addWhere('Profile.Name', Soql.EQUALS, 'System Administrator')
             ?.setWhereLogic(Soql.LogicType.ANY_CONDITIONS)
             ?.setRowLimit(1);
         String expected = 'SELECT Id FROM User WHERE IsActive = true OR Profile.Name = \'System Administrator\' LIMIT 1';
@@ -289,8 +287,8 @@ private class SoqlTest {
             ?.addCondition(User.LastName, Soql.EQUALS, 'Siders')
             ?.setLogicType(Soql.LogicType.ANY_CONDITIONS);
         Soql soql = (Soql) new Soql(User.SObjectType)
-            ?.given(User.IsActive, Soql.EQUALS, true)
-            ?.given(innerCondition)
+            ?.addWhere(User.IsActive, Soql.EQUALS, true)
+            ?.addWhere(innerCondition)
             ?.setRowLimit(1);
         String expected = 'SELECT Id FROM User WHERE IsActive = true AND (FirstName = \'Jason\' OR LastName = \'Siders\') LIMIT 1';
 
@@ -311,7 +309,7 @@ private class SoqlTest {
 
     @IsTest 
     static void shouldGroupByField() {
-        Soql soql = (Soql) new Soql(User.SObjectType)?.selecting(User.ProfileId)?.groupBy(User.ProfileId);
+        Soql soql = (Soql) new Soql(User.SObjectType)?.addSelect(User.ProfileId)?.groupBy(User.ProfileId);
         String expected = 'SELECT ProfileId FROM User GROUP BY ProfileId';
 
         Test.startTest();
@@ -323,9 +321,9 @@ private class SoqlTest {
     static void shouldAddHavingClause() {
         Soql.Aggregation count = new Soql.Aggregation(Soql.AggregateFunction.COUNT, User.Id);
         Soql soql = (Soql) new Soql(User.SObjectType)
-            ?.selecting(User.ProfileId)
+            ?.addSelect(User.ProfileId)
             ?.groupBy(User.ProfileId)
-            ?.has(count, Soql.GREATER_THAN, 1);
+            ?.addHaving(count, Soql.GREATER_THAN, 1);
         String expected = 'SELECT ProfileId FROM User GROUP BY ProfileId HAVING COUNT(Id) > 1';
         
         Test.startTest();
@@ -337,10 +335,10 @@ private class SoqlTest {
     static void shouldSupportMultipleHavingClauses() {
         Soql.Aggregation count = new Soql.Aggregation(Soql.AggregateFunction.COUNT, User.Id);
         Soql soql = (Soql) new Soql(User.SObjectType)
-            ?.selecting(User.ProfileId)
+            ?.addSelect(User.ProfileId)
             ?.groupBy(User.ProfileId)
-            ?.has(count, Soql.GREATER_THAN, 1)
-            ?.has(count, Soql.LESS_OR_EQUAL, 100);
+            ?.addHaving(count, Soql.GREATER_THAN, 1)
+            ?.addHaving(count, Soql.LESS_OR_EQUAL, 100);
         String expected = 'SELECT ProfileId FROM User GROUP BY ProfileId HAVING COUNT(Id) > 1 AND COUNT(Id) <= 100';
         
         Test.startTest();
@@ -352,10 +350,10 @@ private class SoqlTest {
     static void shouldSetOuterHavingLogic() {
         Soql.Aggregation count = new Soql.Aggregation(Soql.AggregateFunction.COUNT, User.Id);
         Soql soql = (Soql) new Soql(User.SObjectType)
-            ?.selecting(User.ProfileId)
+            ?.addSelect(User.ProfileId)
             ?.groupBy(User.ProfileId)
-            ?.has(count, Soql.GREATER_THAN, 1)
-            ?.has(count, Soql.LESS_OR_EQUAL, 100)
+            ?.addHaving(count, Soql.GREATER_THAN, 1)
+            ?.addHaving(count, Soql.LESS_OR_EQUAL, 100)
             ?.setHavingLogic(Soql.LogicType.ANY_CONDITIONS);
         String expected = 'SELECT ProfileId FROM User GROUP BY ProfileId HAVING COUNT(Id) > 1 OR COUNT(Id) <= 100';
         
@@ -422,11 +420,11 @@ private class SoqlTest {
     @IsTest 
     static void shouldComposeFairlyComplexQuery() {
         Soql soql = (Soql) new Soql(User.SObjectType)
-            ?.selecting(User.FirstName)
-            ?.selecting(User.LastName)
-            ?.selecting(User.Email)
-            ?.given(User.IsActive, Soql.EQUALS, true)
-            ?.given('Profile.Name', Soql.EQUALS, 'System Administrator')
+            ?.addSelect(User.FirstName)
+            ?.addSelect(User.LastName)
+            ?.addSelect(User.Email)
+            ?.addWhere(User.IsActive, Soql.EQUALS, true)
+            ?.addWhere('Profile.Name', Soql.EQUALS, 'System Administrator')
             ?.orderBy(User.CreatedDate, Soql.SortDirection.ASCENDING)
             ?.setRowLimit(1);
         String expected = 
@@ -444,11 +442,11 @@ private class SoqlTest {
     @IsTest 
     static void shouldResetQuery() {
         Soql soql = (Soql) new Soql(User.SObjectType)
-            ?.selecting(User.FirstName)
-            ?.selecting(User.LastName)
-            ?.selecting(User.Email)
-            ?.given(User.IsActive, Soql.EQUALS, true)
-            ?.given('Profile.Name', Soql.EQUALS, 'System Administrator')
+            ?.addSelect(User.FirstName)
+            ?.addSelect(User.LastName)
+            ?.addSelect(User.Email)
+            ?.addWhere(User.IsActive, Soql.EQUALS, true)
+            ?.addWhere('Profile.Name', Soql.EQUALS, 'System Administrator')
             ?.orderBy(User.CreatedDate, Soql.SortDirection.ASCENDING)
             ?.setRowLimit(1);
         // Callers may have a need to reset the same query object
@@ -463,7 +461,7 @@ private class SoqlTest {
     @IsTest 
     static void shouldGenerateInnerQuery() {
         Test.startTest();
-        String result = new Soql.InnerQuery(Account.SObjectType)?.selecting(Account.OwnerId)?.toString();
+        String result = new Soql.InnerQuery(Account.SObjectType)?.addSelect(Account.OwnerId)?.toString();
         Test.stopTest();
 
         String expected = '(SELECT OwnerId FROM Account)';
@@ -475,7 +473,7 @@ private class SoqlTest {
         Schema.ChildRelationship rel = Soql.getChildRelationshipFrom(Case.AccountId);
         
         Test.startTest();
-        String result = new Soql.Subquery(rel)?.selecting(Case.Id)?.toString();
+        String result = new Soql.Subquery(rel)?.addSelect(Case.Id)?.toString();
         Test.stopTest();
 
         String expected = '(SELECT Id FROM Cases)';
@@ -491,7 +489,7 @@ private class SoqlTest {
     @IsTest 
     static void shouldGenerateSubqueryFromLookupField() {
         Test.startTest();
-        String result = new Soql.Subquery(Case.AccountId)?.selecting(Case.Id)?.toString();
+        String result = new Soql.Subquery(Case.AccountId)?.addSelect(Case.Id)?.toString();
         Test.stopTest();
 
         String expected = '(SELECT Id FROM Cases)';

@@ -15,7 +15,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 	public static final Operator NOT_CONTAINS = new Soql.ContainsOperator('NOT LIKE');
     static final Soql.LogicType DEFAULT_LOGIC_TYPE = Soql.LogicType.ALL_CONDITIONS;
 	static final String ID_REFERENCE = 'Id';
-    
+
     // **** MEMBER **** //
     @TestVisible
 	protected Soql(SObjectType objectType) {
@@ -34,7 +34,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
             // Note: A count query must not contain any fields, other than COUNT() aggregation
             // Avoid errors and simplify query construction by handling this in a temporary copy of the current query
             Soql.Aggregation count = new Soql.Aggregation(Soql.AggregateFunction.COUNT);
-            Soql tempCopy = (Soql) this.clone()?.deselectAll()?.selecting(count);
+            Soql tempCopy = (Soql) this.clone()?.deselectAll()?.addSelect(count);
             return Database.countQueryWithBinds(tempCopy?.toString(), this.binds, this.accessLevel);
         } catch (System.QueryException error) {
 			this.handleQueryError(error);
@@ -300,36 +300,36 @@ public inherited sharing virtual class Soql extends Soql.Builder {
             DescribeSObjectResult describe = describes?.isEmpty() == false ? describes[0] : null;
             List<SObjectField> allFields = describe?.fields?.getMap()?.values() ?? new List<SObjectField>();
             for (SObjectField field : allFields) {
-                this.selecting(field);
+                this.addSelect(field);
             }
             return this;
         }
 
-        public Soql.Builder selecting(String fieldName, String alias) {
+        public Soql.Builder addSelect(String fieldName, String alias) {
             String clause = String.join(new List<String>{ fieldName, alias }, ' ')?.trim();
             this.selectClauses?.add(clause);
             return this;
         }
 
-        public Soql.Builder selecting(SObjectField field, String alias) {
-            return this.selecting(field?.toString(), alias);
+        public Soql.Builder addSelect(SObjectField field, String alias) {
+            return this.addSelect(field?.toString(), alias);
         }
 
-        public Soql.Builder selecting(String fieldName) {
-            return this.selecting(fieldName, '');
+        public Soql.Builder addSelect(String fieldName) {
+            return this.addSelect(fieldName, '');
         }
     
-        public Soql.Builder selecting(SObjectField field) {
-            return this.selecting(field?.toString());
+        public Soql.Builder addSelect(SObjectField field) {
+            return this.addSelect(field?.toString());
         }
     
-        public Soql.Builder selecting(Soql.Aggregation aggregation) {
+        public Soql.Builder addSelect(Soql.Aggregation aggregation) {
             // Note: Id should never be included in the SELECT clause for Aggregate queries
-            return this.deselect(ID_REFERENCE)?.selecting(aggregation?.toString());
+            return this.deselect(ID_REFERENCE)?.addSelect(aggregation?.toString());
         }
     
-        public Soql.Builder selecting(Soql.SubQuery subQuery) {
-            return this.selecting(subQuery.toString());
+        public Soql.Builder addSelect(Soql.SubQuery subQuery) {
+            return this.addSelect(subQuery.toString());
         }
     
         // * FROM *
@@ -345,28 +345,28 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         }
     
         // * WHERE *
-        public Soql.Builder given(Soql.Criteria criteria) {
+        public Soql.Builder addWhere(Soql.Criteria criteria) {
             this.whereCriteria?.addCondition(criteria);
             return this; 
         }
 
-        public Soql.Builder given(String fieldName, Soql.Operator operator, Object value) {
+        public Soql.Builder addWhere(String fieldName, Soql.Operator operator, Object value) {
             // Shorthand overload constructs a Condition object for the caller
-            return this.given(new Soql.Condition(fieldName, operator, value));
+            return this.addWhere(new Soql.Condition(fieldName, operator, value));
         }
 
-        public Soql.Builder given(SObjectField field, Soql.Operator operator, Object value) {
+        public Soql.Builder addWhere(SObjectField field, Soql.Operator operator, Object value) {
             // Shorthand overload constructs a Condition object for the caller
-            return this.given(field?.toString(), operator, value);
+            return this.addWhere(field?.toString(), operator, value);
         }
 
-        public Soql.Builder given(String fieldName, Soql.Operator operator, Soql.Binder binder) {
+        public Soql.Builder addWhere(String fieldName, Soql.Operator operator, Soql.Binder binder) {
             // If the current object is a Binder, bind the values so that callers don't need to do so manually
-            return this.given(fieldName, operator, binder?.toString())?.bind(binder);
+            return this.addWhere(fieldName, operator, binder?.toString())?.bind(binder);
         }
 
-        public Soql.Builder given(SObjectField field, Soql.Operator operator, Soql.Binder binder) {
-            return this.given(field?.toString(), operator, binder); 
+        public Soql.Builder addWhere(SObjectField field, Soql.Operator operator, Soql.Binder binder) {
+            return this.addWhere(field?.toString(), operator, binder); 
         }
 
         public Soql.Builder setWhereLogic(Soql.LogicType newLogicType) {
@@ -395,14 +395,14 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         }
 
         // * HAVING *
-        public Soql.Builder has(Soql.AggregateCondition aggregateCriteria) {
+        public Soql.Builder addHaving(Soql.AggregateCondition aggregateCriteria) {
             this.havingCriteria?.addCondition(aggregateCriteria);
             return this;
         }
 
-        public Soql.Builder has(Soql.Aggregation agg, Soql.Operator operator, Object value) {
+        public Soql.Builder addHaving(Soql.Aggregation agg, Soql.Operator operator, Object value) {
             // Shorthand overload constructs the AggregateCondition for the caller
-            return this.has(new Soql.AggregateCondition(agg, operator, value));
+            return this.addHaving(new Soql.AggregateCondition(agg, operator, value));
         }
 
         public Soql.Builder setHavingLogic(Soql.LogicType newLogicType) {
@@ -719,7 +719,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         String relationshipName;
 
         public SubQuery(Schema.ChildRelationship relationship) {
-            this.selecting(ID_REFERENCE);
+            this.addSelect(ID_REFERENCE);
             this.relationshipName = relationship?.getRelationshipName();
         }
 
