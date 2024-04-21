@@ -91,19 +91,29 @@ private class SoqlTest {
         Test.stopTest();
     }
 
-    @IsTest 
-    static void shouldResetQuery() {
-        Assert.fail('You still need to build this test');
-    }
-
     @IsTest
     static void shouldDeselectAllFields() {
-        Assert.fail('You still need to build this test');
+        Soql soql = (Soql) new Soql(User.SObjectType)?.selectAll(); 
+        Assert.isTrue(soql?.selectClauses?.size() > 1, 'Wrong # of SELECT clauses');
+
+        Test.startTest();
+        soql.deselectAll();
+        Test.stopTest();
+
+        Assert.isTrue(soql?.selectClauses?.isEmpty(), 'Did not clear SELECT clauses');
     }
 
     @IsTest 
-    static void shouldDeselectField() {
-        Assert.fail('You still need to build this test');
+    static void shouldDeselectSpecificField() {
+        Soql soql = (Soql) new Soql(User.SObjectType)?.selectAll(); 
+        Assert.isTrue(soql?.selectClauses?.size() > 1, 'Wrong # of SELECT clauses');
+
+        Test.startTest();
+        soql?.deselect(User.Username);
+        Test.stopTest();
+
+        Set<String> fields = new Set<String>(soql?.selectClauses); 
+        Assert.isFalse(fields?.contains(User.Username?.toString()), 'Did not deselect Username');
     }
 
     @IsTest 
@@ -204,6 +214,11 @@ private class SoqlTest {
 
     @IsTest 
     static void shouldSetUsage() {
+        Assert.fail('You still need to build this test');
+    }
+
+    @IsTest 
+    static void shouldResetQuery() {
         Assert.fail('You still need to build this test');
     }
 
