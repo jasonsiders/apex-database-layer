@@ -355,7 +355,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         }
     
         // * USING SCOPE *
-        public Soql.Builder usingScope(Scope scope) {
+        public Soql.Builder usingScope(Soql.Scope scope) {
             this.scope = scope;
             return this;
         }
@@ -403,6 +403,8 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
         // * GROUP BY *
         public Soql.Builder groupBy(String fieldName) {
+            // Note: GROUP BY queries should never assume an implicit "Id" in the query
+            this.deselect(ID_REFERENCE);
             this.groupByClauses?.add(fieldName);
             return this; 
         }
@@ -718,6 +720,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         String relationshipName;
 
         public SubQuery(Schema.ChildRelationship relationship) {
+            this.selecting(ID_REFERENCE);
             this.relationshipName = relationship?.getRelationshipName();
         }
 

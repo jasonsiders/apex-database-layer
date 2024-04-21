@@ -79,6 +79,13 @@ private class SoqlTest {
 
     // * BUILDER
     @IsTest 
+    static void shouldSetAccessLevel() {
+        System.AccessLevel level = System.AccessLevel.SYSTEM_MODE; 
+        Soql soql = (Soql) new Soql(User.SObjectType)?.defineAccess(level); 
+        Assert.areEqual(level, soql?.accessLevel, 'Did not set access level');
+    }
+
+    @IsTest 
     static void shouldBindVariableToQuery() {
         Soql.Binder binder = new Soql.Binder('userId', UserInfo.getUserId());
         Soql soql = (Soql) new Soql(User.SObjectType)
@@ -117,38 +124,56 @@ private class SoqlTest {
     }
 
     @IsTest 
-    static void shouldSetAccessLevel() {
-        Assert.fail('You still need to build this test');
-    }
-
-    @IsTest 
     static void shouldSelectAllFields() {
-        Assert.fail('You still need to build this test');
+        Set<String> userFields = SObjectType.User?.fields?.getMap()?.keySet();
+
+        Test.startTest();
+        Soql soql = (Soql) new Soql(User.SObjectType)?.selectAll();
+        Test.stopTest(); 
+
+        Assert.areEqual(userFields?.size(), soql?.selectClauses?.size(), 'Wrong # of SELECT clauses'); 
     }
 
     @IsTest 
     static void shouldSelectSpecificFields() {
-        Assert.fail('You still need to build this test');
+        Soql soql = (Soql) new Soql(User.SObjectType)?.selecting(User.FirstName)?.setRowLimit(1);
+        String expected = 'SELECT Id, FirstName FROM User LIMIT 1';
+
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
     }
 
     @IsTest 
     static void shouldSelectFieldWithAlias() {
-        Assert.fail('You still need to build this test');
+        Soql soql = (Soql) new Soql(User.SObjectType)?.selecting(User.ProfileId, 'profile')?.groupBy(User.ProfileId);
+        String expected = 'SELECT ProfileId profile FROM User GROUP BY ProfileId';
+
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
     }
 
     @IsTest 
     static void shouldSelectAggregation() {
-        Assert.fail('You still need to build this test');
+        Soql.Aggregation count = new Soql.Aggregation(Soql.AggregateFunction.COUNT, User.Id);
+        Soql soql = (Soql) new Soql(User.SObjectType)?.selecting(count);
+        String expected = 'SELECT COUNT(Id) FROM User';
+
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
     }
 
     @IsTest 
     static void shouldSelectSubquery() {
-        Assert.fail('You still need to build this test');
-    }
+        Soql.Subquery subquery = new Soql.Subquery(User.ProfileId);
+        Soql soql = (Soql) new Soql(Profile.SObjectType)?.selecting(subquery)?.setRowLimit(1);
+        String expected = 'SELECT Id, (SELECT Id FROM Users) FROM Profile LIMIT 1';
 
-    @IsTest 
-    static void shouldChangeFromEntity() {
-        Assert.fail('You still need to build this test');
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
     }
 
     @IsTest 
