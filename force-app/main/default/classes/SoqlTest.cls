@@ -263,22 +263,66 @@ private class SoqlTest {
 
     @IsTest 
     static void shouldGroupByField() {
-        Assert.fail('You still need to build this test');
+        Soql soql = (Soql) new Soql(User.SObjectType)?.selecting(User.ProfileId)?.groupBy(User.ProfileId);
+        String expected = 'SELECT ProfileId FROM User GROUP BY ProfileId';
+
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
     }
 
     @IsTest 
     static void shouldAddHavingClause() {
-        Assert.fail('You still need to build this test');
+        Soql.Aggregation count = new Soql.Aggregation(Soql.AggregateFunction.COUNT, User.Id);
+        Soql soql = (Soql) new Soql(User.SObjectType)
+            ?.selecting(User.ProfileId)
+            ?.groupBy(User.ProfileId)
+            ?.has(count, Soql.GREATER_THAN, 1);
+        String expected = 'SELECT ProfileId FROM User GROUP BY ProfileId HAVING COUNT(Id) > 1';
+        
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
+    }
+
+    @IsTest 
+    static void shouldSupportMultipleHavingClauses() {
+        Soql.Aggregation count = new Soql.Aggregation(Soql.AggregateFunction.COUNT, User.Id);
+        Soql soql = (Soql) new Soql(User.SObjectType)
+            ?.selecting(User.ProfileId)
+            ?.groupBy(User.ProfileId)
+            ?.has(count, Soql.GREATER_THAN, 1)
+            ?.has(count, Soql.LESS_OR_EQUAL, 100);
+        String expected = 'SELECT ProfileId FROM User GROUP BY ProfileId HAVING COUNT(Id) > 1 AND COUNT(Id) <= 100';
+        
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
     }
 
     @IsTest 
     static void shouldSetOuterHavingLogic() {
-        Assert.fail('You still need to build this test');
+        Soql.Aggregation count = new Soql.Aggregation(Soql.AggregateFunction.COUNT, User.Id);
+        Soql soql = (Soql) new Soql(User.SObjectType)
+            ?.selecting(User.ProfileId)
+            ?.groupBy(User.ProfileId)
+            ?.has(count, Soql.GREATER_THAN, 1)
+            ?.has(count, Soql.LESS_OR_EQUAL, 100)
+            ?.setHavingLogic(Soql.LogicType.ANY_CONDITIONS);
+        String expected = 'SELECT ProfileId FROM User GROUP BY ProfileId HAVING COUNT(Id) > 1 OR COUNT(Id) <= 100';
+        
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
     }
 
     @IsTest 
     static void shouldSetOrderByClause() {
-        // Note: Re-work the class to support multiple SortOrder clauses
+        Assert.fail('You still need to build this test');
+    }
+
+    @IsTest 
+    static void shouldSupportMultipleOrderByClauses() {
         Assert.fail('You still need to build this test');
     }
 
@@ -294,6 +338,11 @@ private class SoqlTest {
 
     @IsTest 
     static void shouldSetUsage() {
+        Assert.fail('You still need to build this test');
+    }
+
+    @IsTest 
+    static void shouldComposeReallyComplexQuery() {
         Assert.fail('You still need to build this test');
     }
 
