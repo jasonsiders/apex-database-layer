@@ -114,14 +114,6 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		SUM
     }
 
-    public enum Context {
-        // Note: Believe it or not, SYSTEM_MODE and USER_MODE aren't enum values; 
-        // they're static properties of the AccessLevel class!
-        SECURITY_ENFORCED,
-        SYSTEM_MODE,
-        USER_MODE
-    }
-
     public enum LogicType {
         ALL_CONDITIONS,
         ANY_CONDITIONS
@@ -392,13 +384,10 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         }
 
         // * WITH *
-        public Soql.Builder with(Soql.Context context) {
-            this.withClause = context?.toString();
-            return this; 
-        }
-
-        public Soql.Builder with(Soql.Condition dataCategoryCondition) {
-            this.withClause = dataCategoryCondition?.toString();
+        public Soql.Builder withSecurityEnforced() {
+            this.withClause = 'SECURITY_ENFORCED';
+            // Note: Cannot use the WITH SECURITY_ENFORCED clause in queries using USER_MODE access level.
+            this.defineAccess(System.AccessLevel.SYSTEM_MODE);
             return this; 
         }
 

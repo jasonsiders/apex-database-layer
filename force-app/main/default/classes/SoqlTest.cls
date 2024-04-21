@@ -252,13 +252,13 @@ private class SoqlTest {
     }
     
     @IsTest 
-    static void shouldSetWithContextClause() {
-        Assert.fail('You still need to build this test');
-    }
+    static void shouldSetWithSecurityEnforcedClause() {
+        Soql soql = (Soql) new Soql(User.SObjectType)?.withSecurityEnforced()?.setRowLimit(1); 
+        String expected = 'SELECT Id FROM User WITH SECURITY_ENFORCED LIMIT 1';
 
-    @IsTest 
-    static void shouldSetWithDataCategoryClause() {
-        Assert.fail('You still need to build this test');
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
     }
 
     @IsTest 
