@@ -1,11 +1,467 @@
 @IsTest 
 private class SoqlTest {
-    // * QUERY METHODS
-    // * BUILDER
+    @IsTest 
+    static void shouldCountQuery() {
+        Soql soql = (Soql) new Soql(User.SObjectType)?.addWhere('Profile.Name', Soql.EQUALS, 'System Administrator');
+
+        Test.startTest();
+        Integer results = soql?.countQuery();
+        Test.stopTest();
+
+        Integer expected = Database.countQuery('SELECT COUNT() FROM User WHERE Profile.Name = \'System Administrator\'');
+        Assert.areEqual(expected, results, 'Wrong # of countQuery results');
+    }
+
+    @IsTest 
+    static void shouldHandleCountQueryErrors() {
+        String illegalQueryString = 'abcd'; // Will throw a System.QueryException when run
+        Soql soql = (Soql) new Soql(illegalQueryString); 
+
+        Test.startTest();
+        try {
+            soql?.countQuery(); 
+            Assert.fail('Illegal query did not throw an error');
+        } catch (System.QueryException error) {
+            String msg = error?.getMessage(); 
+            Assert.isTrue(msg?.contains(illegalQueryString), 'Did not append query to the error'); 
+        }
+        Test.stopTest();
+    }
+
+    @IsTest 
+    static void shouldGetQueryLocator() {
+        Soql soql = new Soql(User.SObjectType);
+
+        Test.startTest();
+        Database.QueryLocator locator = soql?.getQueryLocator();
+        Test.stopTest();
+
+        Assert.areEqual(soql?.toString(), locator?.getQuery(), 'QueryLocator does not match query');
+    }
+
+    @IsTest 
+    static void shouldHandleQueryLocatorErrors() {
+        String illegalQueryString = 'abcd'; // Will throw a System.QueryException when run
+        Soql soql = (Soql) new Soql(illegalQueryString); 
+
+        Test.startTest();
+        try {
+            soql?.getQueryLocator(); 
+            Assert.fail('Illegal query did not throw an error');
+        } catch (System.QueryException error) {
+            String msg = error?.getMessage(); 
+            Assert.isTrue(msg?.contains(illegalQueryString), 'Did not append query to the error'); 
+        }
+        Test.stopTest();
+    }
+
+    @IsTest 
+    static void shouldQueryRecords() {
+        Soql soql = new Soql(User.SObjectType);
+
+        Test.startTest();
+        List<User> users = soql?.query();
+        Test.stopTest();
+
+        Integer expected = Database.countQuery('SELECT COUNT() FROM User');
+        Assert.areEqual(expected, users?.size(), 'Wrong # of Users returned'); 
+    }
+
+    @IsTest 
+    static void shouldQueryRecordsAndCastToType() {
+        Soql.Aggregation count = new Soql.Aggregation(Soql.AggregateFunction.COUNT, User.Id)?.withAlias('numRecords');
+        Soql soql = (Soql) new Soql(User.SObjectType)
+            ?.addSelect('Profile.Name', 'profileName')
+            ?.addSelect(count)
+            ?.groupBy('Profile.Name');
+
+        Test.startTest();
+        List<SampleWrapper> results = (List<SampleWrapper>) soql?.query(List<SampleWrapper>.class);
+        Test.stopTest();
+
+        List<AggregateResult> raw = [SELECT Profile.Name, COUNT(Id) FROM User GROUP BY Profile.Name];
+        Assert.areEqual(raw?.size(), results?.size(), 'Wrong # of results returned'); 
+    }
+
+    @IsTest 
+    static void shouldHandleQueryErrors() {
+        String illegalQueryString = 'abcd'; // Will throw a System.QueryException when run
+        Soql soql = (Soql) new Soql(illegalQueryString); 
+
+        Test.startTest();
+        try {
+            soql?.query(); 
+            Assert.fail('Illegal query did not throw an error');
+        } catch (System.QueryException error) {
+            String msg = error?.getMessage(); 
+            Assert.isTrue(msg?.contains(illegalQueryString), 'Did not append query to the error'); 
+        }
+        Test.stopTest();
+    }
+
+    @IsTest 
+    static void shouldQueryUsingString() {
+        Soql soql = new Soql('SELECT Id FROM User');
+
+        Test.startTest();
+        List<User> users = soql?.query();
+        Test.stopTest();
+
+        Integer expected = Database.countQuery('SELECT COUNT() FROM User');
+        Assert.areEqual(expected, users?.size(), 'Wrong # of Users returned'); 
+    }
+
+    @IsTest 
+    static void shouldQueryUsingStringAndBinds() {
+        Soql soql = (Soql) new Soql('SELECT Username FROM User WHERE Id = :userId')?.bind('userId', UserInfo.getUserId());
+
+        Test.startTest();
+        List<User> users = soql?.query();
+        Test.stopTest();
+
+        Assert.areEqual(1, users?.size(), 'Wrong # of Users returned');
+        User user = users[0];
+        Assert.areEqual(UserInfo.getUsername(), user?.Username, 'Wrong Username');
+    }
+
+    @IsTest 
+    static void shouldSetAccessLevel() {
+        System.AccessLevel level = System.AccessLevel.SYSTEM_MODE; 
+        Soql soql = (Soql) new Soql(User.SObjectType)?.defineAccess(level); 
+        Assert.areEqual(level, soql?.accessLevel, 'Did not set access level');
+    }
+
+    @IsTest 
+    static void shouldBindVariableToQuery() {
+        Soql.Binder binder = new Soql.Binder('userId', UserInfo.getUserId());
+        Soql soql = (Soql) new Soql(User.SObjectType)
+            ?.addSelect(User.Username)
+            ?.addWhere(User.Id, Soql.EQUALS, binder);
+        String expected = 'SELECT Id, Username FROM User WHERE Id = :userId'; 
+
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected);
+        Test.stopTest();
+    }
+
+    @IsTest
+    static void shouldDeselectAllFields() {
+        Soql soql = (Soql) new Soql(User.SObjectType)?.selectAll(); 
+        Assert.isTrue(soql?.selectClauses?.size() > 1, 'Wrong # of SELECT clauses');
+
+        Test.startTest();
+        soql.deselectAll();
+        Test.stopTest();
+
+        Assert.isTrue(soql?.selectClauses?.isEmpty(), 'Did not clear SELECT clauses');
+    }
+
+    @IsTest 
+    static void shouldDeselectSpecificField() {
+        Soql soql = (Soql) new Soql(User.SObjectType)?.selectAll(); 
+        Assert.isTrue(soql?.selectClauses?.size() > 1, 'Wrong # of SELECT clauses');
+
+        Test.startTest();
+        soql?.deselect(User.Username);
+        Test.stopTest();
+
+        Set<String> fields = new Set<String>(soql?.selectClauses); 
+        Assert.isFalse(fields?.contains(User.Username?.toString()), 'Did not deselect Username');
+    }
+
+    @IsTest 
+    static void shouldSelectAllFields() {
+        Set<String> userFields = SObjectType.User?.fields?.getMap()?.keySet();
+
+        Test.startTest();
+        Soql soql = (Soql) new Soql(User.SObjectType)?.selectAll();
+        Test.stopTest(); 
+
+        Assert.areEqual(userFields?.size(), soql?.selectClauses?.size(), 'Wrong # of SELECT clauses'); 
+    }
+
+    @IsTest 
+    static void shouldSelectSpecificFields() {
+        Soql soql = (Soql) new Soql(User.SObjectType)?.addSelect(User.FirstName)?.setRowLimit(1);
+        String expected = 'SELECT Id, FirstName FROM User LIMIT 1';
+
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
+    }
+
+    @IsTest 
+    static void shouldSelectFieldWithAlias() {
+        Soql soql = (Soql) new Soql(User.SObjectType)?.addSelect(User.ProfileId, 'profile')?.groupBy(User.ProfileId);
+        String expected = 'SELECT ProfileId profile FROM User GROUP BY ProfileId';
+
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
+    }
+
+    @IsTest 
+    static void shouldSelectAggregation() {
+        Soql.Aggregation count = new Soql.Aggregation(Soql.AggregateFunction.COUNT, User.Id);
+        Soql soql = (Soql) new Soql(User.SObjectType)?.addSelect(count);
+        String expected = 'SELECT COUNT(Id) FROM User';
+
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
+    }
+
+    @IsTest 
+    static void shouldSelectSubquery() {
+        Soql.Subquery subquery = new Soql.Subquery(User.ProfileId);
+        Soql soql = (Soql) new Soql(Profile.SObjectType)?.addSelect(subquery)?.setRowLimit(1);
+        String expected = 'SELECT Id, (SELECT Id FROM Users) FROM Profile LIMIT 1';
+
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
+    }
+
+    @IsTest 
+    static void shouldSetQueryScope() {
+        Soql soql = (Soql) new Soql(User.SObjectType)?.usingScope(Soql.Scope.EVERYTHING)?.setRowLimit(1);
+        String expected = 'SELECT Id FROM User USING SCOPE EVERYTHING LIMIT 1';
+
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
+    }
+
+    @IsTest 
+    static void shouldAddCriteriaToWhereClause() {
+        Soql soql = (Soql) new Soql(User.SObjectType)?.addWhere(User.IsActive, Soql.EQUALS, true)?.setRowLimit(1);
+        String expected = 'SELECT Id FROM User WHERE IsActive = true LIMIT 1';
+
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
+    }
+
+    @IsTest 
+    static void shouldAddCriteriaWithBindToWhereClause() {
+        Soql.Binder binder = new Soql.Binder('userId', UserInfo.getUserId());
+        Soql soql = (Soql) new Soql(User.SObjectType)?.addWhere(User.Id, Soql.EQUALS, binder);
+        String expected = 'SELECT Id FROM User WHERE Id = :userId';
+
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
+    }
+
+    @IsTest 
+    static void shouldHandleMultipleWhereClauses() {
+        Soql soql = (Soql) new Soql(User.SObjectType)
+            ?.addWhere(User.IsActive, Soql.EQUALS, true)
+            ?.addWhere('Profile.Name', Soql.EQUALS, 'System Administrator')
+            ?.setRowLimit(1);
+        String expected = 'SELECT Id FROM User WHERE IsActive = true AND Profile.Name = \'System Administrator\' LIMIT 1';
+
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
+    }
+
+    @IsTest 
+    static void shouldSetWhereClauseOuterLogic() { 
+        Soql soql = (Soql) new Soql(User.SObjectType)
+            ?.addWhere(User.IsActive, Soql.EQUALS, true)
+            ?.addWhere('Profile.Name', Soql.EQUALS, 'System Administrator')
+            ?.setWhereLogic(Soql.LogicType.ANY_CONDITIONS)
+            ?.setRowLimit(1);
+        String expected = 'SELECT Id FROM User WHERE IsActive = true OR Profile.Name = \'System Administrator\' LIMIT 1';
+
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
+    }
+
+    @IsTest 
+    static void shouldSetNestedWhereClause() {
+        Soql.ConditionalLogic innerCondition = new Soql.ConditionalLogic()
+            ?.addCondition(User.FirstName, Soql.EQUALS, 'Jason')
+            ?.addCondition(User.LastName, Soql.EQUALS, 'Siders')
+            ?.setLogicType(Soql.LogicType.ANY_CONDITIONS);
+        Soql soql = (Soql) new Soql(User.SObjectType)
+            ?.addWhere(User.IsActive, Soql.EQUALS, true)
+            ?.addWhere(innerCondition)
+            ?.setRowLimit(1);
+        String expected = 'SELECT Id FROM User WHERE IsActive = true AND (FirstName = \'Jason\' OR LastName = \'Siders\') LIMIT 1';
+
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
+    }
+    
+    @IsTest 
+    static void shouldSetWithSecurityEnforcedClause() {
+        Soql soql = (Soql) new Soql(User.SObjectType)?.withSecurityEnforced()?.setRowLimit(1); 
+        String expected = 'SELECT Id FROM User WITH SECURITY_ENFORCED LIMIT 1';
+
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
+    }
+
+    @IsTest 
+    static void shouldGroupByField() {
+        Soql soql = (Soql) new Soql(User.SObjectType)?.addSelect(User.ProfileId)?.groupBy(User.ProfileId);
+        String expected = 'SELECT ProfileId FROM User GROUP BY ProfileId';
+
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
+    }
+
+    @IsTest 
+    static void shouldAddHavingClause() {
+        Soql.Aggregation count = new Soql.Aggregation(Soql.AggregateFunction.COUNT, User.Id);
+        Soql soql = (Soql) new Soql(User.SObjectType)
+            ?.addSelect(User.ProfileId)
+            ?.groupBy(User.ProfileId)
+            ?.addHaving(count, Soql.GREATER_THAN, 1);
+        String expected = 'SELECT ProfileId FROM User GROUP BY ProfileId HAVING COUNT(Id) > 1';
+        
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
+    }
+
+    @IsTest 
+    static void shouldSupportMultipleHavingClauses() {
+        Soql.Aggregation count = new Soql.Aggregation(Soql.AggregateFunction.COUNT, User.Id);
+        Soql soql = (Soql) new Soql(User.SObjectType)
+            ?.addSelect(User.ProfileId)
+            ?.groupBy(User.ProfileId)
+            ?.addHaving(count, Soql.GREATER_THAN, 1)
+            ?.addHaving(count, Soql.LESS_OR_EQUAL, 100);
+        String expected = 'SELECT ProfileId FROM User GROUP BY ProfileId HAVING COUNT(Id) > 1 AND COUNT(Id) <= 100';
+        
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
+    }
+
+    @IsTest 
+    static void shouldSetOuterHavingLogic() {
+        Soql.Aggregation count = new Soql.Aggregation(Soql.AggregateFunction.COUNT, User.Id);
+        Soql soql = (Soql) new Soql(User.SObjectType)
+            ?.addSelect(User.ProfileId)
+            ?.groupBy(User.ProfileId)
+            ?.addHaving(count, Soql.GREATER_THAN, 1)
+            ?.addHaving(count, Soql.LESS_OR_EQUAL, 100)
+            ?.setHavingLogic(Soql.LogicType.ANY_CONDITIONS);
+        String expected = 'SELECT ProfileId FROM User GROUP BY ProfileId HAVING COUNT(Id) > 1 OR COUNT(Id) <= 100';
+        
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
+    }
+
+    @IsTest 
+    static void shouldSetOrderByClause() {
+        Soql soql = (Soql) new Soql(User.SObjectType)
+            ?.orderBy(User.CreatedDate, Soql.SortDirection.DESCENDING)
+            ?.setRowLimit(1);
+        String expected = 'SELECT Id FROM User ORDER BY CreatedDate DESC NULLS LAST LIMIT 1';
+
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
+    }
+
+    @IsTest 
+    static void shouldSupportMultipleOrderByClauses() {
+        Soql soql = (Soql) new Soql(User.SObjectType)
+            ?.orderBy('Profile.Name', Soql.SortDirection.ASCENDING)
+            ?.orderBy(User.CreatedDate, Soql.SortDirection.DESCENDING)
+            ?.setRowLimit(1);
+        String expected = 'SELECT Id FROM User ORDER BY Profile.Name ASC NULLS LAST, CreatedDate DESC NULLS LAST LIMIT 1';
+
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
+    }
+
+    @IsTest 
+    static void shouldSetRowLimit() {
+        Soql soql = (Soql) new Soql(User.SObjectType)?.setRowLimit(1); 
+        String expected = 'SELECT Id FROM User LIMIT 1';
+
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
+    }
+
+    @IsTest 
+    static void shouldSetRowOffset() {
+        Soql soql = (Soql) new Soql(User.SObjectType)?.setRowOffset(1)?.setRowLimit(1);
+        String expected = 'SELECT Id FROM User LIMIT 1 OFFSET 1';
+
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
+    }
+
+    @IsTest 
+    static void shouldSetUsage() {
+        Soql soql = (Soql) new Soql(User.SObjectType)?.setUsage(Soql.Usage.FOR_VIEW)?.setRowLimit(1);
+        String expected = 'SELECT Id FROM User LIMIT 1 FOR VIEW';
+
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
+    }
+
+    @IsTest 
+    static void shouldComposeFairlyComplexQuery() {
+        Soql soql = (Soql) new Soql(User.SObjectType)
+            ?.addSelect(User.FirstName)
+            ?.addSelect(User.LastName)
+            ?.addSelect(User.Email)
+            ?.addWhere(User.IsActive, Soql.EQUALS, true)
+            ?.addWhere('Profile.Name', Soql.EQUALS, 'System Administrator')
+            ?.orderBy(User.CreatedDate, Soql.SortDirection.ASCENDING)
+            ?.setRowLimit(1);
+        String expected = 
+            'SELECT Id, FirstName, LastName, Email ' + 
+            'FROM User ' + 
+            'WHERE IsActive = true AND Profile.Name = \'System Administrator\' ' + 
+            'ORDER BY CreatedDate ASC NULLS LAST ' + 
+            'LIMIT 1';
+
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
+    }
+
+    @IsTest 
+    static void shouldResetQuery() {
+        Soql soql = (Soql) new Soql(User.SObjectType)
+            ?.addSelect(User.FirstName)
+            ?.addSelect(User.LastName)
+            ?.addSelect(User.Email)
+            ?.addWhere(User.IsActive, Soql.EQUALS, true)
+            ?.addWhere('Profile.Name', Soql.EQUALS, 'System Administrator')
+            ?.orderBy(User.CreatedDate, Soql.SortDirection.ASCENDING)
+            ?.setRowLimit(1);
+        // Callers may have a need to reset the same query object
+        soql?.reset()?.setRowLimit(1); 
+        String expected = 'SELECT Id FROM User LIMIT 1';
+
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
+    }
+
     @IsTest 
     static void shouldGenerateInnerQuery() {
         Test.startTest();
-        String result = new Soql.InnerQuery(Account.SObjectType)?.selecting(Account.OwnerId)?.toString();
+        String result = new Soql.InnerQuery(Account.SObjectType)?.addSelect(Account.OwnerId)?.toString();
         Test.stopTest();
 
         String expected = '(SELECT OwnerId FROM Account)';
@@ -17,7 +473,7 @@ private class SoqlTest {
         Schema.ChildRelationship rel = Soql.getChildRelationshipFrom(Case.AccountId);
         
         Test.startTest();
-        String result = new Soql.Subquery(rel)?.selecting(Case.Id)?.toString();
+        String result = new Soql.Subquery(rel)?.addSelect(Case.Id)?.toString();
         Test.stopTest();
 
         String expected = '(SELECT Id FROM Cases)';
@@ -25,9 +481,15 @@ private class SoqlTest {
     }
 
     @IsTest 
+    static void shouldReturnNullChildRelationshipFromNonLookupField() {
+        // Note: May end up moving this logic to a utility class; not directly related to Soql per se
+        Assert.isNull(Soql.getChildRelationshipFrom(User.FirstName), 'Non-lookup field returned a child relationship');
+    }
+
+    @IsTest 
     static void shouldGenerateSubqueryFromLookupField() {
         Test.startTest();
-        String result = new Soql.Subquery(Case.AccountId)?.selecting(Case.Id)?.toString();
+        String result = new Soql.Subquery(Case.AccountId)?.addSelect(Case.Id)?.toString();
         Test.stopTest();
 
         String expected = '(SELECT Id FROM Cases)';
@@ -516,7 +978,9 @@ private class SoqlTest {
 
         Assert.areEqual(key, binder?.getKey(), 'Wrong key');
         Assert.areEqual(':' + key, binder?.toString(), 'Wrong toString() value');
-        Assert.areEqual(1, binder?.getValues()?.size(), 'Wrong # of values'); 
+        Assert.isTrue(binder?.getValue() instanceOf List<Id>, 'Wrong bind value type');
+        List<Id> bindValues = (List<Id>) binder?.getValue();
+        Assert.areEqual(1, bindValues?.size(), 'Wrong # of values'); 
     }
 
     @IsTest 
@@ -529,20 +993,32 @@ private class SoqlTest {
 
         Assert.areEqual(key, binder?.getKey(), 'Wrong key'); 
         Assert.areEqual(':' + key, binder?.toString(), 'Wrong toString() value'); 
-        Assert.areEqual(0, binder?.getValues()?.size(), 'Wrong # of values');
+        Assert.areEqual(null, binder?.getValue(), 'Wrong bind value');
     }
 
     @IsTest 
     static void shouldOrderByField() {
-        String value = new Soql.OrderBy(Account.CreatedDate, Soql.SortOrder.ASCENDING)?.toString();
+        String value = new Soql.SortOrder(Account.CreatedDate, Soql.SortDirection.ASCENDING)?.toString();
         Assert.areEqual('CreatedDate ASC NULLS LAST', value, 'Wrong value');
     }
     
     @IsTest 
     static void shouldSpecifyNullOrder() {
-        String value = new Soql.OrderBy(Account.CreatedDate, Soql.SortOrder.DESCENDING)
+        String value = new Soql.SortOrder(Account.CreatedDate, Soql.SortDirection.DESCENDING)
             ?.setNullOrder(Soql.NullOrder.NULLS_FIRST)
             ?.toString();
         Assert.areEqual('CreatedDate DESC NULLS FIRST', value, 'Wrong value');
+    }
+
+    // **** HELPER **** // 
+    static Object validateQuery(Soql soql, String expected) {
+        Assert.areEqual('"' + expected + '"', '"' + soql?.toString() + '"', 'Unexpected SOQL output');
+        return soql?.query(); 
+    }
+
+    // **** INNER **** //
+    private class SampleWrapper {
+        public Integer numRecords;
+        public String profileName;
     }
 }

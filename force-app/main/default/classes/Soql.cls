@@ -16,15 +16,26 @@ public inherited sharing virtual class Soql extends Soql.Builder {
     static final Soql.LogicType DEFAULT_LOGIC_TYPE = Soql.LogicType.ALL_CONDITIONS;
 	static final String ID_REFERENCE = 'Id';
 
+    // **** MEMBER **** //
     @TestVisible
 	protected Soql(SObjectType objectType) {
         super();
         this.fromEntity(objectType);
 	}
 
+    @TestVisible
+    protected Soql(String queryString) {
+        super();
+        this.setQueryString(queryString);
+    }
+
     public virtual Integer countQuery() {
         try {
-            return Database.countQueryWithBinds(this.toString(), this.binds, this.accessLevel);
+            // Note: A count query must not contain any fields, other than COUNT() aggregation
+            // Avoid errors and simplify query construction by handling this in a temporary copy of the current query
+            Soql.Aggregation count = new Soql.Aggregation(Soql.AggregateFunction.COUNT);
+            Soql tempCopy = (Soql) this.clone()?.deselectAll()?.addSelect(count);
+            return Database.countQueryWithBinds(tempCopy?.toString(), this.binds, this.accessLevel);
         } catch (System.QueryException error) {
 			this.handleQueryError(error);
             throw error;
@@ -79,6 +90,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
                 return relationship;
             }
         }
+        // This should only ever return null if the field isn't a lookup
         return null;
     }
 
@@ -93,14 +105,6 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		SUM
     }
 
-    public enum Context {
-        // Note: Believe it or not, SYSTEM_MODE and USER_MODE aren't enum values; 
-        // they're static properties of the AccessLevel class!
-        SECURITY_ENFORCED,
-        SYSTEM_MODE,
-        USER_MODE
-    }
-
     public enum LogicType {
         ALL_CONDITIONS,
         ANY_CONDITIONS
@@ -111,7 +115,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         NULLS_LAST
     }
 
-    public enum SortOrder {
+    public enum SortDirection {
         ASCENDING,
         DESCENDING
     }
@@ -185,27 +189,27 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
     public class Binder {
         public String key { get; private set; }
-        List<Object> values { get; private set; }
+        public Object value { get; private set; }
 
-        public Binder(String key, List<Object> values) {
+        public Binder(String key, Object value) {
             this.key = key;
-            this.setValues(values);
+            this.setValue(value);
         }
 
         public Binder(String key) {
-            this(key, new List<Object>());
+            this(key, null);
         }
 
         public String getKey() {
             return this.key;
         }
 
-        public List<Object> getValues() {
-            return this.values ?? new List<Object>();
+        public Object getValue() {
+            return this.value;
         }
 
-        public Binder setValues(List<Object> values) {
-            this.values = values;
+        public Binder setValue(Object value) {
+            this.value = value;
             return this; 
         }
 
@@ -222,22 +226,22 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         public String withClause { get; protected set; }
         public List<String> groupByClauses { get; protected set; }
         public Soql.ConditionalLogic havingCriteria { get; protected set; }
-        public Soql.OrderBy OrderBy { get; protected set; }
+        public List<String> orderByClauses { get; protected set; }
         public Integer rowLimit { get; protected set; }
         public Integer rowOffset { get; protected set; }
         public Soql.Usage usage { get; protected set; }
         public System.AccessLevel accessLevel { get; protected set; }
         public Map<String, Object> binds { get; protected set; }
+        public String queryString { get; protected set; }
 
         protected Builder() {
-            this.clear();
+            this.reset();
         }
 
         public virtual override String toString() {
-            // Outputs a SOQL Query string, following the syntax defined here:
-            // https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_select.htm#:~:text=SOQL%20query%20syntax%20consists%20of,typeOfField%20whenExpression%5B...%5D
-            List<String> queryArgs = new List<String>{ this.getSelect(), this.getFrom(), this.getOptionalArgs() };
-            return String.format('SELECT {0} FROM {1} {2}', queryArgs)?.trim();
+            // Return the user-defined query string if one is provided, or build a query string if not
+            String queryString = this.queryString ?? this.buildQueryString();
+            return queryString?.trim();
         }
 
         public Soql.Builder bind(Map<String, Object> bindMap) {
@@ -250,17 +254,13 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         }
 
         public Soql.Builder bind(Soql.Binder binder) {
-            return this.bind(binder?.getKey(), binder?.getValues());
+            return this.bind(binder?.getKey(), binder?.getValue());
         }
 
-        public Soql.Builder clear() {
-            this.selectClauses = new Set<String>{ ID_REFERENCE };
-            this.whereCriteria = new Soql.ConditionalLogic();
-            this.groupByClauses = new List<String>();
-            this.havingCriteria = new Soql.ConditionalLogic();
-            this.accessLevel = System.AccessLevel.USER_MODE;
-            this.binds = new Map<String, Object>(); 
-            return this;
+        public Soql.Builder deselectAll() {
+            // Remove all SELECT fields from the current query
+            this.selectClauses?.clear();
+            return this; 
         }
 
         public Soql.Builder deselect(String fieldName) {
@@ -269,13 +269,29 @@ public inherited sharing virtual class Soql extends Soql.Builder {
             return this;
         }
 
+        public Soql.Builder deselect(SObjectField field) {
+            return this.deselect(field?.toString());
+        }
+
         public Soql.Builder defineAccess(System.AccessLevel accessLevel) {
             this.accessLevel = accessLevel;
             return this;
         }
 
-        public Soql.Builder deselect(SObjectField field) {
-            return this.deselect(field?.toString());
+        public Soql.Builder reset() {
+            this.accessLevel = System.AccessLevel.USER_MODE;
+            this.binds = new Map<String, Object>(); 
+            this.groupByClauses = new List<String>();
+            this.havingCriteria = new Soql.ConditionalLogic();
+            this.orderByClauses = new List<String>();
+            this.selectClauses = new Set<String>{ ID_REFERENCE };
+            this.whereCriteria = new Soql.ConditionalLogic();
+            return this;
+        }
+
+        public Soql.Builder setQueryString(String queryString) {
+            this.queryString = queryString;
+            return this; 
         }
     
         // * SELECT *
@@ -284,28 +300,36 @@ public inherited sharing virtual class Soql extends Soql.Builder {
             DescribeSObjectResult describe = describes?.isEmpty() == false ? describes[0] : null;
             List<SObjectField> allFields = describe?.fields?.getMap()?.values() ?? new List<SObjectField>();
             for (SObjectField field : allFields) {
-                this.selecting(field);
+                this.addSelect(field);
             }
             return this;
         }
-    
-        public Soql.Builder selecting(SObjectField field) {
-            this.selectClauses.add(field?.toString());
-            return this; 
+
+        public Soql.Builder addSelect(String fieldName, String alias) {
+            String clause = String.join(new List<String>{ fieldName, alias }, ' ')?.trim();
+            this.selectClauses?.add(clause);
+            return this;
+        }
+
+        public Soql.Builder addSelect(SObjectField field, String alias) {
+            return this.addSelect(field?.toString(), alias);
+        }
+
+        public Soql.Builder addSelect(String fieldName) {
+            return this.addSelect(fieldName, '');
         }
     
-        public Soql.Builder selecting(String fieldName) {
-            this.selectClauses.add(fieldName);
-            return this; 
+        public Soql.Builder addSelect(SObjectField field) {
+            return this.addSelect(field?.toString());
         }
     
-        public Soql.Builder selecting(Soql.Aggregation aggregation) {
+        public Soql.Builder addSelect(Soql.Aggregation aggregation) {
             // Note: Id should never be included in the SELECT clause for Aggregate queries
-            return this.deselect(ID_REFERENCE)?.selecting(aggregation?.toString());
+            return this.deselect(ID_REFERENCE)?.addSelect(aggregation?.toString());
         }
     
-        public Soql.Builder selecting(Soql.SubQuery subQuery) {
-            return this.selecting(subQuery.toString());
+        public Soql.Builder addSelect(Soql.SubQuery subQuery) {
+            return this.addSelect(subQuery.toString());
         }
     
         // * FROM *
@@ -315,34 +339,34 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         }
     
         // * USING SCOPE *
-        public Soql.Builder usingScope(Scope scope) {
+        public Soql.Builder usingScope(Soql.Scope scope) {
             this.scope = scope;
             return this;
         }
     
         // * WHERE *
-        public Soql.Builder given(Soql.Criteria criteria) {
+        public Soql.Builder addWhere(Soql.Criteria criteria) {
             this.whereCriteria?.addCondition(criteria);
             return this; 
         }
 
-        public Soql.Builder given(String fieldName, Soql.Operator operator, Object value) {
+        public Soql.Builder addWhere(String fieldName, Soql.Operator operator, Object value) {
             // Shorthand overload constructs a Condition object for the caller
-            return this.given(new Soql.Condition(fieldName, operator, value));
+            return this.addWhere(new Soql.Condition(fieldName, operator, value));
         }
 
-        public Soql.Builder given(SObjectField field, Soql.Operator operator, Object value) {
+        public Soql.Builder addWhere(SObjectField field, Soql.Operator operator, Object value) {
             // Shorthand overload constructs a Condition object for the caller
-            return this.given(field?.toString(), operator, value);
+            return this.addWhere(field?.toString(), operator, value);
         }
 
-        public Soql.Builder given(String fieldName, Soql.Operator operator, Soql.Binder binder) {
+        public Soql.Builder addWhere(String fieldName, Soql.Operator operator, Soql.Binder binder) {
             // If the current object is a Binder, bind the values so that callers don't need to do so manually
-            return this.given(fieldName, operator, binder?.toString())?.bind(binder);
+            return this.addWhere(fieldName, operator, binder?.toString())?.bind(binder);
         }
 
-        public Soql.Builder given(SObjectField field, Soql.Operator operator, Soql.Binder binder) {
-            return this.given(field?.toString(), operator, binder); 
+        public Soql.Builder addWhere(SObjectField field, Soql.Operator operator, Soql.Binder binder) {
+            return this.addWhere(field?.toString(), operator, binder); 
         }
 
         public Soql.Builder setWhereLogic(Soql.LogicType newLogicType) {
@@ -351,31 +375,34 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         }
 
         // * WITH *
-        public Soql.Builder with(Soql.Context context) {
-            this.withClause = context?.toString();
-            return this; 
-        }
-
-        public Soql.Builder with(Soql.Condition dataCategoryCondition) {
-            this.withClause = dataCategoryCondition?.toString();
+        public Soql.Builder withSecurityEnforced() {
+            this.withClause = 'SECURITY_ENFORCED';
+            // Note: Cannot use the WITH SECURITY_ENFORCED clause in queries using USER_MODE access level.
+            this.defineAccess(System.AccessLevel.SYSTEM_MODE);
             return this; 
         }
 
         // * GROUP BY *
+        public Soql.Builder groupBy(String fieldName) {
+            // Note: GROUP BY queries should never assume an implicit "Id" in the query
+            this.deselect(ID_REFERENCE);
+            this.groupByClauses?.add(fieldName);
+            return this; 
+        }
+
         public Soql.Builder groupBy(SObjectField field) {
-            this.groupByClauses?.add(field?.toString());
-            return this;
+            return this.groupBy(field?.toString());
         }
 
         // * HAVING *
-        public Soql.Builder has(Soql.AggregateCondition aggregateCriteria) {
+        public Soql.Builder addHaving(Soql.AggregateCondition aggregateCriteria) {
             this.havingCriteria?.addCondition(aggregateCriteria);
             return this;
         }
 
-        public Soql.Builder has(Soql.Aggregation agg, Soql.Operator operator, Object value) {
+        public Soql.Builder addHaving(Soql.Aggregation agg, Soql.Operator operator, Object value) {
             // Shorthand overload constructs the AggregateCondition for the caller
-            return this.has(new Soql.AggregateCondition(agg, operator, value));
+            return this.addHaving(new Soql.AggregateCondition(agg, operator, value));
         }
 
         public Soql.Builder setHavingLogic(Soql.LogicType newLogicType) {
@@ -384,9 +411,18 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         }
     
         // * ORDER BY * 
-        public Soql.Builder orderBy(Soql.OrderBy OrderBy) {
-            this.OrderBy = OrderBy;
+        public Soql.Builder orderBy(Soql.SortOrder sortOrder) {
+            this.orderByClauses?.add(sortOrder?.toString());
             return this;
+        }
+
+        public Soql.Builder orderBy(String fieldName, Soql.SortDirection direction) {
+            Soql.SortOrder sortOrder = new Soql.SortOrder(fieldName, direction); 
+            return this.orderBy(sortOrder); 
+        }
+
+        public Soql.Builder orderBy(SObjectField field, Soql.SortDirection direction) {
+            return this.orderBy(field?.toString(), direction); 
         }
 
         // * LIMIT *
@@ -408,6 +444,13 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         }
     
         // **** PRIVATE **** //
+        protected String buildQueryString() {
+            // Outputs a SOQL Query string, following the syntax defined here:
+            // https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_select.htm#:~:text=SOQL%20query%20syntax%20consists%20of,typeOfField%20whenExpression%5B...%5D
+            List<String> queryArgs = new List<String>{ this.getSelect(), this.getFrom(), this.getOptionalArgs() };
+            return String.format('SELECT {0} FROM {1} {2}', queryArgs)?.trim();
+        }
+
         protected String constructClause(String prefix, Object value) {
             // Returns a specific SOQL clause (ex., "WHERE {value}"), provided that `value` is not null
             String output = value?.toString();
@@ -430,7 +473,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
                 this.constructClause('WITH', this.withClause),
                 this.getGroupBy(),
                 this.constructClause('HAVING', this.havingCriteria),
-                this.constructClause('ORDER BY', this.OrderBy),
+                this.constructClause('ORDER BY', String.join(this.orderByClauses, ', ')),
                 this.constructClause('LIMIT', this.rowLimit),
                 this.constructClause('OFFSET', this.rowOffset),
                 this.getUsage()
@@ -522,13 +565,22 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         List<Soql.Criteria> criterion = new List<Soql.Criteria>();
         Soql.LogicType logicType = Soql.LogicType.ALL_CONDITIONS;
 
-        public ConditionalLogic addCondition(List<Soql.Criteria> criterion) {
+        public ConditionalLogic addConditions(List<Soql.Criteria> criterion) {
             this.criterion?.addAll(criterion);
             return this; 
         }
 
         public ConditionalLogic addCondition(Soql.Criteria criteria) {
-            return this.addCondition(new List<Soql.Criteria>{ criteria });
+            return this.addConditions(new List<Soql.Criteria>{ criteria });
+        }
+
+        public ConditionalLogic addCondition(String fieldName, Soql.Operator operator, Object value) {
+            Soql.Condition condition = new Soql.Condition(fieldName, operator, value); 
+            return this.addCondition(condition); 
+        }
+
+        public ConditionalLogic addCondition(SObjectField field, Soql.Operator operator, Object value) {
+            return this.addCondition(field?.toString(), operator, value); 
         }
 
         public ConditionalLogic setLogicType(Soql.LogicType logicType) {
@@ -609,32 +661,32 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         }
     }
 
-    public class OrderBy {
+    public class SortOrder {
         List<String> fieldNames = new List<String>();
-        Soql.SortOrder direction = Soql.SortOrder.ASCENDING;
+        Soql.SortDirection direction = Soql.SortDirection.ASCENDING;
         Soql.NullOrder nullOrder = Soql.NullOrder.NULLS_LAST;
 
-        public OrderBy(List<String> fieldNames, Soql.SortOrder direction) {
+        public SortOrder(List<String> fieldNames, Soql.SortDirection direction) {
             this.fieldNames = fieldNames;
             this.direction = direction;
         }
 
-        public OrderBy(String fieldName, Soql.SortOrder direction) {
+        public SortOrder(String fieldName, Soql.SortDirection direction) {
             this(new List<String>{ fieldName }, direction);
         }
 
-        public OrderBy(List<SObjectField> fields, Soql.SortOrder direction) {
+        public SortOrder(List<SObjectField> fields, Soql.SortDirection direction) {
             for (SObjectField field : fields) {
                 this.fieldNames?.add(field?.toString());
             }
             this.direction = direction;
         }
 
-        public OrderBy(SObjectField field, Soql.SortOrder direction) {
+        public SortOrder(SObjectField field, Soql.SortDirection direction) {
             this(new List<SObjectField>{ field }, direction);
         }
 
-        public OrderBy setNullOrder(Soql.NullOrder nullOrder) {
+        public SortOrder setNullOrder(Soql.NullOrder nullOrder) {
             this.nullOrder = nullOrder;
             return this; 
         }
@@ -667,6 +719,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         String relationshipName;
 
         public SubQuery(Schema.ChildRelationship relationship) {
+            this.addSelect(ID_REFERENCE);
             this.relationshipName = relationship?.getRelationshipName();
         }
 
