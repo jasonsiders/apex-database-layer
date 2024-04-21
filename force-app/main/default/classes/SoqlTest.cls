@@ -1,16 +1,5 @@
 @IsTest 
 private class SoqlTest {
-    // * STATIC METHODS
-    @IsTest 
-    static void shouldConstructNewQuery() {
-        Assert.fail('You still need to build this test');
-    }
-
-    @IsTest 
-    static void shouldConstructNewQueryFromString() {
-        Assert.fail('You still need to build this test');
-    }
-
     // * QUERY METHODS
     @IsTest 
     static void shouldCountQuery() {
@@ -65,18 +54,41 @@ private class SoqlTest {
 
     @IsTest 
     static void shouldQueryUsingString() {
-        Assert.fail('You still need to build this test');
+        Soql soql = new Soql('SELECT Id FROM User');
+
+        Test.startTest();
+        List<User> users = soql?.query();
+        Test.stopTest();
+
+        Integer expected = Database.countQuery('SELECT COUNT() FROM User');
+        Assert.areEqual(expected, users?.size(), 'Wrong # of Users returned'); 
     }
 
     @IsTest 
     static void shouldQueryUsingStringAndBinds() {
-        Assert.fail('You still need to build this test');
+        Soql soql = (Soql) new Soql('SELECT Username FROM User WHERE Id = :userId')?.bind('userId', UserInfo.getUserId());
+
+        Test.startTest();
+        List<User> users = soql?.query();
+        Test.stopTest();
+
+        Assert.areEqual(1, users?.size(), 'Wrong # of Users returned');
+        User user = users[0];
+        Assert.areEqual(UserInfo.getUsername(), user?.Username, 'Wrong Username');
     }
 
     // * BUILDER
     @IsTest 
     static void shouldBindVariableToQuery() {
-        Assert.fail('You still need to build this test'); 
+        Soql.Binder binder = new Soql.Binder('userId', UserInfo.getUserId());
+        Soql soql = (Soql) new Soql(User.SObjectType)
+            ?.selecting(User.Username)
+            ?.given(User.Id, Soql.EQUALS, binder);
+        String expected = 'SELECT Id, Username FROM User WHERE Id = :userId'; 
+
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected);
+        Test.stopTest();
     }
 
     @IsTest 
@@ -709,7 +721,9 @@ private class SoqlTest {
 
         Assert.areEqual(key, binder?.getKey(), 'Wrong key');
         Assert.areEqual(':' + key, binder?.toString(), 'Wrong toString() value');
-        Assert.areEqual(1, binder?.getValues()?.size(), 'Wrong # of values'); 
+        Assert.isTrue(binder?.getValue() instanceOf List<Id>, 'Wrong bind value type');
+        List<Id> bindValues = (List<Id>) binder?.getValue();
+        Assert.areEqual(1, bindValues?.size(), 'Wrong # of values'); 
     }
 
     @IsTest 
@@ -722,7 +736,7 @@ private class SoqlTest {
 
         Assert.areEqual(key, binder?.getKey(), 'Wrong key'); 
         Assert.areEqual(':' + key, binder?.toString(), 'Wrong toString() value'); 
-        Assert.areEqual(0, binder?.getValues()?.size(), 'Wrong # of values');
+        Assert.areEqual(null, binder?.getValue(), 'Wrong bind value');
     }
 
     @IsTest 
@@ -737,6 +751,12 @@ private class SoqlTest {
             ?.setNullOrder(Soql.NullOrder.NULLS_FIRST)
             ?.toString();
         Assert.areEqual('CreatedDate DESC NULLS FIRST', value, 'Wrong value');
+    }
+
+    // **** HELPER **** // 
+    static Object validateQuery(Soql soql, String expected) {
+        Assert.areEqual(expected, soql?.toString(), 'Unexpected SOQL output');
+        return soql?.query(); 
     }
 
     // **** INNER **** //

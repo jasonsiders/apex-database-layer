@@ -206,27 +206,27 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
     public class Binder {
         public String key { get; private set; }
-        List<Object> values { get; private set; }
+        public Object value { get; private set; }
 
-        public Binder(String key, List<Object> values) {
+        public Binder(String key, Object value) {
             this.key = key;
-            this.setValues(values);
+            this.setValue(value);
         }
 
         public Binder(String key) {
-            this(key, new List<Object>());
+            this(key, null);
         }
 
         public String getKey() {
             return this.key;
         }
 
-        public List<Object> getValues() {
-            return this.values ?? new List<Object>();
+        public Object getValue() {
+            return this.value;
         }
 
-        public Binder setValues(List<Object> values) {
-            this.values = values;
+        public Binder setValue(Object value) {
+            this.value = value;
             return this; 
         }
 
@@ -270,7 +270,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         }
 
         public Soql.Builder bind(Soql.Binder binder) {
-            return this.bind(binder?.getKey(), binder?.getValues());
+            return this.bind(binder?.getKey(), binder?.getValue());
         }
 
         public Soql.Builder clear() {
