@@ -318,27 +318,57 @@ private class SoqlTest {
 
     @IsTest 
     static void shouldSetOrderByClause() {
-        Assert.fail('You still need to build this test');
+        Soql soql = (Soql) new Soql(User.SObjectType)
+            ?.orderBy(User.CreatedDate, Soql.SortDirection.DESCENDING)
+            ?.setRowLimit(1);
+        String expected = 'SELECT Id FROM User ORDER BY CreatedDate DESC NULLS LAST LIMIT 1';
+
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
     }
 
     @IsTest 
     static void shouldSupportMultipleOrderByClauses() {
-        Assert.fail('You still need to build this test');
+        Soql soql = (Soql) new Soql(User.SObjectType)
+            ?.orderBy('Profile.Name', Soql.SortDirection.ASCENDING)
+            ?.orderBy(User.CreatedDate, Soql.SortDirection.DESCENDING)
+            ?.setRowLimit(1);
+        String expected = 'SELECT Id FROM User ORDER BY Profile.Name ASC NULLS LAST, CreatedDate DESC NULLS LAST LIMIT 1';
+
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
     }
 
     @IsTest 
     static void shouldSetRowLimit() {
-        Assert.fail('You still need to build this test');
+        Soql soql = (Soql) new Soql(User.SObjectType)?.setRowLimit(1); 
+        String expected = 'SELECT Id FROM User LIMIT 1';
+
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
     }
 
     @IsTest 
     static void shouldSetRowOffset() {
-        Assert.fail('You still need to build this test');
+        Soql soql = (Soql) new Soql(User.SObjectType)?.setRowOffset(1)?.setRowLimit(1);
+        String expected = 'SELECT Id FROM User LIMIT 1 OFFSET 1';
+
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
     }
 
     @IsTest 
     static void shouldSetUsage() {
-        Assert.fail('You still need to build this test');
+        Soql soql = (Soql) new Soql(User.SObjectType)?.setUsage(Soql.Usage.FOR_VIEW)?.setRowLimit(1);
+        String expected = 'SELECT Id FROM User LIMIT 1 FOR VIEW';
+
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
     }
 
     @IsTest 

@@ -425,6 +425,15 @@ public inherited sharing virtual class Soql extends Soql.Builder {
             return this;
         }
 
+        public Soql.Builder orderBy(String fieldName, Soql.SortDirection direction) {
+            Soql.SortOrder sortOrder = new Soql.SortOrder(fieldName, direction); 
+            return this.orderBy(sortOrder); 
+        }
+
+        public Soql.Builder orderBy(SObjectField field, Soql.SortDirection direction) {
+            return this.orderBy(field?.toString(), direction); 
+        }
+
         // * LIMIT *
         public Soql.Builder setRowLimit(Integer rowLimit) {
             this.rowLimit = rowLimit;
