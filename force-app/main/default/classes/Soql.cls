@@ -16,11 +16,28 @@ public inherited sharing virtual class Soql extends Soql.Builder {
     static final Soql.LogicType DEFAULT_LOGIC_TYPE = Soql.LogicType.ALL_CONDITIONS;
 	static final String ID_REFERENCE = 'Id';
 
+    public static Soql newQuery(SObjectType objectType) {
+        // TODO: Use the OrgData class to return a mock instance or non-mock instance
+        return new Soql(objectType);
+    }
+
+    public static Soql newQuery(String queryString) {
+        // TODO: Use the OrgData class to return a mock instance or non-mock instance
+        return new Soql(queryString);
+    }
+
+    // **** MEMBER **** //
     @TestVisible
 	protected Soql(SObjectType objectType) {
         super();
         this.fromEntity(objectType);
 	}
+
+    @TestVisible
+    protected Soql(String queryString) {
+        super();
+        this.setQueryString(queryString);
+    }
 
     public virtual Integer countQuery() {
         try {
@@ -232,16 +249,15 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         public Soql.Usage usage { get; protected set; }
         public System.AccessLevel accessLevel { get; protected set; }
         public Map<String, Object> binds { get; protected set; }
+        public String queryString { get; protected set; }
 
         protected Builder() {
             this.clear();
         }
 
         public virtual override String toString() {
-            // Outputs a SOQL Query string, following the syntax defined here:
-            // https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_select.htm#:~:text=SOQL%20query%20syntax%20consists%20of,typeOfField%20whenExpression%5B...%5D
-            List<String> queryArgs = new List<String>{ this.getSelect(), this.getFrom(), this.getOptionalArgs() };
-            return String.format('SELECT {0} FROM {1} {2}', queryArgs)?.trim();
+            // Return the user-defined query string if one is provided, or build a query string if not
+            return this.queryString ?? this.buildQueryString();
         }
 
         public Soql.Builder bind(Map<String, Object> bindMap) {
@@ -287,6 +303,11 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         public Soql.Builder defineAccess(System.AccessLevel accessLevel) {
             this.accessLevel = accessLevel;
             return this;
+        }
+
+        public Soql.Builder setQueryString(String queryString) {
+            this.queryString = queryString;
+            return this; 
         }
     
         // * SELECT *
@@ -431,6 +452,13 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         }
     
         // **** PRIVATE **** //
+        protected String buildQueryString() {
+            // Outputs a SOQL Query string, following the syntax defined here:
+            // https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_select.htm#:~:text=SOQL%20query%20syntax%20consists%20of,typeOfField%20whenExpression%5B...%5D
+            List<String> queryArgs = new List<String>{ this.getSelect(), this.getFrom(), this.getOptionalArgs() };
+            return String.format('SELECT {0} FROM {1} {2}', queryArgs)?.trim();
+        }
+
         protected String constructClause(String prefix, Object value) {
             // Returns a specific SOQL clause (ex., "WHERE {value}"), provided that `value` is not null
             String output = value?.toString();

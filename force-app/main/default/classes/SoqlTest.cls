@@ -1,5 +1,16 @@
 @IsTest 
 private class SoqlTest {
+    // * STATIC METHODS
+    @IsTest 
+    static void shouldConstructNewQuery() {
+        Assert.fail('You still need to build this test');
+    }
+
+    @IsTest 
+    static void shouldConstructNewQueryFromString() {
+        Assert.fail('You still need to build this test');
+    }
+
     // * QUERY METHODS
     @IsTest 
     static void shouldCountQuery() {
@@ -50,6 +61,16 @@ private class SoqlTest {
 
         List<AggregateResult> raw = [SELECT Profile.Name, COUNT(Id) FROM User GROUP BY Profile.Name];
         Assert.areEqual(raw?.size(), results?.size(), 'Wrong # of results returned'); 
+    }
+
+    @IsTest 
+    static void shouldQueryUsingString() {
+        Assert.fail('You still need to build this test');
+    }
+
+    @IsTest 
+    static void shouldQueryUsingStringAndBinds() {
+        Assert.fail('You still need to build this test');
     }
 
     // * BUILDER
