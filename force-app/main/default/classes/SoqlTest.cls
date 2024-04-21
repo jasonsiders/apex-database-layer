@@ -372,13 +372,44 @@ private class SoqlTest {
     }
 
     @IsTest 
-    static void shouldComposeReallyComplexQuery() {
-        Assert.fail('You still need to build this test');
+    static void shouldComposeFairlyComplexQuery() {
+        Soql soql = (Soql) new Soql(User.SObjectType)
+            ?.selecting(User.FirstName)
+            ?.selecting(User.LastName)
+            ?.selecting(User.Email)
+            ?.given(User.IsActive, Soql.EQUALS, true)
+            ?.given('Profile.Name', Soql.EQUALS, 'System Administrator')
+            ?.orderBy(User.CreatedDate, Soql.SortDirection.ASCENDING)
+            ?.setRowLimit(1);
+        String expected = 
+            'SELECT Id, FirstName, LastName, Email ' + 
+            'FROM User ' + 
+            'WHERE IsActive = true AND Profile.Name = \'System Administrator\' ' + 
+            'ORDER BY CreatedDate ASC NULLS LAST ' + 
+            'LIMIT 1';
+
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
     }
 
     @IsTest 
     static void shouldResetQuery() {
-        Assert.fail('You still need to build this test');
+        Soql soql = (Soql) new Soql(User.SObjectType)
+            ?.selecting(User.FirstName)
+            ?.selecting(User.LastName)
+            ?.selecting(User.Email)
+            ?.given(User.IsActive, Soql.EQUALS, true)
+            ?.given('Profile.Name', Soql.EQUALS, 'System Administrator')
+            ?.orderBy(User.CreatedDate, Soql.SortDirection.ASCENDING)
+            ?.setRowLimit(1);
+        // Callers may have a need to reset the same query object
+        soql?.reset()?.setRowLimit(1); 
+        String expected = 'SELECT Id FROM User LIMIT 1';
+
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
     }
 
     @IsTest 

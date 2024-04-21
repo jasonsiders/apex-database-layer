@@ -244,7 +244,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         public String queryString { get; protected set; }
 
         protected Builder() {
-            this.clear();
+            this.reset();
         }
 
         public virtual override String toString() {
@@ -266,17 +266,6 @@ public inherited sharing virtual class Soql extends Soql.Builder {
             return this.bind(binder?.getKey(), binder?.getValue());
         }
 
-        public Soql.Builder clear() {
-            this.accessLevel = System.AccessLevel.USER_MODE;
-            this.binds = new Map<String, Object>(); 
-            this.groupByClauses = new List<String>();
-            this.havingCriteria = new Soql.ConditionalLogic();
-            this.orderByClauses = new List<String>();
-            this.selectClauses = new Set<String>{ ID_REFERENCE };
-            this.whereCriteria = new Soql.ConditionalLogic();
-            return this;
-        }
-
         public Soql.Builder deselectAll() {
             // Remove all SELECT fields from the current query
             this.selectClauses?.clear();
@@ -295,6 +284,17 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
         public Soql.Builder defineAccess(System.AccessLevel accessLevel) {
             this.accessLevel = accessLevel;
+            return this;
+        }
+
+        public Soql.Builder reset() {
+            this.accessLevel = System.AccessLevel.USER_MODE;
+            this.binds = new Map<String, Object>(); 
+            this.groupByClauses = new List<String>();
+            this.havingCriteria = new Soql.ConditionalLogic();
+            this.orderByClauses = new List<String>();
+            this.selectClauses = new Set<String>{ ID_REFERENCE };
+            this.whereCriteria = new Soql.ConditionalLogic();
             return this;
         }
 
