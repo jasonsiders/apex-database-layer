@@ -115,7 +115,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         NULLS_LAST
     }
 
-    public enum SortOrder {
+    public enum SortDirection {
         ASCENDING,
         DESCENDING
     }
@@ -226,7 +226,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         public String withClause { get; protected set; }
         public List<String> groupByClauses { get; protected set; }
         public Soql.ConditionalLogic havingCriteria { get; protected set; }
-        public Soql.OrderBy OrderBy { get; protected set; }
+        public List<String> orderByClauses { get; protected set; }
         public Integer rowLimit { get; protected set; }
         public Integer rowOffset { get; protected set; }
         public Soql.Usage usage { get; protected set; }
@@ -258,12 +258,13 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         }
 
         public Soql.Builder clear() {
-            this.selectClauses = new Set<String>{ ID_REFERENCE };
-            this.whereCriteria = new Soql.ConditionalLogic();
-            this.groupByClauses = new List<String>();
-            this.havingCriteria = new Soql.ConditionalLogic();
             this.accessLevel = System.AccessLevel.USER_MODE;
             this.binds = new Map<String, Object>(); 
+            this.groupByClauses = new List<String>();
+            this.havingCriteria = new Soql.ConditionalLogic();
+            this.orderByClauses = new List<String>();
+            this.selectClauses = new Set<String>{ ID_REFERENCE };
+            this.whereCriteria = new Soql.ConditionalLogic();
             return this;
         }
 
@@ -406,8 +407,8 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         }
     
         // * ORDER BY * 
-        public Soql.Builder orderBy(Soql.OrderBy OrderBy) {
-            this.OrderBy = OrderBy;
+        public Soql.Builder orderBy(Soql.SortOrder sortOrder) {
+            this.orderByClauses?.add(sortOrder?.toString());
             return this;
         }
 
@@ -452,7 +453,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
                 this.constructClause('WITH', this.withClause),
                 this.getGroupBy(),
                 this.constructClause('HAVING', this.havingCriteria),
-                this.constructClause('ORDER BY', this.OrderBy),
+                this.constructClause('ORDER BY', String.join(this.orderByClauses, ', ')),
                 this.constructClause('LIMIT', this.rowLimit),
                 this.constructClause('OFFSET', this.rowOffset),
                 this.getUsage()
@@ -631,32 +632,32 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         }
     }
 
-    public class OrderBy {
+    public class SortOrder {
         List<String> fieldNames = new List<String>();
-        Soql.SortOrder direction = Soql.SortOrder.ASCENDING;
+        Soql.SortDirection direction = Soql.SortDirection.ASCENDING;
         Soql.NullOrder nullOrder = Soql.NullOrder.NULLS_LAST;
 
-        public OrderBy(List<String> fieldNames, Soql.SortOrder direction) {
+        public SortOrder(List<String> fieldNames, Soql.SortDirection direction) {
             this.fieldNames = fieldNames;
             this.direction = direction;
         }
 
-        public OrderBy(String fieldName, Soql.SortOrder direction) {
+        public SortOrder(String fieldName, Soql.SortDirection direction) {
             this(new List<String>{ fieldName }, direction);
         }
 
-        public OrderBy(List<SObjectField> fields, Soql.SortOrder direction) {
+        public SortOrder(List<SObjectField> fields, Soql.SortDirection direction) {
             for (SObjectField field : fields) {
                 this.fieldNames?.add(field?.toString());
             }
             this.direction = direction;
         }
 
-        public OrderBy(SObjectField field, Soql.SortOrder direction) {
+        public SortOrder(SObjectField field, Soql.SortDirection direction) {
             this(new List<SObjectField>{ field }, direction);
         }
 
-        public OrderBy setNullOrder(Soql.NullOrder nullOrder) {
+        public SortOrder setNullOrder(Soql.NullOrder nullOrder) {
             this.nullOrder = nullOrder;
             return this; 
         }

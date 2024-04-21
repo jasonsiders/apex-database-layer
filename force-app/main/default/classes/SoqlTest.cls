@@ -155,7 +155,7 @@ private class SoqlTest {
 
     @IsTest 
     static void shouldSetOrderByClause() {
-        // Note: Re-work the class to support multiple OrderBy clauses
+        // Note: Re-work the class to support multiple SortOrder clauses
         Assert.fail('You still need to build this test');
     }
 
@@ -706,13 +706,13 @@ private class SoqlTest {
 
     @IsTest 
     static void shouldOrderByField() {
-        String value = new Soql.OrderBy(Account.CreatedDate, Soql.SortOrder.ASCENDING)?.toString();
+        String value = new Soql.SortOrder(Account.CreatedDate, Soql.SortDirection.ASCENDING)?.toString();
         Assert.areEqual('CreatedDate ASC NULLS LAST', value, 'Wrong value');
     }
     
     @IsTest 
     static void shouldSpecifyNullOrder() {
-        String value = new Soql.OrderBy(Account.CreatedDate, Soql.SortOrder.DESCENDING)
+        String value = new Soql.SortOrder(Account.CreatedDate, Soql.SortDirection.DESCENDING)
             ?.setNullOrder(Soql.NullOrder.NULLS_FIRST)
             ?.toString();
         Assert.areEqual('CreatedDate DESC NULLS FIRST', value, 'Wrong value');
