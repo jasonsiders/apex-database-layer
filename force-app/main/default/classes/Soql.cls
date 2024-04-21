@@ -15,17 +15,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 	public static final Operator NOT_CONTAINS = new Soql.ContainsOperator('NOT LIKE');
     static final Soql.LogicType DEFAULT_LOGIC_TYPE = Soql.LogicType.ALL_CONDITIONS;
 	static final String ID_REFERENCE = 'Id';
-
-    public static Soql newQuery(SObjectType objectType) {
-        // TODO: Use the OrgData class to return a mock instance or non-mock instance
-        return new Soql(objectType);
-    }
-
-    public static Soql newQuery(String queryString) {
-        // TODO: Use the OrgData class to return a mock instance or non-mock instance
-        return new Soql(queryString);
-    }
-
+    
     // **** MEMBER **** //
     @TestVisible
 	protected Soql(SObjectType objectType) {
@@ -100,6 +90,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
                 return relationship;
             }
         }
+        // This should only ever return null if the field isn't a lookup
         return null;
     }
 

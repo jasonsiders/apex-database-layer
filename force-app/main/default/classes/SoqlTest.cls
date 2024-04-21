@@ -483,6 +483,12 @@ private class SoqlTest {
     }
 
     @IsTest 
+    static void shouldReturnNullChildRelationshipFromNonLookupField() {
+        // Note: May end up moving this logic to a utility class; not directly related to Soql per se
+        Assert.isNull(Soql.getChildRelationshipFrom(User.FirstName), 'Non-lookup field returned a child relationship');
+    }
+
+    @IsTest 
     static void shouldGenerateSubqueryFromLookupField() {
         Test.startTest();
         String result = new Soql.Subquery(Case.AccountId)?.selecting(Case.Id)?.toString();
