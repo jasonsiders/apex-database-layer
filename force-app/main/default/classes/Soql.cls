@@ -257,7 +257,8 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
         public virtual override String toString() {
             // Return the user-defined query string if one is provided, or build a query string if not
-            return this.queryString ?? this.buildQueryString();
+            String queryString = this.queryString ?? this.buildQueryString();
+            return queryString?.trim();
         }
 
         public Soql.Builder bind(Map<String, Object> bindMap) {
@@ -575,13 +576,22 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         List<Soql.Criteria> criterion = new List<Soql.Criteria>();
         Soql.LogicType logicType = Soql.LogicType.ALL_CONDITIONS;
 
-        public ConditionalLogic addCondition(List<Soql.Criteria> criterion) {
+        public ConditionalLogic addConditions(List<Soql.Criteria> criterion) {
             this.criterion?.addAll(criterion);
             return this; 
         }
 
         public ConditionalLogic addCondition(Soql.Criteria criteria) {
-            return this.addCondition(new List<Soql.Criteria>{ criteria });
+            return this.addConditions(new List<Soql.Criteria>{ criteria });
+        }
+
+        public ConditionalLogic addCondition(String fieldName, Soql.Operator operator, Object value) {
+            Soql.Condition condition = new Soql.Condition(fieldName, operator, value); 
+            return this.addCondition(condition); 
+        }
+
+        public ConditionalLogic addCondition(SObjectField field, Soql.Operator operator, Object value) {
+            return this.addCondition(field?.toString(), operator, value); 
         }
 
         public ConditionalLogic setLogicType(Soql.LogicType logicType) {

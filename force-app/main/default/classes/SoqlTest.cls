@@ -178,22 +178,77 @@ private class SoqlTest {
 
     @IsTest 
     static void shouldSetQueryScope() {
-        Assert.fail('You still need to build this test');
+        Soql soql = (Soql) new Soql(User.SObjectType)?.usingScope(Soql.Scope.EVERYTHING)?.setRowLimit(1);
+        String expected = 'SELECT Id FROM User USING SCOPE EVERYTHING LIMIT 1';
+
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
     }
 
     @IsTest 
     static void shouldAddCriteriaToWhereClause() {
-        Assert.fail('You still need to build this test');
+        Soql soql = (Soql) new Soql(User.SObjectType)?.given(User.IsActive, Soql.EQUALS, true)?.setRowLimit(1);
+        String expected = 'SELECT Id FROM User WHERE IsActive = true LIMIT 1';
+
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
     }
 
     @IsTest 
     static void shouldAddCriteriaWithBindToWhereClause() {
-        Assert.fail('You still need to build this test');
+        Soql.Binder binder = new Soql.Binder('userId', UserInfo.getUserId());
+        Soql soql = (Soql) new Soql(User.SObjectType)?.given(User.Id, Soql.EQUALS, binder);
+        String expected = 'SELECT Id FROM User WHERE Id = :userId';
+
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
     }
 
     @IsTest 
-    static void shouldSetWhereClauseOuterLogic() {
-        Assert.fail('You still need to build this test');
+    static void shouldHandleMultipleWhereClauses() {
+        Soql soql = (Soql) new Soql(User.SObjectType)
+            ?.given(User.IsActive, Soql.EQUALS, true)
+            ?.given('Profile.Name', Soql.EQUALS, 'System Administrator')
+            ?.setRowLimit(1);
+        String expected = 'SELECT Id FROM User WHERE IsActive = true AND Profile.Name = \'System Administrator\' LIMIT 1';
+
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
+    }
+
+    @IsTest 
+    static void shouldSetWhereClauseOuterLogic() { 
+        Soql soql = (Soql) new Soql(User.SObjectType)
+            ?.given(User.IsActive, Soql.EQUALS, true)
+            ?.given('Profile.Name', Soql.EQUALS, 'System Administrator')
+            ?.setWhereLogic(Soql.LogicType.ANY_CONDITIONS)
+            ?.setRowLimit(1);
+        String expected = 'SELECT Id FROM User WHERE IsActive = true OR Profile.Name = \'System Administrator\' LIMIT 1';
+
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
+    }
+
+    @IsTest 
+    static void shouldSetNestedWhereClause() {
+        Soql.ConditionalLogic innerCondition = new Soql.ConditionalLogic()
+            ?.addCondition(User.FirstName, Soql.EQUALS, 'Jason')
+            ?.addCondition(User.LastName, Soql.EQUALS, 'Siders')
+            ?.setLogicType(Soql.LogicType.ANY_CONDITIONS);
+        Soql soql = (Soql) new Soql(User.SObjectType)
+            ?.given(User.IsActive, Soql.EQUALS, true)
+            ?.given(innerCondition)
+            ?.setRowLimit(1);
+        String expected = 'SELECT Id FROM User WHERE IsActive = true AND (FirstName = \'Jason\' OR LastName = \'Siders\') LIMIT 1';
+
+        Test.startTest();
+        SoqlTest.validateQuery(soql, expected); 
+        Test.stopTest();
     }
     
     @IsTest 
@@ -795,7 +850,7 @@ private class SoqlTest {
 
     // **** HELPER **** // 
     static Object validateQuery(Soql soql, String expected) {
-        Assert.areEqual(expected, soql?.toString(), 'Unexpected SOQL output');
+        Assert.areEqual('"' + expected + '"', '"' + soql?.toString() + '"', 'Unexpected SOQL output');
         return soql?.query(); 
     }
 
