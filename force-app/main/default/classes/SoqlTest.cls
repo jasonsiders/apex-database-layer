@@ -14,6 +14,22 @@ private class SoqlTest {
     }
 
     @IsTest 
+    static void shouldHandleCountQueryErrors() {
+        String illegalQueryString = 'abcd'; // Will throw a System.QueryException when run
+        Soql soql = (Soql) new Soql(illegalQueryString); 
+
+        Test.startTest();
+        try {
+            soql?.countQuery(); 
+            Assert.fail('Illegal query did not throw an error');
+        } catch (System.QueryException error) {
+            String msg = error?.getMessage(); 
+            Assert.isTrue(msg?.contains(illegalQueryString), 'Did not append query to the error'); 
+        }
+        Test.stopTest();
+    }
+
+    @IsTest 
     static void shouldGetQueryLocator() {
         Soql soql = new Soql(User.SObjectType);
 
@@ -22,6 +38,22 @@ private class SoqlTest {
         Test.stopTest();
 
         Assert.areEqual(soql?.toString(), locator?.getQuery(), 'QueryLocator does not match query');
+    }
+
+    @IsTest 
+    static void shouldHandleQueryLocatorErrors() {
+        String illegalQueryString = 'abcd'; // Will throw a System.QueryException when run
+        Soql soql = (Soql) new Soql(illegalQueryString); 
+
+        Test.startTest();
+        try {
+            soql?.getQueryLocator(); 
+            Assert.fail('Illegal query did not throw an error');
+        } catch (System.QueryException error) {
+            String msg = error?.getMessage(); 
+            Assert.isTrue(msg?.contains(illegalQueryString), 'Did not append query to the error'); 
+        }
+        Test.stopTest();
     }
 
     @IsTest 
@@ -50,6 +82,22 @@ private class SoqlTest {
 
         List<AggregateResult> raw = [SELECT Profile.Name, COUNT(Id) FROM User GROUP BY Profile.Name];
         Assert.areEqual(raw?.size(), results?.size(), 'Wrong # of results returned'); 
+    }
+
+    @IsTest 
+    static void shouldHandleQueryErrors() {
+        String illegalQueryString = 'abcd'; // Will throw a System.QueryException when run
+        Soql soql = (Soql) new Soql(illegalQueryString); 
+
+        Test.startTest();
+        try {
+            soql?.query(); 
+            Assert.fail('Illegal query did not throw an error');
+        } catch (System.QueryException error) {
+            String msg = error?.getMessage(); 
+            Assert.isTrue(msg?.contains(illegalQueryString), 'Did not append query to the error'); 
+        }
+        Test.stopTest();
     }
 
     @IsTest 
