@@ -69,7 +69,7 @@ private class SoqlTest {
 
     @IsTest 
     static void shouldQueryRecordsAndCastToType() {
-        Soql.Aggregation count = new Soql.Aggregation(Soql.AggregateFunction.COUNT, User.Id)?.withAlias('numRecords');
+        Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id)?.withAlias('numRecords');
         Soql soql = (Soql) new Soql(User.SObjectType)
             ?.addSelect('Profile.Name', 'profileName')
             ?.addSelect(count)
@@ -202,7 +202,7 @@ private class SoqlTest {
 
     @IsTest 
     static void shouldSelectAggregation() {
-        Soql.Aggregation count = new Soql.Aggregation(Soql.AggregateFunction.COUNT, User.Id);
+        Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id);
         Soql soql = (Soql) new Soql(User.SObjectType)?.addSelect(count);
         String expected = 'SELECT COUNT(Id) FROM User';
 
@@ -319,7 +319,7 @@ private class SoqlTest {
 
     @IsTest 
     static void shouldAddHavingClause() {
-        Soql.Aggregation count = new Soql.Aggregation(Soql.AggregateFunction.COUNT, User.Id);
+        Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id);
         Soql soql = (Soql) new Soql(User.SObjectType)
             ?.addSelect(User.ProfileId)
             ?.groupBy(User.ProfileId)
@@ -333,7 +333,7 @@ private class SoqlTest {
 
     @IsTest 
     static void shouldSupportMultipleHavingClauses() {
-        Soql.Aggregation count = new Soql.Aggregation(Soql.AggregateFunction.COUNT, User.Id);
+        Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id);
         Soql soql = (Soql) new Soql(User.SObjectType)
             ?.addSelect(User.ProfileId)
             ?.groupBy(User.ProfileId)
@@ -348,7 +348,7 @@ private class SoqlTest {
 
     @IsTest 
     static void shouldSetOuterHavingLogic() {
-        Soql.Aggregation count = new Soql.Aggregation(Soql.AggregateFunction.COUNT, User.Id);
+        Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id);
         Soql soql = (Soql) new Soql(User.SObjectType)
             ?.addSelect(User.ProfileId)
             ?.groupBy(User.ProfileId)
@@ -890,18 +890,6 @@ private class SoqlTest {
     }
 
     @IsTest 
-    static void shouldOutputAggregateCondition() {
-        Soql.Aggregation agg = new Soql.Aggregation(Soql.AggregateFunction.COUNT, Account.Id);
-        
-        Test.startTest();
-        String result = new Soql.AggregateCondition(agg, Soql.GREATER_THAN, 1)?.toString();
-        Test.stopTest();
-
-        String expected = 'COUNT(Id) > 1';
-        Assert.areEqual(expected, result, 'Unexpected condition output');
-    }
-
-    @IsTest 
     static void shouldOutputExactMatchString() {
         Soql.Operator operator = Soql.EQUALS;
         String value = 'foo';
@@ -951,19 +939,19 @@ private class SoqlTest {
 
     @IsTest 
     static void shouldCreateAggregateClause() {
-        String value = new Soql.Aggregation(Soql.AggregateFunction.COUNT, Account.Id)?.toString();
+        String value = new Soql.Aggregation(Soql.Function.COUNT, Account.Id)?.toString();
         Assert.areEqual('COUNT(Id)', value, 'Wrong toString() value');
     }
 
     @IsTest 
     static void shouldCreateAggregateClauseWithAlias() {
-        String value = new Soql.Aggregation(Soql.AggregateFunction.COUNT, Account.Id)?.withAlias('num')?.toString();
+        String value = new Soql.Aggregation(Soql.Function.COUNT, Account.Id)?.withAlias('num')?.toString();
         Assert.areEqual('COUNT(Id) num', value, 'Wrong toString() value');
     }
 
     @IsTest 
     static void shouldCreateAggregateClauseWithoutInnerField() {
-        String value = new Soql.Aggregation(Soql.AggregateFunction.COUNT)?.toString();
+        String value = new Soql.Aggregation(Soql.Function.COUNT)?.toString();
         Assert.areEqual('COUNT()', value, 'Wrong toString() value');
     }
 
