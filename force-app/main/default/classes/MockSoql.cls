@@ -1,7 +1,7 @@
 public virtual class MockSoql extends Soql {
     // Note: @IsTest classes cannot also be virtual.
     // Test-only usage is enforced via the constructors
-    System.QueryException error; 
+    Exception error; 
     List<SObject> mockResults;
 
     @TestVisible
@@ -37,13 +37,19 @@ public virtual class MockSoql extends Soql {
         }
     }
 
-    public virtual Soql withError() {
-        // Inject an Exception to be returned when the query runs
-        this.error = new System.QueryException(); 
+    public virtual Soql injectError(Exception error) {
+        // Inject the provided exception, to be thrown when the query runs
+        this.error = error;
         return this; 
     }
 
-    public virtual Soql withMockResults(List<SObject> records) {
+    public Soql injectError() {
+        // Inject an System.QueryException, to be thrown when the query runs
+        System.QueryException queryError = new System.QueryException();
+        return this.injectError(queryError);
+    }
+
+    public virtual Soql injectResults(List<SObject> records) {
         // Inject a list of mock records to return when the query runs
         this.mockResults = records;
         return this; 
