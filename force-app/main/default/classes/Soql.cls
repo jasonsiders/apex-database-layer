@@ -66,7 +66,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		return JSON.deserialize(JSON.serialize(this.query()), returnType);
 	}
 
-    private void handleQueryError(Exception error) {
+    protected void handleQueryError(Exception error) {
         // Attach the original query to the Exception for easier debugging
         String augmentedMsg = error?.getMessage() + '\nQuery: [' + this.toString() + ']';
         error?.setMessage(augmentedMsg);
