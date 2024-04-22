@@ -33,7 +33,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         try {
             // Note: A count query must not contain any fields, other than COUNT() aggregation
             // Avoid errors and simplify query construction by handling this in a temporary copy of the current query
-            Soql.Aggregation count = new Soql.Aggregation(Soql.AggregateFunction.COUNT);
+            Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT);
             Soql tempCopy = (Soql) this.clone()?.deselectAll()?.addSelect(count);
             return Database.countQueryWithBinds(tempCopy?.toString(), this.binds, this.accessLevel);
         } catch (System.QueryException error) {
@@ -44,7 +44,13 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
     public virtual Database.QueryLocator getQueryLocator() {
         try {
-            return Database.getQueryLocatorWithBinds(this.toString(), this.binds, this.accessLevel);
+            Database.QueryLocator locator = Database.getQueryLocatorWithBinds(
+                this.toString(), 
+                this.binds, 
+                this.accessLevel
+            );
+            // TODO: Change this method to use a DAO that wraps the query locator object
+            return locator; 
         } catch (System.QueryException error) {
             this.handleQueryError(error);
             throw error;
@@ -95,7 +101,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
     }
 
 	// **** ENUMS *** //
-    public enum AggregateFunction {
+    public enum Function {
         AVG,
 		COUNT,
 		COUNT_DISTINCT,
@@ -150,27 +156,27 @@ public inherited sharing virtual class Soql extends Soql.Builder {
     // **** INNER **** //
     public class Aggregation {
         String alias;
-        String fieldName;
-        AggregateFunction function;
+        String innerFieldName;
+        Function function;
 
-        public Aggregation(Soql.AggregateFunction function, String fieldName) {
+        public Aggregation(Soql.Function function, String innerFieldName) {
             this.alias = '';
-            this.fieldName = fieldName;
+            this.innerFieldName = innerFieldName;
             this.function = function;
         }
     
-        public Aggregation(Soql.AggregateFunction function, SObjectField field) {
+        public Aggregation(Soql.Function function, SObjectField field) {
             this(function, field?.toString());
         }
 
-        public Aggregation(Soql.AggregateFunction function) {
+        public Aggregation(Soql.Function function) {
             this(function, '');
         }
 
         public override String toString() {
             String formatted = String.format(
                 '{0}({1}) {2}',
-                new List<String>{ this.function?.toString(), this.fieldName, this.alias }
+                new List<String>{ this.function?.toString(), this.innerFieldName, this.alias }
             );
             return formatted?.trim();
         }
@@ -179,12 +185,6 @@ public inherited sharing virtual class Soql extends Soql.Builder {
             this.alias = alias;
             return this;
         }
-    }
-
-    public class AggregateCondition extends Soql.Condition {
-        public AggregateCondition(Soql.Aggregation agg, Soql.Operator operator, Object value) {
-			super(agg?.toString(), operator, value);
-		}
     }
 
     public class Binder {
@@ -395,14 +395,11 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         }
 
         // * HAVING *
-        public Soql.Builder addHaving(Soql.AggregateCondition aggregateCriteria) {
-            this.havingCriteria?.addCondition(aggregateCriteria);
-            return this;
-        }
-
         public Soql.Builder addHaving(Soql.Aggregation agg, Soql.Operator operator, Object value) {
             // Shorthand overload constructs the AggregateCondition for the caller
-            return this.addHaving(new Soql.AggregateCondition(agg, operator, value));
+            Soql.Condition condition = new Soql.Condition(agg?.toString(), operator, value);
+            this.havingCriteria?.addCondition(condition);
+            return this; 
         }
 
         public Soql.Builder setHavingLogic(Soql.LogicType newLogicType) {
