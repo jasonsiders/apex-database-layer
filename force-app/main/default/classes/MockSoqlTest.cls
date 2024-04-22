@@ -3,7 +3,7 @@ private class MockSoqlTest {
     @IsTest 
     static void shouldMockCountQuery() {
         List<Account> accounts = MockSoqlTest.initAccounts(NUM_ACCS);
-        Soql.Aggregation count = new Soql.Aggregation(Soql.AggregateFunction.COUNT);
+        Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT);
         MockSoql soql = (MockSoql) new MockSoql(Account.SObjectType)?.addSelect(count);
         soql?.injectResults(accounts);
 
