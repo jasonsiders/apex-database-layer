@@ -4,7 +4,7 @@ public class MockSoql extends Soql {
 
     // Note: The return type of various query methods may vary, 
     // ex., List<SObject>, List<Soql.AggregateResult>, List<WrapperObject>
-    Object mockResults;
+    List<Object> mockResults;
     Exception mockError; 
 
     @TestVisible
@@ -29,7 +29,7 @@ public class MockSoql extends Soql {
         return this.injectError(queryError);
     }
 
-    public Soql injectResults(Object mockResults) {
+    public Soql injectResults(List<Object> mockResults) {
         // Inject a list of mock objects (SObjects, Soql.AggregateResult, custom return types) 
         // to be returned when the query runs
         this.mockResults = mockResults;
