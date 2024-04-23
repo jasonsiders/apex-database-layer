@@ -42,15 +42,14 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		}
     }
 
-    public virtual Database.QueryLocator getQueryLocator() {
+    public virtual Soql.QueryLocator getQueryLocator() {
         try {
-            Database.QueryLocator locator = Database.getQueryLocatorWithBinds(
+            Database.QueryLocator cursor = Database.getQueryLocatorWithBinds(
                 this.toString(), 
                 this.binds, 
                 this.accessLevel
             );
-            // TODO: Change this method to use a DAO that wraps the query locator object
-            return locator; 
+            return new Soql.QueryLocator(cursor); 
         } catch (System.QueryException error) {
             this.handleQueryError(error);
             throw error;
@@ -656,6 +655,29 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
         public override String toString() {
             return this.token;
+        }
+    }
+
+    public virtual class QueryLocator {
+        // Decorates a Database.QueryLocator, so that it can be mocked. 
+        // These objects can't be serialized, or mocked by other means.
+        // See MockSoql.QueryLocator for the mock implementation of this object.
+        Database.QueryLocator locator;
+
+        protected QueryLocator(Database.QueryLocator locator) {
+            this.locator = locator;
+        }
+
+        public virtual Database.QueryLocator getCursor() {
+            return this.locator;
+        }
+        
+        public virtual String getQuery() {
+            return this.locator?.getQuery();
+        }
+
+        public virtual System.Iterator<SObject> iterator() {
+            return (System.Iterator<SObject>) this.locator?.iterator();
         }
     }
 
