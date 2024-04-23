@@ -169,9 +169,9 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
     // **** INNER **** //
     public virtual class AggregateResult {
-        Map<String, Object> params;
+        protected Map<String, Object> params;
 
-        public AggregateResult(Schema.AggregateResult result) {
+        private AggregateResult(Schema.AggregateResult result) {
             this.params = result?.getPopulatedFieldsAsMap();
         }
 
