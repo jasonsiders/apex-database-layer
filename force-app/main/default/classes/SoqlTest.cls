@@ -1,6 +1,37 @@
 @IsTest 
 private class SoqlTest {
     @IsTest 
+    static void shouldAggregateQuery() {
+        Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id);
+        Soql soql = (Soql) new Soql(User.SObjectType)?.addSelect(count);
+        
+        Test.startTest();
+        List<Soql.AggregateResult> results = soql?.aggregateQuery();
+        Test.stopTest();
+
+        Integer expected = Database.countQuery('SELECT COUNT() FROM User');
+        Assert.areEqual(1, results?.size(), 'Wrong # of Aggregate Results');
+        for (Soql.AggregateResult result : results) {
+            Assert.areEqual(expected, result?.get('expr0'), 'Wrong # of users');
+        }
+    }
+
+    @IsTest 
+    static void shouldHandleAggregateQueryErrors() {
+        // Calling aggregateQuery() with a non-aggregate query will yield a System.TypeException
+        Soql soql = (Soql) new Soql(User.SObjectType);
+        
+        Test.startTest();
+        try {
+            soql?.aggregateQuery();
+            Assert.fail('Illegal query did not throw an error');
+        } catch (System.TypeException error) {
+            Assert.isTrue(error?.getMessage()?.contains(soql?.toString()), 'Did not append query to error');
+        }
+        Test.stopTest();
+    }
+
+    @IsTest 
     static void shouldCountQuery() {
         Soql soql = (Soql) new Soql(User.SObjectType)?.addWhere('Profile.Name', Soql.EQUALS, 'System Administrator');
 
@@ -33,10 +64,12 @@ private class SoqlTest {
         Soql soql = new Soql(User.SObjectType);
 
         Test.startTest();
-        Database.QueryLocator locator = soql?.getQueryLocator();
+        Soql.QueryLocator locator = soql?.getQueryLocator();
         Test.stopTest();
 
-        Assert.areEqual(soql?.toString(), locator?.getQuery(), 'QueryLocator does not match query');
+        Assert.isNotNull(locator?.getCursor(), 'Did not return Database.QueryLocator cursor');
+        Assert.areEqual(soql?.toString(), locator?.getQuery(), 'Unexpected Query');
+        Assert.isNotNull(locator?.iterator(), 'Did not return iterator'); 
     }
 
     @IsTest 
@@ -68,22 +101,6 @@ private class SoqlTest {
     }
 
     @IsTest 
-    static void shouldQueryRecordsAndCastToType() {
-        Soql.Aggregation count = new Soql.Aggregation(Soql.AggregateFunction.COUNT, User.Id)?.withAlias('numRecords');
-        Soql soql = (Soql) new Soql(User.SObjectType)
-            ?.addSelect('Profile.Name', 'profileName')
-            ?.addSelect(count)
-            ?.groupBy('Profile.Name');
-
-        Test.startTest();
-        List<SampleWrapper> results = (List<SampleWrapper>) soql?.query(List<SampleWrapper>.class);
-        Test.stopTest();
-
-        List<AggregateResult> raw = [SELECT Profile.Name, COUNT(Id) FROM User GROUP BY Profile.Name];
-        Assert.areEqual(raw?.size(), results?.size(), 'Wrong # of results returned'); 
-    }
-
-    @IsTest 
     static void shouldHandleQueryErrors() {
         String illegalQueryString = 'abcd'; // Will throw a System.QueryException when run
         Soql soql = (Soql) new Soql(illegalQueryString); 
@@ -97,6 +114,22 @@ private class SoqlTest {
             Assert.isTrue(msg?.contains(illegalQueryString), 'Did not append query to the error'); 
         }
         Test.stopTest();
+    }
+
+    @IsTest 
+    static void shouldQueryRecordsAndCastToType() {
+        Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id)?.withAlias('numRecords');
+        Soql soql = (Soql) new Soql(User.SObjectType)
+            ?.addSelect('Profile.Name', 'profileName')
+            ?.addSelect(count)
+            ?.groupBy('Profile.Name');
+
+        Test.startTest();
+        List<SampleWrapper> results = (List<SampleWrapper>) soql?.query(List<SampleWrapper>.class);
+        Test.stopTest();
+
+        List<AggregateResult> raw = [SELECT Profile.Name, COUNT(Id) FROM User GROUP BY Profile.Name];
+        Assert.areEqual(raw?.size(), results?.size(), 'Wrong # of results returned'); 
     }
 
     @IsTest 
@@ -202,7 +235,7 @@ private class SoqlTest {
 
     @IsTest 
     static void shouldSelectAggregation() {
-        Soql.Aggregation count = new Soql.Aggregation(Soql.AggregateFunction.COUNT, User.Id);
+        Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id);
         Soql soql = (Soql) new Soql(User.SObjectType)?.addSelect(count);
         String expected = 'SELECT COUNT(Id) FROM User';
 
@@ -319,7 +352,7 @@ private class SoqlTest {
 
     @IsTest 
     static void shouldAddHavingClause() {
-        Soql.Aggregation count = new Soql.Aggregation(Soql.AggregateFunction.COUNT, User.Id);
+        Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id);
         Soql soql = (Soql) new Soql(User.SObjectType)
             ?.addSelect(User.ProfileId)
             ?.groupBy(User.ProfileId)
@@ -333,7 +366,7 @@ private class SoqlTest {
 
     @IsTest 
     static void shouldSupportMultipleHavingClauses() {
-        Soql.Aggregation count = new Soql.Aggregation(Soql.AggregateFunction.COUNT, User.Id);
+        Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id);
         Soql soql = (Soql) new Soql(User.SObjectType)
             ?.addSelect(User.ProfileId)
             ?.groupBy(User.ProfileId)
@@ -348,7 +381,7 @@ private class SoqlTest {
 
     @IsTest 
     static void shouldSetOuterHavingLogic() {
-        Soql.Aggregation count = new Soql.Aggregation(Soql.AggregateFunction.COUNT, User.Id);
+        Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id);
         Soql soql = (Soql) new Soql(User.SObjectType)
             ?.addSelect(User.ProfileId)
             ?.groupBy(User.ProfileId)
@@ -890,18 +923,6 @@ private class SoqlTest {
     }
 
     @IsTest 
-    static void shouldOutputAggregateCondition() {
-        Soql.Aggregation agg = new Soql.Aggregation(Soql.AggregateFunction.COUNT, Account.Id);
-        
-        Test.startTest();
-        String result = new Soql.AggregateCondition(agg, Soql.GREATER_THAN, 1)?.toString();
-        Test.stopTest();
-
-        String expected = 'COUNT(Id) > 1';
-        Assert.areEqual(expected, result, 'Unexpected condition output');
-    }
-
-    @IsTest 
     static void shouldOutputExactMatchString() {
         Soql.Operator operator = Soql.EQUALS;
         String value = 'foo';
@@ -951,19 +972,19 @@ private class SoqlTest {
 
     @IsTest 
     static void shouldCreateAggregateClause() {
-        String value = new Soql.Aggregation(Soql.AggregateFunction.COUNT, Account.Id)?.toString();
+        String value = new Soql.Aggregation(Soql.Function.COUNT, Account.Id)?.toString();
         Assert.areEqual('COUNT(Id)', value, 'Wrong toString() value');
     }
 
     @IsTest 
     static void shouldCreateAggregateClauseWithAlias() {
-        String value = new Soql.Aggregation(Soql.AggregateFunction.COUNT, Account.Id)?.withAlias('num')?.toString();
+        String value = new Soql.Aggregation(Soql.Function.COUNT, Account.Id)?.withAlias('num')?.toString();
         Assert.areEqual('COUNT(Id) num', value, 'Wrong toString() value');
     }
 
     @IsTest 
     static void shouldCreateAggregateClauseWithoutInnerField() {
-        String value = new Soql.Aggregation(Soql.AggregateFunction.COUNT)?.toString();
+        String value = new Soql.Aggregation(Soql.Function.COUNT)?.toString();
         Assert.areEqual('COUNT()', value, 'Wrong toString() value');
     }
 

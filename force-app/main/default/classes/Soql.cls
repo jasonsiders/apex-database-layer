@@ -29,23 +29,46 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         this.setQueryString(queryString);
     }
 
+    public virtual List<Soql.AggregateResult> aggregateQuery() {
+        try {
+            // Call this method for aggregate queries, when not casting to a specific Type.
+            // Note: Since the Schema.AggregateResult class cannot be mocked via traditional means,
+            // this method returns a decorator object. See the "AggregateResult" inner class.
+            List<Soql.AggregateResult> wrappers = new List<Soql.AggregateResult>();
+            List<Schema.AggregateResult> aggResults = (List<Schema.AggregateResult>) this.query();
+            for (Schema.AggregateResult aggResult : aggResults) {
+                Soql.AggregateResult wrapper = new Soql.AggregateResult(aggResult);
+                wrappers?.add(wrapper);
+            }
+            return wrappers;
+        } catch (Exception error) {
+            this.handleQueryError(error);
+            throw error;
+        }
+    }
+
     public virtual Integer countQuery() {
         try {
             // Note: A count query must not contain any fields, other than COUNT() aggregation
             // Avoid errors and simplify query construction by handling this in a temporary copy of the current query
-            Soql.Aggregation count = new Soql.Aggregation(Soql.AggregateFunction.COUNT);
+            Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT);
             Soql tempCopy = (Soql) this.clone()?.deselectAll()?.addSelect(count);
             return Database.countQueryWithBinds(tempCopy?.toString(), this.binds, this.accessLevel);
-        } catch (System.QueryException error) {
+        } catch (Exception error) {
 			this.handleQueryError(error);
             throw error;
 		}
     }
 
-    public virtual Database.QueryLocator getQueryLocator() {
+    public virtual Soql.QueryLocator getQueryLocator() {
         try {
-            return Database.getQueryLocatorWithBinds(this.toString(), this.binds, this.accessLevel);
-        } catch (System.QueryException error) {
+            Database.QueryLocator cursor = Database.getQueryLocatorWithBinds(
+                this.toString(), 
+                this.binds, 
+                this.accessLevel
+            );
+            return new Soql.QueryLocator(cursor); 
+        } catch (Exception error) {
             this.handleQueryError(error);
             throw error;
         }
@@ -54,19 +77,19 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 	public virtual List<SObject> query() {
 		try {
 			return Database.queryWithBinds(this.toString(), this.binds, this.accessLevel);
-		} catch (System.QueryException error) {
+		} catch (Exception error) {
 			this.handleQueryError(error);
             throw error;
 		}
 	}
 
-	public virtual Object query(Type returnType) {
+    public virtual Object query(Type returnType) {
 		// Return the query results as an instance of the returnType
 		// Mostly useful for returning Aggregate Query results as a wrapper type
-		return JSON.deserialize(JSON.serialize(this.query()), returnType);
+        return JSON.deserialize(JSON.serialize(this.query()), returnType);
 	}
 
-    private void handleQueryError(Exception error) {
+    protected void handleQueryError(Exception error) {
         // Attach the original query to the Exception for easier debugging
         String augmentedMsg = error?.getMessage() + '\nQuery: [' + this.toString() + ']';
         error?.setMessage(augmentedMsg);
@@ -95,7 +118,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
     }
 
 	// **** ENUMS *** //
-    public enum AggregateFunction {
+    public enum Function {
         AVG,
 		COUNT,
 		COUNT_DISTINCT,
@@ -148,29 +171,41 @@ public inherited sharing virtual class Soql extends Soql.Builder {
     }
 
     // **** INNER **** //
+    public virtual class AggregateResult {
+        protected Map<String, Object> params;
+
+        protected AggregateResult(Schema.AggregateResult result) {
+            this.params = result?.getPopulatedFieldsAsMap() ?? new Map<String, Object>();
+        }
+
+        public Object get(String key) {
+            return this.params?.get(key);
+        }
+    }
+    
     public class Aggregation {
         String alias;
-        String fieldName;
-        AggregateFunction function;
+        String innerFieldName;
+        Function function;
 
-        public Aggregation(Soql.AggregateFunction function, String fieldName) {
+        public Aggregation(Soql.Function function, String innerFieldName) {
             this.alias = '';
-            this.fieldName = fieldName;
+            this.innerFieldName = innerFieldName;
             this.function = function;
         }
     
-        public Aggregation(Soql.AggregateFunction function, SObjectField field) {
+        public Aggregation(Soql.Function function, SObjectField field) {
             this(function, field?.toString());
         }
 
-        public Aggregation(Soql.AggregateFunction function) {
+        public Aggregation(Soql.Function function) {
             this(function, '');
         }
 
         public override String toString() {
             String formatted = String.format(
                 '{0}({1}) {2}',
-                new List<String>{ this.function?.toString(), this.fieldName, this.alias }
+                new List<String>{ this.function?.toString(), this.innerFieldName, this.alias }
             );
             return formatted?.trim();
         }
@@ -179,12 +214,6 @@ public inherited sharing virtual class Soql extends Soql.Builder {
             this.alias = alias;
             return this;
         }
-    }
-
-    public class AggregateCondition extends Soql.Condition {
-        public AggregateCondition(Soql.Aggregation agg, Soql.Operator operator, Object value) {
-			super(agg?.toString(), operator, value);
-		}
     }
 
     public class Binder {
@@ -284,6 +313,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
             this.groupByClauses = new List<String>();
             this.havingCriteria = new Soql.ConditionalLogic();
             this.orderByClauses = new List<String>();
+            this.queryString = null;
             this.selectClauses = new Set<String>{ ID_REFERENCE };
             this.whereCriteria = new Soql.ConditionalLogic();
             return this;
@@ -395,14 +425,11 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         }
 
         // * HAVING *
-        public Soql.Builder addHaving(Soql.AggregateCondition aggregateCriteria) {
-            this.havingCriteria?.addCondition(aggregateCriteria);
-            return this;
-        }
-
         public Soql.Builder addHaving(Soql.Aggregation agg, Soql.Operator operator, Object value) {
             // Shorthand overload constructs the AggregateCondition for the caller
-            return this.addHaving(new Soql.AggregateCondition(agg, operator, value));
+            Soql.Condition condition = new Soql.Condition(agg?.toString(), operator, value);
+            this.havingCriteria?.addCondition(condition);
+            return this; 
         }
 
         public Soql.Builder setHavingLogic(Soql.LogicType newLogicType) {
@@ -658,6 +685,29 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
         public override String toString() {
             return this.token;
+        }
+    }
+
+    public virtual class QueryLocator {
+        // Decorates a Database.QueryLocator, so that it can be mocked. 
+        // These objects can't be serialized, or mocked by other means.
+        // See MockSoql.QueryLocator for the mock implementation of this object.
+        Database.QueryLocator locator;
+
+        protected QueryLocator(Database.QueryLocator locator) {
+            this.locator = locator;
+        }
+
+        public virtual Database.QueryLocator getCursor() {
+            return this.locator;
+        }
+        
+        public virtual String getQuery() {
+            return this.locator?.getQuery();
+        }
+
+        public virtual System.Iterator<SObject> iterator() {
+            return (System.Iterator<SObject>) this.locator?.iterator();
         }
     }
 
