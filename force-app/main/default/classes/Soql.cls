@@ -284,6 +284,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
             this.groupByClauses = new List<String>();
             this.havingCriteria = new Soql.ConditionalLogic();
             this.orderByClauses = new List<String>();
+            this.queryString = null;
             this.selectClauses = new Set<String>{ ID_REFERENCE };
             this.whereCriteria = new Soql.ConditionalLogic();
             return this;
