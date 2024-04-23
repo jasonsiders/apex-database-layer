@@ -31,6 +31,9 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
     public virtual List<Soql.AggregateResult> aggregateQuery() {
         try {
+            // Call this method for aggregate queries, when not casting to a specific Type.
+            // Note: Since the Schema.AggregateResult class cannot be mocked via traditional means,
+            // this method returns a decorator object. See the "AggregateResult" inner class.
             List<Soql.AggregateResult> wrappers = new List<Soql.AggregateResult>();
             List<Schema.AggregateResult> aggResults = (List<Schema.AggregateResult>) this.query();
             for (Schema.AggregateResult aggResult : aggResults) {
