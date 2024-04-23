@@ -41,7 +41,7 @@ private class MockSoqlTest {
         Test.stopTest();
 
         Assert.areEqual(soql?.toString(), locator?.getQuery(), 'Wrong query returned');
-        Iterator<SObject> iterator = locator?.iterator();
+        System.Iterator<SObject> iterator = locator?.iterator();
         for (Integer i = 0; i < NUM_ACCS; i++) {
             if (i == NUM_ACCS) {
                 Assert.isFalse(iterator?.hasNext(), i + '/' + NUM_ACCS + ': Iterator should not hasNext()');
