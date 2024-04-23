@@ -37,11 +37,11 @@ private class MockSoqlTest {
         soql?.injectResults(accounts);
         
         Test.startTest();
-        Database.QueryLocator locator = soql?.getQueryLocator();
+        Soql.QueryLocator locator = soql?.getQueryLocator();
         Test.stopTest();
 
         Assert.areEqual(soql?.toString(), locator?.getQuery(), 'Wrong query returned');
-        Database.QueryLocatorIterator iterator = locator?.iterator();
+        Iterator<SObject> iterator = locator?.iterator();
         for (Integer i = 0; i < NUM_ACCS; i++) {
             if (i == NUM_ACCS) {
                 Assert.isFalse(iterator?.hasNext(), i + '/' + NUM_ACCS + ': Iterator should not hasNext()');

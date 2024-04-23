@@ -33,10 +33,12 @@ private class SoqlTest {
         Soql soql = new Soql(User.SObjectType);
 
         Test.startTest();
-        Database.QueryLocator locator = soql?.getQueryLocator();
+        Soql.QueryLocator locator = soql?.getQueryLocator();
         Test.stopTest();
 
-        Assert.areEqual(soql?.toString(), locator?.getQuery(), 'QueryLocator does not match query');
+        Assert.isNotNull(locator?.getCursor(), 'Did not return Database.QueryLocator cursor');
+        Assert.areEqual(soql?.toString(), locator?.getQuery(), 'Unexpected Query');
+        Assert.isNotNull(locator?.iterator(), 'Did not return iterator'); 
     }
 
     @IsTest 
