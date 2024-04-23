@@ -1,7 +1,11 @@
 @IsTest
 public class MockSoql extends Soql {
-    Exception error; 
-    List<SObject> mockResults;
+    static final String AGGREGATE_KEY_PREFIX = 'expr';
+
+    // Note: The return type of various query methods may vary, 
+    // ex., List<SObject>, List<Soql.AggregateResult>, List<WrapperObject>
+    Object mockResults;
+    Exception mockError; 
 
     @TestVisible
     private MockSoql(SObjectType objectType) {
@@ -15,7 +19,7 @@ public class MockSoql extends Soql {
 
     public Soql injectError(Exception error) {
         // Inject the provided exception, to be thrown when the query runs
-        this.error = error;
+        this.mockError = error;
         return this; 
     }
     
@@ -25,13 +29,24 @@ public class MockSoql extends Soql {
         return this.injectError(queryError);
     }
 
-    public Soql injectResults(List<SObject> records) {
-        // Inject a list of mock records to return when the query runs
-        this.mockResults = records;
+    public Soql injectResults(Object mockResults) {
+        // Inject a list of mock objects (SObjects, Soql.AggregateResult, custom return types) 
+        // to be returned when the query runs
+        this.mockResults = mockResults;
         return this; 
     }
 
     // **** OVERRIDES **** // 
+    public override List<Soql.AggregateResult> aggregateQuery() {
+        try {
+            this.throwIfHasInjectedException();
+            return (List<Soql.AggregateResult>) this.mockResults ?? new List<Soql.AggregateResult>();
+        } catch (Exception error) {
+            this.handleQueryError(error);
+            throw error;
+        }
+    }
+    
     public override Integer countQuery() {
         return this.query()?.size();
     }
@@ -41,19 +56,59 @@ public class MockSoql extends Soql {
     }
 
     public override List<SObject> query() {
-        try {
-            if (this.error != null) {
-                throw error;
-            } else {
-                return this.mockResults ?? new List<SObject>();
-            }
-        } catch (System.QueryException error) {
+        try {  
+            this.throwIfHasInjectedException();
+            return (List<SObject>) this.mockResults ?? new List<SObject>();
+        } catch (Exception error) {
             this.handleQueryError(error);
             throw error; 
         }
     }
 
+    public override Object query(Type returnType) {
+        try {  
+            this.throwIfHasInjectedException();
+            return JSON.deserialize(JSON.serialize(this.mockResults), returnType);
+        } catch (Exception error) {
+            this.handleQueryError(error);
+            throw error; 
+        }
+    }
+
+    private void throwIfHasInjectedException() {
+        if (this.mockError != null) {
+            throw this.mockError;
+        } 
+    }
+
     // **** PRIVATE **** //
+    public class AggregateResult extends Soql.AggregateResult {
+        Integer numUnaliasedKeys = 0; 
+
+        public AggregateResult() {
+            super(null);
+        }
+
+        public AggregateResult addParameter(String key, Object value) {
+            this.params?.put(key, value);
+            this.incrementAliasedKeyCount(key);
+            return this;
+        }
+
+        public AggregateResult addParameter(Object value) {
+            // If a key is not given, assign one using the default aggregate key prefix
+            String key = AGGREGATE_KEY_PREFIX + this.numUnaliasedKeys;
+            return this.addParameter(key, value);
+        }
+
+        private void incrementAliasedKeyCount(String key) {
+            // If the key is unaliased, increment the counter. Else, do nothing
+            if (key?.startsWith(AGGREGATE_KEY_PREFIX) == true) {
+                this.numUnaliasedKeys++;
+            }
+        }
+    }
+
     public class QueryLocator extends Soql.QueryLocator {
         // Note: This mock implementation has one big shortcoming.
         // Because the underlying Database.QueryLocator object cannot be mocked, 
