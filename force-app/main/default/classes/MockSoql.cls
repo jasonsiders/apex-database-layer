@@ -75,12 +75,12 @@ public class MockSoql extends Soql {
             return this.query; 
         }
 
-        public override Iterator<SObject> iterator() {
+        public override System.Iterator<SObject> iterator() {
             return new MockSoql.QueryLocatorIterator(this.records);
         }
     }
 
-    public class QueryLocatorIterator implements Iterator<SObject> {
+    public class QueryLocatorIterator implements System.Iterator<SObject> {
         // This custom iterator mirrors the Database.QueryLocatorIterator,
         // which is really just an Iterator<SObject> under the hood
         Integer index = 0;
