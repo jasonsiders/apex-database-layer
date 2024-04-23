@@ -29,6 +29,21 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         this.setQueryString(queryString);
     }
 
+    public virtual List<Soql.AggregateResult> aggregateQuery() {
+        try {
+            List<Soql.AggregateResult> wrappers = new List<Soql.AggregateResult>();
+            List<Schema.AggregateResult> aggResults = (List<Schema.AggregateResult>) this.query();
+            for (Schema.AggregateResult aggResult : aggResults) {
+                Soql.AggregateResult wrapper = new Soql.AggregateResult(aggResult);
+                wrappers?.add(wrapper);
+            }
+            return wrappers;
+        } catch (Exception error) {
+            this.handleQueryError(error);
+            throw error;
+        }
+    }
+
     public virtual Integer countQuery() {
         try {
             // Note: A count query must not contain any fields, other than COUNT() aggregation
@@ -36,7 +51,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
             Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT);
             Soql tempCopy = (Soql) this.clone()?.deselectAll()?.addSelect(count);
             return Database.countQueryWithBinds(tempCopy?.toString(), this.binds, this.accessLevel);
-        } catch (System.QueryException error) {
+        } catch (Exception error) {
 			this.handleQueryError(error);
             throw error;
 		}
@@ -50,7 +65,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
                 this.accessLevel
             );
             return new Soql.QueryLocator(cursor); 
-        } catch (System.QueryException error) {
+        } catch (Exception error) {
             this.handleQueryError(error);
             throw error;
         }
@@ -59,16 +74,16 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 	public virtual List<SObject> query() {
 		try {
 			return Database.queryWithBinds(this.toString(), this.binds, this.accessLevel);
-		} catch (System.QueryException error) {
+		} catch (Exception error) {
 			this.handleQueryError(error);
             throw error;
 		}
 	}
 
-	public virtual Object query(Type returnType) {
+    public virtual Object query(Type returnType) {
 		// Return the query results as an instance of the returnType
 		// Mostly useful for returning Aggregate Query results as a wrapper type
-		return JSON.deserialize(JSON.serialize(this.query()), returnType);
+        return JSON.deserialize(JSON.serialize(this.query()), returnType);
 	}
 
     protected void handleQueryError(Exception error) {
@@ -153,6 +168,18 @@ public inherited sharing virtual class Soql extends Soql.Builder {
     }
 
     // **** INNER **** //
+    public virtual class AggregateResult {
+        Map<String, Object> params;
+
+        public AggregateResult(Schema.AggregateResult result) {
+            this.params = result?.getPopulatedFieldsAsMap();
+        }
+
+        public Object get(String key) {
+            return this.params?.get(key);
+        }
+    }
+    
     public class Aggregation {
         String alias;
         String innerFieldName;

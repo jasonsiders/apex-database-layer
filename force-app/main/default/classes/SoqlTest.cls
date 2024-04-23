@@ -1,6 +1,37 @@
 @IsTest 
 private class SoqlTest {
     @IsTest 
+    static void shouldAggregateQuery() {
+        Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id);
+        Soql soql = (Soql) new Soql(User.SObjectType)?.addSelect(count);
+        
+        Test.startTest();
+        List<Soql.AggregateResult> results = soql?.aggregateQuery();
+        Test.stopTest();
+
+        Integer expected = Database.countQuery('SELECT COUNT() FROM User');
+        Assert.areEqual(1, results?.size(), 'Wrong # of Aggregate Results');
+        for (Soql.AggregateResult result : results) {
+            Assert.areEqual(expected, result?.get('expr0'), 'Wrong # of users');
+        }
+    }
+
+    @IsTest 
+    static void shouldHandleAggregateQueryErrors() {
+        // Calling aggregateQuery() with a non-aggregate query will yield a System.TypeException
+        Soql soql = (Soql) new Soql(User.SObjectType);
+        
+        Test.startTest();
+        try {
+            soql?.aggregateQuery();
+            Assert.fail('Illegal query did not throw an error');
+        } catch (System.TypeException error) {
+            Assert.isTrue(error?.getMessage()?.contains(soql?.toString()), 'Did not append query to error');
+        }
+        Test.stopTest();
+    }
+
+    @IsTest 
     static void shouldCountQuery() {
         Soql soql = (Soql) new Soql(User.SObjectType)?.addWhere('Profile.Name', Soql.EQUALS, 'System Administrator');
 
@@ -70,22 +101,6 @@ private class SoqlTest {
     }
 
     @IsTest 
-    static void shouldQueryRecordsAndCastToType() {
-        Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id)?.withAlias('numRecords');
-        Soql soql = (Soql) new Soql(User.SObjectType)
-            ?.addSelect('Profile.Name', 'profileName')
-            ?.addSelect(count)
-            ?.groupBy('Profile.Name');
-
-        Test.startTest();
-        List<SampleWrapper> results = (List<SampleWrapper>) soql?.query(List<SampleWrapper>.class);
-        Test.stopTest();
-
-        List<AggregateResult> raw = [SELECT Profile.Name, COUNT(Id) FROM User GROUP BY Profile.Name];
-        Assert.areEqual(raw?.size(), results?.size(), 'Wrong # of results returned'); 
-    }
-
-    @IsTest 
     static void shouldHandleQueryErrors() {
         String illegalQueryString = 'abcd'; // Will throw a System.QueryException when run
         Soql soql = (Soql) new Soql(illegalQueryString); 
@@ -99,6 +114,22 @@ private class SoqlTest {
             Assert.isTrue(msg?.contains(illegalQueryString), 'Did not append query to the error'); 
         }
         Test.stopTest();
+    }
+
+    @IsTest 
+    static void shouldQueryRecordsAndCastToType() {
+        Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id)?.withAlias('numRecords');
+        Soql soql = (Soql) new Soql(User.SObjectType)
+            ?.addSelect('Profile.Name', 'profileName')
+            ?.addSelect(count)
+            ?.groupBy('Profile.Name');
+
+        Test.startTest();
+        List<SampleWrapper> results = (List<SampleWrapper>) soql?.query(List<SampleWrapper>.class);
+        Test.stopTest();
+
+        List<AggregateResult> raw = [SELECT Profile.Name, COUNT(Id) FROM User GROUP BY Profile.Name];
+        Assert.areEqual(raw?.size(), results?.size(), 'Wrong # of results returned'); 
     }
 
     @IsTest 
