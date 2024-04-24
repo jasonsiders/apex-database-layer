@@ -6,7 +6,8 @@ public with sharing virtual class Dml {
     protected Database.DmlOptions dmlOptions;
     protected SObjectField externalIdField;
 
-    public Dml() {
+    @TestVisible
+    protected Dml() {
         this.reset();
     }
 
