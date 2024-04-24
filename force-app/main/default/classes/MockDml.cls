@@ -1,12 +1,19 @@
 public virtual class MockDml extends Dml {
     // **** STATIC **** //
-    public static MockDml.History Converted = new MockDml.History(Dml.Operation.DO_CONVERT);
-    public static MockDml.History Deleted = new MockDml.History(Dml.Operation.DO_DELETE);
-    public static MockDml.History Inserted = new MockDml.History(Dml.Operation.DO_INSERT);
-    public static MockDml.History Published = new MockDml.History(Dml.Operation.DO_PUBLISH);
-    public static MockDml.History Undeleted = new MockDml.History(Dml.Operation.DO_UNDELETE);
-    public static MockDml.History Updated = new MockDml.History(Dml.Operation.DO_UPDATE);
-    public static MockDml.History Upserted = new MockDml.History(Dml.Operation.DO_UPSERT);
+    @TestVisible 
+    static MockDml.History Converted = new MockDml.History();
+    @TestVisible 
+    static MockDml.History Deleted = new MockDml.History();
+    @TestVisible 
+    static MockDml.History Inserted = new MockDml.History();
+    @TestVisible 
+    static MockDml.History Published = new MockDml.History();
+    @TestVisible 
+    static MockDml.History Undeleted = new MockDml.History();
+    @TestVisible 
+    static MockDml.History Updated = new MockDml.History();
+    @TestVisible 
+    static MockDml.History Upserted = new MockDml.History();
 
     // **** MEMBER **** // 
     Exception errorToThrow; 
@@ -25,6 +32,19 @@ public virtual class MockDml extends Dml {
         return this.injectException(new System.DmlException());
     }
 
+    public virtual MockDml resetHistory() {
+        // Reset all of the history objects to their original state
+        // Useful for isolating the actual changes being tested, ie., after test setup
+        MockDml.Converted?.resetHistory();
+        MockDml.Deleted?.resetHistory();
+        MockDml.Inserted?.resetHistory();
+        MockDml.Published?.resetHistory();
+        MockDml.Undeleted?.resetHistory();
+        MockDml.Updated?.resetHistory();
+        MockDml.Upserted?.resetHistory();
+        return this;
+    }
+
     // **** OVERRIDES **** //
     public virtual override List<Database.LeadConvertResult> doConvert(List<Database.LeadConvert> leadsToConvert) {
         // TODO!
@@ -37,13 +57,22 @@ public virtual class MockDml extends Dml {
     }
 
     public virtual override List<Database.DeleteResult> doDeleteAsync(List<SObject> records) {
-        // TODO!
-        return new List<Database.DeleteResult>(); 
+        // For mocking purposes, process the same as a normal delete operation, but w/callbacks
+        List<Database.DeleteResult> results = this.doDelete(records);
+        for (Database.DeleteResult result : results) {
+            this.getDeleteCallback()?.processDelete(result);
+        }
+        return results;
     }
 
     public virtual override List<Database.DeleteResult> doDeleteImmediate(List<SObject> records) {
-        // TODO!
-        return new List<Database.DeleteResult>(); 
+        // For mocking purposes, process the same as a normal delete operation
+        return this.doDelete(records);
+    }
+
+    public virtual override List<Database.DeleteResult> doHardDelete(List<Id> recordIds) {
+        // For mocking purposes, process the same as a normal delete operation
+        return this.doDelete(recordIds);
     }
 
     public virtual override List<Database.SaveResult> doInsert(List<SObject> records) {
@@ -52,13 +81,17 @@ public virtual class MockDml extends Dml {
     }
 
     public virtual override List<Database.SaveResult> doInsertAsync(List<SObject> records) {
-        // TODO!
-        return new List<Database.SaveResult>(); 
+        // For mocking purposes, process the same as a normal insert operation, but w/callbacks
+        List<Database.SaveResult> results = this.doInsert(records);
+        for (Database.SaveResult result : results) {
+            this.getSaveCallback()?.processSave(result);
+        }
+        return results; 
     }
 
     public virtual override List<Database.SaveResult> doInsertImmediate(List<SObject> records) {
-        // TODO!
-        return new List<Database.SaveResult>(); 
+        // For mocking purposes, process the same as a normal insert operation
+        return this.doInsert(records);
     }
 
     public virtual override List<Database.SaveResult> doPublish(List<SObject> events) {
@@ -77,13 +110,17 @@ public virtual class MockDml extends Dml {
     }
     
     public virtual override List<Database.SaveResult> doUpdateAsync(List<SObject> records) {
-        // TODO!
-        return new List<Database.SaveResult>(); 
+        // For mocking purposes, process the same as a normal update operation, but w/callbacks
+        List<Database.SaveResult> results = this.doUpdate(records);
+        for (Database.SaveResult result : results) {
+            this.getSaveCallback()?.processSave(result);
+        }
+        return results; 
     }
 
     public virtual override List<Database.SaveResult> doUpdateImmediate(List<SObject> records) {
-        // TODO!
-        return new List<Database.SaveResult>(); 
+        // For mocking purposes, process the same as a normal update operation
+        return this.doUpdate(records);
     }
 
     public virtual override List<Database.UpsertResult> doUpsert(List<SObject> records) {
@@ -94,37 +131,12 @@ public virtual class MockDml extends Dml {
     // **** INNER **** // 
     @TestVisible
     private class History {
-        Dml.Operation operation; 
         Map<Id, SObject> records;
         Map<SObjectType, Set<Id>> recordIdsBySObjectType;
 
-        private History(Dml.Operation operation) {
-            this.operation = operation;
+        private History() {
             this.records = new Map<Id, SObject>();
             this.recordIdsBySObjectType = new Map<SObjectType, Set<Id>>();
-        }
-
-        public History add(List<SObject> records) {
-            // Add the record to the id map
-            this.records?.putAll(new Map<Id, SObject>(records));
-            // Add the record to the sobjecttype map
-            if (records?.getSObjectType() != null) {
-                // No need to manually iterate through all the records!
-                SObjectType objectType = records?.getSObjectType();
-                Set<Id> matchingIds = this.recordIdsBySObjectType?.get(objectType) ?? new Set<Id>();
-                Set<Id> newRecordIds = new Map<Id, SObject>(records)?.keySet();
-                matchingIds?.addAll(newRecordIds);
-                this.recordIdsBySObjectType?.put(objectType, matchingIds);
-            } else {
-                // Manually iterate through each record and check its SObjectType
-                for (SObject record : records) {
-                    SObjectType objectType = record?.getSObjectType();
-                    Set<Id> matchingIds = this.recordIdsBySObjectType?.get(objectType) ?? new Set<Id>();
-                    matchingIds?.add(record?.Id);
-                    this.recordIdsBySObjectType?.put(objectType, matchingIds);
-                }
-            }
-            return this; 
         }
 
         public List<SObject> getAll() {
@@ -149,7 +161,7 @@ public virtual class MockDml extends Dml {
             return this.getRecord(record?.Id);
         }
 
-        public History reset() {
+        public History resetHistory() {
             this.records?.clear();
             this.recordIdsBySObjectType?.clear();
             return this; 
@@ -161,6 +173,31 @@ public virtual class MockDml extends Dml {
 
         public Boolean wasProcessed(SObject record) {
             return this.wasProcessed(record?.Id);
+        }
+
+        private History registerDml(List<SObject> records) {
+            // * This method registers that the records were operated on, 
+            // and store them in a way that's easy for callers to get & perform asserts
+            // * Add the record to the id map
+            this.records?.putAll(new Map<Id, SObject>(records));
+            // * Add the record to the sobjecttype map
+            if (records?.getSObjectType() != null) {
+                // No need to manually iterate through all the records!
+                SObjectType objectType = records?.getSObjectType();
+                Set<Id> matchingIds = this.recordIdsBySObjectType?.get(objectType) ?? new Set<Id>();
+                Set<Id> newRecordIds = new Map<Id, SObject>(records)?.keySet();
+                matchingIds?.addAll(newRecordIds);
+                this.recordIdsBySObjectType?.put(objectType, matchingIds);
+            } else {
+                // Manually iterate through each record and check its SObjectType
+                for (SObject record : records) {
+                    SObjectType objectType = record?.getSObjectType();
+                    Set<Id> matchingIds = this.recordIdsBySObjectType?.get(objectType) ?? new Set<Id>();
+                    matchingIds?.add(record?.Id);
+                    this.recordIdsBySObjectType?.put(objectType, matchingIds);
+                }
+            }
+            return this; 
         }
     }
 }

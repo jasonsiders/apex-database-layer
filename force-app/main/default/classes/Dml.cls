@@ -28,6 +28,12 @@ public with sharing virtual class Dml {
         return Database.deleteImmediate(records, this.getAccessLevel());
     }
 
+    public virtual List<Database.DeleteResult> doHardDelete(List<Id> recordIds) {
+        List<Database.DeleteResult> results = this.doDelete(recordIds);
+        Database.emptyRecycleBin(recordIds);
+        return results;
+    }
+
     public virtual List<Database.SaveResult> doInsert(List<SObject> records) {
         return Database.insert(records, this.getDmlOptions(), this.getAccessLevel());
     }
@@ -147,12 +153,6 @@ public with sharing virtual class Dml {
 
     public Database.DeleteResult doDeleteImmediate(SObject record) {
         return this.doDeleteImmediate(record?.Id);
-    }
-
-    public List<Database.DeleteResult> doHardDelete(List<Id> recordIds) {
-        List<Database.DeleteResult> results = this.doDelete(recordIds);
-        Database.emptyRecycleBin(recordIds);
-        return results;
     }
 
     public Database.DeleteResult doHardDelete(Id recordId) {
