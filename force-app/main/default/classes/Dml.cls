@@ -201,7 +201,7 @@ public with sharing virtual class Dml {
     }
 
     public Database.SaveResult doUpdateAsync(SObject record) {
-        return this.doUpdateImmediate(new List<SObject>{ record })[0];
+        return this.doUpdateAsync(new List<SObject>{ record })[0];
     }
 
     public Database.SaveResult doUpdateImmediate(SObject record) {
