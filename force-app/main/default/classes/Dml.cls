@@ -312,6 +312,7 @@ public with sharing virtual class Dml {
     }
     
     public enum Operation {
+        DO_CONVERT,
         DO_DELETE,
         DO_DELETE_ASYNC,
 		DO_DELETE_IMMEDIATE,
