@@ -294,6 +294,7 @@ public with sharing virtual class Dml {
     }
 
     // **** INNER **** //
+    @TestVisible
     private class DefaultDeleteCallback extends DataSource.AsyncDeleteCallback {
         // If a callback isn't defined, doDeleteAsync() will use this class to gracefully handle callbacks
         public override void processDelete(Database.DeleteResult result) {
@@ -301,6 +302,7 @@ public with sharing virtual class Dml {
         }
     }
 
+    @TestVisible
     private class DefaultSaveCallback extends DataSource.AsyncSaveCallback {
         // If a callback isn't defined, doInsertAsync() & doUpdateAsync will use this class to gracefully handle callbacks
         public override void processSave(Database.SaveResult result) {
