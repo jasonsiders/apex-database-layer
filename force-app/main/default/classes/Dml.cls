@@ -6,7 +6,7 @@ public with sharing virtual class Dml {
     protected SObjectField externalIdField;
 
     public Dml() {
-        this.toDefaultState();
+        this.reset();
     }
 
     // **** VIRTUAL **** //
@@ -53,7 +53,7 @@ public with sharing virtual class Dml {
         return Database.undelete(recordIds, this.getAllOrNone(), this.getAccessLevel());
     }
 
-    // **** PUBLIC **** //
+    // **** OVERLOADS **** //
     public Object doDml(Operation operation, SObject record) {
         List<SObject> records = new List<SObject>{ record };
         return this.doDml(operation, records)[0];
@@ -97,6 +97,7 @@ public with sharing virtual class Dml {
         return this.doUndelete(recordIds);
     }
 
+    // **** BUILDER **** //
     public System.AccessLevel getAccessLevel() {
         return this.accessLevel ?? DEFAULT_ACCESS_LEVEL;
     }
@@ -104,6 +105,13 @@ public with sharing virtual class Dml {
     public Boolean getAllOrNone() {
         // Default to `true` to mirror the behavior of Database.Dml methods 
         return this.getDmlOptions()?.OptAllOrNone ?? true;
+    }
+
+    public Dml reset() {
+        this.setAccessLevel(DEFAULT_ACCESS_LEVEL);
+        this.setDmlOptions(new Database.DmlOptions());
+        this.setExternalIdField(null);
+        return this;
     }
 
     public Database.DmlOptions getDmlOptions() {
@@ -131,13 +139,6 @@ public with sharing virtual class Dml {
 
     public Dml setExternalIdField(SObjectField field) {
         this.externalIdField = field;
-        return this;
-    }
-
-    public Dml toDefaultState() {
-        this.setAccessLevel(DEFAULT_ACCESS_LEVEL);
-        this.setDmlOptions(new Database.DmlOptions());
-        this.setExternalIdField(null);
         return this;
     }
 
