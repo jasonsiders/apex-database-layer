@@ -1,5 +1,6 @@
 public virtual class MockDml extends Dml {
-    // Note: @IsTest classes cannot be virtual/abstract
+    // Note: Normally this would be marked as @IsTest, but these classes cannot be virtual/abstract.
+    // To prevent accidental production use, its constructor and any statics are private/@TestVisible
 
     // **** STATIC **** //
     @TestVisible 
@@ -49,8 +50,8 @@ public virtual class MockDml extends Dml {
     }
 
     // **** MEMBER **** // 
-    Exception errorToThrow; 
-    Set<Id> failedRecordIds = new Set<Id>();
+    protected Exception errorToThrow; 
+    protected Set<Id> failedRecordIds = new Set<Id>();
 
     @TestVisible
     protected MockDml() {
