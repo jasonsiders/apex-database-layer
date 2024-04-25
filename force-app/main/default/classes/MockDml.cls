@@ -177,7 +177,6 @@ public virtual class MockDml extends Dml {
         super.reset();
         this.errorToThrow = null;
         this.failedRecordIds?.clear();
-        this.resetHistory();
         return this;
     }
 
@@ -209,16 +208,20 @@ public virtual class MockDml extends Dml {
         return this.injectFailedRecords(record?.Id);
     }
 
-    public MockDml resetHistory() {
+    public MockDml eraseHistory() {
         // Reset all of the history objects to their original state
         // Useful for isolating the actual changes being tested, ie., after test setup
-        MockDml.Converted?.resetHistory();
-        MockDml.Deleted?.resetHistory();
-        MockDml.Inserted?.resetHistory();
-        MockDml.Published?.resetHistory();
-        MockDml.Undeleted?.resetHistory();
-        MockDml.Updated?.resetHistory();
-        MockDml.Upserted?.resetHistory();
+        for (MockDml.History history : new List<MockDml.History>{
+            MockDml.Converted,
+            MockDml.Deleted,
+            MockDml.Inserted,
+            MockDml.Published,
+            MockDml.Undeleted,
+            MockDml.Updated,
+            MockDml.Upserted
+        }) {
+            history?.eraseHistory();
+        }
         return this;
     }
 
@@ -295,7 +298,7 @@ public virtual class MockDml extends Dml {
             return this.getRecord(record?.Id);
         }
 
-        public History resetHistory() {
+        public History eraseHistory() {
             this.recordsById?.clear();
             this.recordIdsBySObjectType?.clear();
             return this; 
