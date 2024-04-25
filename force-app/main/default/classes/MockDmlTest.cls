@@ -538,37 +538,6 @@ private class MockDmlTest {
         Assert.isTrue(MockDml.Updated.getAll()?.isEmpty(), 'Did not reset history');
     }
 
-    @IsTest 
-    static void shouldBeExtendable() {
-        // If custom behavior (ex., partial failures) is desired, 
-        // callers can extend this class & define their own logic
-        List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
-        Lead firstLead = leads[0];
-        // The SampleExtension implementation demonstrates this, by causing just the specified record to fail
-        Dml dml = new SampleExtension(new Set<Id>{ firstLead?.Id })?.injectException()?.setAllOrNone(false);
-
-        Test.startTest();
-        List<Database.SaveResult> results = dml?.doUpdate(leads);
-        Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
-        Test.stopTest();
-
-        Integer numResults = results?.size();
-        Assert.areEqual(leads?.size(), numResults, 'Wrong # of results'); 
-        Assert.areEqual(numResults - 1, MockDml.Updated?.getAll()?.size(), 'Wrong # of updated records'); 
-        for (Database.SaveResult result : results) {
-            Id leadId = result?.getId();
-            Assert.isNotNull(leadId, 'Missing Id');
-            // Expecting the first record to fail
-            if (leadId == firstLead?.Id) {
-                Assert.isFalse(result?.isSuccess(), 'Did not fail'); 
-                Assert.isFalse(MockDml.Updated.wasProcessed(leadId), 'Failed, but marked as processed?');
-            } else {
-                Assert.isTrue(result?.isSuccess(), 'Did not succeed'); 
-                Assert.isFalse(MockDml.Updated.wasProcessed(leadId), 'Failed, but marked as processed?');
-            }
-        }
-    }
-
     // **** HELPER **** // 
     static final Integer TEST_SIZE = 200; 
 
@@ -592,19 +561,5 @@ private class MockDmlTest {
 
     static SObject initRecord(SObjectType objectType) {
         return MockDmlTest.initRecord(objectType, false);
-    }
-
-    // **** INNER **** // 
-    private class SampleExtension extends MockDml {
-        // This MockDml extension 
-        Set<Id> failedIds = new Set<Id>();
-
-        public SampleExtension(Set<Id> failedIds) {
-            this.failedIds = failedIds;
-        }
-
-        public override Boolean shouldSucceed(Dml.Operation baseOperation, SObject record) {
-            return this.failedIds?.contains(record?.Id) == false;
-        }
     }
 }

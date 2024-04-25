@@ -60,13 +60,24 @@ public virtual class MockDml extends Dml {
 
     // **** OVERRIDES **** //
     public virtual override List<Database.LeadConvertResult> doConvert(List<Database.LeadConvert> leadsToConvert) {
-        // TODO!
-        return new List<Database.LeadConvertResult>(); 
+        List<Database.LeadConvertResult> results = new List<Database.LeadConvertResult>();
+        /* TODO!
+        for (Id recordId : recordIds) {
+            SObject record = recordId?.getSObjectType()?.newSObject(recordId);
+            Database.DeleteResult result = this.generateMockResult(MockDml.Deleted, record)?.toDeleteResult();
+            results?.add(result);
+        } */
+        return results;
     }
 
     public virtual override List<Database.DeleteResult> doDelete(List<Id> recordIds) {
-        // TODO!
-        return new List<Database.DeleteResult>(); 
+        List<Database.DeleteResult> results = new List<Database.DeleteResult>();
+        for (Id recordId : recordIds) {
+            SObject record = recordId?.getSObjectType()?.newSObject(recordId);
+            Database.DeleteResult result = this.generateMockResult(MockDml.Deleted, record)?.toDeleteResult();
+            results?.add(result);
+        }
+        return results;
     }
 
     public virtual override List<Database.DeleteResult> doDeleteAsync(List<SObject> records) {
@@ -89,8 +100,12 @@ public virtual class MockDml extends Dml {
     }
 
     public virtual override List<Database.SaveResult> doInsert(List<SObject> records) {
-        // TODO!
-        return new List<Database.SaveResult>(); 
+        List<Database.SaveResult> results = new List<Database.SaveResult>();
+        for (SObject record : records) {
+            Database.SaveResult result = this.generateMockResult(MockDml.Inserted, record)?.toSaveResult();
+            results?.add(result);
+        }
+        return results;
     }
 
     public virtual override List<Database.SaveResult> doInsertAsync(List<SObject> records) {
@@ -108,18 +123,31 @@ public virtual class MockDml extends Dml {
     }
 
     public virtual override List<Database.SaveResult> doPublish(List<SObject> events) {
-        // TODO!
-        return new List<Database.SaveResult>(); 
+        List<Database.SaveResult> results = new List<Database.SaveResult>();
+        for (SObject event : events) {
+            Database.SaveResult result = this.generateMockResult(MockDml.Published, event)?.toSaveResult();
+            results?.add(result);
+        }
+        return results;
     }
     
     public virtual override List<Database.UndeleteResult> doUndelete(List<Id> recordIds) {
-        // TODO!
-        return new List<Database.UndeleteResult>(); 
+        List<Database.UndeleteResult> results = new List<Database.UndeleteResult>();
+        for (Id recordId : recordIds) {
+            SObject record = recordId?.getSObjectType()?.newSObject(recordId);
+            Database.UndeleteResult result = this.generateMockResult(MockDml.Undeleted, record)?.toUndeleteResult();
+            results?.add(result);
+        }
+        return results;
     }
 
     public virtual override List<Database.SaveResult> doUpdate(List<SObject> records) {
-        // TODO!
-        return new List<Database.SaveResult>(); 
+        List<Database.SaveResult> results = new List<Database.SaveResult>();
+        for (SObject record : records) {
+            Database.SaveResult result = this.generateMockResult(MockDml.Updated, record)?.toSaveResult();
+            results?.add(result);
+        }
+        return results;
     }
     
     public virtual override List<Database.SaveResult> doUpdateAsync(List<SObject> records) {
@@ -139,7 +167,7 @@ public virtual class MockDml extends Dml {
     public virtual override List<Database.UpsertResult> doUpsert(List<SObject> records) {
         List<Database.UpsertResult> results = new List<Database.UpsertResult>();
         for (SObject record : records) {
-            Database.UpsertResult result = this.generateDmlResult(MockDml.Upserted, record)?.toUpsertResult();
+            Database.UpsertResult result = this.generateMockResult(MockDml.Upserted, record)?.toUpsertResult();
             results?.add(result);
         }
         return results;
@@ -194,15 +222,24 @@ public virtual class MockDml extends Dml {
         return this;
     }
 
-    protected MockDml.Result generateDmlResult(MockDml.History history, SObject record) {
+    protected MockDml.Result generateMockResult(MockDml.History history, SObject record) {
         Dml.Operation operation = history?.getOperation();
         if (this.shouldSucceed(operation, record)) {
             // Simulate successful dml
+            this.setRecordId(record);
             history?.registerDml(record);
             return new MockDml.Result(record);
         } else {
             // Simulate an "allOrNone=false" silent failure
             return new MockDml.Result(record)?.addErrors();
+        }
+    }
+
+    protected void setRecordId(SObject record) {
+        // If the record does not have an Id value, generate a mock one
+        if (record?.Id == null) {
+            SObjectType objectType = record?.getSObjectType();
+            record.Id = SObjectUtils.generateMockId(objectType);
         }
     }
 
