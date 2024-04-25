@@ -517,7 +517,7 @@ private class MockDmlTest {
         // Pre-test asserts
         Assert.isFalse(MockDml.Updated.wasProcessed(testLead), 'Pre-test: Should not have been processed');
         Assert.isNull(MockDml.Updated.getRecord(testLead), 'Pre-test: Lead was processed');
-        Assert.areEqual(0, MockDml.Updated.getRecords(Lead.SObjectType), 'Pre-test: Wrong # of lead updates');
+        Assert.areEqual(0, MockDml.Updated.getRecords(Lead.SObjectType)?.size(), 'Pre-test: Wrong # of lead updates');
         Assert.areEqual(0, MockDml.Updated.getAll()?.size(), 'Pre-test: Wrong # of total updates');
         testLead.Company = 'Credicor Inc.';
 
@@ -530,12 +530,43 @@ private class MockDmlTest {
         Lead updatedLead = (Lead) MockDml.Updated.getRecord(testLead);
         Assert.isNotNull(updatedLead, 'Lead was not updated'); 
         Assert.areEqual(testLead?.Company, updatedLead?.Company, 'Did not update Company');
-        Assert.areEqual(1, MockDml.Updated.getRecords(Lead.SObjectType), 'Wrong # of lead updates');
+        Assert.areEqual(1, MockDml.Updated.getRecords(Lead.SObjectType)?.size(), 'Wrong # of lead updates');
         Assert.areEqual(1, MockDml.Updated.getAll()?.size(), 'Wrong # of total updates');
 
         // Callers can also call this method to erase the current history:
         new MockDml()?.resetHistory();
         Assert.isTrue(MockDml.Updated.getAll()?.isEmpty(), 'Did not reset history');
+    }
+
+    @IsTest 
+    static void shouldBeExtendable() {
+        // If custom behavior (ex., partial failures) is desired, 
+        // callers can extend this class & define their own logic
+        List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
+        // The SampleExtension implementation demonstrates this, by causing just the first record to fail
+        Dml dml = new SampleExtension()?.injectException()?.setAllOrNone(false);
+
+        Test.startTest();
+        List<Database.SaveResult> results = dml?.doUpdate(leads);
+        Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
+        Test.stopTest();
+
+        Integer numResults = results?.size();
+        Assert.areEqual(leads?.size(), numResults, 'Wrong # of results'); 
+        Assert.areEqual(numResults - 1, MockDml.Updated?.getAll()?.size(), 'Wrong # of updated records'); 
+        for (Integer i = 0; i < numResults; i++) {
+            Database.SaveResult result = results[i];
+            Id leadId = result?.getId();
+            Assert.isNotNull(leadId, 'Missing Id');
+            // Expecting the first record to fail
+            if (i == 0) {
+                Assert.isFalse(result?.isSuccess(), 'Did not fail'); 
+                Assert.isFalse(MockDml.Updated.wasProcessed(leadId), 'Failed, but marked as processed?');
+            } else {
+                Assert.isTrue(result?.isSuccess(), 'Did not succeed'); 
+                Assert.isFalse(MockDml.Updated.wasProcessed(leadId), 'Failed, but marked as processed?');
+            }
+        }
     }
 
     // **** HELPER **** // 
@@ -561,5 +592,26 @@ private class MockDmlTest {
 
     static SObject initRecord(SObjectType objectType) {
         return MockDmlTest.initRecord(objectType, false);
+    }
+
+    // **** INNER **** // 
+    private class SampleExtension extends MockDml {
+        public override List<Database.SaveResult> doUpdate(List<SObject> records) {
+            // Process the delete as normal
+            List<Database.SaveResult> saveResults = super?.doUpdate(records);
+            if (saveResults?.isEmpty() == false) {
+                // Convert the save results into a writable version
+                List<MockDmlResult> mockResults = MockDmlResult.toMockResults(saveResults);
+                // Modify the first result so that it is unsuccessful
+                MockDmlResult firstResult = mockResults[0]?.addErrors();
+                // Remove the first record from the History object -- as if it actually failed
+                Id firstRecordId = firstResult?.id;
+                MockDml.Updated.unregisterDml(firstRecordId);
+                // Convert the mock records back to their original form, and return with the above changes
+                return MockDmlResult.toSaveResults(mockResults);
+            } else {
+                return saveResults;
+            }
+        }
     }
 }

@@ -131,30 +131,30 @@ public virtual class MockDml extends Dml {
     // **** INNER **** // 
     @TestVisible
     private class History {
-        Map<Id, SObject> records;
+        Map<Id, SObject> recordsById;
         Map<SObjectType, Set<Id>> recordIdsBySObjectType;
 
         private History() {
-            this.records = new Map<Id, SObject>();
+            this.recordsById = new Map<Id, SObject>();
             this.recordIdsBySObjectType = new Map<SObjectType, Set<Id>>();
         }
 
         public List<SObject> getAll() {
-            return this.records?.values();
+            return this.recordsById?.values();
         }
 
         public List<SObject> getRecords(SObjectType objectType) {
             List<SObject> results = new List<SObject>();
             Set<Id> recordIds = this.recordIdsBySObjectType?.get(objectType) ?? new Set<Id>();
             for (Id recordId : recordIds) {
-                SObject record = this.records?.get(recordId);
+                SObject record = this.recordsById?.get(recordId);
                 results?.add(record);
             }
             return results;
         }
 
         public SObject getRecord(Id recordId) {
-            return this.records?.get(recordId);
+            return this.recordsById?.get(recordId);
         }
         
         public SObject getRecord(SObject record) {
@@ -162,24 +162,47 @@ public virtual class MockDml extends Dml {
         }
 
         public History resetHistory() {
-            this.records?.clear();
+            this.recordsById?.clear();
             this.recordIdsBySObjectType?.clear();
             return this; 
         }
 
         public Boolean wasProcessed(Id recordId) {
-            return this.records?.containsKey(recordId) == true; 
+            return this.recordsById?.containsKey(recordId) == true; 
         }
 
         public Boolean wasProcessed(SObject record) {
             return this.wasProcessed(record?.Id);
         }
 
+        public History unregisterDml(Set<Id> recordIds) {
+            // Remove record(s) from the dml history maps
+            for (Id recordId : recordIds) {
+                SObjectType objectType = recordId?.getSObjectType();
+                this.recordIdsBySObjectType?.get(objectType)?.remove(recordId);
+                this.recordsById?.remove(recordId);
+            }
+            return this;
+        }
+
+        public History unregisterDml(Id recordId) {
+            return this.unregisterDml(new Set<Id>{ recordId });
+        }
+
+        public History unregisterDml(List<SObject> records) {
+            Set<Id> recordIds = new Map<Id, SObject>(records)?.keySet();
+            return this.unregisterDml(recordIds);
+        }
+
+        public History unregisterDml(SObject record) {
+            return this.unregisterDml(record?.Id);
+        }
+
         private History registerDml(List<SObject> records) {
             // * This method registers that the records were operated on, 
             // and store them in a way that's easy for callers to get & perform asserts
             // * Add the record to the id map
-            this.records?.putAll(new Map<Id, SObject>(records));
+            this.recordsById?.putAll(new Map<Id, SObject>(records));
             // * Add the record to the sobjecttype map
             if (records?.getSObjectType() != null) {
                 // No need to manually iterate through all the records!
