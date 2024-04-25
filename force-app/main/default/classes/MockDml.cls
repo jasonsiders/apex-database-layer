@@ -3,19 +3,19 @@ public virtual class MockDml extends Dml {
 
     // **** STATIC **** //
     @TestVisible 
-    static MockDml.History Converted = new MockDml.History();
+    static MockDml.History Converted = new MockDml.History(Dml.Operation.DO_CONVERT);
     @TestVisible 
-    static MockDml.History Deleted = new MockDml.History();
+    static MockDml.History Deleted = new MockDml.History(Dml.Operation.DO_DELETE);
     @TestVisible 
-    static MockDml.History Inserted = new MockDml.History();
+    static MockDml.History Inserted = new MockDml.History(Dml.Operation.DO_INSERT);
     @TestVisible 
-    static MockDml.History Published = new MockDml.History();
+    static MockDml.History Published = new MockDml.History(Dml.Operation.DO_PUBLISH);
     @TestVisible 
-    static MockDml.History Undeleted = new MockDml.History();
+    static MockDml.History Undeleted = new MockDml.History(Dml.Operation.DO_UNDELETE);
     @TestVisible 
-    static MockDml.History Updated = new MockDml.History();
+    static MockDml.History Updated = new MockDml.History(Dml.Operation.DO_UPDATE);
     @TestVisible 
-    static MockDml.History Upserted = new MockDml.History();
+    static MockDml.History Upserted = new MockDml.History(Dml.Operation.DO_UPSERT);
 
     // **** STATIC **** // 
     @TestVisible
@@ -50,32 +50,11 @@ public virtual class MockDml extends Dml {
 
     // **** MEMBER **** // 
     Exception errorToThrow; 
+    Set<Id> failedRecordIds = new Set<Id>();
 
     @TestVisible
     protected MockDml() {
         super();
-    }
-
-    public MockDml injectException(Exception error) {
-        this.errorToThrow = error; 
-        return this; 
-    }
-    
-    public MockDml injectException() {
-        return this.injectException(new System.DmlException());
-    }
-
-    public MockDml resetHistory() {
-        // Reset all of the history objects to their original state
-        // Useful for isolating the actual changes being tested, ie., after test setup
-        MockDml.Converted?.resetHistory();
-        MockDml.Deleted?.resetHistory();
-        MockDml.Inserted?.resetHistory();
-        MockDml.Published?.resetHistory();
-        MockDml.Undeleted?.resetHistory();
-        MockDml.Updated?.resetHistory();
-        MockDml.Upserted?.resetHistory();
-        return this;
     }
 
     // **** OVERRIDES **** //
@@ -157,23 +136,107 @@ public virtual class MockDml extends Dml {
     }
 
     public virtual override List<Database.UpsertResult> doUpsert(List<SObject> records) {
-        // TODO!
-        return new List<Database.UpsertResult>(); 
+        List<Database.UpsertResult> results = new List<Database.UpsertResult>();
+        for (SObject record : records) {
+            Database.UpsertResult result = this.generateDmlResult(MockDml.Upserted, record)?.toUpsertResult();
+            results?.add(result);
+        }
+        return results;
+    }
+
+    public virtual override Dml reset() {
+        super.reset();
+        this.errorToThrow = null;
+        this.failedRecordIds?.clear();
+        this.resetHistory();
+        return this;
+    }
+
+    // **** PUBLIC **** // 
+    public MockDml injectException(Exception error) {
+        this.errorToThrow = error; 
+        return this; 
+    }
+    
+    public MockDml injectException() {
+        return this.injectException(new System.DmlException());
+    }
+
+    public MockDml injectFailedRecords(Set<Id> recordIds) {
+        this.failedRecordIds?.addAll(recordIds);
+        return this;
+    }
+
+    public MockDml injectFailedRecords(Id recordId) {
+        return this.injectFailedRecords(new Set<Id>{ recordId });
+    }
+
+    public MockDml injectFailedRecords(List<SObject> records) {
+        Set<Id> recordIds = new Map<Id, SObject>(records)?.keySet();
+        return this.injectFailedRecords(recordIds);
+    }
+
+    public MockDml injectFailedRecords(SObject record) {
+        return this.injectFailedRecords(record?.Id);
+    }
+
+    public MockDml resetHistory() {
+        // Reset all of the history objects to their original state
+        // Useful for isolating the actual changes being tested, ie., after test setup
+        MockDml.Converted?.resetHistory();
+        MockDml.Deleted?.resetHistory();
+        MockDml.Inserted?.resetHistory();
+        MockDml.Published?.resetHistory();
+        MockDml.Undeleted?.resetHistory();
+        MockDml.Updated?.resetHistory();
+        MockDml.Upserted?.resetHistory();
+        return this;
+    }
+
+    protected MockDml.Result generateDmlResult(MockDml.History history, SObject record) {
+        Dml.Operation operation = history?.getOperation();
+        if (this.shouldSucceed(operation, record)) {
+            // Simulate successful dml
+            history?.registerDml(record);
+            return new MockDml.Result(record);
+        } else {
+            // Simulate an "allOrNone=false" silent failure
+            return new MockDml.Result(record)?.addErrors();
+        }
+    }
+
+    protected virtual Boolean shouldSucceed(Dml.Operation baseOperation, SObject record) {
+        // Indicates if the DML result should be marked as isSuccess=true.
+        Boolean hasError = (this.errorToThrow != null || this.failedRecordIds?.contains(record?.Id) == true);
+        if (this.getAllOrNone() == true && hasError == true) {
+            // w/AllOrNone behavior, an exception should be thrown
+            throw this.errorToThrow ?? new System.DmlException();
+        } else {
+            // Return true, unless an exception was added via injectException(),
+            // or if the record was marked as failed via injectFailedRecords().
+            return hasError == false;
+        }
     }
 
     // **** INNER **** // 
     @TestVisible
     private class History {
+        Dml.Operation operation;
         Map<Id, SObject> recordsById;
         Map<SObjectType, Set<Id>> recordIdsBySObjectType;
 
-        private History() {
+        private History(Dml.Operation operation) {
+            this.operation = operation;
             this.recordsById = new Map<Id, SObject>();
             this.recordIdsBySObjectType = new Map<SObjectType, Set<Id>>();
         }
 
         public List<SObject> getAll() {
             return this.recordsById?.values();
+        }
+
+        public Dml.Operation getOperation() {
+            return this.operation;
         }
 
         public List<SObject> getRecords(SObjectType objectType) {
@@ -231,92 +294,53 @@ public virtual class MockDml extends Dml {
             return this.unregisterDml(record?.Id);
         }
 
-        private History registerDml(List<SObject> records) {
-            // * This method registers that the records were operated on, 
+        private History registerDml(SObject record) {
+            // This method registers that the records were operated on, 
             // and store them in a way that's easy for callers to get & perform asserts
-            // * Add the record to the id map
-            this.recordsById?.putAll(new Map<Id, SObject>(records));
-            // * Add the record to the sobjecttype map
-            if (records?.getSObjectType() != null) {
-                // No need to manually iterate through all the records!
-                SObjectType objectType = records?.getSObjectType();
-                Set<Id> matchingIds = this.recordIdsBySObjectType?.get(objectType) ?? new Set<Id>();
-                Set<Id> newRecordIds = new Map<Id, SObject>(records)?.keySet();
-                matchingIds?.addAll(newRecordIds);
-                this.recordIdsBySObjectType?.put(objectType, matchingIds);
-            } else {
-                // Manually iterate through each record and check its SObjectType
-                for (SObject record : records) {
-                    SObjectType objectType = record?.getSObjectType();
-                    Set<Id> matchingIds = this.recordIdsBySObjectType?.get(objectType) ?? new Set<Id>();
-                    matchingIds?.add(record?.Id);
-                    this.recordIdsBySObjectType?.put(objectType, matchingIds);
-                }
-            }
-            return this; 
+            SObjectType objectType = record?.getSObjectType();
+            Set<Id> matchingIds = this.recordIdsBySObjectType?.get(objectType) ?? new Set<Id>();
+            matchingIds?.add(record?.Id);
+            this.recordIdsBySObjectType?.put(objectType, matchingIds);
+            this.recordsById?.put(record?.Id, record);
+            return this;
         }
     }
 
     @TestVisible
-    private abstract class AbstractResult {
-        public List<MockDml.Error> errors { get; set; }
-        public Boolean success { get; set; }
-
-        public AbstractResult addErrors(List<MockDml.Error> errors) {
-            this.errors?.addAll(errors);
-            this.success = false;
-            return this; 
-        }
-    
-        public AbstractResult addErrors(MockDml.Error error) {
-            return this.addErrors(new List<MockDml.Error>{ error });
-        }
-    
-        public AbstractResult addErrors() {
-            return this.addErrors(new MockDml.Error());
-        }
-
-        protected Object toDatabaseResult(Type resultType) {
-            // Returns a Database.Save/Upsert/Delete/UndeleteResult object
-            // Unfortunately, these do not share a common interface
-            return JSON.deserialize(JSON.serialize(this), resultType);
-        }
-    }
-
-    @TestVisible 
-    private class ConvertResult extends AbstractResult {
-        public Id accountId { get; set; }
-        public Id contactId { get; set; }
-        public Id leadId { get; set; }
-        public Id opportunityId { get; set; } 
-        public Id personAccountId { get; set; }
+    private class ConvertResult extends Result {
+        public Id accountId { get; private set; }
+        public Id contactId { get; private set; }
+        public Id leadId { get; private set; }
+        public Id opportunityId { get; private set; } 
+        public Id personAccountId { get; private set; }
 
         public ConvertResult(Id recordId) {
-            // Creates a record that simulates a successful LeadConvert operation
-            this.errors = new List<MockDml.Error>();
-            this.leadId = leadId;
-            this.success = true;
+            super(recordId);
         }
-    
+
         public ConvertResult(Lead lead) {
             this(lead?.Id);
         }
-    
-        public ConvertResult(Id leadId, List<MockDml.Error> errors) {
-            this(leadId);
-            this.addErrors(errors);
+
+        public override Id getId() {
+            return this.leadId;
         }
-    
-        public ConvertResult(Id leadId, MockDml.Error error) {
-            this(leadId, new List<MockDml.Error>{ error });
+
+        public override void setId(Id recordId) {
+            SObjectType objectType = recordId?.getSObjectType();
+            if (objectType == Account.SObjectType) {
+                this.accountId = recordId;
+            } else if (objectType == Contact.SObjectType) {
+                this.contactId = recordId;
+            } else if (objectType == Lead.SObjectType) {
+                this.leadId = recordId;
+            } else if (objectType == Opportunity.SObjectType) {
+                this.opportunityId = recordId;
+            }
         }
-    
-        public ConvertResult(Lead lead, List<MockDml.Error> errors) {
-            this(lead?.Id, errors);
-        }
-    
-        public ConvertResult(Lead lead, MockDml.Error error) {
-            this(lead, new List<MockDml.Error>{error});
+
+        public void setPersonAccountId(Id accountId) {
+            this.personAccountId = accountId;
         }
 
         public Database.LeadConvertResult toConvertResult() {
@@ -325,35 +349,46 @@ public virtual class MockDml extends Dml {
     }
 
     @TestVisible
-    private class Result extends AbstractResult {
-        public Id id { get; set; }
+    private virtual class Result {
+        public List<MockDml.Error> errors { get; private set; }
+        public Id id { get; private set; }
+        public Boolean success { get; private set; }
     
         public Result(Id recordId) {
             // Creates a record that simulates a successful DML operation
             this.errors = new List<MockDml.Error>();
-            this.id = recordId;
-            this.success = true;
+            this.setId(recordId);
+            this.setIsSuccess(true);
         }
     
         public Result(SObject record) {
             this(record?.Id);
         }
-    
-        public Result(Id recordId, List<MockDml.Error> errors) {
-            this(recordId);
-            this.addErrors(errors);
+
+        public Result addErrors(List<MockDml.Error> errors) {
+            this.errors?.addAll(errors);
+            this.setIsSuccess(false);
+            return this; 
         }
     
-        public Result(Id recordId, MockDml.Error error) {
-            this(recordId, new List<MockDml.Error>{ error });
+        public Result addErrors(MockDml.Error error) {
+            return this.addErrors(new List<MockDml.Error>{ error });
         }
     
-        public Result(SObject record, List<MockDml.Error> errors) {
-            this(record?.Id, errors);
+        public Result addErrors() {
+            return this.addErrors(new MockDml.Error());
         }
-    
-        public Result(SObject record, MockDml.Error error) {
-            this(record, new List<MockDml.Error>{error});
+
+        public List<MockDml.Error> getErrors() {
+            return this.errors;
+        }
+
+        public virtual Id getId() {
+            return this.id; 
+        }
+
+        public Boolean isSuccess() {
+            return this.success;
         }
     
         public Database.SaveResult toSaveResult() {
@@ -371,6 +406,20 @@ public virtual class MockDml extends Dml {
         public Database.UndeleteResult toUndeleteResult() {
             return (Database.UndeleteResult) this.toDatabaseResult(Database.UndeleteResult.class);
         }
+
+        public virtual void setId(Id recordId) {
+            this.id = recordId;
+        }
+
+        public void setIsSuccess(Boolean value) {
+            this.success = value;
+        }
+
+        protected Object toDatabaseResult(Type resultType) {
+            // Returns a Database.Save/Upsert/Delete/UndeleteResult object
+            // Unfortunately, these do not share a common interface
+            return JSON.deserialize(JSON.serialize(this), resultType);
+        }
     }
 
     @TestVisible
@@ -386,7 +435,7 @@ public virtual class MockDml extends Dml {
 
         public Error() {
             // Initialize an error with a default message & status code
-            this('Test Error', 'TEST_ERROR');
+            this('Mock Error', 'MOCK_ERROR');
         }
 
         public Database.Error toDatabaseError() {

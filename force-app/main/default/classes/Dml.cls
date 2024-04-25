@@ -74,6 +74,13 @@ public with sharing virtual class Dml {
             : Database.upsert(records, this.getAllOrNone(), this.getAccessLevel());
     }
 
+    public virtual Dml reset() {
+        this.setAccessLevel(DEFAULT_ACCESS_LEVEL);
+        this.setDmlOptions(new Database.DmlOptions());
+        this.setExternalIdField(null);
+        return this;
+    }
+
     // **** PUBLIC **** //
     public List<Object> doDml(Operation operation, List<SObject> records) {
         if (operation == Dml.Operation.DO_DELETE) {
@@ -241,13 +248,6 @@ public with sharing virtual class Dml {
 
     public SObjectField getExternalIdField() {
         return this.externalIdField;
-    }
-
-    public Dml reset() {
-        this.setAccessLevel(DEFAULT_ACCESS_LEVEL);
-        this.setDmlOptions(new Database.DmlOptions());
-        this.setExternalIdField(null);
-        return this;
     }
 
     public Dml setAccessLevel(System.AccessLevel level) {

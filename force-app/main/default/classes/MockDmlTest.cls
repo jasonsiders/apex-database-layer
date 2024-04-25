@@ -543,8 +543,9 @@ private class MockDmlTest {
         // If custom behavior (ex., partial failures) is desired, 
         // callers can extend this class & define their own logic
         List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
-        // The SampleExtension implementation demonstrates this, by causing just the first record to fail
-        Dml dml = new SampleExtension()?.injectException()?.setAllOrNone(false);
+        Lead firstLead = leads[0];
+        // The SampleExtension implementation demonstrates this, by causing just the specified record to fail
+        Dml dml = new SampleExtension(new Set<Id>{ firstLead?.Id })?.injectException()?.setAllOrNone(false);
 
         Test.startTest();
         List<Database.SaveResult> results = dml?.doUpdate(leads);
@@ -554,12 +555,11 @@ private class MockDmlTest {
         Integer numResults = results?.size();
         Assert.areEqual(leads?.size(), numResults, 'Wrong # of results'); 
         Assert.areEqual(numResults - 1, MockDml.Updated?.getAll()?.size(), 'Wrong # of updated records'); 
-        for (Integer i = 0; i < numResults; i++) {
-            Database.SaveResult result = results[i];
+        for (Database.SaveResult result : results) {
             Id leadId = result?.getId();
             Assert.isNotNull(leadId, 'Missing Id');
             // Expecting the first record to fail
-            if (i == 0) {
+            if (leadId == firstLead?.Id) {
                 Assert.isFalse(result?.isSuccess(), 'Did not fail'); 
                 Assert.isFalse(MockDml.Updated.wasProcessed(leadId), 'Failed, but marked as processed?');
             } else {
@@ -596,22 +596,15 @@ private class MockDmlTest {
 
     // **** INNER **** // 
     private class SampleExtension extends MockDml {
-        public override List<Database.SaveResult> doUpdate(List<SObject> records) {
-            // Process the delete as normal
-            List<Database.SaveResult> saveResults = super?.doUpdate(records);
-            if (saveResults?.isEmpty() == false) {
-                // Convert the save results into a writable version
-                List<MockDml.Result> mockResults = MockDml.Result.toMockResults(saveResults);
-                // Modify the first result so that it is unsuccessful
-                MockDml.Result firstResult = (MockDml.Result) mockResults[0]?.addErrors();
-                // Remove the first record from the History object -- as if it actually failed
-                Id firstRecordId = firstResult?.id;
-                MockDml.Updated.unregisterDml(firstRecordId);
-                // Convert the mock records back to their original form, and return with the above changes
-                return MockDml.Result.toSaveResults(mockResults);
-            } else {
-                return saveResults;
-            }
+        // This MockDml extension 
+        Set<Id> failedIds = new Set<Id>();
+
+        public SampleExtension(Set<Id> failedIds) {
+            this.failedIds = failedIds;
+        }
+
+        public override Boolean shouldSucceed(Dml.Operation baseOperation, SObject record) {
+            return this.failedIds?.contains(record?.Id) == false;
         }
     }
 }
