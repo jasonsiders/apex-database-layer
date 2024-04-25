@@ -601,14 +601,14 @@ private class MockDmlTest {
             List<Database.SaveResult> saveResults = super?.doUpdate(records);
             if (saveResults?.isEmpty() == false) {
                 // Convert the save results into a writable version
-                List<MockDmlResult> mockResults = MockDmlResult.toMockResults(saveResults);
+                List<MockDml.Result> mockResults = MockDml.Result.toMockResults(saveResults);
                 // Modify the first result so that it is unsuccessful
-                MockDmlResult firstResult = mockResults[0]?.addErrors();
+                MockDml.Result firstResult = (MockDml.Result) mockResults[0]?.addErrors();
                 // Remove the first record from the History object -- as if it actually failed
                 Id firstRecordId = firstResult?.id;
                 MockDml.Updated.unregisterDml(firstRecordId);
                 // Convert the mock records back to their original form, and return with the above changes
-                return MockDmlResult.toSaveResults(mockResults);
+                return MockDml.Result.toSaveResults(mockResults);
             } else {
                 return saveResults;
             }

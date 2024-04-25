@@ -1,4 +1,6 @@
 public virtual class MockDml extends Dml {
+    // Note: @IsTest classes cannot be virtual/abstract
+
     // **** STATIC **** //
     @TestVisible 
     static MockDml.History Converted = new MockDml.History();
@@ -15,6 +17,37 @@ public virtual class MockDml extends Dml {
     @TestVisible 
     static MockDml.History Upserted = new MockDml.History();
 
+    // **** STATIC **** // 
+    @TestVisible
+    static List<Database.LeadConvertResult> toConvertResults(List<MockDml.Result> mockResults) {
+        return (List<Database.LeadConvertResult>) JSON.deserialize(JSON.serialize(mockResults), List<Database.LeadConvertResult>.class);
+    }
+
+    @TestVisible
+    static List<Database.DeleteResult> toDeleteResults(List<MockDml.Result> mockResults) {
+        return (List<Database.DeleteResult>) JSON.deserialize(JSON.serialize(mockResults), List<Database.DeleteResult>.class);
+    }
+
+    @TestVisible
+    static List<MockDml.Result> toMockResults(List<Object> databaseResults) {
+        return (List<MockDml.Result>) JSON.deserialize(JSON.serialize(databaseResults), List<MockDml.Result>.class);
+    }
+
+    @TestVisible
+    static List<Database.SaveResult> toSaveResults(List<MockDml.Result> mockResults) {
+        return (List<Database.SaveResult>) JSON.deserialize(JSON.serialize(mockResults), List<Database.SaveResult>.class);
+    }
+
+    @TestVisible
+    static List<Database.UpsertResult> toUpsertResults(List<MockDml.Result> mockResults) {
+        return (List<Database.UpsertResult>) JSON.deserialize(JSON.serialize(mockResults), List<Database.UpsertResult>.class);
+    }
+
+    @TestVisible
+    static List<Database.UndeleteResult> toUndeleteResults(List<MockDml.Result> mockResults) {
+        return (List<Database.UndeleteResult>) JSON.deserialize(JSON.serialize(mockResults), List<Database.UndeleteResult>.class);
+    }
+
     // **** MEMBER **** // 
     Exception errorToThrow; 
 
@@ -23,16 +56,16 @@ public virtual class MockDml extends Dml {
         super();
     }
 
-    public virtual MockDml injectException(Exception error) {
+    public MockDml injectException(Exception error) {
         this.errorToThrow = error; 
         return this; 
     }
     
-    public virtual MockDml injectException() {
+    public MockDml injectException() {
         return this.injectException(new System.DmlException());
     }
 
-    public virtual MockDml resetHistory() {
+    public MockDml resetHistory() {
         // Reset all of the history objects to their original state
         // Useful for isolating the actual changes being tested, ie., after test setup
         MockDml.Converted?.resetHistory();
@@ -221,6 +254,143 @@ public virtual class MockDml extends Dml {
                 }
             }
             return this; 
+        }
+    }
+
+    @TestVisible
+    private abstract class AbstractResult {
+        public List<MockDml.Error> errors { get; set; }
+        public Boolean success { get; set; }
+
+        public AbstractResult addErrors(List<MockDml.Error> errors) {
+            this.errors?.addAll(errors);
+            this.success = false;
+            return this; 
+        }
+    
+        public AbstractResult addErrors(MockDml.Error error) {
+            return this.addErrors(new List<MockDml.Error>{ error });
+        }
+    
+        public AbstractResult addErrors() {
+            return this.addErrors(new MockDml.Error());
+        }
+
+        protected Object toDatabaseResult(Type resultType) {
+            // Returns a Database.Save/Upsert/Delete/UndeleteResult object
+            // Unfortunately, these do not share a common interface
+            return JSON.deserialize(JSON.serialize(this), resultType);
+        }
+    }
+
+    @TestVisible 
+    private class ConvertResult extends AbstractResult {
+        public Id accountId { get; set; }
+        public Id contactId { get; set; }
+        public Id leadId { get; set; }
+        public Id opportunityId { get; set; } 
+        public Id personAccountId { get; set; }
+
+        public ConvertResult(Id recordId) {
+            // Creates a record that simulates a successful LeadConvert operation
+            this.errors = new List<MockDml.Error>();
+            this.leadId = leadId;
+            this.success = true;
+        }
+    
+        public ConvertResult(Lead lead) {
+            this(lead?.Id);
+        }
+    
+        public ConvertResult(Id leadId, List<MockDml.Error> errors) {
+            this(leadId);
+            this.addErrors(errors);
+        }
+    
+        public ConvertResult(Id leadId, MockDml.Error error) {
+            this(leadId, new List<MockDml.Error>{ error });
+        }
+    
+        public ConvertResult(Lead lead, List<MockDml.Error> errors) {
+            this(lead?.Id, errors);
+        }
+    
+        public ConvertResult(Lead lead, MockDml.Error error) {
+            this(lead, new List<MockDml.Error>{error});
+        }
+
+        public Database.LeadConvertResult toConvertResult() {
+            return (Database.LeadConvertResult) this.toDatabaseResult(Database.LeadConvertResult.class);
+        }
+    }
+
+    @TestVisible
+    private class Result extends AbstractResult {
+        public Id id { get; set; }
+    
+        public Result(Id recordId) {
+            // Creates a record that simulates a successful DML operation
+            this.errors = new List<MockDml.Error>();
+            this.id = recordId;
+            this.success = true;
+        }
+    
+        public Result(SObject record) {
+            this(record?.Id);
+        }
+    
+        public Result(Id recordId, List<MockDml.Error> errors) {
+            this(recordId);
+            this.addErrors(errors);
+        }
+    
+        public Result(Id recordId, MockDml.Error error) {
+            this(recordId, new List<MockDml.Error>{ error });
+        }
+    
+        public Result(SObject record, List<MockDml.Error> errors) {
+            this(record?.Id, errors);
+        }
+    
+        public Result(SObject record, MockDml.Error error) {
+            this(record, new List<MockDml.Error>{error});
+        }
+    
+        public Database.SaveResult toSaveResult() {
+            return (Database.SaveResult) this.toDatabaseResult(Database.SaveResult.class);
+        }
+    
+        public Database.UpsertResult toUpsertResult() {
+            return (Database.UpsertResult) this.toDatabaseResult(Database.UpsertResult.class);
+        }
+    
+        public Database.DeleteResult toDeleteResult() {
+            return (Database.DeleteResult) this.toDatabaseResult(Database.DeleteResult.class);
+        }
+    
+        public Database.UndeleteResult toUndeleteResult() {
+            return (Database.UndeleteResult) this.toDatabaseResult(Database.UndeleteResult.class);
+        }
+    }
+
+    @TestVisible
+    private class Error {
+        // Wraps the Database.Error class, to be used for mocking in @IsTest context
+        public String message;
+        public String statusCode; 
+
+        public Error(String message, String statusCode) {
+            this.message = message;
+            this.statusCode = statusCode; 
+        }
+
+        public Error() {
+            // Initialize an error with a default message & status code
+            this('Test Error', 'TEST_ERROR');
+        }
+
+        public Database.Error toDatabaseError() {
+            return (Database.Error) JSON.deserialize(JSON.serialize(this), Database.Error.class);
         }
     }
 }
