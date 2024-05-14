@@ -255,11 +255,74 @@ public virtual class MockDml extends Dml {
         } else {
             // Return true, unless an exception was added via injectException(),
             // or if the record was marked as failed via injectFailedRecords().
-            return hasError == false;
+            return (hasError == false);
         }
     }
 
     // **** INNER **** // 
+    @TestVisible
+    private class ConvertResult extends Result {
+        public Id accountId { get; private set; }
+        public Id contactId { get; private set; }
+        public Id leadId { get; private set; }
+        public Id opportunityId { get; private set; } 
+        public Id personAccountId { get; private set; }
+
+        public ConvertResult(Id recordId) {
+            super(recordId);
+        }
+
+        public ConvertResult(Lead lead) {
+            this(lead?.Id);
+        }
+
+        public override Id getId() {
+            return this.leadId;
+        }
+
+        public override void setId(Id recordId) {
+            SObjectType objectType = recordId?.getSObjectType();
+            if (objectType == Account.SObjectType) {
+                this.accountId = recordId;
+            } else if (objectType == Contact.SObjectType) {
+                this.contactId = recordId;
+            } else if (objectType == Lead.SObjectType) {
+                this.leadId = recordId;
+            } else if (objectType == Opportunity.SObjectType) {
+                this.opportunityId = recordId;
+            }
+        }
+
+        public void setPersonAccountId(Id accountId) {
+            this.personAccountId = accountId;
+        }
+
+        public Database.LeadConvertResult toConvertResult() {
+            return (Database.LeadConvertResult) this.toDatabaseResult(Database.LeadConvertResult.class);
+        }
+    }
+
+    @TestVisible
+    private class Error {
+        // Wraps the Database.Error class, to be used for mocking in @IsTest context
+        public String message;
+        public String statusCode; 
+
+        public Error(String message, String statusCode) {
+            this.message = message;
+            this.statusCode = statusCode; 
+        }
+
+        public Error() {
+            // Initialize an error with a default message & status code
+            this('Mock Error', 'MOCK_ERROR');
+        }
+
+        public Database.Error toDatabaseError() {
+            return (Database.Error) JSON.deserialize(JSON.serialize(this), Database.Error.class);
+        }
+    }
+
     @TestVisible
     private class History {
         Dml.Operation operation;
@@ -348,51 +411,11 @@ public virtual class MockDml extends Dml {
     }
 
     @TestVisible
-    private class ConvertResult extends Result {
-        public Id accountId { get; private set; }
-        public Id contactId { get; private set; }
-        public Id leadId { get; private set; }
-        public Id opportunityId { get; private set; } 
-        public Id personAccountId { get; private set; }
-
-        public ConvertResult(Id recordId) {
-            super(recordId);
-        }
-
-        public ConvertResult(Lead lead) {
-            this(lead?.Id);
-        }
-
-        public override Id getId() {
-            return this.leadId;
-        }
-
-        public override void setId(Id recordId) {
-            SObjectType objectType = recordId?.getSObjectType();
-            if (objectType == Account.SObjectType) {
-                this.accountId = recordId;
-            } else if (objectType == Contact.SObjectType) {
-                this.contactId = recordId;
-            } else if (objectType == Lead.SObjectType) {
-                this.leadId = recordId;
-            } else if (objectType == Opportunity.SObjectType) {
-                this.opportunityId = recordId;
-            }
-        }
-
-        public void setPersonAccountId(Id accountId) {
-            this.personAccountId = accountId;
-        }
-
-        public Database.LeadConvertResult toConvertResult() {
-            return (Database.LeadConvertResult) this.toDatabaseResult(Database.LeadConvertResult.class);
-        }
-    }
-
-    @TestVisible
     private virtual class Result {
         public List<MockDml.Error> errors { get; private set; }
         public Id id { get; private set; }
+        // Note: For some reason, Database.UndeleteResult stores the success parameter under the "isSuccess" parameter.
+        // All other result types store this under the "success" parameter.
         public Boolean success { get; private set; }
     
         public Result(Id recordId) {
@@ -445,7 +468,11 @@ public virtual class MockDml extends Dml {
         }
     
         public Database.UndeleteResult toUndeleteResult() {
-            return (Database.UndeleteResult) this.toDatabaseResult(Database.UndeleteResult.class);
+            // Note: For some reason, we can't directly deserialize into a Database.UndeleteResult like the other methods.
+            // Attempting to do so will result in the "success" parameter always being set to false.
+            // Don't ask me why -- but deserializing untyped first solves the issue.
+            Object params = JSON.deserializeUntyped(JSON.serialize(this));
+            return (Database.UndeleteResult) JSON.deserialize(JSON.serialize(params), Database.UndeleteResult.class);
         }
 
         public virtual void setId(Id recordId) {
@@ -457,30 +484,8 @@ public virtual class MockDml extends Dml {
         }
 
         protected Object toDatabaseResult(Type resultType) {
-            // Returns a Database.Save/Upsert/Delete/UndeleteResult object
-            // Unfortunately, these do not share a common interface
+            // Returns a Database.Save/Upsert/Delete/UndeleteResult object -- unfortunately, these do not share a common interface
             return JSON.deserialize(JSON.serialize(this), resultType);
-        }
-    }
-
-    @TestVisible
-    private class Error {
-        // Wraps the Database.Error class, to be used for mocking in @IsTest context
-        public String message;
-        public String statusCode; 
-
-        public Error(String message, String statusCode) {
-            this.message = message;
-            this.statusCode = statusCode; 
-        }
-
-        public Error() {
-            // Initialize an error with a default message & status code
-            this('Mock Error', 'MOCK_ERROR');
-        }
-
-        public Database.Error toDatabaseError() {
-            return (Database.Error) JSON.deserialize(JSON.serialize(this), Database.Error.class);
         }
     }
 }
