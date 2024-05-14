@@ -414,8 +414,6 @@ public virtual class MockDml extends Dml {
     private virtual class Result {
         public List<MockDml.Error> errors { get; private set; }
         public Id id { get; private set; }
-        // Note: For some reason, Database.UndeleteResult stores the success parameter under the "isSuccess" parameter.
-        // All other result types store this under the "success" parameter.
         public Boolean success { get; private set; }
     
         public Result(Id recordId) {
