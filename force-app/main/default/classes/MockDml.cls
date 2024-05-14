@@ -469,8 +469,8 @@ public virtual class MockDml extends Dml {
             // Note: For some reason, we can't directly deserialize into a Database.UndeleteResult like the other methods.
             // Attempting to do so will result in the "success" parameter always being set to false.
             // Don't ask me why -- but deserializing untyped first solves the issue.
-            Object params = JSON.deserializeUntyped(JSON.serialize(this));
-            return (Database.UndeleteResult) JSON.deserialize(JSON.serialize(params), Database.UndeleteResult.class);
+            Object untyped = JSON.deserializeUntyped(JSON.serialize(this));
+            return (Database.UndeleteResult) JSON.deserialize(JSON.serialize(untyped), Database.UndeleteResult.class);
         }
 
         public virtual void setId(Id recordId) {
