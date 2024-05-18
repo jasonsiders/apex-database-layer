@@ -1,64 +1,48 @@
-public virtual class MockDml extends Dml {
-    // Note: Normally this would be marked as @IsTest, but these classes cannot be virtual/abstract.
-    // To prevent accidental production use, its constructor and any statics are private/@TestVisible
-
+@IsTest
+public class MockDml extends Dml {
     // **** STATIC **** //
-    @TestVisible 
-    static MockDml.History Converted = new MockDml.History(Dml.Operation.DO_CONVERT);
-    @TestVisible 
-    static MockDml.History Deleted = new MockDml.History(Dml.Operation.DO_DELETE);
-    @TestVisible 
-    static MockDml.History Inserted = new MockDml.History(Dml.Operation.DO_INSERT);
-    @TestVisible 
-    static MockDml.History Published = new MockDml.History(Dml.Operation.DO_PUBLISH);
-    @TestVisible 
-    static MockDml.History Undeleted = new MockDml.History(Dml.Operation.DO_UNDELETE);
-    @TestVisible 
-    static MockDml.History Updated = new MockDml.History(Dml.Operation.DO_UPDATE);
-    @TestVisible 
-    static MockDml.History Upserted = new MockDml.History(Dml.Operation.DO_UPSERT);
+    public static MockDml.History Converted = new MockDml.History(Dml.Operation.DO_CONVERT);
+    public static MockDml.History Deleted = new MockDml.History(Dml.Operation.DO_DELETE);
+    public static MockDml.History Inserted = new MockDml.History(Dml.Operation.DO_INSERT);
+    public static MockDml.History Published = new MockDml.History(Dml.Operation.DO_PUBLISH);
+    public static MockDml.History Undeleted = new MockDml.History(Dml.Operation.DO_UNDELETE);
+    public static MockDml.History Updated = new MockDml.History(Dml.Operation.DO_UPDATE);
+    public static MockDml.History Upserted = new MockDml.History(Dml.Operation.DO_UPSERT);
 
     // **** STATIC **** // 
-    @TestVisible
-    static List<Database.LeadConvertResult> toConvertResults(List<MockDml.Result> mockResults) {
+    public static List<Database.LeadConvertResult> toConvertResults(List<MockDml.Result> mockResults) {
         return (List<Database.LeadConvertResult>) JSON.deserialize(JSON.serialize(mockResults), List<Database.LeadConvertResult>.class);
     }
 
-    @TestVisible
-    static List<Database.DeleteResult> toDeleteResults(List<MockDml.Result> mockResults) {
+    public static List<Database.DeleteResult> toDeleteResults(List<MockDml.Result> mockResults) {
         return (List<Database.DeleteResult>) JSON.deserialize(JSON.serialize(mockResults), List<Database.DeleteResult>.class);
     }
 
-    @TestVisible
-    static List<MockDml.Result> toMockResults(List<Object> databaseResults) {
+    public static List<MockDml.Result> toMockResults(List<Object> databaseResults) {
         return (List<MockDml.Result>) JSON.deserialize(JSON.serialize(databaseResults), List<MockDml.Result>.class);
     }
 
-    @TestVisible
-    static List<Database.SaveResult> toSaveResults(List<MockDml.Result> mockResults) {
+    public static List<Database.SaveResult> toSaveResults(List<MockDml.Result> mockResults) {
         return (List<Database.SaveResult>) JSON.deserialize(JSON.serialize(mockResults), List<Database.SaveResult>.class);
     }
 
-    @TestVisible
-    static List<Database.UpsertResult> toUpsertResults(List<MockDml.Result> mockResults) {
+    public static List<Database.UpsertResult> toUpsertResults(List<MockDml.Result> mockResults) {
         return (List<Database.UpsertResult>) JSON.deserialize(JSON.serialize(mockResults), List<Database.UpsertResult>.class);
     }
 
-    @TestVisible
-    static List<Database.UndeleteResult> toUndeleteResults(List<MockDml.Result> mockResults) {
+    public static List<Database.UndeleteResult> toUndeleteResults(List<MockDml.Result> mockResults) {
         return (List<Database.UndeleteResult>) JSON.deserialize(JSON.serialize(mockResults), List<Database.UndeleteResult>.class);
     }
 
     // **** MEMBER **** // 
-    protected List<MockDml.FailureLogic> failures = new List<MockDml.FailureLogic>();
+    private List<MockDml.FailureLogic> failures = new List<MockDml.FailureLogic>();
 
-    @TestVisible
-    protected MockDml() {
+    public MockDml() {
         super();
     }
 
     // **** OVERRIDES **** //
-    public virtual override List<Database.LeadConvertResult> doConvert(List<Database.LeadConvert> leadsToConvert) {
+    public override List<Database.LeadConvertResult> doConvert(List<Database.LeadConvert> leadsToConvert) {
         List<Database.LeadConvertResult> results = new List<Database.LeadConvertResult>();
         /* TODO!
         for (Id recordId : recordIds) {
@@ -69,7 +53,7 @@ public virtual class MockDml extends Dml {
         return results;
     }
 
-    public virtual override List<Database.DeleteResult> doDelete(List<Id> recordIds) {
+    public override List<Database.DeleteResult> doDelete(List<Id> recordIds) {
         List<Database.DeleteResult> results = new List<Database.DeleteResult>();
         for (Id recordId : recordIds) {
             SObject record = recordId?.getSObjectType()?.newSObject(recordId);
@@ -79,7 +63,7 @@ public virtual class MockDml extends Dml {
         return results;
     }
 
-    public virtual override List<Database.DeleteResult> doDeleteAsync(List<SObject> records) {
+    public override List<Database.DeleteResult> doDeleteAsync(List<SObject> records) {
         // For mocking purposes, process the same as a normal delete operation, but w/callbacks
         List<Database.DeleteResult> results = this.doDelete(records);
         for (Database.DeleteResult result : results) {
@@ -88,17 +72,17 @@ public virtual class MockDml extends Dml {
         return results;
     }
 
-    public virtual override List<Database.DeleteResult> doDeleteImmediate(List<SObject> records) {
+    public override List<Database.DeleteResult> doDeleteImmediate(List<SObject> records) {
         // For mocking purposes, process the same as a normal delete operation
         return this.doDelete(records);
     }
 
-    public virtual override List<Database.DeleteResult> doHardDelete(List<Id> recordIds) {
+    public override List<Database.DeleteResult> doHardDelete(List<Id> recordIds) {
         // For mocking purposes, process the same as a normal delete operation
         return this.doDelete(recordIds);
     }
 
-    public virtual override List<Database.SaveResult> doInsert(List<SObject> records) {
+    public override List<Database.SaveResult> doInsert(List<SObject> records) {
         List<Database.SaveResult> results = new List<Database.SaveResult>();
         for (SObject record : records) {
             Database.SaveResult result = this.generateMockResult(MockDml.Inserted, record)?.toSaveResult();
@@ -107,7 +91,7 @@ public virtual class MockDml extends Dml {
         return results;
     }
 
-    public virtual override List<Database.SaveResult> doInsertAsync(List<SObject> records) {
+    public override List<Database.SaveResult> doInsertAsync(List<SObject> records) {
         // For mocking purposes, process the same as a normal insert operation, but w/callbacks
         List<Database.SaveResult> results = this.doInsert(records);
         for (Database.SaveResult result : results) {
@@ -116,12 +100,12 @@ public virtual class MockDml extends Dml {
         return results; 
     }
 
-    public virtual override List<Database.SaveResult> doInsertImmediate(List<SObject> records) {
+    public override List<Database.SaveResult> doInsertImmediate(List<SObject> records) {
         // For mocking purposes, process the same as a normal insert operation
         return this.doInsert(records);
     }
 
-    public virtual override List<Database.SaveResult> doPublish(List<SObject> events) {
+    public override List<Database.SaveResult> doPublish(List<SObject> events) {
         List<Database.SaveResult> results = new List<Database.SaveResult>();
         for (SObject event : events) {
             Database.SaveResult result = this.generateMockResult(MockDml.Published, event)?.toSaveResult();
@@ -130,7 +114,7 @@ public virtual class MockDml extends Dml {
         return results;
     }
     
-    public virtual override List<Database.UndeleteResult> doUndelete(List<Id> recordIds) {
+    public override List<Database.UndeleteResult> doUndelete(List<Id> recordIds) {
         List<Database.UndeleteResult> results = new List<Database.UndeleteResult>();
         for (Id recordId : recordIds) {
             SObject record = recordId?.getSObjectType()?.newSObject(recordId);
@@ -140,7 +124,7 @@ public virtual class MockDml extends Dml {
         return results;
     }
 
-    public virtual override List<Database.SaveResult> doUpdate(List<SObject> records) {
+    public override List<Database.SaveResult> doUpdate(List<SObject> records) {
         List<Database.SaveResult> results = new List<Database.SaveResult>();
         for (SObject record : records) {
             Database.SaveResult result = this.generateMockResult(MockDml.Updated, record)?.toSaveResult();
@@ -149,7 +133,7 @@ public virtual class MockDml extends Dml {
         return results;
     }
     
-    public virtual override List<Database.SaveResult> doUpdateAsync(List<SObject> records) {
+    public override List<Database.SaveResult> doUpdateAsync(List<SObject> records) {
         // For mocking purposes, process the same as a normal update operation, but w/callbacks
         List<Database.SaveResult> results = this.doUpdate(records);
         for (Database.SaveResult result : results) {
@@ -158,12 +142,12 @@ public virtual class MockDml extends Dml {
         return results; 
     }
 
-    public virtual override List<Database.SaveResult> doUpdateImmediate(List<SObject> records) {
+    public override List<Database.SaveResult> doUpdateImmediate(List<SObject> records) {
         // For mocking purposes, process the same as a normal update operation
         return this.doUpdate(records);
     }
 
-    public virtual override List<Database.UpsertResult> doUpsert(List<SObject> records) {
+    public override List<Database.UpsertResult> doUpsert(List<SObject> records) {
         List<Database.UpsertResult> results = new List<Database.UpsertResult>();
         for (SObject record : records) {
             Database.UpsertResult result = this.generateMockResult(MockDml.Upserted, record)?.toUpsertResult();
@@ -200,7 +184,7 @@ public virtual class MockDml extends Dml {
         return this;
     }
 
-    protected MockDml.Result generateMockResult(MockDml.History history, SObject record) {
+    private MockDml.Result generateMockResult(MockDml.History history, SObject record) {
         try {
             Dml.Operation operation = history?.getOperation();
             // Determine if the operation should fail for the specific record
@@ -214,7 +198,7 @@ public virtual class MockDml extends Dml {
         }
     }
 
-    protected MockDml.Result handleDmlError(SObject record, Exception error) {
+    private MockDml.Result handleDmlError(SObject record, Exception error) {
         // Handle allOrNone logic, according to standard DML functionality
         if (this.getAllOrNone() == true) {
             throw error;
@@ -224,7 +208,7 @@ public virtual class MockDml extends Dml {
         }
     }
 
-    protected void setRecordId(SObject record) {
+    private void setRecordId(SObject record) {
         // If the record does not have an Id value, generate a mock one
         if (record?.Id == null) {
             SObjectType objectType = record?.getSObjectType();
@@ -232,7 +216,7 @@ public virtual class MockDml extends Dml {
         }
     }
 
-    protected void checkFailures(Dml.Operation operation, SObject record) {
+    private void checkFailures(Dml.Operation operation, SObject record) {
         // Runs the FailureLogic defined the current instance against each record.
         for (MockDml.FailureLogic failure : this.failures) {
             Exception error = failure?.checkFailure(operation, record);
@@ -243,8 +227,7 @@ public virtual class MockDml extends Dml {
     }
 
     // **** INNER **** // 
-    @TestVisible
-    private class ConvertResult extends Result {
+    public class ConvertResult extends Result {
         public Id accountId { get; private set; }
         public Id contactId { get; private set; }
         public Id leadId { get; private set; }
@@ -285,8 +268,7 @@ public virtual class MockDml extends Dml {
         }
     }
 
-    @TestVisible
-    private class Error {
+    public class Error {
         // Wraps the Database.Error class, to be used for mocking in @IsTest context
         public String message { get; set; }
         public System.StatusCode statusCode { get; set; }
@@ -311,8 +293,7 @@ public virtual class MockDml extends Dml {
         }
     }
 
-    @TestVisible
-    private class History {
+    public class History {
         private Dml.Operation operation;
         private Map<Id, SObject> recordsById;
         private Map<SObjectType, Set<Id>> recordIdsBySObjectType;
@@ -398,15 +379,13 @@ public virtual class MockDml extends Dml {
         }
     }
 
-    @TestVisible
-    private interface FailureLogic {
+    public interface FailureLogic {
         // Interface logic determines if a DML failure should be simulated for the given record.
         // If so, the method returns a non-null Exception object, which will be thrown by the MockDml class.
         Exception checkFailure(Dml.Operation operation, SObject record);
     }
 
-    @TestVisible
-    private virtual class Result {
+    public virtual class Result {
         public List<MockDml.Error> errors { get; private set; }
         public Id id { get; private set; }
         public Boolean success { get; private set; }
