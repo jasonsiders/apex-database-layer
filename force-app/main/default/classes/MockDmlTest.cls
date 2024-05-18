@@ -46,7 +46,8 @@ private class MockDmlTest {
             leadToConvert?.setConvertedStatus('Some Status');
             leadsToConvert?.add(leadToConvert);
         }
-        Dml dml = new MockDml()?.injectException();
+        MockDml.FailureLogic failure = new MockFailure();
+        Dml dml = new MockDml()?.addFailure(failure);
 
         Test.startTest();
         try {
@@ -70,7 +71,8 @@ private class MockDmlTest {
             leadToConvert?.setConvertedStatus('Some Status');
             leadsToConvert?.add(leadToConvert);
         }
-        Dml dml = new MockDml()?.injectException()?.setAllOrNone(false);
+        MockDml.FailureLogic failure = new MockFailure();
+        Dml dml = new MockDml()?.addFailure(failure)?.setAllOrNone(false);
 
         Test.startTest();
         List<Database.LeadConvertResult> results = dml?.doConvert(leadsToConvert);
@@ -151,7 +153,8 @@ private class MockDmlTest {
     @IsTest 
     static void shouldThrowExceptionIfErrorOnDelete() {
         List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
-        Dml dml = new MockDml()?.injectException();
+        MockDml.FailureLogic failure = new MockFailure();
+        Dml dml = new MockDml()?.addFailure(failure);
         
         Test.startTest();
         try {
@@ -168,7 +171,8 @@ private class MockDmlTest {
     @IsTest 
     static void shouldFailSilentlyIfErrorAndNotAllOrNoneOnDelete() {
         List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
-        Dml dml = new MockDml()?.injectException()?.setAllOrNone(false);
+        MockDml.FailureLogic failure = new MockFailure();
+        Dml dml = new MockDml()?.addFailure(failure)?.setAllOrNone(false);
 
         Test.startTest();
         List<Database.DeleteResult> results = dml?.doDelete(leads);
@@ -237,7 +241,8 @@ private class MockDmlTest {
     @IsTest 
     static void shouldThrowExceptionIfErrorOnInsert() {
         List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType);
-        Dml dml = new MockDml()?.injectException();
+        MockDml.FailureLogic failure = new MockFailure();
+        Dml dml = new MockDml()?.addFailure(failure);
 
         Test.startTest();
         try {
@@ -254,7 +259,8 @@ private class MockDmlTest {
     @IsTest 
     static void shouldFailSilentlyIfErrorAndNotAllOrNoneOnInsert() {
         List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType);
-        Dml dml = new MockDml()?.injectException()?.setAllOrNone(false);
+        MockDml.FailureLogic failure = new MockFailure();
+        Dml dml = new MockDml()?.addFailure(failure)?.setAllOrNone(false);
 
         Test.startTest();
         List<Database.SaveResult> results = dml?.doInsert(leads);
@@ -289,7 +295,8 @@ private class MockDmlTest {
     @IsTest 
     static void shouldThrowExceptionIfErrorOnPublish() {
         List<BatchApexErrorEvent> events = MockDmlTest.initRecords(BatchApexErrorEvent.SObjectType);
-        Dml dml = new MockDml()?.injectException();
+        MockDml.FailureLogic failure = new MockFailure();
+        Dml dml = new MockDml()?.addFailure(failure);
 
         Test.startTest();
         try {
@@ -306,7 +313,8 @@ private class MockDmlTest {
     @IsTest 
     static void shouldFailSilentlyIfErrorAndNotAllOrNoneOnPublish() {
         List<BatchApexErrorEvent> events = MockDmlTest.initRecords(BatchApexErrorEvent.SObjectType);
-        Dml dml = new MockDml()?.injectException()?.setAllOrNone(false);
+        MockDml.FailureLogic failure = new MockFailure();
+        Dml dml = new MockDml()?.addFailure(failure)?.setAllOrNone(false);
 
         Test.startTest();
         List<Database.SaveResult> results = dml?.doPublish(events);
@@ -341,7 +349,8 @@ private class MockDmlTest {
     @IsTest 
     static void shouldThrowExceptionIfErrorOnUndelete() {
         List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
-        Dml dml = new MockDml()?.injectException();
+        MockDml.FailureLogic failure = new MockFailure();
+        Dml dml = new MockDml()?.addFailure(failure);
 
         Test.startTest();
         try {
@@ -358,7 +367,8 @@ private class MockDmlTest {
     @IsTest 
     static void shouldFailSilentlyIfErrorAndNotAllOrNoneOnUndelete() {
         List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
-        Dml dml = new MockDml()?.injectException()?.setAllOrNone(false);
+        MockDml.FailureLogic failure = new MockFailure();
+        Dml dml = new MockDml()?.addFailure(failure)?.setAllOrNone(false);
 
         Test.startTest();
         List<Database.UndeleteResult> results = dml?.doUndelete(leads);
@@ -427,7 +437,8 @@ private class MockDmlTest {
     @IsTest 
     static void shouldThrowExceptionIfErrorOnUpdate() {
         List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
-        Dml dml = new MockDml()?.injectException();
+        MockDml.FailureLogic failure = new MockFailure();
+        Dml dml = new MockDml()?.addFailure(failure);
 
         Test.startTest();
         try {
@@ -444,7 +455,8 @@ private class MockDmlTest {
     @IsTest 
     static void shouldFailSilentlyIfErrorAndNotAllOrNoneOnUpdate() {
         List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
-        Dml dml = new MockDml()?.injectException()?.setAllOrNone(false);
+        MockDml.FailureLogic failure = new MockFailure();
+        Dml dml = new MockDml()?.addFailure(failure)?.setAllOrNone(false);
 
         Test.startTest();
         List<Database.SaveResult> results = dml?.doUpdate(leads);
@@ -479,7 +491,8 @@ private class MockDmlTest {
     @IsTest 
     static void shouldThrowExceptionIfErrorOnUpsert() {
         List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
-        Dml dml = new MockDml()?.injectException();
+        MockDml.FailureLogic failure = new MockFailure();
+        Dml dml = new MockDml()?.addFailure(failure);
 
         Test.startTest();
         try {
@@ -496,7 +509,8 @@ private class MockDmlTest {
     @IsTest 
     static void shouldFailSilentlyIfErrorAndNotAllOrNoneOnUpsert() {
         List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
-        Dml dml = new MockDml()?.injectException()?.setAllOrNone(false);
+        MockDml.FailureLogic failure = new MockFailure();
+        Dml dml = new MockDml()?.addFailure(failure)?.setAllOrNone(false);
 
         Test.startTest();
         List<Database.UpsertResult> results = dml?.doUpsert(leads);
@@ -561,5 +575,13 @@ private class MockDmlTest {
 
     static SObject initRecord(SObjectType objectType) {
         return MockDmlTest.initRecord(objectType, false);
+    }
+    
+    // **** INNER **** //
+    public class MockFailure implements MockDml.FailureLogic {
+        public Exception checkFailure(Dml.Operation operation, SObject record) {
+            // This class always returns a System.DmlException to be thrown
+            return new System.DmlException();
+        }
     }
 }

@@ -50,8 +50,7 @@ public virtual class MockDml extends Dml {
     }
 
     // **** MEMBER **** // 
-    protected Exception errorToThrow; 
-    protected Set<Id> failedRecordIds = new Set<Id>();
+    protected List<MockDml.FailureLogic> failures = new List<MockDml.FailureLogic>();
 
     @TestVisible
     protected MockDml() {
@@ -173,39 +172,15 @@ public virtual class MockDml extends Dml {
         return results;
     }
 
-    public virtual override Dml reset() {
-        super.reset();
-        this.errorToThrow = null;
-        this.failedRecordIds?.clear();
-        return this;
-    }
-
     // **** PUBLIC **** // 
-    public MockDml injectException(Exception error) {
-        this.errorToThrow = error; 
+    public MockDml addFailure(MockDml.FailureLogic failure) {
+        this.failures?.add(failure);
         return this; 
     }
     
-    public MockDml injectException() {
-        return this.injectException(new System.DmlException());
-    }
-
-    public MockDml injectFailedRecords(Set<Id> recordIds) {
-        this.failedRecordIds?.addAll(recordIds);
-        return this;
-    }
-
-    public MockDml injectFailedRecords(Id recordId) {
-        return this.injectFailedRecords(new Set<Id>{ recordId });
-    }
-
-    public MockDml injectFailedRecords(List<SObject> records) {
-        Set<Id> recordIds = new Map<Id, SObject>(records)?.keySet();
-        return this.injectFailedRecords(recordIds);
-    }
-
-    public MockDml injectFailedRecords(SObject record) {
-        return this.injectFailedRecords(record?.Id);
+    public MockDml clearFailures() {
+        this.failures?.clear();
+        return this; 
     }
 
     public MockDml eraseHistory() {
@@ -226,15 +201,26 @@ public virtual class MockDml extends Dml {
     }
 
     protected MockDml.Result generateMockResult(MockDml.History history, SObject record) {
-        Dml.Operation operation = history?.getOperation();
-        if (this.shouldSucceed(operation, record)) {
+        try {
+            Dml.Operation operation = history?.getOperation();
+            // Determine if the operation should fail for the specific record
+            this.checkFailures(operation, record);
             // Simulate successful dml
             this.setRecordId(record);
             history?.registerDml(record);
             return new MockDml.Result(record);
+        } catch (Exception error) {
+            return this.handleDmlError(record, error);
+        }
+    }
+
+    protected MockDml.Result handleDmlError(SObject record, Exception error) {
+        // Handle allOrNone logic, according to standard DML functionality
+        if (this.getAllOrNone() == true) {
+            throw error;
         } else {
-            // Simulate an "allOrNone=false" silent failure
-            return new MockDml.Result(record)?.addErrors();
+            MockDml.Error dmlError = new MockDml.Error(error); 
+            return new MockDml.Result(record)?.addErrors(dmlError);
         }
     }
 
@@ -246,16 +232,13 @@ public virtual class MockDml extends Dml {
         }
     }
 
-    protected virtual Boolean shouldSucceed(Dml.Operation baseOperation, SObject record) {
-        // Indicates if the DML result should be marked as isSuccess=true.
-        Boolean hasError = (this.errorToThrow != null || this.failedRecordIds?.contains(record?.Id) == true);
-        if (this.getAllOrNone() == true && hasError == true) {
-            // w/AllOrNone behavior, an exception should be thrown
-            throw this.errorToThrow ?? new System.DmlException();
-        } else {
-            // Return true, unless an exception was added via injectException(),
-            // or if the record was marked as failed via injectFailedRecords().
-            return (hasError == false);
+    protected void checkFailures(Dml.Operation operation, SObject record) {
+        // Runs the FailureLogic defined the current instance against each record.
+        for (MockDml.FailureLogic failure : this.failures) {
+            Exception error = failure?.checkFailure(operation, record);
+            if (error != null) {
+                throw error;
+            }
         }
     }
 
@@ -305,17 +288,22 @@ public virtual class MockDml extends Dml {
     @TestVisible
     private class Error {
         // Wraps the Database.Error class, to be used for mocking in @IsTest context
-        public String message;
-        public String statusCode; 
+        public String message { get; set; }
+        public System.StatusCode statusCode { get; set; }
 
-        public Error(String message, String statusCode) {
+        public Error(String message, System.StatusCode statusCode) {
             this.message = message;
             this.statusCode = statusCode; 
         }
 
+        public Error(Exception error) {
+            this.message = error?.getMessage();
+            this.statusCode = error?.getDmlType(0);
+        }
+
         public Error() {
             // Initialize an error with a default message & status code
-            this('Mock Error', 'MOCK_ERROR');
+            this('This is a mock error', System.StatusCode.UNKNOWN_EXCEPTION);
         }
 
         public Database.Error toDatabaseError() {
@@ -325,9 +313,9 @@ public virtual class MockDml extends Dml {
 
     @TestVisible
     private class History {
-        Dml.Operation operation;
-        Map<Id, SObject> recordsById;
-        Map<SObjectType, Set<Id>> recordIdsBySObjectType;
+        private Dml.Operation operation;
+        private Map<Id, SObject> recordsById;
+        private Map<SObjectType, Set<Id>> recordIdsBySObjectType;
 
         private History(Dml.Operation operation) {
             this.operation = operation;
@@ -408,6 +396,13 @@ public virtual class MockDml extends Dml {
             this.recordsById?.put(record?.Id, record);
             return this;
         }
+    }
+
+    @TestVisible
+    private interface FailureLogic {
+        // Interface logic determines if a DML failure should be simulated for the given record.
+        // If so, the method returns a non-null Exception object, which will be thrown by the MockDml class.
+        Exception checkFailure(Dml.Operation operation, SObject record);
     }
 
     @TestVisible
