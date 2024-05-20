@@ -9,6 +9,22 @@ public class MockDml extends Dml {
     public static MockDml.History Updated = new MockDml.History(Dml.Operation.DO_UPDATE);
     public static MockDml.History Upserted = new MockDml.History(Dml.Operation.DO_UPSERT);
 
+    public static void eraseAllHistories() {
+        // Reset all of the history objects to their original state
+        // Useful for isolating the actual changes being tested, ie., after test setup
+        for (MockDml.History history : new List<MockDml.History>{
+            MockDml.Converted,
+            MockDml.Deleted,
+            MockDml.Inserted,
+            MockDml.Published,
+            MockDml.Undeleted,
+            MockDml.Updated,
+            MockDml.Upserted
+        }) {
+            history?.eraseHistory();
+        }
+    }
+
     // **** MEMBER **** // 
     private List<MockDml.FailureLogic> failures = new List<MockDml.FailureLogic>();
 
@@ -142,21 +158,15 @@ public class MockDml extends Dml {
         return this; 
     }
 
-    public MockDml eraseHistory() {
-        // Reset all of the history objects to their original state
-        // Useful for isolating the actual changes being tested, ie., after test setup
-        for (MockDml.History history : new List<MockDml.History>{
-            MockDml.Converted,
-            MockDml.Deleted,
-            MockDml.Inserted,
-            MockDml.Published,
-            MockDml.Undeleted,
-            MockDml.Updated,
-            MockDml.Upserted
-        }) {
-            history?.eraseHistory();
+    // **** PRIVATE **** //
+    private void checkFailures(Dml.Operation operation, SObject record) {
+        // Runs the FailureLogic defined the current instance against each record.
+        for (MockDml.FailureLogic failure : this.failures) {
+            System.DmlException error = failure?.checkFailure(operation, record)?.toDmlException();
+            if (error != null) {
+                throw error;
+            }
         }
-        return this;
     }
 
     private MockDml.Result generateMockResult(MockDml.History history, SObject record) {
@@ -188,16 +198,6 @@ public class MockDml extends Dml {
         if (record?.Id == null) {
             SObjectType objectType = record?.getSObjectType();
             record.Id = SObjectUtils.generateMockId(objectType);
-        }
-    }
-
-    private void checkFailures(Dml.Operation operation, SObject record) {
-        // Runs the FailureLogic defined the current instance against each record.
-        for (MockDml.FailureLogic failure : this.failures) {
-            System.DmlException error = failure?.checkFailure(operation, record)?.toDmlException();
-            if (error != null) {
-                throw error;
-            }
         }
     }
 

@@ -548,7 +548,7 @@ private class MockDmlTest {
         Assert.areEqual(1, MockDml.Updated.getAll()?.size(), 'Wrong # of total updates');
 
         // Callers can also call this method to erase the current history:
-        new MockDml()?.eraseHistory();
+        MockDml.eraseAllHistories();
         Assert.areEqual(true, MockDml.Updated.getAll()?.isEmpty(), 'Did not reset history');
     }
 
