@@ -579,9 +579,9 @@ private class MockDmlTest {
     
     // **** INNER **** //
     public class MockFailure implements MockDml.FailureLogic {
-        public Exception checkFailure(Dml.Operation operation, SObject record) {
-            // This class always returns a System.DmlException to be thrown
-            return new System.DmlException();
+        public MockDml.Error checkFailure(Dml.Operation operation, SObject record) {
+            // This class always returns an error to be thrown
+            return new MockDml.Error();
         }
     }
 }
