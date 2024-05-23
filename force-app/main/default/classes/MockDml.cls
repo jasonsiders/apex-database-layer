@@ -1,13 +1,14 @@
 @IsTest
 public class MockDml extends Dml {
     // **** STATIC **** //
-    public static MockDml.History Converted = new MockDml.History(Dml.Operation.DO_CONVERT);
-    public static MockDml.History Deleted = new MockDml.History(Dml.Operation.DO_DELETE);
-    public static MockDml.History Inserted = new MockDml.History(Dml.Operation.DO_INSERT);
-    public static MockDml.History Published = new MockDml.History(Dml.Operation.DO_PUBLISH);
-    public static MockDml.History Undeleted = new MockDml.History(Dml.Operation.DO_UNDELETE);
-    public static MockDml.History Updated = new MockDml.History(Dml.Operation.DO_UPDATE);
-    public static MockDml.History Upserted = new MockDml.History(Dml.Operation.DO_UPSERT);
+    public static MockDml.RecordHistory Converted = new MockDml.RecordHistory(Dml.Operation.DO_CONVERT);
+    public static MockDml.RecordHistory Deleted = new MockDml.RecordHistory(Dml.Operation.DO_DELETE);
+    public static MockDml.RecordHistory Inserted = new MockDml.RecordHistory(Dml.Operation.DO_INSERT);
+    public static MockDml.RecordHistory Undeleted = new MockDml.RecordHistory(Dml.Operation.DO_UNDELETE);
+    public static MockDml.RecordHistory Updated = new MockDml.RecordHistory(Dml.Operation.DO_UPDATE);
+    public static MockDml.RecordHistory Upserted = new MockDml.RecordHistory(Dml.Operation.DO_UPSERT);
+    public static MockDml.PlatformEventHistory Published = new MockDml.PlatformEventHistory();
+    static final String EVENT_UUID_FIELD = 'EventUuid';
 
     public static void eraseAllHistories() {
         // Reset all of the history objects to their original state
@@ -175,9 +176,7 @@ public class MockDml extends Dml {
             // Determine if the operation should fail for the specific record
             this.checkFailures(operation, record);
             // Simulate successful dml
-            this.setRecordId(record);
-            history?.registerDml(record);
-            return new MockDml.Result(record);
+            return history?.registerDml(record);
         } catch (System.DmlException error) {
             return this.handleDmlError(record, error);
         }
@@ -190,14 +189,6 @@ public class MockDml extends Dml {
         } else {
             MockDml.Error dmlError = new MockDml.Error(error); 
             return new MockDml.Result(record)?.addError(dmlError);
-        }
-    }
-
-    private void setRecordId(SObject record) {
-        // If the record does not have an Id value, generate a mock one
-        if (record?.Id == null) {
-            SObjectType objectType = record?.getSObjectType();
-            record.Id = SObjectUtils.generateMockId(objectType);
         }
     }
 
@@ -240,89 +231,145 @@ public class MockDml extends Dml {
         MockDml.Error checkFailure(Dml.Operation operation, SObject record);
     }
 
-    public class History {
-        private Dml.Operation operation;
-        private Map<Id, SObject> recordsById;
-        private Map<SObjectType, Set<Id>> recordIdsBySObjectType;
+    public abstract class History {
+        protected Dml.Operation operation;
+        protected Map<SObjectType, Map<String, SObject>> recordMap;
 
-        private History(Dml.Operation operation) {
-            this.operation = operation;
-            this.recordsById = new Map<Id, SObject>();
-            this.recordIdsBySObjectType = new Map<SObjectType, Set<Id>>();
+        public History(Dml.Operation operation) {
+            this.operation = operation; 
+            this.recordMap = new Map<SObjectType, Map<String, SObject>>();
+        }
+
+        // **** ABSTRACT **** //
+        public abstract void addRecordToMap(SObject record, Map<String, Object> records);
+        public abstract SObject getRecord(SObject record);
+        public abstract SObject setRecordId(SObject record);
+        public abstract Boolean wasProcessed(SObject record);
+        
+        // **** PUBLIC **** //
+        public History eraseHistory() {
+            this.recordMap?.clear();
+            return this; 
         }
 
         public List<SObject> getAll() {
-            return this.recordsById?.values();
+            List<SObject> allRecords = new List<SObject>();
+            for (SObjectType objectType : this.recordMap?.keySet()) {
+                List<SObject> records = this.getRecords(objectType);
+                allRecords?.addAll(records);
+            }
+            return allRecords;
+        }
+
+        public List<SObject> getRecords(SObjectType objectType) {
+            return this.getRecordMap(objectType)?.values();
         }
 
         public Dml.Operation getOperation() {
             return this.operation;
         }
 
-        public List<SObject> getRecords(SObjectType objectType) {
-            List<SObject> results = new List<SObject>();
-            Set<Id> recordIds = this.recordIdsBySObjectType?.get(objectType) ?? new Set<Id>();
-            for (Id recordId : recordIds) {
-                SObject record = this.recordsById?.get(recordId);
-                results?.add(record);
-            }
-            return results;
+        public MockDml.Result registerDml(SObject record) {
+            // This method registers that the records were operated on, 
+            // and store them in a way that's easy for callers to get & perform asserts
+            record = this.setRecordId(record);
+            SObjectType objectType = record?.getSObjectType();
+            Map<String, SObject> records = this.getRecordMap(objectType);
+            this.addRecordToMap(record, records);
+            this.recordMap?.put(objectType, records);
+            return new MockDml.Result(record);
         }
 
-        public SObject getRecord(Id recordId) {
-            return this.recordsById?.get(recordId);
+        protected Map<String, SObject> getRecordMap(SObjectType objectType) {
+            return this.recordMap?.get(objectType) ?? new Map<String, SObject>(); 
         }
-        
-        public SObject getRecord(SObject record) {
+    }
+    
+    public class RecordHistory extends History {
+        private RecordHistory(Dml.Operation operation) {
+            super(operation);
+        }
+
+        // **** OVERRIDES **** //
+        public override void addRecordToMap(SObject record, Map<String, Object> records) {
+            records?.put(record?.Id, record);
+        }
+
+        public override SObject getRecord(SObject record) {
             return this.getRecord(record?.Id);
         }
 
-        public History eraseHistory() {
-            this.recordsById?.clear();
-            this.recordIdsBySObjectType?.clear();
-            return this; 
+        public override SObject setRecordId(SObject record) {
+            // If the record does not have an Id value, generate a mock one
+            if (record?.Id == null) {
+                SObjectType objectType = record?.getSObjectType();
+                record.Id = SObjectUtils.generateMockId(objectType);
+            }
+            return record;
         }
 
-        public Boolean wasProcessed(Id recordId) {
-            return this.recordsById?.containsKey(recordId) == true; 
-        }
-
-        public Boolean wasProcessed(SObject record) {
+        public override Boolean wasProcessed(SObject record) {
             return this.wasProcessed(record?.Id);
         }
 
-        public History unregisterDml(Set<Id> recordIds) {
-            // Remove record(s) from the dml history maps
-            for (Id recordId : recordIds) {
-                SObjectType objectType = recordId?.getSObjectType();
-                this.recordIdsBySObjectType?.get(objectType)?.remove(recordId);
-                this.recordsById?.remove(recordId);
-            }
-            return this;
+        // **** PUBLIC **** //
+        public SObject getRecord(Id recordId) {
+            SObjectType objectType = recordId?.getSObjectType();
+            return this.getRecordMap(objectType)?.get(recordId);
         }
 
-        public History unregisterDml(Id recordId) {
-            return this.unregisterDml(new Set<Id>{ recordId });
+        public Boolean wasProcessed(Id recordId) {
+            return this.getRecord(recordId) != null;
+        }
+    }
+
+    public class PlatformEventHistory extends History {
+        private Map<String, SObjectType> objectTypesByUuid;
+
+        public PlatformEventHistory() {
+            super(Dml.Operation.DO_PUBLISH);
+            this.objectTypesByUuid = new Map<String, SObjectType>();
         }
 
-        public History unregisterDml(List<SObject> records) {
-            Set<Id> recordIds = new Map<Id, SObject>(records)?.keySet();
-            return this.unregisterDml(recordIds);
+        // **** OVERRIDES **** //
+        public override void addRecordToMap(SObject record, Map<String, Object> records) {
+            String uuid = this.getUuid(record);
+            records?.put(uuid, record);
+            this.objectTypesByUuid?.put(uuid, record?.getSObjectType());
         }
 
-        public History unregisterDml(SObject record) {
-            return this.unregisterDml(record?.Id);
-        }
-
-        private History registerDml(SObject record) {
-            // This method registers that the records were operated on, 
-            // and store them in a way that's easy for callers to get & perform asserts
+        public override SObject getRecord(SObject record) {
             SObjectType objectType = record?.getSObjectType();
-            Set<Id> matchingIds = this.recordIdsBySObjectType?.get(objectType) ?? new Set<Id>();
-            matchingIds?.add(record?.Id);
-            this.recordIdsBySObjectType?.put(objectType, matchingIds);
-            this.recordsById?.put(record?.Id, record);
-            return this;
+            String uuid = this.getUuid(record);
+            return this.getRecordMap(objectType)?.get(uuid);
+        }
+
+        public override SObject setRecordId(SObject record) {
+            // Note: Platform Events technically have an Id field, but it's not writeable, nor is it transformed after publish. 
+            // Instead, the platform populates the "EventUuid" field with a unique identifier 
+            // It's better to refer to platform events by their EventUuid value, which is unique.
+            Map<String, Object> params = (Map<String, Object>) JSON.deserializeUntyped(JSON.serialize(record));
+            params?.put(EVENT_UUID_FIELD, Uuid.randomUuid());
+            return JSON.deserialize(JSON.serialize(params), SObject.class);
+        }
+
+        public override Boolean wasProcessed(SObject record) {
+            return this.getRecord(record) != null;
+        }
+
+        // **** PUBLIC **** //
+        public SObject getRecord(String uuid) {
+            SObjectType objectType = this.objectTypesByUuid?.get(uuid);
+            return this.getRecordMap(objectType)?.get(uuid);
+        }
+
+        public Boolean wasProcessed(String uuid) {
+            return this.getRecord(uuid) != null;
+        }
+
+        // **** PRIVATE **** //
+        private String getUuid(SObject record) {
+            return (String) record?.get(EVENT_UUID_FIELD);
         }
     }
 
