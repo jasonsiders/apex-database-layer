@@ -95,28 +95,6 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         error?.setMessage(augmentedMsg);
     }
 
-    // **** STATIC **** //
-    @TestVisible
-    public static Schema.ChildRelationship getChildRelationshipFrom(SObjectField lookupField) {
-        // TODO: Consider moving this to some utility class
-        List<SObjectType> relatedToObjects = lookupField?.getDescribe()?.getReferenceTo();
-        // * Note: the above Schema method returns a List<SObjectType>, not a single SObjectType.
-        // In nearly all cases, this will contain a single SObjectType; notable exceptions include polymorphic fields (ie, Task.WhatId)
-        // In these cases, it's better to provide the specific/intended Schema.ChildRelationship when constructing a Subquery
-        SObjectType relatedToObject = relatedToObjects?.isEmpty() == false ? relatedToObjects[0] : null;
-        List<Schema.ChildRelationship> relationships = relatedToObject?.getDescribe()?.getChildRelationships();
-        relationships = relationships ?? new List<Schema.ChildRelationship>();
-        for (Schema.ChildRelationship relationship : relationships) {
-            // Unfortunately, no way of telling if a Schema.ChildRelationship matches w/out manually iterating & checking their fields
-            SObjectField relationshipField = relationship?.getField();
-            if (relationshipField == lookupField) {
-                return relationship;
-            }
-        }
-        // This should only ever return null if the field isn't a lookup
-        return null;
-    }
-
 	// **** ENUMS *** //
     public enum Function {
         AVG,
@@ -774,7 +752,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         }
 
         public SubQuery(SObjectField lookupField) {
-            this(Soql.getChildRelationshipFrom(lookupField));
+            this(SObjectUtils.getChildRelationshipFrom(lookupField));
         }
 
         public override String getFrom() {

@@ -36,4 +36,81 @@ private class SObjectUtilsTest {
 
         Assert.areEqual(1, mockIds?.size(), 'Wrong # of unique Ids');
     }
+
+    @IsTest 
+    static void shouldSetMultipleReadOnlyFields() {
+        Map<String, Object> readOnlyFields = new Map<String, Object>{
+            Account.CreatedDate.toString() => DateTime.now()?.addDays(-10),
+            Account.SystemModStamp.toString() => DateTime.now()?.addDays(-1)
+        };
+        
+        Test.startTest();
+        Account account = (Account) SObjectUtils.setReadOnlyFields(new Account(), readOnlyFields);
+        Test.stopTest();
+
+        for (String fieldName : readOnlyFields?.keySet()) {
+            Object expected = readOnlyFields?.get(fieldName);
+            Assert.areEqual(expected, account?.get(fieldName), 'Wrong read-only value for ' + fieldName);
+        }
+    }
+
+    @IsTest 
+    static void shouldsetReadOnlyFields() {
+        DateTime expected = DateTime.now()?.addDays(-3); 
+
+        Test.startTest();
+        Account account = (Account) SObjectUtils.setReadOnlyFields(new Account(), Account.CreatedDate, expected);
+        Test.stopTest();
+
+        Assert.areEqual(expected, account?.CreatedDate, 'Wrong read-only value');
+    }
+
+    @IsTest 
+    static void shouldSetParentLookup() {
+        Account account = new Account(Id = SObjectUtils.mockRecordId(Account.SObjectType));
+
+        Test.startTest();
+        Contact contact = (Contact) SObjectUtils.setParentRelationship(new Contact(), Contact.AccountId, account);
+        Test.stopTest();
+
+        Assert.areEqual(account?.Id, contact?.AccountId, 'Did not set lookup field');
+        Assert.areEqual(account?.Id, contact?.Account?.Id, 'Did not set parent relationship');
+    }
+
+    @IsTest 
+    static void shouldSetChildLookup() {
+        List<Contact> contacts = new List<Contact>();
+        for (Integer i = 0; i < 3; i++) {
+            Contact contact = new Contact();
+            contacts?.add(contact); 
+        }
+
+        Test.startTest();
+        Account account = (Account) SObjectUtils.setChildRelationship(new Account(), Contact.AccountId, contacts);
+        Test.stopTest();
+
+        Assert.areEqual(contacts?.size(), account?.Contacts?.size(), 'Did not set child relationship');
+    }
+
+    @IsTest 
+    static void shouldGetChildRelationshipFromLookupField() {
+        SObjectField field = Contact.AccountId;
+
+        Test.startTest();
+        Schema.ChildRelationship relationship = SObjectUtils.getChildRelationshipFrom(field);
+        Test.stopTest();
+
+        Assert.areEqual(field, relationship?.getField(), 'Relationship does not point to ' + field);
+    }
+
+    @IsTest 
+    static void shouldReturnNullChildRelationshipIfNotLookupField() {
+        SObjectField field = Contact.CreatedDate;
+
+        Test.startTest();
+        Schema.ChildRelationship relationship = SObjectUtils.getChildRelationshipFrom(field);
+        Test.stopTest();
+
+        Assert.isNull(relationship, 'Non-lookup field returned a relationship anyways');
+    }
 }
