@@ -5,7 +5,7 @@ private class MockDmlTest {
         Map<Id, Lead> leads = new Map<Id, Lead>();
         List<Database.LeadConvert> leadsToConvert = new List<Database.LeadConvert>();
         for (Integer i = 0; i < TEST_SIZE; i++) {
-            Id leadId = SObjectUtils.generateMockId(Lead.SObjectType);
+            Id leadId = SObjectUtils.mockRecordId(Lead.SObjectType);
             Lead lead = new Lead(Id = leadId);
             leads?.put(lead?.Id, lead); 
             Database.LeadConvert leadToConvert = new Database.LeadConvert();
@@ -40,7 +40,7 @@ private class MockDmlTest {
     static void shouldThrowExceptionIfErrorOnConvert() {
         List<Database.LeadConvert> leadsToConvert = new List<Database.LeadConvert>();
         for (Integer i = 0; i < TEST_SIZE; i++) {
-            Id leadId = SObjectUtils.generateMockId(Lead.SObjectType);
+            Id leadId = SObjectUtils.mockRecordId(Lead.SObjectType);
             Database.LeadConvert leadToConvert = new Database.LeadConvert();
             leadToConvert?.setLeadId(leadId);
             leadToConvert?.setConvertedStatus('Some Status');
@@ -65,7 +65,7 @@ private class MockDmlTest {
     static void shouldFailSilentlyIfErrorAndNotAllOrNoneOnConvert() {
         List<Database.LeadConvert> leadsToConvert = new List<Database.LeadConvert>();
         for (Integer i = 0; i < TEST_SIZE; i++) {
-            Id leadId = SObjectUtils.generateMockId(Lead.SObjectType);
+            Id leadId = SObjectUtils.mockRecordId(Lead.SObjectType);
             Database.LeadConvert leadToConvert = new Database.LeadConvert();
             leadToConvert?.setLeadId(leadId);
             leadToConvert?.setConvertedStatus('Some Status');
@@ -569,7 +569,7 @@ private class MockDmlTest {
     }
 
     static SObject initRecord(SObjectType objectType, Boolean withId) {
-        Id recordId = (withId) ? SObjectUtils.generateMockId(objectType) : null;
+        Id recordId = (withId) ? SObjectUtils.mockRecordId(objectType) : null;
         return objectType?.newSObject(recordId);
     }
 

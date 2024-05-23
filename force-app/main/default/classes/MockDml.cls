@@ -303,7 +303,7 @@ public class MockDml extends Dml {
             // If the record does not have an Id value, generate a mock one
             if (record?.Id == null) {
                 SObjectType objectType = record?.getSObjectType();
-                record.Id = SObjectUtils.generateMockId(objectType);
+                record.Id = SObjectUtils.mockRecordId(objectType);
             }
             return record;
         }
@@ -350,7 +350,7 @@ public class MockDml extends Dml {
             // It's better to refer to platform events by their EventUuid value, which is unique.
             Map<String, Object> params = (Map<String, Object>) JSON.deserializeUntyped(JSON.serialize(record));
             params?.put(EVENT_UUID_FIELD, Uuid.randomUuid());
-            return JSON.deserialize(JSON.serialize(params), SObject.class);
+            return (SObject) JSON.deserialize(JSON.serialize(params), SObject.class);
         }
 
         public override Boolean wasProcessed(SObject record) {
@@ -380,15 +380,15 @@ public class MockDml extends Dml {
         private Id opportunityId { get; private set; } 
         private Id personAccountId { get; private set; }
 
-        private LeadConvertResult(Id recordId) {
-            super(recordId);
-        }
-
         private LeadConvertResult(Lead lead) {
-            this(lead?.Id);
+            this(lead);
         }
 
-        public override void setId(Id recordId) {
+        public override void setId(SObject record) {
+            this.setId(record?.Id);
+        }
+
+        public void setId(Id recordId) {
             SObjectType objectType = recordId?.getSObjectType();
             if (objectType == Account.SObjectType) {
                 this.accountId = recordId;
@@ -415,15 +415,11 @@ public class MockDml extends Dml {
         protected Id id;
         protected Boolean success;
     
-        protected Result(Id recordId) {
+        protected Result(SObject record) {
             // Creates a record that simulates a successful DML operation
             this.errors = new List<MockDml.Error>();
-            this.setId(recordId);
+            this.setId(record);
             this.setIsSuccess(true);
-        }
-        
-        protected Result(SObject record) {
-            this(record?.Id);
         }
     
         protected Result addError(MockDml.Error error) {
@@ -452,8 +448,10 @@ public class MockDml extends Dml {
             return (Database.UndeleteResult) JSON.deserialize(JSON.serialize(untyped), Database.UndeleteResult.class);
         }
 
-        protected virtual void setId(Id recordId) {
-            this.id = recordId;
+        protected virtual void setId(SObject record) {
+            // Set the Id of the Dml result with the record's Id
+            // ! Note: Only in some select instances (ex., platform events), this Id will be null
+            this.id = record?.Id ?? SObjectUtils.mockPlatformEventId(record?.getSObjectType());
         }
 
         protected void setIsSuccess(Boolean value) {
