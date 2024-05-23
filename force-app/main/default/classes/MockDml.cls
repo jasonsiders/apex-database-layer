@@ -233,7 +233,7 @@ public class MockDml extends Dml {
             if (history?.operation == Dml.Operation.DO_INSERT) {
                 // Note: When a record fails to be inserted, 
                 // the resulting Database.SaveResult should have a null Id value
-                result?.setId(null);
+                result?.clearId();
             }
             return result;
         }
@@ -479,6 +479,10 @@ public class MockDml extends Dml {
             this.setIsSuccess(false);
             return this; 
         }
+
+        protected void clearId() {
+            this.id = null;
+        }
     
         protected Database.SaveResult toSaveResult() {
             return (Database.SaveResult) this.toDatabaseResult(Database.SaveResult.class);
@@ -508,7 +512,7 @@ public class MockDml extends Dml {
             } else if (this.success == true) { 
                 // Likely a Platform Event -- this should have a static/not unique Id
                 this.id = SObjectUtils.mockPlatformEventId(record?.getSObjectType());
-            } 
+            }
         }
 
         protected void setIsSuccess(Boolean value) {
