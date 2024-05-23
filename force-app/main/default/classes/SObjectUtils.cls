@@ -22,11 +22,13 @@ public abstract class SObjectUtils {
 
     // **** TEST ONLY **** //
     @TestVisible
-    private static Id mockRecordId(SObjectType objectType) {
-        String prefix = objectType?.getDescribe()?.getKeyPrefix();
-        String suffix = String.valueOf(numMockIds++);
-        String mid = 0?.toString()?.repeat(15 - suffix?.length());
-        return prefix + mid + suffix;
+    private static SObject mockLookup(SObject originalRecord, SObjectField lookupField, SObject parent) {
+        // Populates a parent relationship, ex., Contact.Account with a parent SObject record.
+        // Populate the lookup field (ex., SomeLookup__c)
+        originalRecord?.put(lookupField, parent?.Id);
+        // Populate the lookup relationship (ex., SomeLookup__r)
+        String relationshipName = lookupField?.getDescribe()?.getRelationshipName();
+        return SObjectUtils.mockReadOnlyFields(originalRecord, relationshipName, parent);
     }
 
     @TestVisible
@@ -37,35 +39,7 @@ public abstract class SObjectUtils {
     }
 
     @TestVisible
-    private static SObject setChildRelationship(SObject originalRecord, String relationshipName, List<SObject> children) {
-        // Populates a child relationship, ex., Account.Contacts with a list of SObjects
-        MockRelatedList relatedList = new MockRelatedList(children);
-        return SObjectUtils.setReadOnlyFields(originalRecord, relationshipName, relatedList);
-    }
-
-    @TestVisible
-    private static SObject setChildRelationship(SObject originalRecord, Schema.ChildRelationship relationship, List<SObject> children) {
-        return SObjectUtils.setChildRelationship(originalRecord, relationship?.getRelationshipName(), children);
-    }
-
-    @TestVisible
-    private static SObject setChildRelationship(SObject originalRecord, SObjectField lookupField, List<SObject> children) {
-        Schema.ChildRelationship relationship = SObjectUtils.getChildRelationshipFrom(lookupField);
-        return SObjectUtils.setChildRelationship(originalRecord, relationship, children);
-    }
-
-    @TestVisible
-    private static SObject setParentRelationship(SObject originalRecord, SObjectField lookupField, SObject parent) {
-        // Populates a parent relationship, ex., Contact.Account with a parent SObject record.
-        // Populate the lookup field (ex., SomeLookup__c)
-        originalRecord?.put(lookupField, parent?.Id);
-        // Populate the lookup relationship (ex., SomeLookup__r)
-        String relationshipName = lookupField?.getDescribe()?.getRelationshipName();
-        return SObjectUtils.setReadOnlyFields(originalRecord, relationshipName, parent);
-    }
-
-    @TestVisible
-    private static SObject setReadOnlyFields(SObject originalRecord, Map<String, Object> readOnlyValues) {
+    private static SObject mockReadOnlyFields(SObject originalRecord, Map<String, Object> readOnlyValues) {
         // Sets the value of read-only fields on an existing SObject, returning a copy of that same object.
         // Note: Since JSON de/serialization is involved, cannot actually transform the existing object in memory.
         Map<String, Object> recordValues = (Map<String, Object>) JSON.deserializeUntyped(JSON.serialize(originalRecord));
@@ -74,24 +48,50 @@ public abstract class SObjectUtils {
     }
 
     @TestVisible
-    private static SObject setReadOnlyFields(SObject originalRecord, String fieldName, Object value) {
-        return SObjectUtils.setReadOnlyFields(originalRecord, new Map<String, Object>{ fieldName => value });
+    private static SObject mockReadOnlyFields(SObject originalRecord, String fieldName, Object value) {
+        return SObjectUtils.mockReadOnlyFields(originalRecord, new Map<String, Object>{ fieldName => value });
     }
 
     @TestVisible
-    private static SObject setReadOnlyFields(SObject originalRecord, SObjectField field, Object value) {
-        return SObjectUtils.setReadOnlyFields(originalRecord, field?.toString(), value); 
+    private static SObject mockReadOnlyFields(SObject originalRecord, SObjectField field, Object value) {
+        return SObjectUtils.mockReadOnlyFields(originalRecord, field?.toString(), value); 
+    }
+
+    @TestVisible
+    private static Id mockRecordId(SObjectType objectType) {
+        String prefix = objectType?.getDescribe()?.getKeyPrefix();
+        String suffix = String.valueOf(numMockIds++);
+        String mid = 0?.toString()?.repeat(15 - suffix?.length());
+        return prefix + mid + suffix;
+    }
+
+    @TestVisible
+    private static SObject mockRelatedList(SObject originalRecord, String relationshipName, List<SObject> children) {
+        // Populates a child relationship, ex., Account.Contacts with a list of SObjects
+        RelatedList relatedList = new RelatedList(children);
+        return SObjectUtils.mockReadOnlyFields(originalRecord, relationshipName, relatedList);
+    }
+
+    @TestVisible
+    private static SObject mockRelatedList(SObject originalRecord, Schema.ChildRelationship relationship, List<SObject> children) {
+        return SObjectUtils.mockRelatedList(originalRecord, relationship?.getRelationshipName(), children);
+    }
+
+    @TestVisible
+    private static SObject mockRelatedList(SObject originalRecord, SObjectField lookupField, List<SObject> children) {
+        Schema.ChildRelationship relationship = SObjectUtils.getChildRelationshipFrom(lookupField);
+        return SObjectUtils.mockRelatedList(originalRecord, relationship, children);
     }
 
     // **** INNER **** //
-    private class MockRelatedList {
+    private class RelatedList {
 		// Represents a child object relationship retrieved by SOQL.
 		// This structure is required when mocking related lists on an SObject
 		Boolean done;
 		List<SObject> records;
 		Integer totalSize;
 
-		private MockRelatedList(List<SObject> records) {
+		private RelatedList(List<SObject> records) {
 			this.done = true;
 			this.records = records ?? new List<SObject>();
 			this.totalSize = records?.size() ?? 0; 

@@ -45,7 +45,7 @@ private class SObjectUtilsTest {
         };
         
         Test.startTest();
-        Account account = (Account) SObjectUtils.setReadOnlyFields(new Account(), readOnlyFields);
+        Account account = (Account) SObjectUtils.mockReadOnlyFields(new Account(), readOnlyFields);
         Test.stopTest();
 
         for (String fieldName : readOnlyFields?.keySet()) {
@@ -55,11 +55,11 @@ private class SObjectUtilsTest {
     }
 
     @IsTest 
-    static void shouldsetReadOnlyFields() {
+    static void shouldmockReadOnlyFields() {
         DateTime expected = DateTime.now()?.addDays(-3); 
 
         Test.startTest();
-        Account account = (Account) SObjectUtils.setReadOnlyFields(new Account(), Account.CreatedDate, expected);
+        Account account = (Account) SObjectUtils.mockReadOnlyFields(new Account(), Account.CreatedDate, expected);
         Test.stopTest();
 
         Assert.areEqual(expected, account?.CreatedDate, 'Wrong read-only value');
@@ -70,7 +70,7 @@ private class SObjectUtilsTest {
         Account account = new Account(Id = SObjectUtils.mockRecordId(Account.SObjectType));
 
         Test.startTest();
-        Contact contact = (Contact) SObjectUtils.setParentRelationship(new Contact(), Contact.AccountId, account);
+        Contact contact = (Contact) SObjectUtils.mockLookup(new Contact(), Contact.AccountId, account);
         Test.stopTest();
 
         Assert.areEqual(account?.Id, contact?.AccountId, 'Did not set lookup field');
@@ -86,7 +86,7 @@ private class SObjectUtilsTest {
         }
 
         Test.startTest();
-        Account account = (Account) SObjectUtils.setChildRelationship(new Account(), Contact.AccountId, contacts);
+        Account account = (Account) SObjectUtils.mockRelatedList(new Account(), Contact.AccountId, contacts);
         Test.stopTest();
 
         Assert.areEqual(contacts?.size(), account?.Contacts?.size(), 'Did not set child relationship');
