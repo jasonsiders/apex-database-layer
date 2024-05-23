@@ -186,7 +186,7 @@ public class MockDml extends Dml {
         Boolean originalAllOrNone = this.getAllOrNone();
         this.setAllOrNone(true);
         // Create a Lead from the LeadConvertResult
-        Lead lead = new Lead(Id = leadToConvert?.getLeadId());
+        Lead leadRecord = new Lead(Id = leadToConvert?.getLeadId());
         // * TODO!
         // Create an Account from the LeadConvertResult
         Id accountId = leadToConvert?.getAccountId() ?? SObjectUtils.mockRecordId(Account.SObjectType);
@@ -206,20 +206,32 @@ public class MockDml extends Dml {
             this.generateMockResult(MockDml.Inserted, contact);
             this.generateMockResult(MockDml.Inserted, opportunity);
             // Convert the lead
-            this.generateMockResult(MockDml.Converted, lead);
+            Map<String, Object> conversionValues = new Map<String, Object>{
+                Lead.ConvertedAccountId.toString() => account?.Id,
+                Lead.ConvertedContactId.toString() => contact?.Id,
+                Lead.ConvertedOpportunityId.toString() => opportunity?.Id,
+                Lead.IsConverted.toString() => true
+            };
+            leadRecord = (Lead) SObjectUtils.mockReadOnlyFields(leadRecord, conversionValues);
+            this.generateMockResult(MockDml.Converted, leadRecord);
             // Success! Safe to revert to original allOrNone behavior
             this.setAllOrNone(originalAllOrNone);
-            return new MockDml.LeadConvertResult(lead);
+            // Build the LeadConvertResult
+            MockDml.LeadConvertResult result = new MockDml.LeadConvertResult(leadRecord);
+            result?.setId(account);
+            result?.setId(contact);
+            result?.setId(opportunity);
+            return result;
         } catch (Exception error) {
             // Unregister any of successful related records up to this point
             MockDml.Inserted?.unregisterDml(account);
             MockDml.Inserted?.unregisterDml(contact);
             MockDml.Inserted?.unregisterDml(opportunity);
-            MockDml.Converted?.unregisterDml(lead);
+            MockDml.Converted?.unregisterDml(leadRecord);
             // Respect the originally defined allOrNone behavior when handling the error 
             this.setAllOrNone(originalAllOrNone);
             // Handle the error like a normal DML Operation
-            return this.handleDmlError(MockDml.Converted, lead, error);
+            return this.handleDmlError(MockDml.Converted, leadRecord, error);
         }
     }
 
