@@ -229,7 +229,13 @@ public class MockDml extends Dml {
             throw error;
         } else {
             MockDml.Error dmlError = new MockDml.Error(error); 
-            return new MockDml.Result(record)?.addError(dmlError);
+            MockDml.Result result = new MockDml.Result(record)?.addError(dmlError);
+            if (history?.operation == Dml.Operation.DO_INSERT) {
+                // Note: When a record fails to be inserted, 
+                // the resulting Database.SaveResult should have a null Id value
+                result?.setId(null);
+            }
+            return result;
         }
     }
 
@@ -464,8 +470,8 @@ public class MockDml extends Dml {
         protected Result(SObject record) {
             // Creates a record that simulates a successful DML operation
             this.errors = new List<MockDml.Error>();
-            this.setId(record);
             this.setIsSuccess(true);
+            this.setId(record);
         }
     
         protected Result addError(MockDml.Error error) {
@@ -495,9 +501,14 @@ public class MockDml extends Dml {
         }
 
         protected virtual void setId(SObject record) {
-            // Set the Id of the Dml result with the record's Id
-            // ! Note: Only in some select instances (ex., platform events), this Id will be null
-            this.id = record?.Id ?? SObjectUtils.mockPlatformEventId(record?.getSObjectType());
+            System.debug('Record.Id: ' + record?.Id + '. Is Success? ' + this.success);
+            if (record?.Id != null) {
+                // Set the Id of the Dml result with the record's Id
+                this.id = record?.Id;
+            } else if (this.success == true) { 
+                // Likely a Platform Event -- this should have a static/not unique Id
+                this.id = SObjectUtils.mockPlatformEventId(record?.getSObjectType());
+            } 
         }
 
         protected void setIsSuccess(Boolean value) {
