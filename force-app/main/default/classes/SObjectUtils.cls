@@ -13,4 +13,14 @@ public abstract class SObjectUtils {
         // It does not need to be incremented for uniqueness
         return objectType?.getDescribe()?.getKeyPrefix() + '0'?.repeat(15); 
     }
+
+    public static SObject setReadOnlyField(SObject originalRecord, String fieldName, Object value) {
+        Map<String, Object> params = (Map<String, Object>) JSON.deserializeUntyped(JSON.serialize(originalRecord));
+        params?.put(fieldName, value);
+        return (SObject) JSON.deserialize(JSON.serialize(params), SObject.class);
+    }
+
+    public static SObject setReadOnlyField(SObject originalRecord, SObjectField field, Object value) {
+        return SObjectUtils.setReadOnlyField(originalRecord, field?.toString(), value); 
+    }
 }
