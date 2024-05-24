@@ -37,7 +37,8 @@ public class MockDml extends Dml {
     public override List<Database.LeadConvertResult> doConvert(List<Database.LeadConvert> leadsToConvert) {
         List<Database.LeadConvertResult> results = new List<Database.LeadConvertResult>();
         for (Database.LeadConvert leadToConvert : leadsToConvert) {
-            Database.LeadConvertResult result = ((MockDml.LeadConvertResult) this.generateMockResult(leadToConvert))?.toConvertResult();
+            MockDml.Result mockResult = this.generateMockResult(leadToConvert);
+            Database.LeadConvertResult result = mockResult?.toConvertResult();
             results?.add(result);
         }
         return results;
@@ -241,7 +242,7 @@ public class MockDml extends Dml {
             throw error;
         } else {
             MockDml.Error dmlError = new MockDml.Error(error); 
-            MockDml.Result result = new MockDml.Result(record)?.addError(dmlError);
+            MockDml.RecordResult result = (MockDml.RecordResult) new MockDml.RecordResult(record)?.addError(dmlError);
             if (history?.operation == Dml.Operation.DO_INSERT) {
                 // Note: When a record fails to be inserted, 
                 // the resulting Database.SaveResult should have a null Id value
@@ -336,7 +337,7 @@ public class MockDml extends Dml {
             Map<String, SObject> records = this.getRecordMap(objectType);
             this.addRecordToMap(record, records);
             this.recordMap?.put(objectType, records);
-            return new MockDml.Result(record);
+            return new MockDml.RecordResult(record);
         }
 
         public void unregisterDml(SObject record) {
@@ -437,87 +438,85 @@ public class MockDml extends Dml {
         }
     }
 
-    private class LeadConvertResult extends Result {
-        private Id accountId { get; private set; }
-        private Id contactId { get; private set; }
-        private Id leadId { get; private set; }
-        private Id opportunityId { get; private set; } 
-        private Id personAccountId { get; private set; }
+    private abstract class Result {
+        protected List<MockDml.Error> errors = new List<MockDml.Error>();
+        protected Boolean success = true;
 
-        private LeadConvertResult(Lead lead) {
-            super(lead);
-        }
+        public abstract void setId(SObject record);
 
-        public override void setId(SObject record) {
-            this.setId(record?.Id);
-        }
-
-        public void setId(Id recordId) {
-            SObjectType objectType = recordId?.getSObjectType();
-            if (objectType == Account.SObjectType) {
-                this.accountId = recordId;
-            } else if (objectType == Contact.SObjectType) {
-                this.contactId = recordId;
-            } else if (objectType == Lead.SObjectType) {
-                this.leadId = recordId;
-            } else if (objectType == Opportunity.SObjectType) {
-                this.opportunityId = recordId;
-            }
-        }
-
-        private void setPersonAccountId(Id accountId) {
-            this.personAccountId = accountId;
-        }
-
-        private Database.LeadConvertResult toConvertResult() {
-            return (Database.LeadConvertResult) this.toDatabaseResult(Database.LeadConvertResult.class);
-        }
-    }
-
-    private virtual class Result {
-        protected List<MockDml.Error> errors;
-        protected Id id;
-        protected Boolean success;
-    
-        protected Result(SObject record) {
-            // Creates a record that simulates a successful DML operation
-            this.errors = new List<MockDml.Error>();
-            this.setIsSuccess(true);
+        public Result(SObject record) {
             this.setId(record);
         }
-    
-        protected Result addError(MockDml.Error error) {
+
+        public Result addError(MockDml.Error error) {
             this.errors?.add(error);
-            this.setIsSuccess(false);
+            this.success = false;
             return this; 
         }
 
-        protected void clearId() {
-            this.id = null;
-        }
-    
-        protected Database.SaveResult toSaveResult() {
+        public Database.SaveResult toSaveResult() {
             return (Database.SaveResult) this.toDatabaseResult(Database.SaveResult.class);
         }
     
-        protected Database.UpsertResult toUpsertResult() {
+        public Database.UpsertResult toUpsertResult() {
             return (Database.UpsertResult) this.toDatabaseResult(Database.UpsertResult.class);
         }
     
-        protected Database.DeleteResult toDeleteResult() {
+        public Database.DeleteResult toDeleteResult() {
             return (Database.DeleteResult) this.toDatabaseResult(Database.DeleteResult.class);
         }
     
-        protected Database.UndeleteResult toUndeleteResult() {
+        public Database.UndeleteResult toUndeleteResult() {
             // Note: For some reason, we can't directly deserialize into a Database.UndeleteResult like the other methods.
             // Attempting to do so will result in the "success" parameter always being set to false.
             // Don't ask me why -- but deserializing untyped first solves the issue.
             Object untyped = JSON.deserializeUntyped(JSON.serialize(this));
             return (Database.UndeleteResult) JSON.deserialize(JSON.serialize(untyped), Database.UndeleteResult.class);
         }
+        
+        public Database.LeadConvertResult toConvertResult() {
+            return (Database.LeadConvertResult) this.toDatabaseResult(Database.LeadConvertResult.class);
+        }
 
-        protected virtual void setId(SObject record) {
-            System.debug('Record.Id: ' + record?.Id + '. Is Success? ' + this.success);
+        protected Object toDatabaseResult(Type resultType) {
+            // Returns a Database.Save/Upsert/Delete/UndeleteResult object -- unfortunately, these do not share a common interface
+            return JSON.deserialize(JSON.serialize(this), resultType);
+        }
+    }
+
+    private class LeadConvertResult extends Result {
+        private Id accountid { get; private set; }
+        private Id contactid { get; private set; }
+        private Id leadid { get; private set; }
+        private Id opportunityid { get; private set; } 
+
+        private LeadConvertResult(Lead lead) {
+            super(lead);
+        }
+
+        public override void setId(SObject record) {
+            SObjectType objectType = record?.getSObjectType();
+            if (objectType == Account.SObjectType) {
+                this.accountid = record?.Id;
+            } else if (objectType == Contact.SObjectType) {
+                this.contactid = record?.Id;
+            } else if (objectType == Lead.SObjectType) {
+                this.leadid = record?.Id;
+            } else if (objectType == Opportunity.SObjectType) {
+                this.opportunityid = record?.Id;
+            }
+        }
+    }
+
+    private virtual class RecordResult extends Result {
+        protected Id id;
+
+        private RecordResult(SObject record) {
+            // Creates a record that simulates a successful DML operation
+            super(record);
+        }
+
+        public override void setId(SObject record) {
             if (record?.Id != null) {
                 // Set the Id of the Dml result with the record's Id
                 this.id = record?.Id;
@@ -527,13 +526,8 @@ public class MockDml extends Dml {
             }
         }
 
-        protected void setIsSuccess(Boolean value) {
-            this.success = value;
-        }
-
-        protected Object toDatabaseResult(Type resultType) {
-            // Returns a Database.Save/Upsert/Delete/UndeleteResult object -- unfortunately, these do not share a common interface
-            return JSON.deserialize(JSON.serialize(this), resultType);
+        private void clearId() {
+            this.id = null;
         }
     }
 }
