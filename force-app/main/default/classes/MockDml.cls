@@ -245,9 +245,9 @@ public class MockDml extends Dml {
             return new MockDml.LeadConvertResult(lead)?.addError(dmlError);
         } else if (history?.operation == Dml.Operation.DO_INSERT) {
             // Note: When a record fails to be inserted, the resulting Database.SaveResult should have a null Id value
-            return (MockDml.RecordResult) new MockDml.RecordResult(record)?.clearId()?.addError(dmlError);
+            return new MockDml.RecordResult(record)?.clearId()?.addError(dmlError);
         } else {
-            return (MockDml.RecordResult) new MockDml.RecordResult(record)?.addError(dmlError);
+            return new MockDml.RecordResult(record)?.addError(dmlError);
         }
     }
 
@@ -295,7 +295,6 @@ public class MockDml extends Dml {
         }
 
         public Error() {
-            // Initialize an error with a default message & status code
             this(new System.DmlException());
         }
 
@@ -438,26 +437,6 @@ public class MockDml extends Dml {
         }
     }
 
-    private abstract class Result {
-        protected List<MockDml.Error> errors = new List<MockDml.Error>();
-        protected Boolean success {
-            get {
-                return this.errors?.isEmpty() != false;
-            }
-        }
-
-        public abstract Result setId(SObject record);
-
-        public Result(SObject record) {
-            this.setId(record);
-        }
-
-        public Result addError(MockDml.Error error) {
-            this.errors?.add(error);
-            return this; 
-        }
-    }
-
     private class LeadConvertResult extends Result {
         private Id accountid { get; private set; }
         private Id contactid { get; private set; }
@@ -483,11 +462,10 @@ public class MockDml extends Dml {
         }
     }
 
-    private virtual class RecordResult extends Result {
+    private class RecordResult extends Result {
         protected Id id;
 
         private RecordResult(SObject record) {
-            // Creates a record that simulates a successful DML operation
             super(record);
         }
 
@@ -504,6 +482,26 @@ public class MockDml extends Dml {
                 // Likely a Platform Event -- this should have a static/not unique Id
                 this.id = SObjectUtils.mockPlatformEventId(record?.getSObjectType());
             }
+            return this; 
+        }
+    }
+    
+    private abstract class Result {
+        protected List<MockDml.Error> errors = new List<MockDml.Error>();
+        protected Boolean success {
+            get {
+                return this.errors?.isEmpty() != false;
+            }
+        }
+
+        public abstract Result setId(SObject record);
+
+        public Result(SObject record) {
+            this.setId(record);
+        }
+
+        public Result addError(MockDml.Error error) {
+            this.errors?.add(error);
             return this; 
         }
     }
