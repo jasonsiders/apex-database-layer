@@ -264,7 +264,11 @@ public class MockDml extends Dml {
     }
 
     private List<Database.UndeleteResult> toUndeleteResults(List<MockDml.Result> results) {
-        return (List<Database.UndeleteResult>) this.toDatabaseResults(results, List<Database.UndeleteResult>.class);
+        // Note: For some reason, we can't directly deserialize into a List<Database.UndeleteResult> like the other methods.
+        // Attempting to do so will result in the "success" parameter always being set to false.
+        // Don't ask me why -- but deserializing untyped first solves the issue.
+        Object untyped = JSON.deserializeUntyped(JSON.serialize(results));
+        return (List<Database.UndeleteResult>) JSON.deserialize(JSON.serialize(untyped), List<Database.UndeleteResult>.class);
     }
 
     private List<Database.UpsertResult> toUpsertResults(List<MockDml.Result> results) {
