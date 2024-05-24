@@ -287,8 +287,7 @@ public class MockDml extends Dml {
         }
 
         public Error(Exception error) {
-            this.message = error?.getMessage();
-            this.statusCode = 'MOCK_DML';
+            this(error?.getMessage(), System.StatusCode.UNKNOWN_EXCEPTION);
         }
 
         public Error() {
@@ -321,9 +320,7 @@ public class MockDml extends Dml {
 
         // **** ABSTRACT **** //
         public abstract void addRecordToMap(SObject record, Map<String, Object> records);
-        public abstract SObject getRecord(SObject record);
         public abstract SObject setRecordId(SObject record);
-        public abstract Boolean wasProcessed(SObject record);
         
         // **** PUBLIC **** //
         public History eraseHistory() {
@@ -381,10 +378,6 @@ public class MockDml extends Dml {
             records?.put(record?.Id, record);
         }
 
-        public override SObject getRecord(SObject record) {
-            return this.getRecord(record?.Id);
-        }
-
         public override SObject setRecordId(SObject record) {
             // If the record does not have an Id value, generate a mock one
             if (record?.Id == null) {
@@ -394,18 +387,22 @@ public class MockDml extends Dml {
             return record;
         }
 
-        public override Boolean wasProcessed(SObject record) {
-            return this.wasProcessed(record?.Id);
-        }
-
         // **** PUBLIC **** //
         public SObject getRecord(Id recordId) {
             SObjectType objectType = recordId?.getSObjectType();
             return this.getRecordMap(objectType)?.get(recordId);
         }
 
+        public SObject getRecord(SObject record) {
+            return this.getRecord(record?.Id);
+        }
+
         public Boolean wasProcessed(Id recordId) {
             return this.getRecord(recordId) != null;
+        }
+
+        public Boolean wasProcessed(SObject record) {
+            return this.wasProcessed(record?.Id);
         }
     }
 
@@ -424,31 +421,11 @@ public class MockDml extends Dml {
             this.objectTypesByUuid?.put(uuid, record?.getSObjectType());
         }
 
-        public override SObject getRecord(SObject record) {
-            SObjectType objectType = record?.getSObjectType();
-            String uuid = this.getUuid(record);
-            return this.getRecordMap(objectType)?.get(uuid);
-        }
-
         public override SObject setRecordId(SObject record) {
             // Note: Platform Events technically have an Id field, but it's not writeable, nor is it transformed after publish. 
             // Instead, the platform populates the "EventUuid" field with a unique identifier 
             // It's better to refer to platform events by their EventUuid value, which is unique.
             return SObjectUtils.mockReadOnlyFields(record, EVENT_UUID_FIELD, Uuid.randomUuid());
-        }
-
-        public override Boolean wasProcessed(SObject record) {
-            return this.getRecord(record) != null;
-        }
-
-        // **** PUBLIC **** //
-        public SObject getRecord(String uuid) {
-            SObjectType objectType = this.objectTypesByUuid?.get(uuid);
-            return this.getRecordMap(objectType)?.get(uuid);
-        }
-
-        public Boolean wasProcessed(String uuid) {
-            return this.getRecord(uuid) != null;
         }
 
         // **** PRIVATE **** //
