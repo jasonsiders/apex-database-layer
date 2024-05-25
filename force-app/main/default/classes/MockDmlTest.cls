@@ -10,6 +10,7 @@ private class MockDmlTest {
             leads?.put(lead?.Id, lead); 
             Database.LeadConvert leadToConvert = new Database.LeadConvert();
             leadToConvert?.setLeadId(leadId);
+            leadToConvert?.setConvertedStatus('Foo!');
             leadsToConvert?.add(leadToConvert);
         }
 
@@ -18,9 +19,8 @@ private class MockDmlTest {
         Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
         Test.stopTest();
 
-        Integer numResults = results?.size();
-        Assert.areEqual(leadsToConvert?.size(), numResults, 'Wrong # of results'); 
-        Assert.areEqual(numResults, MockDml.Converted?.getAll()?.size(), 'Wrong # of converted records');
+        Assert.areEqual(leadsToConvert?.size(), results?.size(), 'Wrong # of results'); 
+        Assert.areEqual(results?.size(), MockDml.Converted?.getAll()?.size(), 'Wrong # of converted records');
         for (Database.LeadConvertResult result : results) {
             Assert.areEqual(true, result?.isSuccess(), 'Did not succeed: ' + result?.getErrors()); 
             Id leadId = result?.getLeadId();
@@ -33,7 +33,89 @@ private class MockDmlTest {
     }
 
     @IsTest 
-    static void shouldThrowExceptionIfErrorOnConvert() {
+    static void shouldMockLeadConvertWithExistingRecords() {
+        Id accountId = SObjectUtils.mockRecordId(Account.SObjectType);
+        Map<Id, Lead> leads = new Map<Id, Lead>();
+        List<Database.LeadConvert> leadsToConvert = new List<Database.LeadConvert>();
+        for (Integer i = 0; i < TEST_SIZE; i++) {
+            Id leadId = SObjectUtils.mockRecordId(Lead.SObjectType);
+            Lead lead = new Lead(Id = leadId);
+            leads?.put(lead?.Id, lead); 
+            Database.LeadConvert leadToConvert = new Database.LeadConvert();
+            leadToConvert?.setLeadId(leadId);
+            leadToConvert?.setAccountId(accountId);
+            leadToConvert?.setConvertedStatus('Foo!');
+            leadsToConvert?.add(leadToConvert);
+        }
+
+        Test.startTest();
+        List<Database.LeadConvertResult> results = new MockDml()?.doConvert(leadsToConvert);
+        Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
+        Test.stopTest();
+
+        Assert.areEqual(leadsToConvert?.size(), results?.size(), 'Wrong # of results'); 
+        Assert.areEqual(results?.size(), MockDml.Converted?.getAll()?.size(), 'Wrong # of converted records');
+        for (Database.LeadConvertResult result : results) {
+            Assert.areEqual(true, result?.isSuccess(), 'Did not succeed: ' + result?.getErrors()); 
+            Id leadId = result?.getLeadId();
+            Lead lead = leads?.get(leadId);
+            Assert.isNotNull(lead, 'No lead w/matching Id: ' + leadId);
+            Assert.areEqual(accountId, result?.getAccountId(), 'Did not use existing AccountId');
+            Assert.isNotNull(result?.getContactId(), 'Missing ConvertedContactId');
+            Assert.isNotNull(result?.getOpportunityId(), 'Missing ConvertedOpportunityId');
+        }
+    }
+
+    @IsTest 
+    static void shouldThrowExceptionIfMissingLeadIdOnConvert() {
+        List<Database.LeadConvert> leadsToConvert = new List<Database.LeadConvert>();
+        for (Integer i = 0; i < TEST_SIZE; i++) {
+            Id leadId = SObjectUtils.mockRecordId(Lead.SObjectType);
+            Lead lead = new Lead(Id = leadId);
+            Database.LeadConvert leadToConvert = new Database.LeadConvert();
+            // ! Missing lead id -- will cause an error
+            leadToConvert?.setConvertedStatus('Foo!');
+            leadsToConvert?.add(leadToConvert);
+        }
+
+        Test.startTest();
+        try {
+            new MockDml()?.doConvert(leadsToConvert);
+            Assert.fail('An error was not thrown for missing Lead Id');
+        } catch (System.DmlException error) {
+            // As expected
+        } finally {
+            Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
+        }
+        Test.stopTest();
+    }
+
+    @IsTest 
+    static void shouldThrowExceptionIfMissingLeadStatusConvert() {
+        List<Database.LeadConvert> leadsToConvert = new List<Database.LeadConvert>();
+        for (Integer i = 0; i < TEST_SIZE; i++) {
+            Id leadId = SObjectUtils.mockRecordId(Lead.SObjectType);
+            Lead lead = new Lead(Id = leadId);
+            Database.LeadConvert leadToConvert = new Database.LeadConvert();
+            leadToConvert?.setLeadId(leadId);
+            // ! Missing converted status -- will cause an error
+            leadsToConvert?.add(leadToConvert);
+        }
+
+        Test.startTest();
+        try {
+            new MockDml()?.doConvert(leadsToConvert);
+            Assert.fail('An error was not thrown for missing converted status');
+        } catch (System.DmlException error) {
+            // As expected
+        } finally {
+            Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
+        }
+        Test.stopTest();
+    }
+
+    @IsTest 
+    static void shouldThrowExceptionIfErrorInjectedOnConvert() {
         List<Database.LeadConvert> leadsToConvert = new List<Database.LeadConvert>();
         for (Integer i = 0; i < TEST_SIZE; i++) {
             Id leadId = SObjectUtils.mockRecordId(Lead.SObjectType);

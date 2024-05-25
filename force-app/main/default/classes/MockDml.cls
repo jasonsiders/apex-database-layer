@@ -181,42 +181,49 @@ public class MockDml extends Dml {
     }
 
     private MockDml.LeadConvertResult generateMockResult(Database.LeadConvert leadToConvert) {
-        Lead lead = new Lead(Id = leadToConvert?.getLeadId());
+        // Simulate a Lead Conversion, which typically also involves inserting Account/Contact/Opportunity records
+        Lead leadRecord = new Lead(Id = leadToConvert?.getLeadId());
+        Account accountRecord = new Account(Id = leadToConvert?.getAccountId());
+        Contact contactRecord = new Contact(Id = leadToConvert?.getContactId());
+        Opportunity opportunityRecord = new Opportunity(Id = leadToConvert?.getOpportunityId());
         // Note: Temporarily set the allOrNone behavior to true, regardless of its original value
-        // This allows injected errors for Accounts/Contacts/Opps to be thrown & captured accordingly
+        // This allows injected errors for Accounts/Contacts/Opps to be captured and handled appropriately
         final Boolean originalAllOrNone = this.getAllOrNone();
         this.setAllOrNone(true);
-        // Create Account/Contact/Opportunity records using the LeadConvert object
-        Id accountId = leadToConvert?.getAccountId() ?? SObjectUtils.mockRecordId(Account.SObjectType);
-        Account account = new Account(Id = accountId);
-        Id contactId = leadToConvert?.getContactId() ?? SObjectUtils.mockRecordId(Contact.SObjectType);
-        Contact contact = new Contact(Id = contactId);
-        Id opportunityId = leadToConvert?.getOpportunityId() ?? SObjectUtils.mockRecordId(Opportunity.SObjectType);
-        Opportunity opportunity = new Opportunity(Id = opportunityId);
         try {
-            // Create the Account/Contact/Opportunity records
-            this.generateMockResult(MockDml.Inserted, account);
-            this.generateMockResult(MockDml.Inserted, contact);
-            this.generateMockResult(MockDml.Inserted, opportunity);
-            // Convert the lead
-            this.generateMockResult(MockDml.Converted, lead);
+            // Simulate converting the lead
+            this.validateConvertedLead(leadToConvert);
+            this.generateMockResult(MockDml.Converted, leadRecord);
+            // Simulate creating an Account/Contact/Opportunity, if their Id wasn't already provided
+            if (accountRecord?.Id == null) {
+                accountRecord.Id = SObjectUtils.mockRecordId(Account.SObjectType);
+                this.generateMockResult(MockDml.Inserted, accountRecord);
+            }
+            if (contactRecord?.Id == null) {
+                contactRecord.Id = SObjectUtils.mockRecordId(Contact.SObjectType);
+                this.generateMockResult(MockDml.Inserted, contactRecord);
+            }
+            if (opportunityRecord?.Id == null) {
+                opportunityRecord.Id = SObjectUtils.mockRecordId(Opportunity.SObjectType);
+                this.generateMockResult(MockDml.Inserted, opportunityRecord);
+            }
             // Success! Safe to revert to original allOrNone behavior
             this.setAllOrNone(originalAllOrNone);
             // Build & return the LeadConvertResult
-            return (MockDml.LeadConvertResult) new MockDml.LeadConvertResult(lead)
-                ?.setId(account)
-                ?.setId(contact)
-                ?.setId(opportunity);
+            return (MockDml.LeadConvertResult) new MockDml.LeadConvertResult(leadRecord)
+                ?.setId(accountRecord)
+                ?.setId(contactRecord)
+                ?.setId(opportunityRecord);
         } catch (System.DmlException error) {
             // Unregister any of successful related records up to this point
-            MockDml.Inserted?.unregisterDml(account);
-            MockDml.Inserted?.unregisterDml(contact);
-            MockDml.Inserted?.unregisterDml(opportunity);
-            MockDml.Converted?.unregisterDml(lead);
+            MockDml.Inserted?.unregisterDml(accountRecord);
+            MockDml.Inserted?.unregisterDml(contactRecord);
+            MockDml.Inserted?.unregisterDml(opportunityRecord);
+            MockDml.Converted?.unregisterDml(leadRecord);
             // Respect the originally defined allOrNone behavior when handling the error 
             this.setAllOrNone(originalAllOrNone);
             // Handle the error like a normal DML Operation
-            return (MockDml.LeadConvertResult) this.handleDmlError(MockDml.Converted, lead, error);
+            return (MockDml.LeadConvertResult) this.handleDmlError(MockDml.Converted, leadRecord, error);
         }
     }
 
@@ -262,6 +269,16 @@ public class MockDml extends Dml {
 
     private Object toDatabaseResults(List<MockDml.Result> results, Type returnType) {
         return JSON.deserialize(JSON.serialize(results), returnType);
+    }
+
+    private void validateConvertedLead(Database.LeadConvert leadToConvert) {
+        // Mimicks the stock behavior of Database.LeadConvert objects.
+        // These will always throw an error if you are missing a leadId or converted status.
+        if (leadToConvert?.getLeadId() == null) {
+            throw new System.DmlException('valid leadId is required');
+        } else if (leadToConvert?.getConvertedStatus() == null) {
+            throw new System.DmlException('convertedStatus is required');
+        }
     }
 
     // **** INNER **** // 
@@ -355,6 +372,59 @@ public class MockDml extends Dml {
             return this.recordMap?.get(objectType) ?? new Map<String, SObject>(); 
         }
     }
+
+    private class LeadConvertResult extends Result {
+        private Id accountid { get; private set; }
+        private Id contactid { get; private set; }
+        private Id leadid { get; private set; }
+        private Id opportunityid { get; private set; } 
+
+        private LeadConvertResult(Lead lead) {
+            super(lead);
+        }
+
+        public override Result setId(SObject record) {
+            SObjectType objectType = record?.getSObjectType();
+            if (objectType == Account.SObjectType) {
+                this.accountid = record?.Id;
+            } else if (objectType == Contact.SObjectType) {
+                this.contactid = record?.Id;
+            } else if (objectType == Lead.SObjectType) {
+                this.leadid = record?.Id;
+            } else if (objectType == Opportunity.SObjectType) {
+                this.opportunityid = record?.Id;
+            }
+            return this;
+        }
+    }
+    
+    public class PlatformEventHistory extends History {
+        private Map<String, SObjectType> objectTypesByUuid;
+
+        public PlatformEventHistory() {
+            super(Dml.Operation.DO_PUBLISH);
+            this.objectTypesByUuid = new Map<String, SObjectType>();
+        }
+
+        // **** OVERRIDES **** //
+        public override void addRecordToMap(SObject record, Map<String, Object> records) {
+            String uuid = this.getUuid(record);
+            records?.put(uuid, record);
+            this.objectTypesByUuid?.put(uuid, record?.getSObjectType());
+        }
+
+        public override SObject setRecordId(SObject record) {
+            // Note: Platform Events technically have an Id field, but it's not writeable, nor is it transformed after publish. 
+            // Instead, the platform populates the "EventUuid" field with a unique identifier 
+            // It's better to refer to platform events by their EventUuid value, which is unique.
+            return SObjectUtils.mockReadOnlyFields(record, EVENT_UUID_FIELD, Uuid.randomUuid());
+        }
+
+        // **** PRIVATE **** //
+        private String getUuid(SObject record) {
+            return (String) record?.get(EVENT_UUID_FIELD);
+        }
+    }
     
     public class RecordHistory extends History {
         private RecordHistory(Dml.Operation operation) {
@@ -391,59 +461,6 @@ public class MockDml extends Dml {
 
         public Boolean wasProcessed(SObject record) {
             return this.wasProcessed(record?.Id);
-        }
-    }
-
-    public class PlatformEventHistory extends History {
-        private Map<String, SObjectType> objectTypesByUuid;
-
-        public PlatformEventHistory() {
-            super(Dml.Operation.DO_PUBLISH);
-            this.objectTypesByUuid = new Map<String, SObjectType>();
-        }
-
-        // **** OVERRIDES **** //
-        public override void addRecordToMap(SObject record, Map<String, Object> records) {
-            String uuid = this.getUuid(record);
-            records?.put(uuid, record);
-            this.objectTypesByUuid?.put(uuid, record?.getSObjectType());
-        }
-
-        public override SObject setRecordId(SObject record) {
-            // Note: Platform Events technically have an Id field, but it's not writeable, nor is it transformed after publish. 
-            // Instead, the platform populates the "EventUuid" field with a unique identifier 
-            // It's better to refer to platform events by their EventUuid value, which is unique.
-            return SObjectUtils.mockReadOnlyFields(record, EVENT_UUID_FIELD, Uuid.randomUuid());
-        }
-
-        // **** PRIVATE **** //
-        private String getUuid(SObject record) {
-            return (String) record?.get(EVENT_UUID_FIELD);
-        }
-    }
-
-    private class LeadConvertResult extends Result {
-        private Id accountid { get; private set; }
-        private Id contactid { get; private set; }
-        private Id leadid { get; private set; }
-        private Id opportunityid { get; private set; } 
-
-        private LeadConvertResult(Lead lead) {
-            super(lead);
-        }
-
-        public override Result setId(SObject record) {
-            SObjectType objectType = record?.getSObjectType();
-            if (objectType == Account.SObjectType) {
-                this.accountid = record?.Id;
-            } else if (objectType == Contact.SObjectType) {
-                this.contactid = record?.Id;
-            } else if (objectType == Lead.SObjectType) {
-                this.leadid = record?.Id;
-            } else if (objectType == Opportunity.SObjectType) {
-                this.opportunityid = record?.Id;
-            }
-            return this;
         }
     }
 
