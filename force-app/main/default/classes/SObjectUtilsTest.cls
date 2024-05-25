@@ -118,8 +118,19 @@ private class SObjectUtilsTest {
     @IsTest 
     static void shouldReturnChildRelationshipsUnderHighStress() {
         // The operation to retrieve Schema.ChildRelationships from an object can be expensive, 
-        // and Salesforce's built in Schema caching doesn't seem to handle this
-        // 
+        // so the class internally caches these results via an inner class.
+        // Successive calls to retrieve the same SObjectType's relationships 
+        // should have similar performance implications as calling it once. 
+        SObjectField field = Contact.AccountId;
+        SObjectUtils.getChildRelationshipFrom(field);
+        Integer firstTime = Limits.getCpuTime();
+
+        for (Integer i = 0; i < 10; i++) {
+            Integer start = Limits.getCpuTime();
+            SObjectUtils.getChildRelationshipFrom(field);
+            Integer thisTime = Limits.getCpuTime() - start;
+            Assert.isTrue(thisTime < firstTime, 'Took longer than initial call: ' + new List<Integer>{ firstTime, thisTime});
+        }
     }
 
     @IsTest 
