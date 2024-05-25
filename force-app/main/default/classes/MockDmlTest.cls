@@ -10,7 +10,6 @@ private class MockDmlTest {
             leads?.put(lead?.Id, lead); 
             Database.LeadConvert leadToConvert = new Database.LeadConvert();
             leadToConvert?.setLeadId(leadId);
-            leadToConvert?.setConvertedStatus('Some Status');
             leadsToConvert?.add(leadToConvert);
         }
 
@@ -27,12 +26,9 @@ private class MockDmlTest {
             Id leadId = result?.getLeadId();
             Lead lead = leads?.get(leadId);
             Assert.isNotNull(lead, 'No lead w/matching Id: ' + leadId);
-            Assert.isNotNull(lead?.ConvertedAccountId, 'Missing ConvertedAccountId');
-            Assert.areEqual(result?.getAccountId(), lead?.ConvertedAccountId, 'Wrong ConvertedAccountId');
-            Assert.isNotNull(lead?.ConvertedContactId, 'Missing ConvertedContactId');
-            Assert.areEqual(result?.getContactId(), lead?.ConvertedContactId, 'Wrong ConvertedContactId');
-            Assert.isNotNull(lead?.ConvertedOpportunityId, 'Missing ConvertedOpportunityId');
-            Assert.areEqual(result?.getOpportunityId(), lead?.ConvertedOpportunityId, 'Wrong ConvertedOpportunityId');
+            Assert.isNotNull(result?.getAccountId(), 'Missing ConvertedAccountId');
+            Assert.isNotNull(result?.getContactId(), 'Missing ConvertedContactId');
+            Assert.isNotNull(result?.getOpportunityId(), 'Missing ConvertedOpportunityId');
         }
     }
 

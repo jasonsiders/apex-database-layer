@@ -181,57 +181,42 @@ public class MockDml extends Dml {
     }
 
     private MockDml.LeadConvertResult generateMockResult(Database.LeadConvert leadToConvert) {
+        Lead lead = new Lead(Id = leadToConvert?.getLeadId());
         // Note: Temporarily set the allOrNone behavior to true, regardless of its original value
         // This allows injected errors for Accounts/Contacts/Opps to be thrown & captured accordingly
-        Boolean originalAllOrNone = this.getAllOrNone();
+        final Boolean originalAllOrNone = this.getAllOrNone();
         this.setAllOrNone(true);
-        // Create a Lead from the LeadConvertResult
-        Lead leadRecord = new Lead(Id = leadToConvert?.getLeadId());
-        // * TODO!
-        // Create an Account from the LeadConvertResult
+        // Create Account/Contact/Opportunity records using the LeadConvert object
         Id accountId = leadToConvert?.getAccountId() ?? SObjectUtils.mockRecordId(Account.SObjectType);
         Account account = new Account(Id = accountId);
-        // * TODO!
-        // Create a Contact from the LeadConvertResult
         Id contactId = leadToConvert?.getContactId() ?? SObjectUtils.mockRecordId(Contact.SObjectType);
         Contact contact = new Contact(Id = contactId);
-        // * TODO!
-        // Create an Opportunity from the LeadConvertResult
         Id opportunityId = leadToConvert?.getOpportunityId() ?? SObjectUtils.mockRecordId(Opportunity.SObjectType);
         Opportunity opportunity = new Opportunity(Id = opportunityId);
-        // * TODO!
         try {
             // Create the Account/Contact/Opportunity records
             this.generateMockResult(MockDml.Inserted, account);
             this.generateMockResult(MockDml.Inserted, contact);
             this.generateMockResult(MockDml.Inserted, opportunity);
             // Convert the lead
-            Map<String, Object> conversionValues = new Map<String, Object>{
-                Lead.ConvertedAccountId.toString() => account?.Id,
-                Lead.ConvertedContactId.toString() => contact?.Id,
-                Lead.ConvertedOpportunityId.toString() => opportunity?.Id,
-                Lead.IsConverted.toString() => true
-            };
-            leadRecord = (Lead) SObjectUtils.mockReadOnlyFields(leadRecord, conversionValues);
-            this.generateMockResult(MockDml.Converted, leadRecord);
+            this.generateMockResult(MockDml.Converted, lead);
             // Success! Safe to revert to original allOrNone behavior
             this.setAllOrNone(originalAllOrNone);
-            // Build the LeadConvertResult
-            MockDml.LeadConvertResult result = new MockDml.LeadConvertResult(leadRecord);
-            result?.setId(account);
-            result?.setId(contact);
-            result?.setId(opportunity);
-            return result;
-        } catch (Exception error) {
+            // Build & return the LeadConvertResult
+            return (MockDml.LeadConvertResult) new MockDml.LeadConvertResult(lead)
+                ?.setId(account)
+                ?.setId(contact)
+                ?.setId(opportunity);
+        } catch (System.DmlException error) {
             // Unregister any of successful related records up to this point
             MockDml.Inserted?.unregisterDml(account);
             MockDml.Inserted?.unregisterDml(contact);
             MockDml.Inserted?.unregisterDml(opportunity);
-            MockDml.Converted?.unregisterDml(leadRecord);
+            MockDml.Converted?.unregisterDml(lead);
             // Respect the originally defined allOrNone behavior when handling the error 
             this.setAllOrNone(originalAllOrNone);
             // Handle the error like a normal DML Operation
-            return (MockDml.LeadConvertResult) this.handleDmlError(MockDml.Converted, leadRecord, error);
+            return (MockDml.LeadConvertResult) this.handleDmlError(MockDml.Converted, lead, error);
         }
     }
 
@@ -360,7 +345,7 @@ public class MockDml extends Dml {
         }
 
         public void unregisterDml(SObject record) {
-            // Removes a single record from the History
+            // Removes the specified record from the History
             SObjectType objectType = record?.getSObjectType();
             Map<String, Object> recordMap = this.getRecordMap(objectType);
             recordMap?.remove(record?.Id);
