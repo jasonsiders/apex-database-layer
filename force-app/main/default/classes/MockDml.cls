@@ -195,18 +195,9 @@ public class MockDml extends Dml {
             this.validateConvertedLead(leadToConvert);
             this.generateMockResult(MockDml.Converted, leadRecord);
             // Simulate creating an Account/Contact/Opportunity, if their Id wasn't already provided
-            if (accountRecord?.Id == null) {
-                accountRecord.Id = SObjectUtils.mockRecordId(Account.SObjectType);
-                this.generateMockResult(MockDml.Inserted, accountRecord);
-            }
-            if (contactRecord?.Id == null) {
-                contactRecord.Id = SObjectUtils.mockRecordId(Contact.SObjectType);
-                this.generateMockResult(MockDml.Inserted, contactRecord);
-            }
-            if (opportunityRecord?.Id == null) {
-                opportunityRecord.Id = SObjectUtils.mockRecordId(Opportunity.SObjectType);
-                this.generateMockResult(MockDml.Inserted, opportunityRecord);
-            }
+            this.simulateInsertIfNew(accountRecord);
+            this.simulateInsertIfNew(contactRecord);
+            this.simulateInsertIfNew(opportunityRecord);
             // Success! Safe to revert to original allOrNone behavior
             this.setAllOrNone(originalAllOrNone);
             // Build & return the LeadConvertResult
@@ -222,7 +213,6 @@ public class MockDml extends Dml {
             MockDml.Converted?.unregisterDml(leadRecord);
             // Respect the originally defined allOrNone behavior when handling the error 
             this.setAllOrNone(originalAllOrNone);
-            // Handle the error like a normal DML Operation
             return (MockDml.LeadConvertResult) this.handleDmlError(MockDml.Converted, leadRecord, error);
         }
     }
@@ -240,6 +230,15 @@ public class MockDml extends Dml {
             return new MockDml.RecordResult(record)?.clearId()?.addError(dmlError);
         } else {
             return new MockDml.RecordResult(record)?.addError(dmlError);
+        }
+    }
+
+    private void simulateInsertIfNew(SObject record) {
+        // If the provided record does not already have an Id, simulate an insert operation
+        if (record?.Id == null) {
+            SObjectType objectType = record?.getSObjectType();
+            record.Id = SObjectUtils.mockRecordId(objectType);
+            this.generateMockResult(MockDml.Inserted, record);
         }
     }
 
