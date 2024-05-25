@@ -1,45 +1,33 @@
 public abstract class SObjectUtils {
     static Integer numMockIds = 0; 
+    static Map<SObjectType, RelationshipRepo> relationships = new Map<SObjectType, RelationshipRepo>();
+    
+    public static Schema.ChildRelationship getChildRelationshipFrom(SObjectField lookupField, SObjectType referenceTo) {
+        // Returns the Schema.ChildRelationshp on the referenceTo SObjectType, that the provided lookupField points to.
+        // Ex., getChildRelationshipFrom(Task.WhoId, Lead.SObjectType) -> Lead.Tasks
+        return SObjectUtils.getRelationshipsFrom(referenceTo)?.get(lookupField);
+    }
     
     public static Schema.ChildRelationship getChildRelationshipFrom(SObjectField lookupField) {
-        List<SObjectType> relatedToObjects = lookupField?.getDescribe()?.getReferenceTo();
-        // * Note: the above Schema method returns a List<SObjectType>, not a single SObjectType.
-        // In nearly all cases, this will contain a single SObjectType; notable exceptions include polymorphic fields (ie, Task.WhatId)
-        // In these cases, it's better to provide the specific/intended Schema.ChildRelationship when constructing a Subquery
-        SObjectType relatedToObject = relatedToObjects?.isEmpty() == false ? relatedToObjects[0] : null;
-        List<Schema.ChildRelationship> relationships = relatedToObject?.getDescribe()?.getChildRelationships();
-        relationships = relationships ?? new List<Schema.ChildRelationship>();
-        for (Schema.ChildRelationship relationship : relationships) {
-            // Unfortunately, no way of telling if a Schema.ChildRelationship matches w/out manually iterating & checking their fields
-            SObjectField relationshipField = relationship?.getField();
-            if (relationshipField == lookupField) {
-                return relationship;
-            }
-        }
-        // This should only ever return null if the field isn't a lookup
-        return null;
+        // Overload that uses the first SObjectType in the getReferenceTo() list to find the child relationship.
+        // Use this overload when you know the field in question is not polymorphic; ex., Contact.AccountId.
+        // * Note: the Schema.getReferenceTo() method returns a List<SObjectType>, not a single SObjectType.
+        // Typically, a field is only be related to a single SObjectType; exceptions include polymorphic fields (ie, Task.WhatId).
+        List<SObjectType> references = lookupField?.getDescribe()?.getReferenceTo();
+        SObjectType referenceTo = references?.isEmpty() == false ? references[0] : null;
+        return SObjectUtils.getChildRelationshipFrom(lookupField, referenceTo);
     }
 
-    // **** TEST ONLY **** //
-    @TestVisible
-    private static SObject mockLookup(SObject originalRecord, SObjectField lookupField, SObject parent) {
+    public static SObject setLookup(SObject originalRecord, SObjectField lookupField, SObject parent) {
         // Populates a parent relationship, ex., Contact.Account with a parent SObject record.
         // Populate the lookup field (ex., SomeLookup__c)
         originalRecord?.put(lookupField, parent?.Id);
         // Populate the lookup relationship (ex., SomeLookup__r)
         String relationshipName = lookupField?.getDescribe()?.getRelationshipName();
-        return SObjectUtils.mockReadOnlyFields(originalRecord, relationshipName, parent);
+        return SObjectUtils.setReadOnlyFields(originalRecord, relationshipName, parent);
     }
 
-    @TestVisible
-    private static Id mockPlatformEventId(SObjectType objectType) {
-        // Note: The Id of Platform Events is always a static/non-unique value across all events
-        // It does not need to be incremented for uniqueness
-        return objectType?.getDescribe()?.getKeyPrefix() + '0'?.repeat(15); 
-    }
-
-    @TestVisible
-    private static SObject mockReadOnlyFields(SObject originalRecord, Map<String, Object> readOnlyValues) {
+    public static SObject setReadOnlyFields(SObject originalRecord, Map<String, Object> readOnlyValues) {
         // Sets the value of read-only fields on an existing SObject, returning a copy of that same object.
         // Note: Since JSON de/serialization is involved, cannot actually transform the existing object in memory.
         Map<String, Object> recordValues = (Map<String, Object>) JSON.deserializeUntyped(JSON.serialize(originalRecord));
@@ -47,14 +35,35 @@ public abstract class SObjectUtils {
         return (SObject) JSON.deserialize(JSON.serialize(recordValues), SObject.class); 
     }
 
-    @TestVisible
-    private static SObject mockReadOnlyFields(SObject originalRecord, String fieldName, Object value) {
-        return SObjectUtils.mockReadOnlyFields(originalRecord, new Map<String, Object>{ fieldName => value });
+    public static SObject setReadOnlyFields(SObject originalRecord, String fieldName, Object value) {
+        return SObjectUtils.setReadOnlyFields(originalRecord, new Map<String, Object>{ fieldName => value });
     }
 
+    public static SObject setReadOnlyFields(SObject originalRecord, SObjectField field, Object value) {
+        return SObjectUtils.setReadOnlyFields(originalRecord, field?.toString(), value); 
+    }
+
+    public static SObject setRelatedList(SObject originalRecord, String relationshipName, List<SObject> children) {
+        // Populates a child relationship, ex., Account.Contacts with a list of SObjects
+        RelatedList relatedList = new RelatedList(children);
+        return SObjectUtils.setReadOnlyFields(originalRecord, relationshipName, relatedList);
+    }
+
+    public static SObject setRelatedList(SObject originalRecord, Schema.ChildRelationship relationship, List<SObject> children) {
+        return SObjectUtils.setRelatedList(originalRecord, relationship?.getRelationshipName(), children);
+    }
+
+    public static SObject setRelatedList(SObject originalRecord, SObjectField lookupField, List<SObject> children) {
+        Schema.ChildRelationship relationship = SObjectUtils.getChildRelationshipFrom(lookupField);
+        return SObjectUtils.setRelatedList(originalRecord, relationship, children);
+    }
+
+    // **** TEST ONLY **** //
     @TestVisible
-    private static SObject mockReadOnlyFields(SObject originalRecord, SObjectField field, Object value) {
-        return SObjectUtils.mockReadOnlyFields(originalRecord, field?.toString(), value); 
+    private static Id mockPlatformEventId(SObjectType objectType) {
+        // Note: The Id of Platform Events is always a static/non-unique value across all events
+        // The Id value does not need to be incremented or be unique
+        return objectType?.getDescribe()?.getKeyPrefix() + '0'?.repeat(15); 
     }
 
     @TestVisible
@@ -65,22 +74,13 @@ public abstract class SObjectUtils {
         return prefix + mid + suffix;
     }
 
-    @TestVisible
-    private static SObject mockRelatedList(SObject originalRecord, String relationshipName, List<SObject> children) {
-        // Populates a child relationship, ex., Account.Contacts with a list of SObjects
-        RelatedList relatedList = new RelatedList(children);
-        return SObjectUtils.mockReadOnlyFields(originalRecord, relationshipName, relatedList);
-    }
-
-    @TestVisible
-    private static SObject mockRelatedList(SObject originalRecord, Schema.ChildRelationship relationship, List<SObject> children) {
-        return SObjectUtils.mockRelatedList(originalRecord, relationship?.getRelationshipName(), children);
-    }
-
-    @TestVisible
-    private static SObject mockRelatedList(SObject originalRecord, SObjectField lookupField, List<SObject> children) {
-        Schema.ChildRelationship relationship = SObjectUtils.getChildRelationshipFrom(lookupField);
-        return SObjectUtils.mockRelatedList(originalRecord, relationship, children);
+    // **** PRIVATE **** //
+    private static RelationshipRepo getRelationshipsFrom(SObjectType objectType) {
+        RelationshipRepo repo = SObjectUtils.relationships?.containsKey(objectType) 
+            ? SObjectUtils.relationships?.get(objectType)
+            : new RelationshipRepo(objectType);
+        SObjectUtils.relationships?.put(objectType, repo);
+        return repo;
     }
 
     // **** INNER **** //
@@ -97,4 +97,32 @@ public abstract class SObjectUtils {
 			this.totalSize = records?.size() ?? 0; 
 		}
 	}
+
+    private class RelationshipRepo {
+        // Object used to map & cache Schema.ChildRelationships by their lookup field.
+        // This is necessary since the operation to retrieve Schema.ChildRelationships from an object can be expensive, 
+        // and Salesforce's built in Schema caching doesn't seem to handle this.
+        // In the future, consider upgrading this to use actual System.Cache
+        private Map<SObjectField, Schema.ChildRelationship> relationshipMap;
+
+        public RelationshipRepo(SObjectType objectType) {
+            this.relationshipMap = new Map<SObjectField, Schema.ChildRelationship>();
+            this.mapRelationships(objectType);
+        }
+
+        public Schema.ChildRelationship get(SObjectField field) {
+            return this.relationshipMap?.get(field);
+        }
+
+        private List<Schema.ChildRelationship> getRelationshipList(SObjectType objectType) {
+            return objectType?.getDescribe()?.getChildRelationships() ?? new List<Schema.ChildRelationship>();
+        }
+
+        private void mapRelationships(SObjectType objectType) {
+            for (Schema.ChildRelationship relationship : this.getRelationshipList(objectType)) {
+                SObjectField field = relationship?.getField();
+                this.relationshipMap?.put(field, relationship);
+            }
+        }
+    }
 }

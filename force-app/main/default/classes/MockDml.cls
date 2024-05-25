@@ -416,7 +416,7 @@ public class MockDml extends Dml {
             // Note: Platform Events technically have an Id field, but it's not writeable, nor is it transformed after publish. 
             // Instead, the platform populates the "EventUuid" field with a unique identifier 
             // It's better to refer to platform events by their EventUuid value, which is unique.
-            return SObjectUtils.mockReadOnlyFields(record, EVENT_UUID_FIELD, Uuid.randomUuid());
+            return SObjectUtils.setReadOnlyFields(record, EVENT_UUID_FIELD, Uuid.randomUuid());
         }
 
         // **** PRIVATE **** //

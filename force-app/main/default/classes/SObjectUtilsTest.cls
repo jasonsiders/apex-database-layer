@@ -45,7 +45,7 @@ private class SObjectUtilsTest {
         };
         
         Test.startTest();
-        Account account = (Account) SObjectUtils.mockReadOnlyFields(new Account(), readOnlyFields);
+        Account account = (Account) SObjectUtils.setReadOnlyFields(new Account(), readOnlyFields);
         Test.stopTest();
 
         for (String fieldName : readOnlyFields?.keySet()) {
@@ -55,11 +55,11 @@ private class SObjectUtilsTest {
     }
 
     @IsTest 
-    static void shouldmockReadOnlyFields() {
+    static void shouldsetReadOnlyFields() {
         DateTime expected = DateTime.now()?.addDays(-3); 
 
         Test.startTest();
-        Account account = (Account) SObjectUtils.mockReadOnlyFields(new Account(), Account.CreatedDate, expected);
+        Account account = (Account) SObjectUtils.setReadOnlyFields(new Account(), Account.CreatedDate, expected);
         Test.stopTest();
 
         Assert.areEqual(expected, account?.CreatedDate, 'Wrong read-only value');
@@ -70,7 +70,7 @@ private class SObjectUtilsTest {
         Account account = new Account(Id = SObjectUtils.mockRecordId(Account.SObjectType));
 
         Test.startTest();
-        Contact contact = (Contact) SObjectUtils.mockLookup(new Contact(), Contact.AccountId, account);
+        Contact contact = (Contact) SObjectUtils.setLookup(new Contact(), Contact.AccountId, account);
         Test.stopTest();
 
         Assert.areEqual(account?.Id, contact?.AccountId, 'Did not set lookup field');
@@ -86,7 +86,7 @@ private class SObjectUtilsTest {
         }
 
         Test.startTest();
-        Account account = (Account) SObjectUtils.mockRelatedList(new Account(), Contact.AccountId, contacts);
+        Account account = (Account) SObjectUtils.setRelatedList(new Account(), Contact.AccountId, contacts);
         Test.stopTest();
 
         Assert.areEqual(contacts?.size(), account?.Contacts?.size(), 'Did not set child relationship');
@@ -101,6 +101,25 @@ private class SObjectUtilsTest {
         Test.stopTest();
 
         Assert.areEqual(field, relationship?.getField(), 'Relationship does not point to ' + field);
+    }
+
+    @IsTest 
+    static void shouldGetChildRelationshipFromPolymorphicLookupField() {
+        SObjectField field = Task.WhoId; // Polymorphic! Can be a reference to Contact.Tasks OR Lead.Tasks
+        SObjectType referenceTo = Lead.SObjectType; // ...in this case, we want Lead.Tasks
+
+        Test.startTest();
+        Schema.ChildRelationship relationship = SObjectUtils.getChildRelationshipFrom(field, referenceTo);
+        Test.stopTest();
+
+        Assert.areEqual(field, relationship?.getField(), 'Relationship does not point to ' + field);
+    }
+
+    @IsTest 
+    static void shouldReturnChildRelationshipsUnderHighStress() {
+        // The operation to retrieve Schema.ChildRelationships from an object can be expensive, 
+        // and Salesforce's built in Schema caching doesn't seem to handle this
+        // 
     }
 
     @IsTest 
