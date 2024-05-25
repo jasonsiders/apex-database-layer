@@ -78,6 +78,19 @@ private class SObjectUtilsTest {
     }
 
     @IsTest 
+    static void shouldSetParentLookupFromTextFieldName() {
+        Account account = new Account(Id = SObjectUtils.mockRecordId(Account.SObjectType));
+        String fieldName = Contact.AccountId.toString();
+
+        Test.startTest();
+        Contact contact = (Contact) SObjectUtils.setLookup(new Contact(), fieldName, account);
+        Test.stopTest();
+
+        Assert.areEqual(account?.Id, contact?.AccountId, 'Did not set lookup field');
+        Assert.areEqual(account?.Id, contact?.Account?.Id, 'Did not set parent relationship');
+    }
+
+    @IsTest 
     static void shouldSetChildLookup() {
         List<Contact> contacts = new List<Contact>();
         for (Integer i = 0; i < 3; i++) {

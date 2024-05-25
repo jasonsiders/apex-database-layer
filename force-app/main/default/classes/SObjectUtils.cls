@@ -27,6 +27,11 @@ public abstract class SObjectUtils {
         return SObjectUtils.setReadOnlyFields(originalRecord, relationshipName, parent);
     }
 
+    public static SObject setLookup(SObject originalRecord, String fieldName, SObject parent) {
+        SObjectField lookupField = originalRecord?.getSObjectType()?.getDescribe()?.fields?.getMap()?.get(fieldName);
+        return SObjectUtils.setLookup(originalRecord, lookupField, parent);
+    }
+
     public static SObject setReadOnlyFields(SObject originalRecord, Map<String, Object> readOnlyValues) {
         // Sets the value of read-only fields on an existing SObject, returning a copy of that same object.
         // Note: Since JSON de/serialization is involved, cannot actually transform the existing object in memory.
@@ -76,6 +81,7 @@ public abstract class SObjectUtils {
 
     // **** PRIVATE **** //
     private static RelationshipRepo getRelationshipsFrom(SObjectType objectType) {
+        // Retrieves a RelationshipRepo object that represents cached Schema.ChildRelationships for the SObjectType
         RelationshipRepo repo = SObjectUtils.relationships?.containsKey(objectType) 
             ? SObjectUtils.relationships?.get(objectType)
             : new RelationshipRepo(objectType);
