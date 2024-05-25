@@ -27,10 +27,25 @@ public class MockDml extends Dml {
     }
 
     // **** MEMBER **** // 
-    private List<MockDml.FailureLogic> failures = new List<MockDml.FailureLogic>();
+    private List<MockDml.ConditionalFailure> failures = new List<MockDml.ConditionalFailure>();
 
     public MockDml() {
         super();
+    }
+     
+    public MockDml clearFailures() {
+        this.failures?.clear();
+        return this; 
+    }
+
+    public MockDml failIf(MockDml.ConditionalFailure failure) {
+        this.failures?.add(failure);
+        return this; 
+    }
+
+    public MockDml fail() {
+        MockDml.ConditionalFailure failure = new MockDml.BaseFailure();
+        return this.failIf(failure);
     }
 
     // **** OVERRIDES **** //
@@ -146,21 +161,10 @@ public class MockDml extends Dml {
         return this.toUpsertResults(results);
     }
 
-    // **** PUBLIC **** // 
-    public MockDml addFailure(MockDml.FailureLogic failure) {
-        this.failures?.add(failure);
-        return this; 
-    }
-    
-    public MockDml clearFailures() {
-        this.failures?.clear();
-        return this; 
-    }
-
     // **** PRIVATE **** //
     private void checkFailures(Dml.Operation operation, SObject record) {
-        // Runs the FailureLogic defined the current instance against each record.
-        for (MockDml.FailureLogic failure : this.failures) {
+        // Runs the ConditionalFailure defined the current instance against each record.
+        for (MockDml.ConditionalFailure failure : this.failures) {
             System.DmlException error = failure?.checkFailure(operation, record)?.toDmlException();
             if (error != null) {
                 throw error;
@@ -281,6 +285,19 @@ public class MockDml extends Dml {
     }
 
     // **** INNER **** // 
+    private class BaseFailure implements ConditionalFailure {
+        // Base implementation always returns an error
+        public MockDml.Error checkFailure(Dml.Operation operationl, SObject record) {
+            return new MockDml.Error();
+        }
+    }
+
+    public interface ConditionalFailure {
+        // Interface logic determines if a DML failure should be simulated for the given record.
+        // If so, the method returns a an error to be thrown by the MockDml class during DML.
+        MockDml.Error checkFailure(Dml.Operation operation, SObject record);
+    }
+    
     public class Error {
         // Wraps the Database.Error class, to be used for mocking in @IsTest context
         public String message { get; set; }
@@ -305,12 +322,6 @@ public class MockDml extends Dml {
             error?.setMessage('DML failed. First exception on row X; first error: ' + this.statusCode + ', ' + this.message + ': []');
             return error; 
         }
-    }
-
-    public interface FailureLogic {
-        // Interface logic determines if a DML failure should be simulated for the given record.
-        // If so, the method returns a an error to be thrown by the MockDml class during DML.
-        MockDml.Error checkFailure(Dml.Operation operation, SObject record);
     }
 
     public abstract class History {
