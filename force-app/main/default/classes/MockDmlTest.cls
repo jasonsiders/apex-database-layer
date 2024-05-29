@@ -692,10 +692,10 @@ private class MockDmlTest {
     
     // **** INNER **** //
     public class ExampleFailure implements MockDml.ConditionalFailure {
-        public MockDml.Error checkFailure(Dml.Operation operation, SObject record) {
+        public Exception checkFailure(Dml.Operation operation, SObject record) {
             if (operation == Dml.Operation.DO_UPDATE && record?.getSObjectType() == Account.SObjectType) {
                 // Only throw an error if updating an Account
-                return new MockDml.Error();
+                return new System.DmlException();
             } else {
                 return null;
             }

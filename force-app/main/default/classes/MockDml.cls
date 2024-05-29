@@ -165,7 +165,7 @@ public class MockDml extends Dml {
     private void checkFailures(Dml.Operation operation, SObject record) {
         // Runs the ConditionalFailure defined the current instance against each record.
         for (MockDml.ConditionalFailure failure : this.failures) {
-            System.DmlException error = failure?.checkFailure(operation, record)?.toDmlException();
+            Exception error = failure?.checkFailure(operation, record);
             if (error != null) {
                 throw error;
             }
@@ -287,33 +287,29 @@ public class MockDml extends Dml {
     // **** INNER **** // 
     private class BaseFailure implements ConditionalFailure {
         // Base implementation always returns an error
-        public MockDml.Error checkFailure(Dml.Operation operationl, SObject record) {
-            return new MockDml.Error();
+        public Exception checkFailure(Dml.Operation operation, SObject record) {
+            return new System.DmlException();
         }
     }
 
     public interface ConditionalFailure {
         // Interface logic determines if a DML failure should be simulated for the given record.
         // If so, the method returns a an error to be thrown by the MockDml class during DML.
-        MockDml.Error checkFailure(Dml.Operation operation, SObject record);
+        Exception checkFailure(Dml.Operation operation, SObject record);
     }
     
-    public class Error {
+    private class Error {
         // Wraps the Database.Error class, to be used for mocking in @IsTest context
-        public String message { get; set; }
-        public String statusCode { get; set; }
+        private String message { get; set; }
+        private String statusCode { get; set; }
 
-        public Error(String message, System.StatusCode statusCode) {
+        private Error(String message, String statusCode) {
             this.message = message;
-            this.statusCode = statusCode?.name();
+            this.statusCode = statusCode;
         }
 
-        public Error(Exception error) {
-            this(error?.getMessage(), System.StatusCode.UNKNOWN_EXCEPTION);
-        }
-
-        public Error() {
-            this(new System.DmlException());
+        private Error(Exception error) {
+            this(error?.getMessage(), 'MOCK_DML');
         }
 
         private System.DmlException toDmlException() {
