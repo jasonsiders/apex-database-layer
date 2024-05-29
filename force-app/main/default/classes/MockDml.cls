@@ -284,54 +284,25 @@ public class MockDml extends Dml {
         }
     }
 
-    // **** INNER **** // 
-    private class BaseFailure implements ConditionalFailure {
-        // Base implementation always returns an error
-        public Exception checkFailure(Dml.Operation operation, SObject record) {
-            return new System.DmlException();
-        }
-    }
-
+    // **** INNER - PUBLIC **** // 
     public interface ConditionalFailure {
         // Interface logic determines if a DML failure should be simulated for the given record.
         // If so, the method returns a an error to be thrown by the MockDml class during DML.
         Exception checkFailure(Dml.Operation operation, SObject record);
-    }
-    
-    private class Error {
-        // Wraps the Database.Error class, to be used for mocking in @IsTest context
-        private String message { get; set; }
-        private String statusCode { get; set; }
-
-        private Error(String message, String statusCode) {
-            this.message = message;
-            this.statusCode = statusCode;
-        }
-
-        private Error(Exception error) {
-            this(error?.getMessage(), 'MOCK_DML');
-        }
-
-        private System.DmlException toDmlException() {
-            // De-converts the Error to a DmlException to be thrown in DML Operations
-            System.DmlException error = new System.DmlException();
-            error?.setMessage('DML failed. First exception on row X; first error: ' + this.statusCode + ', ' + this.message + ': []');
-            return error; 
-        }
     }
 
     public abstract class History {
         protected Dml.Operation operation;
         protected Map<SObjectType, Map<String, SObject>> recordMap;
 
-        public History(Dml.Operation operation) {
+        protected History(Dml.Operation operation) {
             this.operation = operation; 
             this.recordMap = new Map<SObjectType, Map<String, SObject>>();
         }
 
         // **** ABSTRACT **** //
-        public abstract void addRecordToMap(SObject record, Map<String, Object> records);
-        public abstract SObject setRecordId(SObject record);
+        protected abstract void addRecordToMap(SObject record, Map<String, Object> records);
+        protected abstract SObject setRecordId(SObject record);
         
         // **** PUBLIC **** //
         public History eraseHistory() {
@@ -379,6 +350,98 @@ public class MockDml extends Dml {
         }
     }
 
+    public class PlatformEventHistory extends History {
+        private Map<String, SObjectType> objectTypesByUuid;
+
+        private PlatformEventHistory() {
+            super(Dml.Operation.DO_PUBLISH);
+            this.objectTypesByUuid = new Map<String, SObjectType>();
+        }
+
+        public override void addRecordToMap(SObject record, Map<String, Object> records) {
+            String uuid = this.getUuid(record);
+            records?.put(uuid, record);
+            this.objectTypesByUuid?.put(uuid, record?.getSObjectType());
+        }
+
+        public override SObject setRecordId(SObject record) {
+            // Note: Platform Events technically have an Id field, but it's not writeable, nor is it transformed after publish. 
+            // Instead, the platform populates the "EventUuid" field with a unique identifier 
+            // It's better to refer to platform events by their EventUuid value, which is unique.
+            return SObjectUtils.setReadOnlyFields(record, EVENT_UUID_FIELD, Uuid.randomUuid());
+        }
+
+        private String getUuid(SObject record) {
+            return (String) record?.get(EVENT_UUID_FIELD);
+        }
+    }
+    
+    public class RecordHistory extends History {
+        private RecordHistory(Dml.Operation operation) {
+            super(operation);
+        }
+
+        public override void addRecordToMap(SObject record, Map<String, Object> records) {
+            records?.put(record?.Id, record);
+        }
+
+        public SObject getRecord(Id recordId) {
+            SObjectType objectType = recordId?.getSObjectType();
+            return this.getRecordMap(objectType)?.get(recordId);
+        }
+
+        public SObject getRecord(SObject record) {
+            return this.getRecord(record?.Id);
+        }
+
+        public override SObject setRecordId(SObject record) {
+            // If the record does not have an Id value, generate a mock one
+            if (record?.Id == null) {
+                SObjectType objectType = record?.getSObjectType();
+                record.Id = SObjectUtils.mockRecordId(objectType);
+            }
+            return record;
+        }
+
+        public Boolean wasProcessed(Id recordId) {
+            return this.getRecord(recordId) != null;
+        }
+
+        public Boolean wasProcessed(SObject record) {
+            return this.wasProcessed(record?.Id);
+        }
+    }
+
+    // **** INNER - PRIVATE **** // 
+    private class BaseFailure implements ConditionalFailure {
+        // Base implementation always returns an error
+        public Exception checkFailure(Dml.Operation operation, SObject record) {
+            return new System.DmlException();
+        }
+    }
+
+    private class Error {
+        // Wraps the Database.Error class, to be used for mocking in @IsTest context
+        private String message { get; set; }
+        private String statusCode { get; set; }
+
+        private Error(String message, String statusCode) {
+            this.message = message;
+            this.statusCode = statusCode;
+        }
+
+        private Error(Exception error) {
+            this(error?.getMessage(), 'MOCK_DML');
+        }
+
+        private System.DmlException toDmlException() {
+            // De-converts the Error to a DmlException to be thrown in DML Operations
+            System.DmlException error = new System.DmlException();
+            error?.setMessage('DML failed. First exception on row X; first error: ' + this.statusCode + ', ' + this.message + ': []');
+            return error; 
+        }
+    }
+
     private class LeadConvertResult extends Result {
         private Id accountid { get; private set; }
         private Id contactid { get; private set; }
@@ -403,75 +466,9 @@ public class MockDml extends Dml {
             return this;
         }
     }
-    
-    public class PlatformEventHistory extends History {
-        private Map<String, SObjectType> objectTypesByUuid;
-
-        public PlatformEventHistory() {
-            super(Dml.Operation.DO_PUBLISH);
-            this.objectTypesByUuid = new Map<String, SObjectType>();
-        }
-
-        // **** OVERRIDES **** //
-        public override void addRecordToMap(SObject record, Map<String, Object> records) {
-            String uuid = this.getUuid(record);
-            records?.put(uuid, record);
-            this.objectTypesByUuid?.put(uuid, record?.getSObjectType());
-        }
-
-        public override SObject setRecordId(SObject record) {
-            // Note: Platform Events technically have an Id field, but it's not writeable, nor is it transformed after publish. 
-            // Instead, the platform populates the "EventUuid" field with a unique identifier 
-            // It's better to refer to platform events by their EventUuid value, which is unique.
-            return SObjectUtils.setReadOnlyFields(record, EVENT_UUID_FIELD, Uuid.randomUuid());
-        }
-
-        // **** PRIVATE **** //
-        private String getUuid(SObject record) {
-            return (String) record?.get(EVENT_UUID_FIELD);
-        }
-    }
-    
-    public class RecordHistory extends History {
-        private RecordHistory(Dml.Operation operation) {
-            super(operation);
-        }
-
-        // **** OVERRIDES **** //
-        public override void addRecordToMap(SObject record, Map<String, Object> records) {
-            records?.put(record?.Id, record);
-        }
-
-        public override SObject setRecordId(SObject record) {
-            // If the record does not have an Id value, generate a mock one
-            if (record?.Id == null) {
-                SObjectType objectType = record?.getSObjectType();
-                record.Id = SObjectUtils.mockRecordId(objectType);
-            }
-            return record;
-        }
-
-        // **** PUBLIC **** //
-        public SObject getRecord(Id recordId) {
-            SObjectType objectType = recordId?.getSObjectType();
-            return this.getRecordMap(objectType)?.get(recordId);
-        }
-
-        public SObject getRecord(SObject record) {
-            return this.getRecord(record?.Id);
-        }
-
-        public Boolean wasProcessed(Id recordId) {
-            return this.getRecord(recordId) != null;
-        }
-
-        public Boolean wasProcessed(SObject record) {
-            return this.wasProcessed(record?.Id);
-        }
-    }
 
     private class RecordResult extends Result {
-        protected Id id;
+        private Id id;
 
         private RecordResult(SObject record) {
             super(record);
@@ -502,13 +499,13 @@ public class MockDml extends Dml {
             }
         }
 
-        public abstract Result setId(SObject record);
+        protected abstract Result setId(SObject record);
 
-        public Result(SObject record) {
+        protected Result(SObject record) {
             this.setId(record);
         }
 
-        public Result addError(MockDml.Error error) {
+        protected Result addError(MockDml.Error error) {
             this.errors?.add(error);
             return this; 
         }
