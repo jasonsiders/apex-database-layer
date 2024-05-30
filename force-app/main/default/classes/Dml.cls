@@ -1,4 +1,14 @@
 public with sharing virtual class Dml {
+    /**
+     * This class is responsible for performing CRUD operations with the Salesforce database.
+     * While the apex language allows developers to directly interact with the database,
+     * use of these methods does not facilitate mocking.
+     * Use this class instead of the DML keywords [`insert`, `update`, `delete`, etc],
+     * or the corresponding Database methods [ex., `Database.insert()`]. 
+     * Each of this class's methods eventually ties back to an underlying `Database` method, 
+     * ex., `new Dml().doInsert()` -> `Database.insert()`.
+     * To mock this instance, use the included `MockDml` class, or your own class which extends `Dml`.
+    **/
     static final System.AccessLevel DEFAULT_ACCESS_LEVEL = System.AccessLevel.USER_MODE;
 
     protected System.AccessLevel accessLevel = System.AccessLevel.USER_MODE;

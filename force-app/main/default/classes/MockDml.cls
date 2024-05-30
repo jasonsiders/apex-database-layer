@@ -1,5 +1,11 @@
 @IsTest
 public class MockDml extends Dml {
+    /**
+     * This class mocks CRUD operations, with minimal setup required from end users.
+     * By default, all operations will succeed. If desired, users can specify 
+     * conditions in which operations should fail, via the `fail()` method,
+     * or the `failIf()` method and the `ConditionalLogic` interface.
+    **/
     // **** STATIC **** //
     public static MockDml.RecordHistory Converted = new MockDml.RecordHistory(Dml.Operation.DO_CONVERT);
     public static MockDml.RecordHistory Deleted = new MockDml.RecordHistory(Dml.Operation.DO_DELETE);
@@ -34,16 +40,22 @@ public class MockDml extends Dml {
     }
      
     public MockDml clearFailures() {
+        // Clears the list of failures from the current instance.
+        // As a result, all mock DML operations should now succeed.
         this.failures?.clear();
         return this; 
     }
 
     public MockDml failIf(MockDml.ConditionalFailure failure) {
+        // Adds the ConditionalFailure object to a list of failures.
+        // The ConditionalLogic interface defines if/when an error should be thrown during a DML operation.
+        // Each dml operation will iterate through the list of failures and call its interface method for each record.
         this.failures?.add(failure);
         return this; 
     }
 
     public MockDml fail() {
+        // Adds a BaseFailure to the current instance; all DML operations will now fail.
         MockDml.ConditionalFailure failure = new MockDml.BaseFailure();
         return this.failIf(failure);
     }
@@ -69,7 +81,7 @@ public class MockDml extends Dml {
     }
 
     public override List<Database.DeleteResult> doDeleteAsync(List<SObject> records) {
-        // For mocking purposes, process the same as a normal delete operation, but w/callbacks
+        // For mocking purposes, process the same as a "normal" doDelete operation, but w/callbacks
         List<Database.DeleteResult> results = this.doDelete(records);
         for (Database.DeleteResult result : results) {
             this.getDeleteCallback()?.processDelete(result);
@@ -78,12 +90,12 @@ public class MockDml extends Dml {
     }
 
     public override List<Database.DeleteResult> doDeleteImmediate(List<SObject> records) {
-        // For mocking purposes, process the same as a normal delete operation
+        // For mocking purposes, process the same as a "normal" doDelete operation,
         return this.doDelete(records);
     }
 
     public override List<Database.DeleteResult> doHardDelete(List<Id> recordIds) {
-        // For mocking purposes, process the same as a normal delete operation
+        // For mocking purposes, process the same as a "normal" doDelete operation,
         return this.doDelete(recordIds);
     }
 
@@ -97,7 +109,7 @@ public class MockDml extends Dml {
     }
 
     public override List<Database.SaveResult> doInsertAsync(List<SObject> records) {
-        // For mocking purposes, process the same as a normal insert operation, but w/callbacks
+        // For mocking purposes, process the same as a "normal" doInsert operation, but w/callbacks
         List<Database.SaveResult> results = this.doInsert(records);
         for (Database.SaveResult result : results) {
             this.getSaveCallback()?.processSave(result);
@@ -106,7 +118,7 @@ public class MockDml extends Dml {
     }
 
     public override List<Database.SaveResult> doInsertImmediate(List<SObject> records) {
-        // For mocking purposes, process the same as a normal insert operation
+        // For mocking purposes, process the same as a "normal" doInsert operation
         return this.doInsert(records);
     }
 
@@ -139,7 +151,7 @@ public class MockDml extends Dml {
     }
     
     public override List<Database.SaveResult> doUpdateAsync(List<SObject> records) {
-        // For mocking purposes, process the same as a normal update operation, but w/callbacks
+        // For mocking purposes, process the same as a "normal" doUpdate operation, but w/callbacks
         List<Database.SaveResult> results = this.doUpdate(records);
         for (Database.SaveResult result : results) {
             this.getSaveCallback()?.processSave(result);
@@ -148,7 +160,7 @@ public class MockDml extends Dml {
     }
 
     public override List<Database.SaveResult> doUpdateImmediate(List<SObject> records) {
-        // For mocking purposes, process the same as a normal update operation
+        // For mocking purposes, process the same as a "normal" doUpdate operation
         return this.doUpdate(records);
     }
 
@@ -163,7 +175,7 @@ public class MockDml extends Dml {
 
     // **** PRIVATE **** //
     private void checkFailures(Dml.Operation operation, SObject record) {
-        // Runs the ConditionalFailure defined the current instance against each record.
+        // Runs all ConditionalFailures defined the current instance against each record.
         for (MockDml.ConditionalFailure failure : this.failures) {
             Exception error = failure?.checkFailure(operation, record);
             if (error != null) {
@@ -173,13 +185,16 @@ public class MockDml extends Dml {
     }
 
     private MockDml.Result generateMockResult(MockDml.History history, SObject record) {
+        // Simulates a DML operation for a single record, returning a MockDml.Result,
+        // which calling methods can de/serialize into a Database.Save/Upsert/etc. Result.
         try {
             Dml.Operation operation = history?.getOperation();
             // Determine if the operation should fail for the specific record
             this.checkFailures(operation, record);
-            // Simulate successful dml
+            // Simulate successful dml, return a MockDml.Result w/out errors
             return history?.registerDml(record);
         } catch (System.DmlException error) {
+            // Return a MockDml.Result w/errors
             return this.handleDmlError(history, record, error);
         }
     }
@@ -284,10 +299,12 @@ public class MockDml extends Dml {
         }
     }
 
-    // **** INNER - PUBLIC **** // 
+    // **** INNER: PUBLIC **** // 
     public interface ConditionalFailure {
-        // Interface logic determines if a DML failure should be simulated for the given record.
-        // If so, the method returns a an error to be thrown by the MockDml class during DML.
+        /**
+         * Interface implementation defines whether a DML failure should be simulated for the given record.
+         * If so, the method returns a an error to be thrown by the MockDml class during DML.
+        **/ 
         Exception checkFailure(Dml.Operation operation, SObject record);
     }
 
@@ -412,7 +429,7 @@ public class MockDml extends Dml {
         }
     }
 
-    // **** INNER - PRIVATE **** // 
+    // **** INNER: PRIVATE **** // 
     private class BaseFailure implements ConditionalFailure {
         // Base implementation always returns an error
         public Exception checkFailure(Dml.Operation operation, SObject record) {
