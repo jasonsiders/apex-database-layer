@@ -503,7 +503,7 @@ private class SoqlTest {
 
     @IsTest 
     static void shouldGenerateSubqueryFromChildRelationship() {
-        Schema.ChildRelationship rel = Soql.getChildRelationshipFrom(Case.AccountId);
+        Schema.ChildRelationship rel = SObjectUtils.getChildRelationshipFrom(Case.AccountId);
         
         Test.startTest();
         String result = new Soql.Subquery(rel)?.addSelect(Case.Id)?.toString();
@@ -511,12 +511,6 @@ private class SoqlTest {
 
         String expected = '(SELECT Id FROM Cases)';
         Assert.areEqual(expected, result, 'Unexpected inner query output');
-    }
-
-    @IsTest 
-    static void shouldReturnNullChildRelationshipFromNonLookupField() {
-        // Note: May end up moving this logic to a utility class; not directly related to Soql per se
-        Assert.isNull(Soql.getChildRelationshipFrom(User.FirstName), 'Non-lookup field returned a child relationship');
     }
 
     @IsTest 
