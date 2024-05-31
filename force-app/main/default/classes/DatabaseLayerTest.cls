@@ -21,11 +21,6 @@ private class DatabaseLayerTest {
     }
 
     @IsTest 
-    static void shouldCoerceProvidedDmlObject() {
-        Assert.fail('You still need to build this test'); 
-    }
-
-    @IsTest 
     static void shouldReturnRealSoqlObjectByDefault() {
         Assert.fail('You still need to build this test'); 
     }
@@ -42,16 +37,6 @@ private class DatabaseLayerTest {
 
     @IsTest 
     static void shouldSwitchToRealSoqlObject() {
-        Assert.fail('You still need to build this test'); 
-    }
-
-    @IsTest 
-    static void shouldCoerceProvidedSoqlObject() {
-        Assert.fail('You still need to build this test'); 
-    }
-
-    @IsTest 
-    static void shouldBypassCoercion() {
         Assert.fail('You still need to build this test'); 
     }
 }
