@@ -3,6 +3,7 @@ public class DatabaseLayer {
 	static final DatabaseLayer SINGLETON_INSTANCE = new DatabaseLayer();
 
 	public static DatabaseLayer get() {
+		// Cannot manually construct a DatabaseLayer; this method retrieves the singleton
 		return DatabaseLayer.SINGLETON_INSTANCE;
 	}
 
@@ -33,7 +34,7 @@ public class DatabaseLayer {
 	// **** TEST ONLY **** //
 	@TestVisible
 	private DatabaseLayer useDatabase() {
-		// Revert all instances to use the
+		// All instances constructed from now on will use "real" DML/SOQL
 		this.useDml(new Dml(this));
 		this.useSoql(new Soql(this));
 		return this;
@@ -41,6 +42,7 @@ public class DatabaseLayer {
 
 	@TestVisible
 	private DatabaseLayer useMocks() {
+		// All instances constructed from now on will use mock DML/SOQL
 		this.useDml(new MockDml());
 		this.useSoql(new MockSoql());
 		return this;
