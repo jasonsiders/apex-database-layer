@@ -376,7 +376,7 @@ public class MockDml extends Dml {
         }
     }
 
-    public class PlatformEventHistory extends History {
+    public virtual class PlatformEventHistory extends History {
         /**
          * This class tracks platform events that were mock published.
          * Necessary since platform events' unique identifier is the `EventUuid` field - not `Id`
@@ -385,12 +385,12 @@ public class MockDml extends Dml {
             super(Dml.Operation.DO_PUBLISH);
         }
 
-        public override void addRecordToMap(SObject record, Map<String, Object> records) {
+        protected override void addRecordToMap(SObject record, Map<String, Object> records) {
             String uuid = this.getUuid(record);
             records?.put(uuid, record);
         }
 
-        public override SObject setRecordId(SObject record) {
+        protected override SObject setRecordId(SObject record) {
             // Note: Platform Events technically have an Id field, but it's not writeable, nor is it transformed after publish. 
             // Instead, the platform populates the "EventUuid" field with a unique identifier 
             // It's better to refer to platform events by their EventUuid value, which is unique.
@@ -402,16 +402,12 @@ public class MockDml extends Dml {
         }
     }
     
-    public class RecordHistory extends History {
+    public virtual class RecordHistory extends History {
         /**
          * This class is responsible for tracking DML made against most SObject types
         **/
         private RecordHistory(Dml.Operation operation) {
             super(operation);
-        }
-
-        public override void addRecordToMap(SObject record, Map<String, Object> records) {
-            records?.put(record?.Id, record);
         }
 
         public SObject getRecord(Id recordId) {
@@ -424,15 +420,6 @@ public class MockDml extends Dml {
             return this.getRecord(record?.Id);
         }
 
-        public override SObject setRecordId(SObject record) {
-            // If the record does not have an Id value, generate a mock one
-            if (record?.Id == null) {
-                SObjectType objectType = record?.getSObjectType();
-                record.Id = SObjectUtils.mockRecordId(objectType);
-            }
-            return record;
-        }
-
         public Boolean wasProcessed(Id recordId) {
             // Returns true if the provided recordId was processed by the DML operation
             return this.getRecord(recordId) != null;
@@ -440,6 +427,19 @@ public class MockDml extends Dml {
 
         public Boolean wasProcessed(SObject record) {
             return this.wasProcessed(record?.Id);
+        }
+
+        protected override void addRecordToMap(SObject record, Map<String, Object> records) {
+            records?.put(record?.Id, record);
+        }
+
+        protected override SObject setRecordId(SObject record) {
+            // If the record does not have an Id value, generate a mock one
+            if (record?.Id == null) {
+                SObjectType objectType = record?.getSObjectType();
+                record.Id = SObjectUtils.mockRecordId(objectType);
+            }
+            return record;
         }
     }
 
@@ -478,7 +478,7 @@ public class MockDml extends Dml {
         }
     }
 
-    private class LeadConvertResult extends Result {
+    private virtual class LeadConvertResult extends Result {
         /**
          * Mocks `Database.LeadConvertResult` objects
          * Unlike most Database result objects, `Database.LeadConvertResult` does not have a singular id field.
@@ -494,7 +494,7 @@ public class MockDml extends Dml {
             super(lead);
         }
 
-        public override Result setId(SObject record) {
+        protected override Result setId(SObject record) {
             SObjectType objectType = record?.getSObjectType();
             if (objectType == Account.SObjectType) {
                 this.accountid = record?.Id;
@@ -509,7 +509,7 @@ public class MockDml extends Dml {
         }
     }
 
-    private class RecordResult extends Result {
+    private virtual class RecordResult extends Result {
         /**
          * Mocks most Database result types; ex., `Database.SaveResult`, `Database.DeleteResult`, etc.
          * Only `Database.LeadConvertResult` deviates from this type's structure.
@@ -525,7 +525,7 @@ public class MockDml extends Dml {
             return this; 
         }
 
-        public override Result setId(SObject record) {
+        protected override Result setId(SObject record) {
             if (record?.Id != null) {
                 // Set the Id of the Dml result with the record's Id
                 this.id = record?.Id;
