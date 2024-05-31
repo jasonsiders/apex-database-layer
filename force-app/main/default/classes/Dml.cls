@@ -22,6 +22,9 @@ public with sharing virtual class Dml {
     }
 
     // **** VIRTUAL **** //
+    // * All of these methods point to an underlying Database method to perform DML
+    // Each may have one or more overloads, for convenience
+    // Each may be overridden, ex., for DML mocking
     public virtual List<Database.LeadConvertResult> doConvert(List<Database.LeadConvert> leadsToConvert) {
         return Database.convertLead(leadsToConvert, this.getDmlOptions(), this.getAccessLevel());
     }
@@ -84,15 +87,9 @@ public with sharing virtual class Dml {
             : Database.upsert(records, this.getAllOrNone(), this.getAccessLevel());
     }
 
-    public virtual Dml reset() {
-        this.setAccessLevel(DEFAULT_ACCESS_LEVEL);
-        this.setDmlOptions(new Database.DmlOptions());
-        this.setExternalIdField(null);
-        return this;
-    }
-
     // **** PUBLIC **** //
     public List<Object> doDml(Operation operation, List<SObject> records) {
+        // Allows for dynamic DML - performs the specified operation on the records
         if (operation == Dml.Operation.DO_DELETE) {
             return this.doDelete(records);
         } else if (operation == Dml.Operation.DO_DELETE_ASYNC) {
@@ -232,70 +229,98 @@ public with sharing virtual class Dml {
 
     // **** BUILDER **** //
     public System.AccessLevel getAccessLevel() {
+        // Returns the current access level to be used in all DML operations.
         return this.accessLevel ?? DEFAULT_ACCESS_LEVEL;
     }
 
     public Boolean getAllOrNone() {
-        // Default to `true` to mirror the behavior of Database.Dml methods 
+        // Returns the current allOrNone behavior to be used in all DML operations. 
+        // Defaults to `true` to mirror the behavior of Database.Dml methods 
         return this.getDmlOptions()?.OptAllOrNone ?? true;
     }
 
     public DataSource.AsyncDeleteCallback getDeleteCallback() {
+        // Returns the currnet AsyncSaveCallback to be used in doDeleteAsync() operations
         return (this.callback != null && this.callback instanceOf DataSource.AsyncDeleteCallback)
             ? (DataSource.AsyncDeleteCallback) this.callback 
             : new Dml.DefaultDeleteCallback();
     }
 
     public DataSource.AsyncSaveCallback getSaveCallback() {
+        // Returns the currnet AsyncSaveCallback to be used in doInsertAsync() and doUpdateAsync() operations
         return (this.callback != null && this.callback instanceOf DataSource.AsyncSaveCallback)
             ? (DataSource.AsyncSaveCallback) this.callback 
             : new Dml.DefaultSaveCallback();
     }
 
     public Database.DmlOptions getDmlOptions() {
+        // Returns the current DmlOptions class to be used in all DML operations
         return this.dmlOptions ?? new Database.DmlOptions();
     }
 
     public SObjectField getExternalIdField() {
+        // Returns the current ExternalIdField to be used in upsert operations
         return this.externalIdField;
     }
 
+    public Dml reset() {
+        // Resets the current DML class's parameters to their default value
+        this.setAccessLevel(DEFAULT_ACCESS_LEVEL);
+        this.setDmlOptions(new Database.DmlOptions());
+        this.setExternalIdField(null);
+        return this;
+    }
+
     public Dml setAccessLevel(System.AccessLevel level) {
+        // Sets the AccessLevel to be used in DML operations
+        // https://developer.salesforce.com/docs/atlas.en-us.apexref.meta/apexref/apex_class_System_AccessLevel.htm
         this.accessLevel = level;
         return this; 
     }
 
     public Dml setAllOrNone(Boolean value) {
+        // Sets DML methods' allOrNone parameter, which determines whether partial failures will cause the entire operation to fail.
+        // When set to true, errors should throw the Exception that caused the failure.
+        // When set to false, errors will not be thrown, and instead the affected rows will return a failed Database result object.
         this.getDmlOptions().OptAllOrNone = value;
         return this; 
     }
 
     public Dml setCallback(DataSource.AsyncDeleteCallback deleteCallback) {
+        // Defines a callback function to be run in doDeleteAsync()
+        // https://developer.salesforce.com/docs/atlas.en-us.apexref.meta/apexref/apex_class_DataSource_AsyncDeleteCallback.htm
         this.callback = deleteCallback; 
         return this; 
     }
 
     public Dml setCallback(DataSource.AsyncSaveCallback saveCallback) {
+        // Defines a callback function to be run in doInsertAsync() && doUpdateAsync()
+        // https://developer.salesforce.com/docs/atlas.en-us.apexref.meta/apexref/apex_class_DataSource_AsyncSaveCallback.htm
         this.callback = saveCallback; 
         return this; 
     }
 
     public Dml setDmlOptions(Database.DmlOptions dmlOptions) {
+        // Defines the Database.DmlOptions to be used in all DML operations going forward
+        // https://developer.salesforce.com/docs/atlas.en-us.apexref.meta/apexref/apex_methods_system_database_dmloptions.htm
         this.dmlOptions = dmlOptions;
         return this; 
     }
 
     public Dml setExternalIdField(SObjectField field) {
+        // Defines an external Id field to be used in upsert operations, instead of Id
         this.externalIdField = field;
         return this;
     }
 
     // **** PRIVATE **** //
     private List<Id> getListOfIds(List<SObject> records) {
+        // Converts a List<SObject> into a List<Id>
         return new List<Id>(new Map<Id, SObject>(records)?.keySet());
     }
 
     private List<SObject> getListOfRecords(List<Id> recordIds) {
+        // Converts a List<Id> into a List<SObject>
         List<SObject> records = new List<SObject>();
         for (Id recordId : recordIds) {
             SObject record = recordId?.getSObjectType()?.newSObject(recordId);
@@ -307,17 +332,21 @@ public with sharing virtual class Dml {
     // **** INNER **** //
     @TestVisible
     private class DefaultDeleteCallback extends DataSource.AsyncDeleteCallback {
-        // If a callback isn't defined, doDeleteAsync() will use this class to gracefully handle callbacks
+        /**
+         *  If a callback isn't defined, doDeleteAsync() will use this class to gracefully handle callbacks
+        **/ 
         public override void processDelete(Database.DeleteResult result) {
-            // Nothing needed here
+            // Do nothing
         }
     }
 
     @TestVisible
     private class DefaultSaveCallback extends DataSource.AsyncSaveCallback {
-        // If a callback isn't defined, doInsertAsync() & doUpdateAsync will use this class to gracefully handle callbacks
+        /**
+         * If a callback isn't defined, doInsertAsync() & doUpdateAsync will use this class to gracefully handle callbacks
+        **/
         public override void processSave(Database.SaveResult result) {
-            // Nothing needed here
+            // Do nothing
         }
     }
     
