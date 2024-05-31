@@ -112,7 +112,7 @@ private class DatabaseLayerTest {
 		Assert.isNotInstanceOfType(result, OtherSoql.class, 'Should not be OtherSoql');
 	}
 
-	@IsTest 
+	@IsTest
 	static void shouldInitSoqlMockUsingQueryString() {
 		String queryString = 'SELECT Id FROM Account';
 
@@ -126,8 +126,10 @@ private class DatabaseLayerTest {
 		Assert.isNotInstanceOfType(result, OtherSoql.class, 'Should not be OtherSoql');
 	}
 
-	// **** INNER **** // 
-	public class OtherDml extends Dml {}
+	// **** INNER **** //
+	public class OtherDml extends Dml {
+	}
 
-	public class OtherSoql extends Soql {}
+	public class OtherSoql extends Soql {
+	}
 }
