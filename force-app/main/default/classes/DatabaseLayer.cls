@@ -24,6 +24,11 @@ public class DatabaseLayer {
         // Retrieve a new SOQL object of the correct type
         return (Soql) this.soql?.clone()?.fromEntity(fromObject);
     }
+
+    public Soql initSoql(String queryString) {
+        // Retrieve a new SOQL object of the correct type, using a prebuilt query string
+        return (Soql) this.soql?.clone()?.setQueryString(queryString);
+    }
     
     // **** TEST ONLY **** //
     @TestVisible

@@ -21,7 +21,6 @@ public with sharing virtual class Dml {
         this();
     }
 
-    @TestVisible
     protected Dml() {
         this.reset();
     }

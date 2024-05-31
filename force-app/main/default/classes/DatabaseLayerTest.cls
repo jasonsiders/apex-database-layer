@@ -1,17 +1,17 @@
 @IsTest 
 private class DatabaseLayerTest {
     @IsTest 
-    static void shouldReturnRealDmlObjectByDefault() {
+    static void shouldInitRealDmlObjectByDefault() {
         Assert.fail('You still need to build this test'); 
     }
 
     @IsTest
-    static void shouldReturnMockDmlObject() {
+    static void shouldInitMockDmlObject() {
         Assert.fail('You still need to build this test'); 
     }
 
     @IsTest 
-    static void shouldReturnCustomDmlObject() {
+    static void shouldInitCustomDmlObject() {
         Assert.fail('You still need to build this test');
     }
 
@@ -21,22 +21,27 @@ private class DatabaseLayerTest {
     }
 
     @IsTest 
-    static void shouldReturnRealSoqlObjectByDefault() {
+    static void shouldInitRealSoqlObjectByDefault() {
         Assert.fail('You still need to build this test'); 
     }
 
     @IsTest
-    static void shouldReturnMockSoqlObject() {
+    static void shouldInitMockSoqlObject() {
         Assert.fail('You still need to build this test'); 
     }
 
     @IsTest 
-    static void shouldReturnCustomSoqlObject() {
+    static void shouldInitCustomSoqlObject() {
         Assert.fail('You still need to build this test');
     }
 
     @IsTest 
     static void shouldSwitchToRealSoqlObject() {
+        Assert.fail('You still need to build this test'); 
+    }
+
+    @IsTest 
+    static void shouldInitSoqlUsingQueryString() {
         Assert.fail('You still need to build this test'); 
     }
 }

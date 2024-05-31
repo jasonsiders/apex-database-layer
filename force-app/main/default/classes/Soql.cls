@@ -22,18 +22,15 @@ public inherited sharing virtual class Soql extends Soql.Builder {
         this();
     }
 
-    @TestVisible
     protected Soql() {
         super();
     }
 
-    @TestVisible
 	protected Soql(SObjectType objectType) {
         this();
         this.fromEntity(objectType);
 	}
 
-    @TestVisible
     protected Soql(String queryString) {
         this();
         this.setQueryString(queryString);
