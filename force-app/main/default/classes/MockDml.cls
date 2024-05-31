@@ -15,6 +15,7 @@ public class MockDml extends Dml {
     public static MockDml.RecordHistory Upserted = new MockDml.RecordHistory(Dml.Operation.DO_UPSERT);
     public static MockDml.PlatformEventHistory Published = new MockDml.PlatformEventHistory();
     static final String EVENT_UUID_FIELD = 'EventUuid';
+    static final String MOCK_STATUS_CODE = 'MOCK_DML';
 
     public static void eraseAllHistories() {
         // Reset all of the history objects to their original state
@@ -276,7 +277,7 @@ public class MockDml extends Dml {
     private List<Database.UndeleteResult> toUndeleteResults(List<MockDml.Result> results) {
         // Note: For some reason, we can't directly deserialize into a List<Database.UndeleteResult> like the other methods.
         // Attempting to do so will result in the "success" parameter always being set to false.
-        // Don't ask me why -- but deserializing untyped first solves the issue.
+        // Don't ask me why -- but deserializing to an untyped Object first solves this issue.
         Object untyped = JSON.deserializeUntyped(JSON.serialize(results));
         return (List<Database.UndeleteResult>) JSON.deserialize(JSON.serialize(untyped), List<Database.UndeleteResult>.class);
     }
@@ -302,13 +303,18 @@ public class MockDml extends Dml {
     // **** INNER: PUBLIC **** // 
     public interface ConditionalFailure {
         /**
-         * Interface implementation defines whether a DML failure should be simulated for the given record.
-         * If so, the method returns a an error to be thrown by the MockDml class during DML.
+         * This interface defines whether a DML failure should be simulated for the given record.
+         * Its method should return an exception to be thrown in case of a DML failure, or null in case of success.
+         * Pass objects that implement this interface to MockDml's `failIf()` method.
         **/ 
         Exception checkFailure(Dml.Operation operation, SObject record);
     }
 
     public abstract class History {
+        /**
+         * Responsible for recording records that were processed by a given DML operation.
+         * It provides several methods that callers can use to assert if DML actually occurred.
+        **/
         protected Dml.Operation operation;
         protected Map<SObjectType, Map<String, SObject>> recordMap;
 
@@ -328,6 +334,7 @@ public class MockDml extends Dml {
         }
 
         public List<SObject> getAll() {
+            // Retrieves all records, regardless of their SObjectType in a flat List<SObject>
             List<SObject> allRecords = new List<SObject>();
             for (SObjectType objectType : this.recordMap?.keySet()) {
                 List<SObject> records = this.getRecords(objectType);
@@ -337,14 +344,20 @@ public class MockDml extends Dml {
         }
 
         public List<SObject> getRecords(SObjectType objectType) {
+            // Retrieves all records of the specified SObjectType
             return this.getRecordMap(objectType)?.values();
         }
 
-        public Dml.Operation getOperation() {
+        // **** PRIVATE **** //
+        protected Dml.Operation getOperation() {
             return this.operation;
         }
 
-        public MockDml.Result registerDml(SObject record) {
+        protected Map<String, SObject> getRecordMap(SObjectType objectType) {
+            return this.recordMap?.get(objectType) ?? new Map<String, SObject>(); 
+        }
+
+        protected MockDml.Result registerDml(SObject record) {
             // This method registers that the records were operated on, 
             // and store them in a way that's easy for callers to get & perform asserts
             record = this.setRecordId(record);
@@ -355,30 +368,26 @@ public class MockDml extends Dml {
             return new MockDml.RecordResult(record);
         }
 
-        public void unregisterDml(SObject record) {
+        protected void unregisterDml(SObject record) {
             // Removes the specified record from the History
             SObjectType objectType = record?.getSObjectType();
             Map<String, Object> recordMap = this.getRecordMap(objectType);
             recordMap?.remove(record?.Id);
         }
-
-        protected Map<String, SObject> getRecordMap(SObjectType objectType) {
-            return this.recordMap?.get(objectType) ?? new Map<String, SObject>(); 
-        }
     }
 
     public class PlatformEventHistory extends History {
-        private Map<String, SObjectType> objectTypesByUuid;
-
+        /**
+         * This class tracks platform events that were mock published.
+         * Necessary since platform events' unique identifier is the `EventUuid` field - not `Id`
+        **/
         private PlatformEventHistory() {
             super(Dml.Operation.DO_PUBLISH);
-            this.objectTypesByUuid = new Map<String, SObjectType>();
         }
 
         public override void addRecordToMap(SObject record, Map<String, Object> records) {
             String uuid = this.getUuid(record);
             records?.put(uuid, record);
-            this.objectTypesByUuid?.put(uuid, record?.getSObjectType());
         }
 
         public override SObject setRecordId(SObject record) {
@@ -394,6 +403,9 @@ public class MockDml extends Dml {
     }
     
     public class RecordHistory extends History {
+        /**
+         * This class is responsible for tracking DML made against most SObject types
+        **/
         private RecordHistory(Dml.Operation operation) {
             super(operation);
         }
@@ -403,6 +415,7 @@ public class MockDml extends Dml {
         }
 
         public SObject getRecord(Id recordId) {
+            // Retrieve a specific SObject from the History tracking
             SObjectType objectType = recordId?.getSObjectType();
             return this.getRecordMap(objectType)?.get(recordId);
         }
@@ -421,6 +434,7 @@ public class MockDml extends Dml {
         }
 
         public Boolean wasProcessed(Id recordId) {
+            // Returns true if the provided recordId was processed by the DML operation
             return this.getRecord(recordId) != null;
         }
 
@@ -431,24 +445,29 @@ public class MockDml extends Dml {
 
     // **** INNER: PRIVATE **** // 
     private class BaseFailure implements ConditionalFailure {
-        // Base implementation always returns an error
+        /**
+         * The `MockDml` class ships with one concrete implementation of the `ConditionalFailure` interface.
+         * This one is simple -- it always returns an error to be thrown.
+         * Callers can inject this error by calling the MockDml's `fail()` method.
+        **/
         public Exception checkFailure(Dml.Operation operation, SObject record) {
             return new System.DmlException();
         }
     }
 
     private class Error {
-        // Wraps the Database.Error class, to be used for mocking in @IsTest context
-        private String message { get; set; }
-        private String statusCode { get; set; }
-
-        private Error(String message, String statusCode) {
-            this.message = message;
-            this.statusCode = statusCode;
-        }
+        /**
+         *  Mocks the `Database.Error` class, since this type cannot be manually constructed.
+        **/
+        private String message;
+        private String statusCode;
 
         private Error(Exception error) {
-            this(error?.getMessage(), 'MOCK_DML');
+            // Note: It's not possible to retrieve the actual status code 
+            // of an Exception outside of an actual DML context.
+            // This class will always use a dummy status code
+            this.message = error?.getMessage();
+            this.statusCode = MOCK_STATUS_CODE;
         }
 
         private System.DmlException toDmlException() {
@@ -460,10 +479,16 @@ public class MockDml extends Dml {
     }
 
     private class LeadConvertResult extends Result {
-        private Id accountid { get; private set; }
-        private Id contactid { get; private set; }
-        private Id leadid { get; private set; }
-        private Id opportunityid { get; private set; } 
+        /**
+         * Mocks `Database.LeadConvertResult` objects
+         * Unlike most Database result objects, `Database.LeadConvertResult` does not have a singular id field.
+         * Instead, it stores the ids of the lead that is being converted, 
+         * and the account/contact/opportunity that it links to
+        **/
+        private Id accountid;
+        private Id contactid;
+        private Id leadid;
+        private Id opportunityid;
 
         private LeadConvertResult(Lead lead) {
             super(lead);
@@ -485,6 +510,10 @@ public class MockDml extends Dml {
     }
 
     private class RecordResult extends Result {
+        /**
+         * Mocks most Database result types; ex., `Database.SaveResult`, `Database.DeleteResult`, etc.
+         * Only `Database.LeadConvertResult` deviates from this type's structure.
+        **/
         private Id id;
 
         private RecordResult(SObject record) {
@@ -509,6 +538,11 @@ public class MockDml extends Dml {
     }
     
     private abstract class Result {
+        /**
+         * Abstract type which serves as the building block for mocking all Database result classes.
+         * These objects cannot be manually constructed, but they can easily be converted to their desired type via JSON de/serialization.
+         * All types share two parameters: errors and success
+        **/
         protected List<MockDml.Error> errors = new List<MockDml.Error>();
         protected Boolean success {
             get {
