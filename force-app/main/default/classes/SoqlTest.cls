@@ -165,6 +165,7 @@ private class SoqlTest {
     }
 
     @IsTest 
+    @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveAsserts')
     static void shouldBindVariableToQuery() {
         Soql.Binder binder = new Soql.Binder('userId', UserInfo.getUserId());
         Soql soql = (Soql) new Soql(User.SObjectType)
@@ -214,6 +215,7 @@ private class SoqlTest {
     }
 
     @IsTest 
+    @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveAsserts')
     static void shouldSelectSpecificFields() {
         Soql soql = (Soql) new Soql(User.SObjectType)?.addSelect(User.FirstName)?.setRowLimit(1);
         String expected = 'SELECT Id, FirstName FROM User LIMIT 1';
@@ -224,6 +226,7 @@ private class SoqlTest {
     }
 
     @IsTest 
+    @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveAsserts')
     static void shouldSelectFieldWithAlias() {
         Soql soql = (Soql) new Soql(User.SObjectType)?.addSelect(User.ProfileId, 'profile')?.groupBy(User.ProfileId);
         String expected = 'SELECT ProfileId profile FROM User GROUP BY ProfileId';
@@ -234,6 +237,7 @@ private class SoqlTest {
     }
 
     @IsTest 
+    @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveAsserts')
     static void shouldSelectAggregation() {
         Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id);
         Soql soql = (Soql) new Soql(User.SObjectType)?.addSelect(count);
@@ -245,6 +249,7 @@ private class SoqlTest {
     }
 
     @IsTest 
+    @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveAsserts')
     static void shouldSelectSubquery() {
         Soql.Subquery subquery = new Soql.Subquery(User.ProfileId);
         Soql soql = (Soql) new Soql(Profile.SObjectType)?.addSelect(subquery)?.setRowLimit(1);
@@ -256,6 +261,7 @@ private class SoqlTest {
     }
 
     @IsTest 
+    @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveAsserts')
     static void shouldSetQueryScope() {
         Soql soql = (Soql) new Soql(User.SObjectType)?.usingScope(Soql.Scope.EVERYTHING)?.setRowLimit(1);
         String expected = 'SELECT Id FROM User USING SCOPE EVERYTHING LIMIT 1';
@@ -266,6 +272,7 @@ private class SoqlTest {
     }
 
     @IsTest 
+    @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveAsserts')
     static void shouldAddCriteriaToWhereClause() {
         Soql soql = (Soql) new Soql(User.SObjectType)?.addWhere(User.IsActive, Soql.EQUALS, true)?.setRowLimit(1);
         String expected = 'SELECT Id FROM User WHERE IsActive = true LIMIT 1';
@@ -276,6 +283,7 @@ private class SoqlTest {
     }
 
     @IsTest 
+    @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveAsserts')
     static void shouldAddCriteriaWithBindToWhereClause() {
         Soql.Binder binder = new Soql.Binder('userId', UserInfo.getUserId());
         Soql soql = (Soql) new Soql(User.SObjectType)?.addWhere(User.Id, Soql.EQUALS, binder);
@@ -287,6 +295,7 @@ private class SoqlTest {
     }
 
     @IsTest 
+    @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveAsserts')
     static void shouldHandleMultipleWhereClauses() {
         Soql soql = (Soql) new Soql(User.SObjectType)
             ?.addWhere(User.IsActive, Soql.EQUALS, true)
@@ -300,6 +309,7 @@ private class SoqlTest {
     }
 
     @IsTest 
+    @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveAsserts')
     static void shouldSetWhereClauseOuterLogic() { 
         Soql soql = (Soql) new Soql(User.SObjectType)
             ?.addWhere(User.IsActive, Soql.EQUALS, true)
@@ -314,6 +324,7 @@ private class SoqlTest {
     }
 
     @IsTest 
+    @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveAsserts')
     static void shouldSetNestedWhereClause() {
         Soql.ConditionalLogic innerCondition = new Soql.ConditionalLogic()
             ?.addCondition(User.FirstName, Soql.EQUALS, 'Jason')
@@ -331,6 +342,7 @@ private class SoqlTest {
     }
     
     @IsTest 
+    @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveAsserts')
     static void shouldSetWithSecurityEnforcedClause() {
         Soql soql = (Soql) new Soql(User.SObjectType)?.withSecurityEnforced()?.setRowLimit(1); 
         String expected = 'SELECT Id FROM User WITH SECURITY_ENFORCED LIMIT 1';
@@ -341,6 +353,7 @@ private class SoqlTest {
     }
 
     @IsTest 
+    @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveAsserts')
     static void shouldGroupByField() {
         Soql soql = (Soql) new Soql(User.SObjectType)?.addSelect(User.ProfileId)?.groupBy(User.ProfileId);
         String expected = 'SELECT ProfileId FROM User GROUP BY ProfileId';
@@ -351,6 +364,7 @@ private class SoqlTest {
     }
 
     @IsTest 
+    @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveAsserts')
     static void shouldAddHavingClause() {
         Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id);
         Soql soql = (Soql) new Soql(User.SObjectType)
@@ -365,6 +379,7 @@ private class SoqlTest {
     }
 
     @IsTest 
+    @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveAsserts')
     static void shouldSupportMultipleHavingClauses() {
         Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id);
         Soql soql = (Soql) new Soql(User.SObjectType)
@@ -380,6 +395,7 @@ private class SoqlTest {
     }
 
     @IsTest 
+    @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveAsserts')
     static void shouldSetOuterHavingLogic() {
         Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id);
         Soql soql = (Soql) new Soql(User.SObjectType)
@@ -396,6 +412,7 @@ private class SoqlTest {
     }
 
     @IsTest 
+    @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveAsserts')
     static void shouldSetOrderByClause() {
         Soql soql = (Soql) new Soql(User.SObjectType)
             ?.orderBy(User.CreatedDate, Soql.SortDirection.DESCENDING)
@@ -408,6 +425,7 @@ private class SoqlTest {
     }
 
     @IsTest 
+    @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveAsserts')
     static void shouldSupportMultipleOrderByClauses() {
         Soql soql = (Soql) new Soql(User.SObjectType)
             ?.orderBy('Profile.Name', Soql.SortDirection.ASCENDING)
@@ -421,6 +439,7 @@ private class SoqlTest {
     }
 
     @IsTest 
+    @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveAsserts')
     static void shouldSetRowLimit() {
         Soql soql = (Soql) new Soql(User.SObjectType)?.setRowLimit(1); 
         String expected = 'SELECT Id FROM User LIMIT 1';
@@ -431,6 +450,7 @@ private class SoqlTest {
     }
 
     @IsTest 
+    @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveAsserts')
     static void shouldSetRowOffset() {
         Soql soql = (Soql) new Soql(User.SObjectType)?.setRowOffset(1)?.setRowLimit(1);
         String expected = 'SELECT Id FROM User LIMIT 1 OFFSET 1';
@@ -441,6 +461,7 @@ private class SoqlTest {
     }
 
     @IsTest 
+    @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveAsserts')
     static void shouldSetUsage() {
         Soql soql = (Soql) new Soql(User.SObjectType)?.setUsage(Soql.Usage.FOR_VIEW)?.setRowLimit(1);
         String expected = 'SELECT Id FROM User LIMIT 1 FOR VIEW';
@@ -451,6 +472,7 @@ private class SoqlTest {
     }
 
     @IsTest 
+    @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveAsserts')
     static void shouldComposeFairlyComplexQuery() {
         Soql soql = (Soql) new Soql(User.SObjectType)
             ?.addSelect(User.FirstName)
@@ -473,6 +495,7 @@ private class SoqlTest {
     }
 
     @IsTest 
+    @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveAsserts')
     static void shouldResetQuery() {
         Soql soql = (Soql) new Soql(User.SObjectType)
             ?.addSelect(User.FirstName)

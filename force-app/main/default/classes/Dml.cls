@@ -1,3 +1,4 @@
+@SuppressWarnings('PMD.ExcessivePublicCount, PMD.CognitiveComplexity')
 public with sharing virtual class Dml {
     /**
      * This class is responsible for performing CRUD operations with the Salesforce database.
@@ -331,6 +332,7 @@ public with sharing virtual class Dml {
 
     // **** INNER **** //
     @TestVisible
+    @SuppressWarnings('PMD.EmptyStatementBlock')
     private class DefaultDeleteCallback extends DataSource.AsyncDeleteCallback {
         /**
          *  If a callback isn't defined, doDeleteAsync() will use this class to gracefully handle callbacks
@@ -341,6 +343,7 @@ public with sharing virtual class Dml {
     }
 
     @TestVisible
+    @SuppressWarnings('PMD.EmptyStatementBlock')
     private class DefaultSaveCallback extends DataSource.AsyncSaveCallback {
         /**
          * If a callback isn't defined, doInsertAsync() & doUpdateAsync will use this class to gracefully handle callbacks

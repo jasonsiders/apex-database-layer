@@ -1,4 +1,5 @@
 @IsTest 
+@SuppressWarnings('PMD.EmptyCatchBlock')
 private class MockSoqlTest {
     @IsTest 
     static void shouldMockCountQuery() {

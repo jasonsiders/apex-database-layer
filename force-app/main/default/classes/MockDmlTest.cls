@@ -1,4 +1,5 @@
 @IsTest 
+@SuppressWarnings('PMD.EmptyCatchBlock')
 private class MockDmlTest {
     @IsTest 
     static void shouldMockLeadConvert() {
@@ -693,12 +694,9 @@ private class MockDmlTest {
     // **** INNER **** //
     public class ExampleFailure implements MockDml.ConditionalFailure {
         public Exception checkFailure(Dml.Operation operation, SObject record) {
-            if (operation == Dml.Operation.DO_UPDATE && record?.getSObjectType() == Account.SObjectType) {
-                // Only throw an error if updating an Account
-                return new System.DmlException();
-            } else {
-                return null;
-            }
+            // Only throw an error if updating an Account
+            Boolean shouldFail = operation == Dml.Operation.DO_UPDATE && record?.getSObjectType() == Account.SObjectType;
+            return shouldFail ? new System.DmlException() : null;
         }
     }
 }

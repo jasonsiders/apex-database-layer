@@ -1,4 +1,5 @@
 @IsTest
+@SuppressWarnings('PMD.FieldNamingConventions, PMD.CognitiveComplexity')
 public class MockDml extends Dml {
     /**
      * This class mocks CRUD operations, with minimal setup required from end users.

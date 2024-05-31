@@ -1,3 +1,4 @@
+@SuppressWarnings('PMD.CognitiveComplexity, PMD.ExcessivePublicCount')
 public inherited sharing virtual class Soql extends Soql.Builder {
     public static final Operator EQUALS = new Soql.Operator('=');
 	public static final Operator NOT_EQUALS = new Soql.Operator('!=');
