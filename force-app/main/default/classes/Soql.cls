@@ -18,15 +18,24 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 	static final String ID_REFERENCE = 'Id';
 
     // **** MEMBER **** //
+    public Soql(DatabaseLayer database) {
+        this();
+    }
+
+    @TestVisible
+    protected Soql() {
+        super();
+    }
+
     @TestVisible
 	protected Soql(SObjectType objectType) {
-        super();
+        this();
         this.fromEntity(objectType);
 	}
 
     @TestVisible
     protected Soql(String queryString) {
-        super();
+        this();
         this.setQueryString(queryString);
     }
 

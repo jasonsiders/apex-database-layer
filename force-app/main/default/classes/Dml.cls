@@ -17,6 +17,10 @@ public with sharing virtual class Dml {
     protected Database.DmlOptions dmlOptions;
     protected SObjectField externalIdField;
 
+    public Dml(DatabaseLayer database) {
+        this();
+    }
+
     @TestVisible
     protected Dml() {
         this.reset();

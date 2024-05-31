@@ -7,6 +7,10 @@ public class MockSoql extends Soql {
     List<Object> mockResults;
     Exception mockError; 
 
+    public MockSoql() {
+        super();
+    }
+
     @TestVisible
     private MockSoql(SObjectType objectType) {
         super(objectType);
