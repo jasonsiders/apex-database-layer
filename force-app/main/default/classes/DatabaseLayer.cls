@@ -1,10 +1,27 @@
 public class DatabaseLayer {
 	// **** STATIC **** //
-	static final DatabaseLayer SINGLETON_INSTANCE = new DatabaseLayer();
+	static final DatabaseLayer INSTANCE = new DatabaseLayer();
 
-	public static DatabaseLayer get() {
-		// Cannot manually construct a DatabaseLayer; this method retrieves the singleton
-		return DatabaseLayer.SINGLETON_INSTANCE;
+	public static Dml newDml() {
+		return INSTANCE?.dml?.clone();
+	}
+
+	public static Soql newSoql(SObjectType objectType) {
+		return (Soql) INSTANCE?.soql?.clone()?.fromEntity(objectType);
+	}
+
+	public static Soql newSoql(String queryString) {
+		return (Soql) INSTANCE?.soql?.clone()?.setQueryString(queryString);
+	}
+	
+	public static void useRealData() {
+		INSTANCE.dml = new Dml(INSTANCE);
+		INSTANCE.soql = new Soql(INSTANCE);
+	}
+
+	public static void useMocks() {
+		INSTANCE.dml = new MockDml();
+		INSTANCE.soql = new MockSoql();
 	}
 
 	// **** MEMBER **** //
@@ -14,49 +31,5 @@ public class DatabaseLayer {
 	private DatabaseLayer() {
 		this.dml = new Dml(this);
 		this.soql = new Soql(this);
-	}
-
-	public Dml initDml() {
-		// Retrieve a new DML object of the correct type
-		return this.dml?.clone();
-	}
-
-	public Soql initSoql(SObjectType fromObject) {
-		// Retrieve a new SOQL object of the correct type
-		return (Soql) this.soql?.clone()?.fromEntity(fromObject);
-	}
-
-	public Soql initSoql(String queryString) {
-		// Retrieve a new SOQL object of the correct type, using a prebuilt query string
-		return (Soql) this.soql?.clone()?.setQueryString(queryString);
-	}
-
-	// **** TEST ONLY **** //
-	@TestVisible
-	private DatabaseLayer useDatabase() {
-		// All instances constructed from now on will use "real" DML/SOQL
-		this.useDml(new Dml(this));
-		this.useSoql(new Soql(this));
-		return this;
-	}
-
-	@TestVisible
-	private DatabaseLayer useMocks() {
-		// All instances constructed from now on will use mock DML/SOQL
-		this.useDml(new MockDml());
-		this.useSoql(new MockSoql());
-		return this;
-	}
-
-	@TestVisible
-	private DatabaseLayer useDml(Dml instance) {
-		this.dml = instance?.clone()?.reset();
-		return this;
-	}
-
-	@TestVisible
-	private DatabaseLayer useSoql(Soql instance) {
-		this.soql = (Soql) instance?.clone()?.reset();
-		return this;
 	}
 }
