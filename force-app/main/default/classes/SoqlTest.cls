@@ -27,7 +27,7 @@ private class SoqlTest {
 			soql?.aggregateQuery();
 			Assert.fail('Illegal query did not throw an error');
 		} catch (System.TypeException error) {
-			Assert.isTrue(error?.getMessage()?.contains(soql?.toString()), 'Did not append query to error');
+			Assert.areEqual(true, error?.getMessage()?.contains(soql?.toString()), 'Did not append query to error');
 		}
 		Test.stopTest();
 	}
@@ -58,7 +58,7 @@ private class SoqlTest {
 			Assert.fail('Illegal query did not throw an error');
 		} catch (System.QueryException error) {
 			String msg = error?.getMessage();
-			Assert.isTrue(msg?.contains(soql?.toString()), 'Did not append query to the error');
+			Assert.areEqual(true, msg?.contains(soql?.toString()), 'Did not append query to the error');
 		}
 		Test.stopTest();
 	}
@@ -71,9 +71,9 @@ private class SoqlTest {
 		Soql.QueryLocator locator = soql?.getQueryLocator();
 		Test.stopTest();
 
-		Assert.isNotNull(locator?.getCursor(), 'Did not return Database.QueryLocator cursor');
+		Assert.areNotEqual(null, locator?.getCursor(), 'Did not return Database.QueryLocator cursor');
 		Assert.areEqual(soql?.toString(), locator?.getQuery(), 'Unexpected Query');
-		Assert.isNotNull(locator?.iterator(), 'Did not return iterator');
+		Assert.areNotEqual(null, locator?.iterator(), 'Did not return iterator');
 	}
 
 	@IsTest
@@ -87,7 +87,7 @@ private class SoqlTest {
 			Assert.fail('Illegal query did not throw an error');
 		} catch (System.QueryException error) {
 			String msg = error?.getMessage();
-			Assert.isTrue(msg?.contains(illegalFieldName), 'Did not append query to the error');
+			Assert.areEqual(true, msg?.contains(illegalFieldName), 'Did not append query to the error');
 		}
 		Test.stopTest();
 	}
@@ -112,7 +112,7 @@ private class SoqlTest {
 		User user = (User) soql?.queryFirst();
 		Test.stopTest();
 
-		Assert.isNotNull(user, 'No records returned');
+		Assert.areNotEqual(null, user, 'No records returned');
 	}
 
 	@IsTest 
@@ -124,7 +124,7 @@ private class SoqlTest {
 		Account account = (Account) soql?.queryFirst();
 		Test.stopTest();
 
-		Assert.isNull(account, 'Returned a result anyway? ' + account);
+		Assert.areEqual(null, account, 'Returned a result anyway? ' + account);
 	}
 
 	@IsTest
@@ -138,7 +138,7 @@ private class SoqlTest {
 			Assert.fail('Illegal query did not throw an error');
 		} catch (System.QueryException error) {
 			String msg = error?.getMessage();
-			Assert.isTrue(msg?.contains(soql?.toString()), 'Did not append query to the error');
+			Assert.areEqual(true, msg?.contains(soql?.toString()), 'Did not append query to the error');
 		}
 		Test.stopTest();
 	}
@@ -186,26 +186,26 @@ private class SoqlTest {
 	@IsTest
 	static void shouldDeselectAllFields() {
 		Soql soql = (Soql) DatabaseLayer.newSoql(User.SObjectType)?.selectAll();
-		Assert.isTrue(soql?.selectClauses?.size() > 1, 'Wrong # of SELECT clauses');
+		Assert.areEqual(true, soql?.selectClauses?.size() > 1, 'Wrong # of SELECT clauses');
 
 		Test.startTest();
 		soql.deselectAll();
 		Test.stopTest();
 
-		Assert.isTrue(soql?.selectClauses?.isEmpty(), 'Did not clear SELECT clauses');
+		Assert.areEqual(true, soql?.selectClauses?.isEmpty(), 'Did not clear SELECT clauses');
 	}
 
 	@IsTest
 	static void shouldDeselectSpecificField() {
 		Soql soql = (Soql) DatabaseLayer.newSoql(User.SObjectType)?.selectAll();
-		Assert.isTrue(soql?.selectClauses?.size() > 1, 'Wrong # of SELECT clauses');
+		Assert.areEqual(true, soql?.selectClauses?.size() > 1, 'Wrong # of SELECT clauses');
 
 		Test.startTest();
 		soql?.deselect(User.Username);
 		Test.stopTest();
 
 		Set<String> fields = new Set<String>(soql?.selectClauses);
-		Assert.isFalse(fields?.contains(User.Username?.toString()), 'Did not deselect Username');
+		Assert.areEqual(false, fields?.contains(User.Username?.toString()), 'Did not deselect Username');
 	}
 
 	@IsTest
@@ -1000,7 +1000,7 @@ private class SoqlTest {
 
 		Assert.areEqual(key, binder?.getKey(), 'Wrong key');
 		Assert.areEqual(':' + key, binder?.toString(), 'Wrong toString() value');
-		Assert.isTrue(binder?.getValue() instanceof List<Id>, 'Wrong bind value type');
+		Assert.areEqual(true, binder?.getValue() instanceof List<Id>, 'Wrong bind value type');
 		List<Id> bindValues = (List<Id>) binder?.getValue();
 		Assert.areEqual(1, bindValues?.size(), 'Wrong # of values');
 	}
