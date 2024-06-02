@@ -39,13 +39,13 @@ public class MockSoql extends Soql {
 	}
 
 	public override Object query(Type returnType) {
-		// 
 		Object results = this.simulate() ?? returnType?.newInstance();
 		return JSON.deserialize(JSON.serialize(results), returnType);
 	}
 
 	// **** PRIVATE **** // 
 	private Object simulate() {
+		// Run the Simulator logic, and handle errors just like the super() class does
 		try {
 			return this.simulator?.simulateQuery();
 		} catch (Exception error) {
