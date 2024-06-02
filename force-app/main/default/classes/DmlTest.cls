@@ -218,7 +218,8 @@ private class DmlTest {
 		Assert.areEqual(false, insertAsyncResult?.isSuccess(), 'Async Insert succeeded for a non-external object');
 		Database.SaveResult insertImmediateResult = (Database.SaveResult) myDml
 			?.doDml(Dml.Operation.DO_INSERT_IMMEDIATE, account3);
-		Assert.areEqual(true, 
+		Assert.areEqual(
+			true,
 			insertImmediateResult?.isSuccess(),
 			'Immediate Insert failed: ' + insertImmediateResult?.getErrors()
 		);
@@ -230,7 +231,8 @@ private class DmlTest {
 		Assert.areEqual(true, updateAsyncResult?.isSuccess(), 'Async Update failed: ' + updateAsyncResult?.getErrors());
 		Database.SaveResult updateImmediateResult = (Database.SaveResult) myDml
 			?.doDml(Dml.Operation.DO_UPDATE_IMMEDIATE, account1);
-		Assert.areEqual(true, 
+		Assert.areEqual(
+			true,
 			updateImmediateResult?.isSuccess(),
 			'Immediate Update failed: ' + updateImmediateResult?.getErrors()
 		);
@@ -247,7 +249,8 @@ private class DmlTest {
 		Assert.areEqual(true, deleteAsyncResult?.isSuccess(), 'Async Delete failed: ' + deleteAsyncResult?.getErrors());
 		Database.DeleteResult deleteImmediateResult = (Database.DeleteResult) myDml
 			?.doDml(Dml.Operation.DO_DELETE_IMMEDIATE, account3);
-		Assert.areEqual(true, 
+		Assert.areEqual(
+			true,
 			deleteImmediateResult?.isSuccess(),
 			'Immediate Delete failed: ' + deleteImmediateResult?.getErrors()
 		);

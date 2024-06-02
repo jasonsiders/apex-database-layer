@@ -2,8 +2,8 @@ public class DatabaseLayer {
 	/**
 	 * Handles interactions with the Salesforce Database, via DML and SOQL.
 	 * Use the `newDml` and `newSoql` methods to construct instances of these types.
-	 * Automatically inject mock versions of these classes via the `useMocks` method. 
-	**/
+	 * Automatically inject mock versions of these classes via the `useMocks` method.
+	 **/
 	// **** STATIC **** //
 	static final DatabaseLayer INSTANCE = new DatabaseLayer();
 
@@ -23,7 +23,7 @@ public class DatabaseLayer {
 		INSTANCE.dml = new MockDml();
 		INSTANCE.soql = new MockSoql();
 	}
-	
+
 	public static void useRealData() {
 		// Replace the current Dml/Soql instances with the real/non-mock versions of these types
 		// Subsuquent calls to newDml()/newSoql() will now return these versions.

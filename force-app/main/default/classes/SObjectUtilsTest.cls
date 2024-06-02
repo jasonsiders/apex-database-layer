@@ -142,7 +142,8 @@ private class SObjectUtilsTest {
 			Integer start = Limits.getCpuTime();
 			SObjectUtils.getChildRelationshipFrom(field);
 			Integer thisTime = Limits.getCpuTime() - start;
-			Assert.areEqual(true, 
+			Assert.areEqual(
+				true,
 				thisTime < firstTime,
 				'Took longer than initial call: ' + new List<Integer>{ firstTime, thisTime }
 			);

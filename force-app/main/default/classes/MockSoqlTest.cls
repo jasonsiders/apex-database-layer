@@ -238,7 +238,7 @@ private class MockSoqlTest {
 		Test.stopTest();
 	}
 
-	@IsTest 
+	@IsTest
 	static void shouldReturnEmptyListIfNoMocks() {
 		// If a MockSoql is ran, and no Simulator is injected, the methods will automatically return an empty List
 		MockSoql soql = (MockSoql) new MockSoql(Account.SObjectType);
@@ -275,21 +275,21 @@ private class MockSoqlTest {
 
 	// **** INNER **** //
 	private class SampleSimulator implements MockSoql.Simulator {
-		private Exception error; 
+		private Exception error;
 		private Object results;
 
 		public SampleSimulator injectError(Exception error) {
-			this.error = error; 
-			return this; 
+			this.error = error;
+			return this;
 		}
-		
+
 		public SampleSimulator injectError() {
 			return this.injectError(new System.QueryException());
 		}
-		
+
 		public SampleSimulator injectResults(Object results) {
-			this.results = results; 
-			return this; 
+			this.results = results;
+			return this;
 		}
 
 		public Object simulateQuery() {
