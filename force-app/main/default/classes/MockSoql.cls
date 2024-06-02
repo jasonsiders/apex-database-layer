@@ -3,7 +3,7 @@ public class MockSoql extends Soql {
 	/**
 	 * This class mocks SOQL queries. By default, each query will return empty results.
 	 * Users can use the `setMock()` method to inject an object which will simulate the query & return results
-	**/
+	 **/
 	static final String AGGREGATE_KEY_PREFIX = 'expr';
 	private MockSoql.Simulator simulator;
 
@@ -43,7 +43,7 @@ public class MockSoql extends Soql {
 		return this.simulate() ?? returnType?.newInstance();
 	}
 
-	// **** PRIVATE **** // 
+	// **** PRIVATE **** //
 	private Object simulate() {
 		// Run the Simulator logic, and handle errors just like the super() class does
 		try {
@@ -61,7 +61,7 @@ public class MockSoql extends Soql {
 		 * These objects are comprised of properties with a default name, unless an alias is provided.
 		 * Example with an alias: { "profileName": "System Administrator", "numUsers": 10 }
 		 * Example w/out aliases: { "expr0": "System Administrator", "expr1": 10 }
-		**/
+		 **/
 		private Integer numUnaliasedKeys = 0;
 
 		public AggregateResult() {
@@ -89,7 +89,7 @@ public class MockSoql extends Soql {
 	}
 
 	public class QueryLocator extends Soql.QueryLocator {
-		/** 
+		/**
 		 * Mocks the Database.QueryLocator object, used in batch jobs.
 		 * Note: This mock implementation has one big shortcoming.
 		 * Because the underlying Database.QueryLocator object cannot be mocked,
@@ -98,7 +98,7 @@ public class MockSoql extends Soql {
 		 * but standard mechanisms (ie., Database.Batchable classes) won't work with this.
 		 * One workaround is to individually test the start(), execute(), and finish() methods,
 		 * instead of testing via Database.executeBatch()
-		**/
+		 **/
 		private String query;
 		private List<SObject> records;
 
@@ -121,7 +121,7 @@ public class MockSoql extends Soql {
 		/**
 		 * This custom iterator mocks & mirrors the Database.QueryLocatorIterator,
 		 * which is really just an Iterator<SObject> under the hood
-		**/ 
+		 **/
 		private Integer index = 0;
 		private List<SObject> records;
 
@@ -151,7 +151,7 @@ public class MockSoql extends Soql {
 		 * 	- Return dynamic List<SObject>, based on MockDml history/results
 		 * 	- Return a List<MockSoql.AggregateResult>
 		 *  - Throw an exception
-		**/
+		 **/
 		Object simulateQuery();
 	}
 }
