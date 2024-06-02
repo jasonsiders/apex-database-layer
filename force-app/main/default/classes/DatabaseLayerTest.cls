@@ -71,31 +71,4 @@ private class DatabaseLayerTest {
 		Assert.isInstanceOfType(result, Soql.class, 'Should be Soql');
 		Assert.isNotInstanceOfType(result, MockSoql.class, 'Should not be MockSoql');
 	}
-
-	@IsTest
-	static void shouldInitSoqlUsingQueryString() {
-		String queryString = 'SELECT Id FROM Account';
-
-		Test.startTest();
-		Soql result = DatabaseLayer.newSoql(queryString);
-		Test.stopTest();
-
-		Assert.areEqual(queryString, result?.toString(), 'Query string does not match');
-		Assert.isInstanceOfType(result, Soql.class, 'Should be Soql');
-		Assert.isNotInstanceOfType(result, MockSoql.class, 'Should not be MockSoql');
-	}
-
-	@IsTest
-	static void shouldInitSoqlMockUsingQueryString() {
-		DatabaseLayer.useMocks();
-		String queryString = 'SELECT Id FROM Account';
-
-		Test.startTest();
-		Soql result = DatabaseLayer.newSoql(queryString);
-		Test.stopTest();
-
-		Assert.areEqual(queryString, result?.toString(), 'Query string does not match');
-		Assert.isInstanceOfType(result, Soql.class, 'Should be Soql');
-		Assert.isInstanceOfType(result, MockSoql.class, 'Should not be MockSoql');
-	}
 }

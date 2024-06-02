@@ -17,23 +17,12 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 	static final Soql.LogicType DEFAULT_LOGIC_TYPE = Soql.LogicType.ALL_CONDITIONS;
 	static final String ID_REFERENCE = 'Id';
 
-	// **** MEMBER **** //
 	public Soql(DatabaseLayer database) {
 		this();
 	}
 
 	protected Soql() {
 		super();
-	}
-
-	protected Soql(SObjectType objectType) {
-		this();
-		this.fromEntity(objectType);
-	}
-
-	protected Soql(String queryString) {
-		this();
-		this.setQueryString(queryString);
 	}
 
 	public virtual List<Soql.AggregateResult> aggregateQuery() {
@@ -94,6 +83,19 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		// Return the query results as an instance of the returnType
 		// Mostly useful for returning Aggregate Query results as a wrapper type
 		return JSON.deserialize(JSON.serialize(this.query()), returnType);
+	}
+
+	public SObject queryFirst() {
+		// Returns the first result of the query, or null if no results returned
+		// Facilitates & simplifies assigning query results to a single SObject
+		// Temporarily set a LIMIT 1
+		Integer originalLimit = this.rowLimit;
+		this.setRowLimit(1);
+		// Retrieve the query results - should be either 0 or 1
+		List<SObject> results = this.query();
+		// Now revert to the original row limit
+		this.setRowLimit(originalLimit);
+		return results?.isEmpty() == false ? results[0] : null;
 	}
 
 	protected void handleQueryError(Exception error) {
@@ -169,9 +171,9 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 	}
 
 	public class Aggregation {
-		String alias;
-		String innerFieldName;
-		Function function;
+		private String alias;
+		private String innerFieldName;
+		private Function function;
 
 		public Aggregation(Soql.Function function, String innerFieldName) {
 			this.alias = '';
@@ -246,16 +248,16 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		public Soql.Usage usage { get; protected set; }
 		public System.AccessLevel accessLevel { get; protected set; }
 		public Map<String, Object> binds { get; protected set; }
-		public String queryString { get; protected set; }
 
 		protected Builder() {
 			this.reset();
 		}
 
 		public virtual override String toString() {
-			// Return the user-defined query string if one is provided, or build a query string if not
-			String queryString = this.queryString ?? this.buildQueryString();
-			return queryString?.trim();
+			// Outputs a SOQL Query string, following the syntax defined here:
+			// https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_select.htm#:~:text=SOQL%20query%20syntax%20consists%20of,typeOfField%20whenExpression%5B...%5D
+			List<String> queryArgs = new List<String>{ this.getSelect(), this.getFrom(), this.getOptionalArgs() };
+			return String.format('SELECT {0} FROM {1} {2}', queryArgs)?.trim();
 		}
 
 		public Soql.Builder bind(Map<String, Object> bindMap) {
@@ -298,14 +300,8 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			this.groupByClauses = new List<String>();
 			this.havingCriteria = new Soql.ConditionalLogic();
 			this.orderByClauses = new List<String>();
-			this.queryString = null;
 			this.selectClauses = new Set<String>{ ID_REFERENCE };
 			this.whereCriteria = new Soql.ConditionalLogic();
-			return this;
-		}
-
-		public Soql.Builder setQueryString(String queryString) {
-			this.queryString = queryString;
 			return this;
 		}
 
@@ -456,13 +452,6 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		// **** PRIVATE **** //
-		protected String buildQueryString() {
-			// Outputs a SOQL Query string, following the syntax defined here:
-			// https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_select.htm#:~:text=SOQL%20query%20syntax%20consists%20of,typeOfField%20whenExpression%5B...%5D
-			List<String> queryArgs = new List<String>{ this.getSelect(), this.getFrom(), this.getOptionalArgs() };
-			return String.format('SELECT {0} FROM {1} {2}', queryArgs)?.trim();
-		}
-
 		protected String constructClause(String prefix, Object value) {
 			// Returns a specific SOQL clause (ex., "WHERE {value}"), provided that `value` is not null
 			String output = value?.toString();
@@ -578,8 +567,8 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 	}
 
 	public class ConditionalLogic implements Soql.Criteria {
-		List<Soql.Criteria> criterion = new List<Soql.Criteria>();
-		Soql.LogicType logicType = Soql.LogicType.ALL_CONDITIONS;
+		private List<Soql.Criteria> criterion = new List<Soql.Criteria>();
+		private Soql.LogicType logicType = Soql.LogicType.ALL_CONDITIONS;
 
 		public ConditionalLogic addConditions(List<Soql.Criteria> criterion) {
 			this.criterion?.addAll(criterion);
@@ -660,7 +649,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 	}
 
 	public virtual class Operator {
-		String token;
+		private String token;
 
 		protected Operator(String token) {
 			// Callers shouldn't construct an Operator object directly;
@@ -681,7 +670,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		// Decorates a Database.QueryLocator, so that it can be mocked.
 		// These objects can't be serialized, or mocked by other means.
 		// See MockSoql.QueryLocator for the mock implementation of this object.
-		Database.QueryLocator locator;
+		private Database.QueryLocator locator;
 
 		protected QueryLocator(Database.QueryLocator locator) {
 			this.locator = locator;
@@ -701,9 +690,9 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 	}
 
 	public class SortOrder {
-		List<String> fieldNames = new List<String>();
-		Soql.SortDirection direction = Soql.SortDirection.ASCENDING;
-		Soql.NullOrder nullOrder = Soql.NullOrder.NULLS_LAST;
+		private List<String> fieldNames = new List<String>();
+		private Soql.SortDirection direction = Soql.SortDirection.ASCENDING;
+		private Soql.NullOrder nullOrder = Soql.NullOrder.NULLS_LAST;
 
 		public SortOrder(List<String> fieldNames, Soql.SortDirection direction) {
 			this.fieldNames = fieldNames;
@@ -755,7 +744,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 	}
 
 	public class Subquery extends Soql.InnerQuery {
-		String relationshipName;
+		private String relationshipName;
 
 		public SubQuery(Schema.ChildRelationship relationship) {
 			this.addSelect(ID_REFERENCE);
