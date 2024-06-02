@@ -49,8 +49,8 @@ private class SoqlTest {
 
 	@IsTest
 	static void shouldHandleCountQueryErrors() {
-		String illegalFieldName = 'abcd'; // Will cause a System.QueryException when run
-		Soql soql = (Soql) DatabaseLayer.newSoql(Account.SObjectType)?.addSelect(illegalFieldName);
+		SObjectType illegalEntity = null; // Will cause a System.QueryException when run
+		Soql soql = (Soql) DatabaseLayer.newSoql(illegalEntity);
 
 		Test.startTest();
 		try {
