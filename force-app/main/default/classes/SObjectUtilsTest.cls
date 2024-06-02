@@ -1,159 +1,162 @@
 @IsTest
 private class SObjectUtilsTest {
-    @IsTest 
-    static void shouldMockRecordIds() {
-        Set<Id> mockIds = new Set<Id>();
-        Integer numIterations = 200; 
-        SObjectType objectType = Account.SObjectType;
+	@IsTest
+	static void shouldMockRecordIds() {
+		Set<Id> mockIds = new Set<Id>();
+		Integer numIterations = 200;
+		SObjectType objectType = Account.SObjectType;
 
-        Test.startTest();
-        for (Integer i = 0; i < numIterations; i++) {
-            Id mockId = SObjectUtils.mockRecordId(objectType);
-            Assert.isNotNull(mockId, 'Did not return Id');
-            Assert.areEqual(objectType, mockId?.getSObjectType(), 'Wrong SObjectType');
-            Assert.isTrue(mockId?.toString()?.endsWith(i?.toString()), 'Unexpected Id suffix');
-            mockIds?.add(mockId);
-        }
-        Test.stopTest();
+		Test.startTest();
+		for (Integer i = 0; i < numIterations; i++) {
+			Id mockId = SObjectUtils.mockRecordId(objectType);
+			Assert.isNotNull(mockId, 'Did not return Id');
+			Assert.areEqual(objectType, mockId?.getSObjectType(), 'Wrong SObjectType');
+			Assert.isTrue(mockId?.toString()?.endsWith(i?.toString()), 'Unexpected Id suffix');
+			mockIds?.add(mockId);
+		}
+		Test.stopTest();
 
-        Assert.areEqual(numIterations, mockIds?.size(), 'Wrong # of unique Ids');
-    }
+		Assert.areEqual(numIterations, mockIds?.size(), 'Wrong # of unique Ids');
+	}
 
-    @IsTest
-    static void shouldMockPlatformEventIds() {
-        Set<Id> mockIds = new Set<Id>();
-        Integer numIterations = 200; 
-        SObjectType objectType = BatchApexErrorEvent.SObjectType;
+	@IsTest
+	static void shouldMockPlatformEventIds() {
+		Set<Id> mockIds = new Set<Id>();
+		Integer numIterations = 200;
+		SObjectType objectType = BatchApexErrorEvent.SObjectType;
 
-        Test.startTest();
-        for (Integer i = 0; i < numIterations; i++) {
-            Id mockId = SObjectUtils.mockPlatformEventId(objectType);
-            Assert.isNotNull(mockId, 'Did not return Id');
-            Assert.areEqual(objectType, mockId?.getSObjectType(), 'Wrong SObjectType');
-            mockIds?.add(mockId);
-        }
-        Test.stopTest();
+		Test.startTest();
+		for (Integer i = 0; i < numIterations; i++) {
+			Id mockId = SObjectUtils.mockPlatformEventId(objectType);
+			Assert.isNotNull(mockId, 'Did not return Id');
+			Assert.areEqual(objectType, mockId?.getSObjectType(), 'Wrong SObjectType');
+			mockIds?.add(mockId);
+		}
+		Test.stopTest();
 
-        Assert.areEqual(1, mockIds?.size(), 'Wrong # of unique Ids');
-    }
+		Assert.areEqual(1, mockIds?.size(), 'Wrong # of unique Ids');
+	}
 
-    @IsTest 
-    static void shouldSetMultipleReadOnlyFields() {
-        Map<String, Object> readOnlyFields = new Map<String, Object>{
-            Account.CreatedDate.toString() => DateTime.now()?.addDays(-10),
-            Account.SystemModStamp.toString() => DateTime.now()?.addDays(-1)
-        };
-        
-        Test.startTest();
-        Account account = (Account) SObjectUtils.setReadOnlyFields(new Account(), readOnlyFields);
-        Test.stopTest();
+	@IsTest
+	static void shouldSetMultipleReadOnlyFields() {
+		Map<String, Object> readOnlyFields = new Map<String, Object>{
+			Account.CreatedDate.toString() => DateTime.now()?.addDays(-10),
+			Account.SystemModStamp.toString() => DateTime.now()?.addDays(-1)
+		};
 
-        for (String fieldName : readOnlyFields?.keySet()) {
-            Object expected = readOnlyFields?.get(fieldName);
-            Assert.areEqual(expected, account?.get(fieldName), 'Wrong read-only value for ' + fieldName);
-        }
-    }
+		Test.startTest();
+		Account account = (Account) SObjectUtils.setReadOnlyFields(new Account(), readOnlyFields);
+		Test.stopTest();
 
-    @IsTest 
-    static void shouldsetReadOnlyFields() {
-        DateTime expected = DateTime.now()?.addDays(-3); 
+		for (String fieldName : readOnlyFields?.keySet()) {
+			Object expected = readOnlyFields?.get(fieldName);
+			Assert.areEqual(expected, account?.get(fieldName), 'Wrong read-only value for ' + fieldName);
+		}
+	}
 
-        Test.startTest();
-        Account account = (Account) SObjectUtils.setReadOnlyFields(new Account(), Account.CreatedDate, expected);
-        Test.stopTest();
+	@IsTest
+	static void shouldsetReadOnlyFields() {
+		DateTime expected = DateTime.now()?.addDays(-3);
 
-        Assert.areEqual(expected, account?.CreatedDate, 'Wrong read-only value');
-    }
+		Test.startTest();
+		Account account = (Account) SObjectUtils.setReadOnlyFields(new Account(), Account.CreatedDate, expected);
+		Test.stopTest();
 
-    @IsTest 
-    static void shouldSetParentLookup() {
-        Account account = new Account(Id = SObjectUtils.mockRecordId(Account.SObjectType));
+		Assert.areEqual(expected, account?.CreatedDate, 'Wrong read-only value');
+	}
 
-        Test.startTest();
-        Contact contact = (Contact) SObjectUtils.setLookup(new Contact(), Contact.AccountId, account);
-        Test.stopTest();
+	@IsTest
+	static void shouldSetParentLookup() {
+		Account account = new Account(Id = SObjectUtils.mockRecordId(Account.SObjectType));
 
-        Assert.areEqual(account?.Id, contact?.AccountId, 'Did not set lookup field');
-        Assert.areEqual(account?.Id, contact?.Account?.Id, 'Did not set parent relationship');
-    }
+		Test.startTest();
+		Contact contact = (Contact) SObjectUtils.setLookup(new Contact(), Contact.AccountId, account);
+		Test.stopTest();
 
-    @IsTest 
-    static void shouldSetParentLookupFromTextFieldName() {
-        Account account = new Account(Id = SObjectUtils.mockRecordId(Account.SObjectType));
-        String fieldName = Contact.AccountId.toString();
+		Assert.areEqual(account?.Id, contact?.AccountId, 'Did not set lookup field');
+		Assert.areEqual(account?.Id, contact?.Account?.Id, 'Did not set parent relationship');
+	}
 
-        Test.startTest();
-        Contact contact = (Contact) SObjectUtils.setLookup(new Contact(), fieldName, account);
-        Test.stopTest();
+	@IsTest
+	static void shouldSetParentLookupFromTextFieldName() {
+		Account account = new Account(Id = SObjectUtils.mockRecordId(Account.SObjectType));
+		String fieldName = Contact.AccountId.toString();
 
-        Assert.areEqual(account?.Id, contact?.AccountId, 'Did not set lookup field');
-        Assert.areEqual(account?.Id, contact?.Account?.Id, 'Did not set parent relationship');
-    }
+		Test.startTest();
+		Contact contact = (Contact) SObjectUtils.setLookup(new Contact(), fieldName, account);
+		Test.stopTest();
 
-    @IsTest 
-    static void shouldSetChildLookup() {
-        List<Contact> contacts = new List<Contact>();
-        for (Integer i = 0; i < 3; i++) {
-            Contact contact = new Contact();
-            contacts?.add(contact); 
-        }
+		Assert.areEqual(account?.Id, contact?.AccountId, 'Did not set lookup field');
+		Assert.areEqual(account?.Id, contact?.Account?.Id, 'Did not set parent relationship');
+	}
 
-        Test.startTest();
-        Account account = (Account) SObjectUtils.setRelatedList(new Account(), Contact.AccountId, contacts);
-        Test.stopTest();
+	@IsTest
+	static void shouldSetChildLookup() {
+		List<Contact> contacts = new List<Contact>();
+		for (Integer i = 0; i < 3; i++) {
+			Contact contact = new Contact();
+			contacts?.add(contact);
+		}
 
-        Assert.areEqual(contacts?.size(), account?.Contacts?.size(), 'Did not set child relationship');
-    }
+		Test.startTest();
+		Account account = (Account) SObjectUtils.setRelatedList(new Account(), Contact.AccountId, contacts);
+		Test.stopTest();
 
-    @IsTest 
-    static void shouldGetChildRelationshipFromLookupField() {
-        SObjectField field = Contact.AccountId;
+		Assert.areEqual(contacts?.size(), account?.Contacts?.size(), 'Did not set child relationship');
+	}
 
-        Test.startTest();
-        Schema.ChildRelationship relationship = SObjectUtils.getChildRelationshipFrom(field);
-        Test.stopTest();
+	@IsTest
+	static void shouldGetChildRelationshipFromLookupField() {
+		SObjectField field = Contact.AccountId;
 
-        Assert.areEqual(field, relationship?.getField(), 'Relationship does not point to ' + field);
-    }
+		Test.startTest();
+		Schema.ChildRelationship relationship = SObjectUtils.getChildRelationshipFrom(field);
+		Test.stopTest();
 
-    @IsTest 
-    static void shouldGetChildRelationshipFromPolymorphicLookupField() {
-        SObjectField field = Task.WhoId; // Polymorphic! Can be a reference to Contact.Tasks OR Lead.Tasks
-        SObjectType referenceTo = Lead.SObjectType; // ...in this case, we want Lead.Tasks
+		Assert.areEqual(field, relationship?.getField(), 'Relationship does not point to ' + field);
+	}
 
-        Test.startTest();
-        Schema.ChildRelationship relationship = SObjectUtils.getChildRelationshipFrom(field, referenceTo);
-        Test.stopTest();
+	@IsTest
+	static void shouldGetChildRelationshipFromPolymorphicLookupField() {
+		SObjectField field = Task.WhoId; // Polymorphic! Can be a reference to Contact.Tasks OR Lead.Tasks
+		SObjectType referenceTo = Lead.SObjectType; // ...in this case, we want Lead.Tasks
 
-        Assert.areEqual(field, relationship?.getField(), 'Relationship does not point to ' + field);
-    }
+		Test.startTest();
+		Schema.ChildRelationship relationship = SObjectUtils.getChildRelationshipFrom(field, referenceTo);
+		Test.stopTest();
 
-    @IsTest 
-    static void shouldReturnChildRelationshipsUnderHighStress() {
-        // The operation to retrieve Schema.ChildRelationships from an object can be expensive, 
-        // so the class internally caches these results via an inner class.
-        // Successive calls to retrieve the same SObjectType's relationships 
-        // should have similar performance implications as calling it once. 
-        SObjectField field = Contact.AccountId;
-        SObjectUtils.getChildRelationshipFrom(field);
-        Integer firstTime = Limits.getCpuTime();
+		Assert.areEqual(field, relationship?.getField(), 'Relationship does not point to ' + field);
+	}
 
-        for (Integer i = 0; i < 10; i++) {
-            Integer start = Limits.getCpuTime();
-            SObjectUtils.getChildRelationshipFrom(field);
-            Integer thisTime = Limits.getCpuTime() - start;
-            Assert.isTrue(thisTime < firstTime, 'Took longer than initial call: ' + new List<Integer>{ firstTime, thisTime});
-        }
-    }
+	@IsTest
+	static void shouldReturnChildRelationshipsUnderHighStress() {
+		// The operation to retrieve Schema.ChildRelationships from an object can be expensive,
+		// so the class internally caches these results via an inner class.
+		// Successive calls to retrieve the same SObjectType's relationships
+		// should have similar performance implications as calling it once.
+		SObjectField field = Contact.AccountId;
+		SObjectUtils.getChildRelationshipFrom(field);
+		Integer firstTime = Limits.getCpuTime();
 
-    @IsTest 
-    static void shouldReturnNullChildRelationshipIfNotLookupField() {
-        SObjectField field = Contact.CreatedDate;
+		for (Integer i = 0; i < 10; i++) {
+			Integer start = Limits.getCpuTime();
+			SObjectUtils.getChildRelationshipFrom(field);
+			Integer thisTime = Limits.getCpuTime() - start;
+			Assert.isTrue(
+				thisTime < firstTime,
+				'Took longer than initial call: ' + new List<Integer>{ firstTime, thisTime }
+			);
+		}
+	}
 
-        Test.startTest();
-        Schema.ChildRelationship relationship = SObjectUtils.getChildRelationshipFrom(field);
-        Test.stopTest();
+	@IsTest
+	static void shouldReturnNullChildRelationshipIfNotLookupField() {
+		SObjectField field = Contact.CreatedDate;
 
-        Assert.isNull(relationship, 'Non-lookup field returned a relationship anyways');
-    }
+		Test.startTest();
+		Schema.ChildRelationship relationship = SObjectUtils.getChildRelationshipFrom(field);
+		Test.stopTest();
+
+		Assert.isNull(relationship, 'Non-lookup field returned a relationship anyways');
+	}
 }
