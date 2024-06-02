@@ -13,16 +13,8 @@ public class DatabaseLayer {
 	}
 
 	public static Soql newSoql(SObjectType objectType) {
-		// Returns a new instance of the current Soql type, 
-		// that will return records of the provided SObjectType.
-		// All Soqls must have a FROM SObjectType, except for processing raw query strings.
+		// Returns a new instance of the current Soql type, that will return records of the provided SObjectType.
 		return (Soql) INSTANCE?.soql?.clone()?.fromEntity(objectType);
-	}
-
-	public static Soql newSoql(String queryString) {
-		// Returns a new instance of the current Soql type, 
-		// that will return results form the provided query string.
-		return (Soql) INSTANCE?.soql?.clone()?.setQueryString(queryString);
 	}
 
 	public static void useMocks() {

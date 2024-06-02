@@ -27,7 +27,7 @@ private class SoqlTest {
 			soql?.aggregateQuery();
 			Assert.fail('Illegal query did not throw an error');
 		} catch (System.TypeException error) {
-			Assert.isTrue(error?.getMessage()?.contains(soql?.toString()), 'Did not append query to error');
+			Assert.areEqual(true, error?.getMessage()?.contains(soql?.toString()), 'Did not append query to error');
 		}
 		Test.stopTest();
 	}
@@ -49,8 +49,8 @@ private class SoqlTest {
 
 	@IsTest
 	static void shouldHandleCountQueryErrors() {
-		String illegalQueryString = 'abcd'; // Will throw a System.QueryException when run
-		Soql soql = (Soql) DatabaseLayer.newSoql(illegalQueryString);
+		SObjectType illegalEntity = null; // Will cause a System.QueryException when run
+		Soql soql = (Soql) DatabaseLayer.newSoql(illegalEntity);
 
 		Test.startTest();
 		try {
@@ -58,7 +58,7 @@ private class SoqlTest {
 			Assert.fail('Illegal query did not throw an error');
 		} catch (System.QueryException error) {
 			String msg = error?.getMessage();
-			Assert.isTrue(msg?.contains(illegalQueryString), 'Did not append query to the error');
+			Assert.areEqual(true, msg?.contains(soql?.toString()), 'Did not append query to the error');
 		}
 		Test.stopTest();
 	}
@@ -71,15 +71,15 @@ private class SoqlTest {
 		Soql.QueryLocator locator = soql?.getQueryLocator();
 		Test.stopTest();
 
-		Assert.isNotNull(locator?.getCursor(), 'Did not return Database.QueryLocator cursor');
+		Assert.areNotEqual(null, locator?.getCursor(), 'Did not return Database.QueryLocator cursor');
 		Assert.areEqual(soql?.toString(), locator?.getQuery(), 'Unexpected Query');
-		Assert.isNotNull(locator?.iterator(), 'Did not return iterator');
+		Assert.areNotEqual(null, locator?.iterator(), 'Did not return iterator');
 	}
 
 	@IsTest
 	static void shouldHandleQueryLocatorErrors() {
-		String illegalQueryString = 'abcd'; // Will throw a System.QueryException when run
-		Soql soql = (Soql) DatabaseLayer.newSoql(illegalQueryString);
+		String illegalFieldName = 'abcd'; // Will cause a System.QueryException when run
+		Soql soql = (Soql) DatabaseLayer.newSoql(Account.SObjectType)?.addSelect(illegalFieldName);
 
 		Test.startTest();
 		try {
@@ -87,7 +87,7 @@ private class SoqlTest {
 			Assert.fail('Illegal query did not throw an error');
 		} catch (System.QueryException error) {
 			String msg = error?.getMessage();
-			Assert.isTrue(msg?.contains(illegalQueryString), 'Did not append query to the error');
+			Assert.areEqual(true, msg?.contains(illegalFieldName), 'Did not append query to the error');
 		}
 		Test.stopTest();
 	}
@@ -104,10 +104,33 @@ private class SoqlTest {
 		Assert.areEqual(expected, users?.size(), 'Wrong # of Users returned');
 	}
 
+	@IsTest 
+	static void shouldQuerySingleRecord() {
+		Soql soql = DatabaseLayer.newSoql(User.SObjectType);
+
+		Test.startTest();
+		User user = (User) soql?.queryFirst();
+		Test.stopTest();
+
+		Assert.areNotEqual(null, user, 'No records returned');
+	}
+
+	@IsTest 
+	static void shouldReturnNullIfNoResults() {
+		Soql soql = DatabaseLayer.newSoql(Account.SObjectType);
+		// No accounts have been inserted yet, so this shouldn't return anything
+
+		Test.startTest();
+		Account account = (Account) soql?.queryFirst();
+		Test.stopTest();
+
+		Assert.areEqual(null, account, 'Returned a result anyway? ' + account);
+	}
+
 	@IsTest
 	static void shouldHandleQueryErrors() {
-		String illegalQueryString = 'abcd'; // Will throw a System.QueryException when run
-		Soql soql = (Soql) DatabaseLayer.newSoql(illegalQueryString);
+		String illegalFieldName = 'abcd'; // Will cause a System.QueryException when run
+		Soql soql = (Soql) DatabaseLayer.newSoql(Account.SObjectType)?.addSelect(illegalFieldName);
 
 		Test.startTest();
 		try {
@@ -115,7 +138,7 @@ private class SoqlTest {
 			Assert.fail('Illegal query did not throw an error');
 		} catch (System.QueryException error) {
 			String msg = error?.getMessage();
-			Assert.isTrue(msg?.contains(illegalQueryString), 'Did not append query to the error');
+			Assert.areEqual(true, msg?.contains(soql?.toString()), 'Did not append query to the error');
 		}
 		Test.stopTest();
 	}
@@ -141,32 +164,6 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldQueryUsingString() {
-		Soql soql = DatabaseLayer.newSoql('SELECT Id FROM User');
-
-		Test.startTest();
-		List<User> users = soql?.query();
-		Test.stopTest();
-
-		Integer expected = Database.countQuery('SELECT COUNT() FROM User');
-		Assert.areEqual(expected, users?.size(), 'Wrong # of Users returned');
-	}
-
-	@IsTest
-	static void shouldQueryUsingStringAndBinds() {
-		Soql soql = (Soql) DatabaseLayer.newSoql('SELECT Username FROM User WHERE Id = :userId')
-			?.bind('userId', UserInfo.getUserId());
-
-		Test.startTest();
-		List<User> users = soql?.query();
-		Test.stopTest();
-
-		Assert.areEqual(1, users?.size(), 'Wrong # of Users returned');
-		User user = users[0];
-		Assert.areEqual(UserInfo.getUsername(), user?.Username, 'Wrong Username');
-	}
-
-	@IsTest
 	static void shouldSetAccessLevel() {
 		System.AccessLevel level = System.AccessLevel.SYSTEM_MODE;
 		Soql soql = (Soql) DatabaseLayer.newSoql(User.SObjectType)?.defineAccess(level);
@@ -189,26 +186,26 @@ private class SoqlTest {
 	@IsTest
 	static void shouldDeselectAllFields() {
 		Soql soql = (Soql) DatabaseLayer.newSoql(User.SObjectType)?.selectAll();
-		Assert.isTrue(soql?.selectClauses?.size() > 1, 'Wrong # of SELECT clauses');
+		Assert.areEqual(true, soql?.selectClauses?.size() > 1, 'Wrong # of SELECT clauses');
 
 		Test.startTest();
 		soql.deselectAll();
 		Test.stopTest();
 
-		Assert.isTrue(soql?.selectClauses?.isEmpty(), 'Did not clear SELECT clauses');
+		Assert.areEqual(true, soql?.selectClauses?.isEmpty(), 'Did not clear SELECT clauses');
 	}
 
 	@IsTest
 	static void shouldDeselectSpecificField() {
 		Soql soql = (Soql) DatabaseLayer.newSoql(User.SObjectType)?.selectAll();
-		Assert.isTrue(soql?.selectClauses?.size() > 1, 'Wrong # of SELECT clauses');
+		Assert.areEqual(true, soql?.selectClauses?.size() > 1, 'Wrong # of SELECT clauses');
 
 		Test.startTest();
 		soql?.deselect(User.Username);
 		Test.stopTest();
 
 		Set<String> fields = new Set<String>(soql?.selectClauses);
-		Assert.isFalse(fields?.contains(User.Username?.toString()), 'Did not deselect Username');
+		Assert.areEqual(false, fields?.contains(User.Username?.toString()), 'Did not deselect Username');
 	}
 
 	@IsTest
@@ -1003,7 +1000,7 @@ private class SoqlTest {
 
 		Assert.areEqual(key, binder?.getKey(), 'Wrong key');
 		Assert.areEqual(':' + key, binder?.toString(), 'Wrong toString() value');
-		Assert.isTrue(binder?.getValue() instanceof List<Id>, 'Wrong bind value type');
+		Assert.areEqual(true, binder?.getValue() instanceof List<Id>, 'Wrong bind value type');
 		List<Id> bindValues = (List<Id>) binder?.getValue();
 		Assert.areEqual(1, bindValues?.size(), 'Wrong # of values');
 	}

@@ -8,7 +8,8 @@ private class MockSoqlTest {
 		MockSoql soql = (MockSoql) new MockSoql(Account.SObjectType)?.addSelect(count);
 		// Inject the query w/mock results
 		List<Account> accounts = MockSoqlTest.initAccounts(NUM_ACCS);
-		soql?.injectResults(accounts);
+		MockSoql.Simulator simulator = new SampleSimulator()?.injectResults(accounts);
+		soql?.setMock(simulator);
 
 		Test.startTest();
 		Integer results = soql?.countQuery();
@@ -23,14 +24,15 @@ private class MockSoqlTest {
 		// Build a query
 		MockSoql soql = (MockSoql) new MockSoql(Account.SObjectType)?.addSelect(Account.Name);
 		// Inject the query w/a mock error
-		soql?.injectError();
+		MockSoql.Simulator simulator = new SampleSimulator().injectError();
+		soql?.setMock(simulator);
 
 		Test.startTest();
 		try {
 			soql?.countQuery();
 			Assert.fail('The injected exception was not thrown');
 		} catch (System.QueryException error) {
-			Assert.isTrue(error?.getMessage()?.contains(soql?.toString()), 'Did not append query to error');
+			Assert.areEqual(true, error?.getMessage()?.contains(soql?.toString()), 'Did not append query to error');
 			Assert.areEqual(0, Limits.getQueries(), 'Actually executed SOQL');
 		}
 		Test.stopTest();
@@ -42,7 +44,8 @@ private class MockSoqlTest {
 		MockSoql soql = (MockSoql) new MockSoql(Account.SObjectType)?.addSelect(Account.Name);
 		// Inject the query w/mock results
 		List<Account> accounts = MockSoqlTest.initAccounts(NUM_ACCS);
-		soql?.injectResults(accounts);
+		MockSoql.Simulator simulator = new SampleSimulator()?.injectResults(accounts);
+		soql?.setMock(simulator);
 
 		Test.startTest();
 		Soql.QueryLocator locator = soql?.getQueryLocator();
@@ -53,11 +56,11 @@ private class MockSoqlTest {
 		System.Iterator<SObject> iterator = locator?.iterator();
 		for (Integer i = 0; i < (NUM_ACCS + 1); i++) {
 			if (i < NUM_ACCS) {
-				Assert.isTrue(iterator?.hasNext(), i + '/' + NUM_ACCS + ': Iterator should hasNext()');
+				Assert.areEqual(true, iterator?.hasNext(), i + '/' + NUM_ACCS + ': Iterator should hasNext()');
 				Account account = (Account) iterator?.next();
-				Assert.isNotNull(account, i + '/' + NUM_ACCS + ': Iterator returned null record');
+				Assert.areNotEqual(null, account, i + '/' + NUM_ACCS + ': Iterator returned null record');
 			} else {
-				Assert.isFalse(iterator?.hasNext(), i + '/' + NUM_ACCS + ': Iterator should not hasNext()');
+				Assert.areEqual(false, iterator?.hasNext(), i + '/' + NUM_ACCS + ': Iterator should not hasNext()');
 				try {
 					iterator?.next();
 					Assert.fail('Iterator did not throw a ' + System.NoSuchElementException.class);
@@ -73,14 +76,15 @@ private class MockSoqlTest {
 		// Build a query
 		MockSoql soql = (MockSoql) new MockSoql(Account.SObjectType)?.addSelect(Account.Name);
 		// Inject the query w/a mock error
-		soql?.injectError();
+		MockSoql.Simulator simulator = new SampleSimulator()?.injectError();
+		soql?.setMock(simulator);
 
 		Test.startTest();
 		try {
 			soql?.getQueryLocator();
 			Assert.fail('The injected exception was not thrown');
 		} catch (System.QueryException error) {
-			Assert.isTrue(error?.getMessage()?.contains(soql?.toString()), 'Did not append query to error');
+			Assert.areEqual(true, error?.getMessage()?.contains(soql?.toString()), 'Did not append query to error');
 			Assert.areEqual(0, Limits.getQueries(), 'Actually executed SOQL');
 		}
 		Test.stopTest();
@@ -92,7 +96,8 @@ private class MockSoqlTest {
 		MockSoql soql = (MockSoql) new MockSoql(Account.SObjectType)?.addSelect(Account.Name);
 		// Inject the query w/mock results
 		List<Account> accounts = MockSoqlTest.initAccounts(NUM_ACCS);
-		soql?.injectResults(accounts);
+		MockSoql.Simulator simulator = new SampleSimulator()?.injectResults(accounts);
+		soql?.setMock(simulator);
 
 		Test.startTest();
 		List<Account> results = soql?.query();
@@ -107,14 +112,15 @@ private class MockSoqlTest {
 		// Build a query
 		MockSoql soql = (MockSoql) new MockSoql(Account.SObjectType)?.addSelect(Account.Name);
 		// Inject the query w/a mock error
-		soql?.injectError();
+		MockSoql.Simulator simulator = new SampleSimulator()?.injectError();
+		soql?.setMock(simulator);
 
 		Test.startTest();
 		try {
 			soql?.query();
 			Assert.fail('The injected exception was not thrown');
 		} catch (System.QueryException error) {
-			Assert.isTrue(error?.getMessage()?.contains(soql?.toString()), 'Did not append query to error');
+			Assert.areEqual(true, error?.getMessage()?.contains(soql?.toString()), 'Did not append query to error');
 			Assert.areEqual(0, Limits.getQueries(), 'Actually executed SOQL');
 		}
 		Test.stopTest();
@@ -136,7 +142,8 @@ private class MockSoqlTest {
 			?.addParameter('Bar Profile')
 			?.addParameter(45);
 		List<Soql.AggregateResult> mockResults = new List<Soql.AggregateResult>{ mockResult1, mockResult2 };
-		soql?.injectResults(mockResults);
+		MockSoql.Simulator simulator = new SampleSimulator()?.injectResults(mockResults);
+		soql?.setMock(simulator);
 
 		Test.startTest();
 		List<Soql.AggregateResult> results = soql?.aggregateQuery();
@@ -164,14 +171,15 @@ private class MockSoqlTest {
 			?.addSelect(count)
 			?.groupBy('Profile.Name');
 		// Inject an error
-		soql?.injectError();
+		MockSoql.Simulator simulator = new SampleSimulator()?.injectError();
+		soql?.setMock(simulator);
 
 		Test.startTest();
 		try {
 			soql?.aggregateQuery();
 			Assert.fail('The injected exception was not thrown');
 		} catch (System.QueryException error) {
-			Assert.isTrue(error?.getMessage()?.contains(soql?.toString()), 'Did not append query to error');
+			Assert.areEqual(true, error?.getMessage()?.contains(soql?.toString()), 'Did not append query to error');
 			Assert.areEqual(0, Limits.getQueries(), 'Actually executed SOQL');
 		}
 		Test.stopTest();
@@ -186,10 +194,11 @@ private class MockSoqlTest {
 			?.addSelect(count)
 			?.groupBy('Profile.Name');
 		// Inject results
-		SampleWrapper mockResult1 = new SampleWrapper('Foo Profile', 123);
-		SampleWrapper mockResult2 = new SampleWrapper('Bar Profile', 45);
+		SampleWrapper mockResult1 = new SampleWrapper()?.wrap('Foo Profile', 123);
+		SampleWrapper mockResult2 = new SampleWrapper()?.wrap('Bar Profile', 45);
 		List<SampleWrapper> mockResults = new List<SampleWrapper>{ mockResult1, mockResult2 };
-		soql?.injectResults(mockResults);
+		MockSoql.Simulator simulator = new SampleSimulator()?.injectResults(mockResults);
+		soql?.setMock(simulator);
 
 		Test.startTest();
 		List<SampleWrapper> results = (List<SampleWrapper>) soql?.query(List<SampleWrapper>.class);
@@ -215,33 +224,40 @@ private class MockSoqlTest {
 			?.addSelect(count)
 			?.groupBy('Profile.Name');
 		// Inject an error
-		soql?.injectError(new System.TypeException());
+		MockSoql.Simulator simulator = new SampleSimulator()?.injectError(new System.TypeException());
+		soql?.setMock(simulator);
 
 		Test.startTest();
 		try {
 			soql?.query(List<SampleWrapper>.class);
 			Assert.fail('The injected exception was not thrown');
 		} catch (System.TypeException error) {
-			Assert.isTrue(error?.getMessage()?.contains(soql?.toString()), 'Did not append query to error');
+			Assert.areEqual(true, error?.getMessage()?.contains(soql?.toString()), 'Did not append query to error');
 			Assert.areEqual(0, Limits.getQueries(), 'Actually executed SOQL');
 		}
 		Test.stopTest();
 	}
 
-	@IsTest
-	static void shouldMockQueryWithQueryString() {
-		// Build a query
-		MockSoql soql = (MockSoql) new MockSoql('SELECT Id, Name FROM Account');
-		// Inject results into the query
-		List<Account> accounts = MockSoqlTest.initAccounts(NUM_ACCS);
-		soql?.injectResults(accounts);
+	@IsTest 
+	static void shouldReturnEmptyListIfNoMocks() {
+		// If a MockSoql is ran, and no Simulator is injected, the methods will automatically return an empty List
+		MockSoql soql = (MockSoql) new MockSoql(Account.SObjectType);
 
 		Test.startTest();
-		List<Account> results = soql?.query();
-		Assert.areEqual(0, Limits.getQueries(), 'Actually executed SOQL');
+		List<Soql.AggregateResult> aggregateResults = soql?.aggregateQuery();
+		Integer countResults = soql?.countQuery();
+		Iterator<SObject> locatorIterator = soql?.getQueryLocator()?.iterator();
+		List<SObject> queryResults = soql?.query();
+		SObject queryFirstResult = soql?.queryFirst();
+		List<SampleWrapper> queryCastResults = (List<SampleWrapper>) soql?.query(List<SampleWrapper>.class);
 		Test.stopTest();
 
-		Assert.areEqual(NUM_ACCS, results?.size(), 'Wrong # of Accounts returned');
+		Assert.areEqual(true, aggregateResults?.isEmpty(), 'aggregateQuery() returned results');
+		Assert.areEqual(0, countResults, 'countQuery() returned results');
+		Assert.areEqual(false, locatorIterator?.hasNext(), 'getQueryLocator() returned results');
+		Assert.areEqual(true, queryResults?.isEmpty(), 'query() returned results');
+		Assert.areEqual(null, queryFirstResult, 'queryFirst() returned result');
+		Assert.areEqual(true, queryCastresults?.isEmpty(), 'query(Type) returned results');
 	}
 
 	// **** HELPER **** //
@@ -258,13 +274,41 @@ private class MockSoqlTest {
 	}
 
 	// **** INNER **** //
+	private class SampleSimulator implements MockSoql.Simulator {
+		private Exception error; 
+		private Object results;
+
+		public SampleSimulator injectError(Exception error) {
+			this.error = error; 
+			return this; 
+		}
+		
+		public SampleSimulator injectError() {
+			return this.injectError(new System.QueryException());
+		}
+		
+		public SampleSimulator injectResults(Object results) {
+			this.results = results; 
+			return this; 
+		}
+
+		public Object simulateQuery() {
+			if (this.error != null) {
+				throw error;
+			} else {
+				return this.results;
+			}
+		}
+	}
+
 	private class SampleWrapper {
 		public Integer numRecords;
 		public String profileName;
 
-		public SampleWrapper(String profileName, Integer numRecords) {
+		public SampleWrapper wrap(String profileName, Integer numRecords) {
 			this.profileName = profileName;
 			this.numRecords = numRecords;
+			return this;
 		}
 	}
 }

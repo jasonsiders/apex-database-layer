@@ -1,54 +1,30 @@
 @IsTest
 public class MockSoql extends Soql {
+	/**
+	 * This class mocks SOQL queries. By default, each query will return empty results.
+	 * Users can use the `setMock()` method to inject an object which will simulate the query & return results
+	**/
 	static final String AGGREGATE_KEY_PREFIX = 'expr';
-
-	// Note: The return type of various query methods may vary,
-	// ex., List<SObject>, List<Soql.AggregateResult>, List<WrapperObject>
-	List<Object> mockResults;
-	Exception mockError;
+	private MockSoql.Simulator simulator;
 
 	public MockSoql() {
 		super();
 	}
 
-	@TestVisible
-	private MockSoql(SObjectType objectType) {
-		super(objectType);
+	public MockSoql(SObjectType objectType) {
+		this();
+		this.fromEntity(objectType);
 	}
 
-	@TestVisible
-	private MockSoql(String queryString) {
-		super(queryString);
-	}
-
-	public Soql injectError(Exception error) {
-		// Inject the provided exception, to be thrown when the query runs
-		this.mockError = error;
-		return this;
-	}
-
-	public Soql injectError() {
-		// Overload which always injects a System.QueryException
-		System.QueryException queryError = new System.QueryException();
-		return this.injectError(queryError);
-	}
-
-	public Soql injectResults(List<Object> mockResults) {
-		// Inject a list of mock objects (SObjects, Soql.AggregateResult, custom return types)
-		// to be returned when the query runs
-		this.mockResults = mockResults;
+	public Soql setMock(MockSoql.Simulator simulator) {
+		// Inject an Simulator object, which will return mock results when the query runs.
+		this.simulator = simulator;
 		return this;
 	}
 
 	// **** OVERRIDES **** //
 	public override List<Soql.AggregateResult> aggregateQuery() {
-		try {
-			this.throwIfHasInjectedException();
-			return (List<Soql.AggregateResult>) this.mockResults ?? new List<Soql.AggregateResult>();
-		} catch (Exception error) {
-			this.handleQueryError(error);
-			throw error;
-		}
+		return (List<Soql.AggregateResult>) this.simulate() ?? new List<Soql.AggregateResult>();
 	}
 
 	public override Integer countQuery() {
@@ -60,34 +36,33 @@ public class MockSoql extends Soql {
 	}
 
 	public override List<SObject> query() {
-		try {
-			this.throwIfHasInjectedException();
-			return (List<SObject>) this.mockResults ?? new List<SObject>();
-		} catch (Exception error) {
-			this.handleQueryError(error);
-			throw error;
-		}
+		return (List<SObject>) this.simulate() ?? new List<SObject>();
 	}
 
 	public override Object query(Type returnType) {
+		return this.simulate() ?? returnType?.newInstance();
+	}
+
+	// **** PRIVATE **** // 
+	private Object simulate() {
+		// Run the Simulator logic, and handle errors just like the super() class does
 		try {
-			this.throwIfHasInjectedException();
-			return JSON.deserialize(JSON.serialize(this.mockResults), returnType);
+			return this.simulator?.simulateQuery();
 		} catch (Exception error) {
 			this.handleQueryError(error);
 			throw error;
 		}
 	}
 
-	private void throwIfHasInjectedException() {
-		if (this.mockError != null) {
-			throw this.mockError;
-		}
-	}
-
-	// **** PRIVATE **** //
+	// **** INNER **** //
 	public class AggregateResult extends Soql.AggregateResult {
-		Integer numUnaliasedKeys = 0;
+		/**
+		 * Mocks the AggregateResult SObject, which cannot be manually constructed w/out performing a SOQL query
+		 * These objects are comprised of properties with a default name, unless an alias is provided.
+		 * Example with an alias: { "profileName": "System Administrator", "numUsers": 10 }
+		 * Example w/out aliases: { "expr0": "System Administrator", "expr1": 10 }
+		**/
+		private Integer numUnaliasedKeys = 0;
 
 		public AggregateResult() {
 			super(null);
@@ -114,15 +89,18 @@ public class MockSoql extends Soql {
 	}
 
 	public class QueryLocator extends Soql.QueryLocator {
-		// Note: This mock implementation has one big shortcoming.
-		// Because the underlying Database.QueryLocator object cannot be mocked,
-		// getCursor() will always return null in mock scenarios.
-		// Most custom implementations will call getQuery() or iterator() directly,
-		// but standard mechanisms (ie., Database.Batchable classes) won't work with this.
-		// One workaround is to individually test the start(), execute(), and finish() methods,
-		// instead of testing via Database.executeBatch()
-		String query;
-		List<SObject> records;
+		/** 
+		 * Mocks the Database.QueryLocator object, used in batch jobs.
+		 * Note: This mock implementation has one big shortcoming.
+		 * Because the underlying Database.QueryLocator object cannot be mocked,
+		 * getCursor() will always return null in mock scenarios.
+		 * Most custom implementations will call getQuery() or iterator() directly,
+		 * but standard mechanisms (ie., Database.Batchable classes) won't work with this.
+		 * One workaround is to individually test the start(), execute(), and finish() methods,
+		 * instead of testing via Database.executeBatch()
+		**/
+		private String query;
+		private List<SObject> records;
 
 		private QueryLocator(MockSoql mockQuery) {
 			super(null);
@@ -140,10 +118,12 @@ public class MockSoql extends Soql {
 	}
 
 	public class QueryLocatorIterator implements System.Iterator<SObject> {
-		// This custom iterator mirrors the Database.QueryLocatorIterator,
-		// which is really just an Iterator<SObject> under the hood
-		Integer index = 0;
-		List<SObject> records;
+		/**
+		 * This custom iterator mocks & mirrors the Database.QueryLocatorIterator,
+		 * which is really just an Iterator<SObject> under the hood
+		**/ 
+		private Integer index = 0;
+		private List<SObject> records;
 
 		private QueryLocatorIterator(List<SObject> records) {
 			this.records = records;
@@ -161,5 +141,17 @@ public class MockSoql extends Soql {
 				throw new System.NoSuchElementException(msg);
 			}
 		}
+	}
+
+	public interface Simulator {
+		/**
+		 * This interface can be used to define query mocking logic.
+		 * Example implementations include:
+		 * 	- Return a static List<SObject>
+		 * 	- Return dynamic List<SObject>, based on MockDml history/results
+		 * 	- Return a List<MockSoql.AggregateResult>
+		 *  - Throw an exception
+		**/
+		Object simulateQuery();
 	}
 }

@@ -9,9 +9,9 @@ private class SObjectUtilsTest {
 		Test.startTest();
 		for (Integer i = 0; i < numIterations; i++) {
 			Id mockId = SObjectUtils.mockRecordId(objectType);
-			Assert.isNotNull(mockId, 'Did not return Id');
+			Assert.areNotEqual(null, mockId, 'Did not return Id');
 			Assert.areEqual(objectType, mockId?.getSObjectType(), 'Wrong SObjectType');
-			Assert.isTrue(mockId?.toString()?.endsWith(i?.toString()), 'Unexpected Id suffix');
+			Assert.areEqual(true, mockId?.toString()?.endsWith(i?.toString()), 'Unexpected Id suffix');
 			mockIds?.add(mockId);
 		}
 		Test.stopTest();
@@ -28,7 +28,7 @@ private class SObjectUtilsTest {
 		Test.startTest();
 		for (Integer i = 0; i < numIterations; i++) {
 			Id mockId = SObjectUtils.mockPlatformEventId(objectType);
-			Assert.isNotNull(mockId, 'Did not return Id');
+			Assert.areNotEqual(null, mockId, 'Did not return Id');
 			Assert.areEqual(objectType, mockId?.getSObjectType(), 'Wrong SObjectType');
 			mockIds?.add(mockId);
 		}
@@ -142,7 +142,7 @@ private class SObjectUtilsTest {
 			Integer start = Limits.getCpuTime();
 			SObjectUtils.getChildRelationshipFrom(field);
 			Integer thisTime = Limits.getCpuTime() - start;
-			Assert.isTrue(
+			Assert.areEqual(true, 
 				thisTime < firstTime,
 				'Took longer than initial call: ' + new List<Integer>{ firstTime, thisTime }
 			);
@@ -157,6 +157,6 @@ private class SObjectUtilsTest {
 		Schema.ChildRelationship relationship = SObjectUtils.getChildRelationshipFrom(field);
 		Test.stopTest();
 
-		Assert.isNull(relationship, 'Non-lookup field returned a relationship anyways');
+		Assert.areEqual(null, relationship, 'Non-lookup field returned a relationship anyways');
 	}
 }

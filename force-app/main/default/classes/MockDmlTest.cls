@@ -26,10 +26,10 @@ private class MockDmlTest {
 			Assert.areEqual(true, result?.isSuccess(), 'Did not succeed: ' + result?.getErrors());
 			Id leadId = result?.getLeadId();
 			Lead lead = leads?.get(leadId);
-			Assert.isNotNull(lead, 'No lead w/matching Id: ' + leadId);
-			Assert.isNotNull(result?.getAccountId(), 'Missing ConvertedAccountId');
-			Assert.isNotNull(result?.getContactId(), 'Missing ConvertedContactId');
-			Assert.isNotNull(result?.getOpportunityId(), 'Missing ConvertedOpportunityId');
+			Assert.areNotEqual(null, lead, 'No lead w/matching Id: ' + leadId);
+			Assert.areNotEqual(null, result?.getAccountId(), 'Missing ConvertedAccountId');
+			Assert.areNotEqual(null, result?.getContactId(), 'Missing ConvertedContactId');
+			Assert.areNotEqual(null, result?.getOpportunityId(), 'Missing ConvertedOpportunityId');
 		}
 	}
 
@@ -60,10 +60,10 @@ private class MockDmlTest {
 			Assert.areEqual(true, result?.isSuccess(), 'Did not succeed: ' + result?.getErrors());
 			Id leadId = result?.getLeadId();
 			Lead lead = leads?.get(leadId);
-			Assert.isNotNull(lead, 'No lead w/matching Id: ' + leadId);
+			Assert.areNotEqual(null, lead, 'No lead w/matching Id: ' + leadId);
 			Assert.areEqual(accountId, result?.getAccountId(), 'Did not use existing AccountId');
-			Assert.isNotNull(result?.getContactId(), 'Missing ConvertedContactId');
-			Assert.isNotNull(result?.getOpportunityId(), 'Missing ConvertedOpportunityId');
+			Assert.areNotEqual(null, result?.getContactId(), 'Missing ConvertedContactId');
+			Assert.areNotEqual(null, result?.getOpportunityId(), 'Missing ConvertedOpportunityId');
 		}
 	}
 
@@ -258,7 +258,7 @@ private class MockDmlTest {
 		Assert.areEqual(0, MockDml.Deleted?.getAll()?.size(), 'Wrong # of deleted records');
 		for (Database.DeleteResult result : results) {
 			Assert.areEqual(false, result?.isSuccess(), 'Should not have succeeded');
-			Assert.isNotNull(result?.getId(), 'Missing Id');
+			Assert.areNotEqual(null, result?.getId(), 'Missing Id');
 		}
 	}
 
@@ -275,7 +275,7 @@ private class MockDmlTest {
 		Assert.areEqual(leads?.size(), MockDml.Inserted?.getAll()?.size(), 'Wrong # of inserted records');
 		for (Database.SaveResult result : results) {
 			Assert.areEqual(true, result?.isSuccess(), 'Did not succeed: ' + result?.getErrors());
-			Assert.isNotNull(result?.getId(), 'Missing Id');
+			Assert.areNotEqual(null, result?.getId(), 'Missing Id');
 		}
 	}
 
@@ -292,7 +292,7 @@ private class MockDmlTest {
 		Assert.areEqual(leads?.size(), MockDml.Inserted?.getAll()?.size(), 'Wrong # of inserted records');
 		for (Database.SaveResult result : results) {
 			Assert.areEqual(true, result?.isSuccess(), 'Did not succeed: ' + result?.getErrors());
-			Assert.isNotNull(result?.getId(), 'Missing Id');
+			Assert.areNotEqual(null, result?.getId(), 'Missing Id');
 		}
 	}
 
@@ -309,7 +309,7 @@ private class MockDmlTest {
 		Assert.areEqual(leads?.size(), MockDml.Inserted?.getAll()?.size(), 'Wrong # of inserted records');
 		for (Database.SaveResult result : results) {
 			Assert.areEqual(true, result?.isSuccess(), 'Did not succeed: ' + result?.getErrors());
-			Assert.isNotNull(result?.getId(), 'Missing Id');
+			Assert.areNotEqual(null, result?.getId(), 'Missing Id');
 		}
 	}
 
@@ -345,7 +345,7 @@ private class MockDmlTest {
 		Assert.areEqual(0, MockDml.Inserted?.getAll()?.size(), 'Wrong # of inserted records');
 		for (Database.SaveResult result : results) {
 			Assert.areEqual(false, result?.isSuccess(), 'Should not have succeeded');
-			Assert.isNull(result?.getId(), 'Insert failed, but has an Id?');
+			Assert.areEqual(null, result?.getId(), 'Insert failed, but has an Id?');
 		}
 	}
 
@@ -362,7 +362,7 @@ private class MockDmlTest {
 		Assert.areEqual(events?.size(), MockDml.Published?.getAll()?.size(), 'Wrong # of published records');
 		for (Database.SaveResult result : results) {
 			Assert.areEqual(true, result?.isSuccess(), 'Did not succeed: ' + result?.getErrors());
-			Assert.isNotNull(result?.getId(), 'Missing Id');
+			Assert.areNotEqual(null, result?.getId(), 'Missing Id');
 		}
 	}
 
@@ -397,7 +397,7 @@ private class MockDmlTest {
 		Assert.areEqual(0, MockDml.Published?.getAll()?.size(), 'Wrong # of published records');
 		for (Database.SaveResult result : results) {
 			Assert.areEqual(false, result?.isSuccess(), 'Should not have succeeded');
-			Assert.isNotNull(result?.getId(), 'Missing Id');
+			Assert.areNotEqual(null, result?.getId(), 'Missing Id');
 		}
 	}
 
@@ -414,7 +414,7 @@ private class MockDmlTest {
 		Assert.areEqual(leads?.size(), MockDml.Undeleted?.getAll()?.size(), 'Wrong # of undeleted records');
 		for (Database.UndeleteResult result : results) {
 			Assert.areEqual(true, result?.isSuccess(), 'Did not succeed: ' + result?.getErrors());
-			Assert.isNotNull(result?.getId(), 'Missing Id');
+			Assert.areNotEqual(null, result?.getId(), 'Missing Id');
 		}
 	}
 
@@ -449,7 +449,7 @@ private class MockDmlTest {
 		Assert.areEqual(0, MockDml.Undeleted?.getAll()?.size(), 'Wrong # of undeleted records');
 		for (Database.UndeleteResult result : results) {
 			Assert.areEqual(false, result?.isSuccess(), 'Should not have succeeded');
-			Assert.isNotNull(result?.getId(), 'Missing Id');
+			Assert.areNotEqual(null, result?.getId(), 'Missing Id');
 		}
 	}
 
@@ -466,7 +466,7 @@ private class MockDmlTest {
 		Assert.areEqual(leads?.size(), MockDml.Updated?.getAll()?.size(), 'Wrong # of updated records');
 		for (Database.SaveResult result : results) {
 			Assert.areEqual(true, result?.isSuccess(), 'Did not succeed: ' + result?.getErrors());
-			Assert.isNotNull(result?.getId(), 'Missing Id');
+			Assert.areNotEqual(null, result?.getId(), 'Missing Id');
 		}
 	}
 
@@ -483,7 +483,7 @@ private class MockDmlTest {
 		Assert.areEqual(leads?.size(), MockDml.Updated?.getAll()?.size(), 'Wrong # of updated records');
 		for (Database.SaveResult result : results) {
 			Assert.areEqual(true, result?.isSuccess(), 'Did not succeed: ' + result?.getErrors());
-			Assert.isNotNull(result?.getId(), 'Missing Id');
+			Assert.areNotEqual(null, result?.getId(), 'Missing Id');
 		}
 	}
 
@@ -500,7 +500,7 @@ private class MockDmlTest {
 		Assert.areEqual(leads?.size(), MockDml.Updated?.getAll()?.size(), 'Wrong # of updated records');
 		for (Database.SaveResult result : results) {
 			Assert.areEqual(true, result?.isSuccess(), 'Did not succeed: ' + result?.getErrors());
-			Assert.isNotNull(result?.getId(), 'Missing Id');
+			Assert.areNotEqual(null, result?.getId(), 'Missing Id');
 		}
 	}
 
@@ -535,7 +535,7 @@ private class MockDmlTest {
 		Assert.areEqual(0, MockDml.Updated?.getAll()?.size(), 'Wrong # of updated records');
 		for (Database.SaveResult result : results) {
 			Assert.areEqual(false, result?.isSuccess(), 'Should not have succeeded');
-			Assert.isNotNull(result?.getId(), 'Missing Id');
+			Assert.areNotEqual(null, result?.getId(), 'Missing Id');
 		}
 	}
 
@@ -552,7 +552,7 @@ private class MockDmlTest {
 		Assert.areEqual(leads?.size(), MockDml.Upserted?.getAll()?.size(), 'Wrong # of upserted records');
 		for (Database.UpsertResult result : results) {
 			Assert.areEqual(true, result?.isSuccess(), 'Did not succeed: ' + result?.getErrors());
-			Assert.isNotNull(result?.getId(), 'Missing Id');
+			Assert.areNotEqual(null, result?.getId(), 'Missing Id');
 		}
 	}
 
@@ -587,7 +587,7 @@ private class MockDmlTest {
 		Assert.areEqual(0, MockDml.Upserted?.getAll()?.size(), 'Wrong # of upserted records');
 		for (Database.UpsertResult result : results) {
 			Assert.areEqual(false, result?.isSuccess(), 'Should not have succeeded');
-			Assert.isNotNull(result?.getId(), 'Missing Id');
+			Assert.areNotEqual(null, result?.getId(), 'Missing Id');
 		}
 	}
 
@@ -596,7 +596,7 @@ private class MockDmlTest {
 		Lead testLead = (Lead) MockDmlTest.initRecord(Lead.SObjectType, true);
 		// Pre-test asserts
 		Assert.areEqual(false, MockDml.Updated.wasProcessed(testLead), 'Pre-test: Should not have been processed');
-		Assert.isNull(MockDml.Updated.getRecord(testLead), 'Pre-test: Lead was processed');
+		Assert.areEqual(null, MockDml.Updated.getRecord(testLead), 'Pre-test: Lead was processed');
 		Assert.areEqual(0, MockDml.Updated.getRecords(Lead.SObjectType)?.size(), 'Pre-test: Wrong # of lead updates');
 		Assert.areEqual(0, MockDml.Updated.getAll()?.size(), 'Pre-test: Wrong # of total updates');
 		testLead.Company = 'Credicor Inc.';
@@ -608,7 +608,7 @@ private class MockDmlTest {
 		// Post-test asserts
 		Assert.areEqual(true, MockDml.Updated.wasProcessed(testLead), 'Lead was not processed');
 		Lead updatedLead = (Lead) MockDml.Updated.getRecord(testLead);
-		Assert.isNotNull(updatedLead, 'Lead was not updated');
+		Assert.areNotEqual(null, updatedLead, 'Lead was not updated');
 		Assert.areEqual(testLead?.Company, updatedLead?.Company, 'Did not update Company');
 		Assert.areEqual(1, MockDml.Updated.getRecords(Lead.SObjectType)?.size(), 'Wrong # of lead updates');
 		Assert.areEqual(1, MockDml.Updated.getAll()?.size(), 'Wrong # of total updates');
