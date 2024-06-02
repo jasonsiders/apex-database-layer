@@ -13,7 +13,8 @@ public class MockSoql extends Soql {
 
 	@TestVisible
 	private MockSoql(SObjectType objectType) {
-		super(objectType);
+		super();
+		this.fromEntity(objectType);
 	}
 
 	public Soql injectError(Exception error) {
