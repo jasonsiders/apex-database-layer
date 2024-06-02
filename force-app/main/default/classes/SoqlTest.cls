@@ -104,7 +104,7 @@ private class SoqlTest {
 		Assert.areEqual(expected, users?.size(), 'Wrong # of Users returned');
 	}
 
-	@IsTest 
+	@IsTest
 	static void shouldQuerySingleRecord() {
 		Soql soql = DatabaseLayer.newSoql(User.SObjectType);
 
@@ -115,7 +115,7 @@ private class SoqlTest {
 		Assert.areNotEqual(null, user, 'No records returned');
 	}
 
-	@IsTest 
+	@IsTest
 	static void shouldReturnNullIfNoResults() {
 		Soql soql = DatabaseLayer.newSoql(Account.SObjectType);
 		// No accounts have been inserted yet, so this shouldn't return anything
@@ -265,9 +265,7 @@ private class SoqlTest {
 
 	@IsTest
 	static void shouldSetQueryScope() {
-		Soql soql = (Soql) DatabaseLayer.newSoql(User.SObjectType)
-			?.usingScope(Soql.Scope.EVERYTHING)
-			?.setRowLimit(1);
+		Soql soql = (Soql) DatabaseLayer.newSoql(User.SObjectType)?.usingScope(Soql.Scope.EVERYTHING)?.setRowLimit(1);
 		String expected = 'SELECT Id FROM User USING SCOPE EVERYTHING LIMIT 1';
 
 		Test.startTest();
@@ -354,9 +352,7 @@ private class SoqlTest {
 
 	@IsTest
 	static void shouldGroupByField() {
-		Soql soql = (Soql) DatabaseLayer.newSoql(User.SObjectType)
-			?.addSelect(User.ProfileId)
-			?.groupBy(User.ProfileId);
+		Soql soql = (Soql) DatabaseLayer.newSoql(User.SObjectType)?.addSelect(User.ProfileId)?.groupBy(User.ProfileId);
 		String expected = 'SELECT ProfileId FROM User GROUP BY ProfileId';
 
 		Test.startTest();
@@ -456,9 +452,7 @@ private class SoqlTest {
 
 	@IsTest
 	static void shouldSetUsage() {
-		Soql soql = (Soql) DatabaseLayer.newSoql(User.SObjectType)
-			?.setUsage(Soql.Usage.FOR_VIEW)
-			?.setRowLimit(1);
+		Soql soql = (Soql) DatabaseLayer.newSoql(User.SObjectType)?.setUsage(Soql.Usage.FOR_VIEW)?.setRowLimit(1);
 		String expected = 'SELECT Id FROM User LIMIT 1 FOR VIEW';
 
 		Test.startTest();
