@@ -104,6 +104,29 @@ private class SoqlTest {
 		Assert.areEqual(expected, users?.size(), 'Wrong # of Users returned');
 	}
 
+	@IsTest 
+	static void shouldQuerySingleRecord() {
+		Soql soql = DatabaseLayer.newSoql(User.SObjectType);
+
+		Test.startTest();
+		User user = (User) soql?.queryFirst();
+		Test.stopTest();
+
+		Assert.isNotNull(user, 'No records returned');
+	}
+
+	@IsTest 
+	static void shouldReturnNullIfNoResults() {
+		Soql soql = DatabaseLayer.newSoql(Account.SObjectType);
+		// No accounts have been inserted yet, so this shouldn't return anything
+
+		Test.startTest();
+		Account account = (Account) soql?.queryFirst();
+		Test.stopTest();
+
+		Assert.isNull(account, 'Returned a result anyway? ' + account);
+	}
+
 	@IsTest
 	static void shouldHandleQueryErrors() {
 		String illegalQueryString = 'abcd'; // Will throw a System.QueryException when run

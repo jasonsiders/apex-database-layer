@@ -17,7 +17,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 	static final Soql.LogicType DEFAULT_LOGIC_TYPE = Soql.LogicType.ALL_CONDITIONS;
 	static final String ID_REFERENCE = 'Id';
 
-	// **** MEMBER **** //
+	// **** CONSTRUCTORS **** //
 	public Soql(DatabaseLayer database) {
 		this();
 	}
@@ -36,6 +36,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		this.setQueryString(queryString);
 	}
 
+	// **** METHODS **** //
 	public virtual List<Soql.AggregateResult> aggregateQuery() {
 		try {
 			// Call this method for aggregate queries, when not casting to a specific Type.
@@ -94,6 +95,19 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		// Return the query results as an instance of the returnType
 		// Mostly useful for returning Aggregate Query results as a wrapper type
 		return JSON.deserialize(JSON.serialize(this.query()), returnType);
+	}
+
+	public SObject queryFirst() {
+		// Returns the first result of the query, or null if no results returned
+		// Facilitates & simplifies assigning query results to a single SObject
+		// Temporarily set a LIMIT 1
+		Integer originalLimit = this.rowLimit;
+		this.setRowLimit(1);
+		// Retrieve the query results - should be either 0 or 1
+		List<SObject> results = this.query();
+		// Now revert to the original row limit
+		this.setRowLimit(originalLimit);
+		return results?.isEmpty() == false ? results[0] : null;
 	}
 
 	protected void handleQueryError(Exception error) {
