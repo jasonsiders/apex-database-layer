@@ -49,8 +49,8 @@ private class SoqlTest {
 
 	@IsTest
 	static void shouldHandleCountQueryErrors() {
-		String illegalQueryString = 'abcd'; // Will throw a System.QueryException when run
-		Soql soql = (Soql) DatabaseLayer.newSoql(illegalQueryString);
+		String illegalFieldName = 'abcd'; // Will cause a System.QueryException when run
+		Soql soql = (Soql) DatabaseLayer.newSoql(Account.SObjectType)?.addSelect(illegalFieldName);
 
 		Test.startTest();
 		try {
@@ -58,7 +58,7 @@ private class SoqlTest {
 			Assert.fail('Illegal query did not throw an error');
 		} catch (System.QueryException error) {
 			String msg = error?.getMessage();
-			Assert.isTrue(msg?.contains(illegalQueryString), 'Did not append query to the error');
+			Assert.isTrue(msg?.contains(soql?.toString()), 'Did not append query to the error');
 		}
 		Test.stopTest();
 	}
@@ -78,8 +78,8 @@ private class SoqlTest {
 
 	@IsTest
 	static void shouldHandleQueryLocatorErrors() {
-		String illegalQueryString = 'abcd'; // Will throw a System.QueryException when run
-		Soql soql = (Soql) DatabaseLayer.newSoql(illegalQueryString);
+		String illegalFieldName = 'abcd'; // Will cause a System.QueryException when run
+		Soql soql = (Soql) DatabaseLayer.newSoql(Account.SObjectType)?.addSelect(illegalFieldName);
 
 		Test.startTest();
 		try {
@@ -87,7 +87,7 @@ private class SoqlTest {
 			Assert.fail('Illegal query did not throw an error');
 		} catch (System.QueryException error) {
 			String msg = error?.getMessage();
-			Assert.isTrue(msg?.contains(illegalQueryString), 'Did not append query to the error');
+			Assert.isTrue(msg?.contains(illegalFieldName), 'Did not append query to the error');
 		}
 		Test.stopTest();
 	}
@@ -129,8 +129,8 @@ private class SoqlTest {
 
 	@IsTest
 	static void shouldHandleQueryErrors() {
-		String illegalQueryString = 'abcd'; // Will throw a System.QueryException when run
-		Soql soql = (Soql) DatabaseLayer.newSoql(illegalQueryString);
+		String illegalFieldName = 'abcd'; // Will cause a System.QueryException when run
+		Soql soql = (Soql) DatabaseLayer.newSoql(Account.SObjectType)?.addSelect(illegalFieldName);
 
 		Test.startTest();
 		try {
@@ -138,7 +138,7 @@ private class SoqlTest {
 			Assert.fail('Illegal query did not throw an error');
 		} catch (System.QueryException error) {
 			String msg = error?.getMessage();
-			Assert.isTrue(msg?.contains(illegalQueryString), 'Did not append query to the error');
+			Assert.isTrue(msg?.contains(soql?.toString()), 'Did not append query to the error');
 		}
 		Test.stopTest();
 	}
@@ -161,32 +161,6 @@ private class SoqlTest {
 			GROUP BY Profile.Name
 		];
 		Assert.areEqual(raw?.size(), results?.size(), 'Wrong # of results returned');
-	}
-
-	@IsTest
-	static void shouldQueryUsingString() {
-		Soql soql = DatabaseLayer.newSoql('SELECT Id FROM User');
-
-		Test.startTest();
-		List<User> users = soql?.query();
-		Test.stopTest();
-
-		Integer expected = Database.countQuery('SELECT COUNT() FROM User');
-		Assert.areEqual(expected, users?.size(), 'Wrong # of Users returned');
-	}
-
-	@IsTest
-	static void shouldQueryUsingStringAndBinds() {
-		Soql soql = (Soql) DatabaseLayer.newSoql('SELECT Username FROM User WHERE Id = :userId')
-			?.bind('userId', UserInfo.getUserId());
-
-		Test.startTest();
-		List<User> users = soql?.query();
-		Test.stopTest();
-
-		Assert.areEqual(1, users?.size(), 'Wrong # of Users returned');
-		User user = users[0];
-		Assert.areEqual(UserInfo.getUsername(), user?.Username, 'Wrong Username');
 	}
 
 	@IsTest

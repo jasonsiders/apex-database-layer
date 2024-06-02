@@ -16,11 +16,6 @@ public class MockSoql extends Soql {
 		super(objectType);
 	}
 
-	@TestVisible
-	private MockSoql(String queryString) {
-		super(queryString);
-	}
-
 	public Soql injectError(Exception error) {
 		// Inject the provided exception, to be thrown when the query runs
 		this.mockError = error;
