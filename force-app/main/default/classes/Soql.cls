@@ -171,9 +171,9 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 	}
 
 	public class Aggregation {
-		String alias;
-		String innerFieldName;
-		Function function;
+		private String alias;
+		private String innerFieldName;
+		private Function function;
 
 		public Aggregation(Soql.Function function, String innerFieldName) {
 			this.alias = '';
@@ -567,8 +567,8 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 	}
 
 	public class ConditionalLogic implements Soql.Criteria {
-		List<Soql.Criteria> criterion = new List<Soql.Criteria>();
-		Soql.LogicType logicType = Soql.LogicType.ALL_CONDITIONS;
+		private List<Soql.Criteria> criterion = new List<Soql.Criteria>();
+		private Soql.LogicType logicType = Soql.LogicType.ALL_CONDITIONS;
 
 		public ConditionalLogic addConditions(List<Soql.Criteria> criterion) {
 			this.criterion?.addAll(criterion);
@@ -649,7 +649,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 	}
 
 	public virtual class Operator {
-		String token;
+		private String token;
 
 		protected Operator(String token) {
 			// Callers shouldn't construct an Operator object directly;
@@ -670,7 +670,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		// Decorates a Database.QueryLocator, so that it can be mocked.
 		// These objects can't be serialized, or mocked by other means.
 		// See MockSoql.QueryLocator for the mock implementation of this object.
-		Database.QueryLocator locator;
+		private Database.QueryLocator locator;
 
 		protected QueryLocator(Database.QueryLocator locator) {
 			this.locator = locator;
@@ -690,9 +690,9 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 	}
 
 	public class SortOrder {
-		List<String> fieldNames = new List<String>();
-		Soql.SortDirection direction = Soql.SortDirection.ASCENDING;
-		Soql.NullOrder nullOrder = Soql.NullOrder.NULLS_LAST;
+		private List<String> fieldNames = new List<String>();
+		private Soql.SortDirection direction = Soql.SortDirection.ASCENDING;
+		private Soql.NullOrder nullOrder = Soql.NullOrder.NULLS_LAST;
 
 		public SortOrder(List<String> fieldNames, Soql.SortDirection direction) {
 			this.fieldNames = fieldNames;
@@ -744,7 +744,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 	}
 
 	public class Subquery extends Soql.InnerQuery {
-		String relationshipName;
+		private String relationshipName;
 
 		public SubQuery(Schema.ChildRelationship relationship) {
 			this.addSelect(ID_REFERENCE);

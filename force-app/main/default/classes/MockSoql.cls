@@ -4,6 +4,7 @@ public class MockSoql extends Soql {
 	 * This class mocks SOQL queries. By default, each query will return empty results.
 	 * Users can use the `setMock()` method to inject an object which will simulate the query & return results
 	**/
+	static final String AGGREGATE_KEY_PREFIX = 'expr';
 	private MockSoql.Simulator simulator;
 
 	public MockSoql() {
@@ -39,8 +40,7 @@ public class MockSoql extends Soql {
 	}
 
 	public override Object query(Type returnType) {
-		Object results = this.simulate() ?? returnType?.newInstance();
-		return JSON.deserialize(JSON.serialize(results), returnType);
+		return this.simulate() ?? returnType?.newInstance();
 	}
 
 	// **** PRIVATE **** // 
@@ -63,7 +63,6 @@ public class MockSoql extends Soql {
 		 * Example w/out aliases: { "expr0": "System Administrator", "expr1": 10 }
 		**/
 		private Integer numUnaliasedKeys = 0;
-		transient final String AGGREGATE_KEY_PREFIX = 'expr';
 
 		public AggregateResult() {
 			super(null);
