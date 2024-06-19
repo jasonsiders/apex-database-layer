@@ -260,7 +260,7 @@ public class MockDml extends Dml {
 		// If the provided record does not already have an Id, simulate an insert operation
 		if (record?.Id == null) {
 			SObjectType objectType = record?.getSObjectType();
-			record.Id = SObjectUtils.mockRecordId(objectType);
+			record.Id = MockRecord.mockRecordId(objectType);
 			this.generateMockResult(MockDml.Inserted, record);
 		}
 	}
@@ -403,7 +403,7 @@ public class MockDml extends Dml {
 			// Note: Platform Events technically have an Id field, but it's not writeable, nor is it transformed after publish.
 			// Instead, the platform populates the "EventUuid" field with a unique identifier
 			// It's better to refer to platform events by their EventUuid value, which is unique.
-			return SObjectUtils.setReadOnlyFields(record, EVENT_UUID_FIELD, Uuid.randomUuid());
+			return new MockRecord(record)?.setField(EVENT_UUID_FIELD, Uuid.randomUuid())?.toSObject();
 		}
 
 		private String getUuid(SObject record) {
@@ -446,7 +446,7 @@ public class MockDml extends Dml {
 			// If the record does not have an Id value, generate a mock one
 			if (record?.Id == null) {
 				SObjectType objectType = record?.getSObjectType();
-				record.Id = SObjectUtils.mockRecordId(objectType);
+				record.Id = MockRecord.mockRecordId(objectType);
 			}
 			return record;
 		}
@@ -546,8 +546,9 @@ public class MockDml extends Dml {
 				// Set the Id of the Dml result with the record's Id
 				this.id = record?.Id;
 			} else if (this.success == true) {
-				// Likely a Platform Event -- this should have a static/not unique Id
-				this.id = SObjectUtils.mockPlatformEventId(record?.getSObjectType());
+				// Likely a Platform Event, which doesn't have a "normal" Id field...
+				// But an Id value matching the Event's SObjectType still gets assigned to the DmlResult.
+				this.id = MockRecord.mockRecordId(record?.getSObjectType());
 			}
 			return this;
 		}
