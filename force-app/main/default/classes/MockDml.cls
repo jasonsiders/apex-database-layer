@@ -260,7 +260,7 @@ public class MockDml extends Dml {
 		// If the provided record does not already have an Id, simulate an insert operation
 		if (record?.Id == null) {
 			SObjectType objectType = record?.getSObjectType();
-			record.Id = MockRecord.mockRecordId(objectType);
+			record.Id = MockRecord.initRecordId(objectType);
 			this.generateMockResult(MockDml.Inserted, record);
 		}
 	}
@@ -446,7 +446,7 @@ public class MockDml extends Dml {
 			// If the record does not have an Id value, generate a mock one
 			if (record?.Id == null) {
 				SObjectType objectType = record?.getSObjectType();
-				record.Id = MockRecord.mockRecordId(objectType);
+				record.Id = MockRecord.initRecordId(objectType);
 			}
 			return record;
 		}
@@ -548,7 +548,7 @@ public class MockDml extends Dml {
 			} else if (this.success == true) {
 				// Likely a Platform Event, which doesn't have a "normal" Id field...
 				// But an Id value matching the Event's SObjectType still gets assigned to the DmlResult.
-				this.id = MockRecord.mockRecordId(record?.getSObjectType());
+				this.id = MockRecord.initRecordId(record?.getSObjectType());
 			}
 			return this;
 		}
