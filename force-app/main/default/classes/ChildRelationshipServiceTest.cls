@@ -1,11 +1,11 @@
 @IsTest
-private class SObjectUtilsTest {
+private class ChildRelationshipServiceTest {
 	@IsTest
 	static void shouldGetChildRelationshipFromLookupField() {
 		SObjectField field = Contact.AccountId;
 
 		Test.startTest();
-		Schema.ChildRelationship relationship = SObjectUtils.getChildRelationshipFrom(field);
+		Schema.ChildRelationship relationship = ChildRelationshipService.getChildRelationshipFrom(field);
 		Test.stopTest();
 
 		Assert.areEqual(field, relationship?.getField(), 'Relationship does not point to ' + field);
@@ -17,7 +17,7 @@ private class SObjectUtilsTest {
 		SObjectType referenceTo = Lead.SObjectType; // ...in this case, we want Lead.Tasks
 
 		Test.startTest();
-		Schema.ChildRelationship relationship = SObjectUtils.getChildRelationshipFrom(field, referenceTo);
+		Schema.ChildRelationship relationship = ChildRelationshipService.getChildRelationshipFrom(field, referenceTo);
 		Test.stopTest();
 
 		Assert.areEqual(field, relationship?.getField(), 'Relationship does not point to ' + field);
@@ -30,12 +30,12 @@ private class SObjectUtilsTest {
 		// Successive calls to retrieve the same SObjectType's relationships
 		// should have similar performance implications as calling it once.
 		SObjectField field = Contact.AccountId;
-		SObjectUtils.getChildRelationshipFrom(field);
+		ChildRelationshipService.getChildRelationshipFrom(field);
 		Integer firstTime = Limits.getCpuTime();
 
 		for (Integer i = 0; i < 10; i++) {
 			Integer start = Limits.getCpuTime();
-			SObjectUtils.getChildRelationshipFrom(field);
+			ChildRelationshipService.getChildRelationshipFrom(field);
 			Integer thisTime = Limits.getCpuTime() - start;
 			Assert.areEqual(
 				true,
@@ -50,7 +50,7 @@ private class SObjectUtilsTest {
 		SObjectField field = Contact.CreatedDate;
 
 		Test.startTest();
-		Schema.ChildRelationship relationship = SObjectUtils.getChildRelationshipFrom(field);
+		Schema.ChildRelationship relationship = ChildRelationshipService.getChildRelationshipFrom(field);
 		Test.stopTest();
 
 		Assert.areEqual(null, relationship, 'Non-lookup field returned a relationship anyways');

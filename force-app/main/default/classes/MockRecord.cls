@@ -55,7 +55,7 @@ public class MockRecord {
     }
 
     public MockRecord setRelatedList(SObjectField lookupField, List<SObject> relatedRecords) {
-        Schema.ChildRelationship relationship = SObjectUtils.getChildRelationshipFrom(lookupField);
+        Schema.ChildRelationship relationship = ChildRelationshipService.getChildRelationshipFrom(lookupField);
         return this.setRelatedList(relationship, relatedRecords);
     }
 
