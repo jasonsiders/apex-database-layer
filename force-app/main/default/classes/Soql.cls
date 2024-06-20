@@ -2,13 +2,13 @@
 public inherited sharing virtual class Soql extends Soql.Builder {
 	/**
 	 * This class is responsible for performing query operations with the Salesforce database.
-	 * While apex allows developers an inline method to directly perform queries against the database, 
+	 * While apex allows developers an inline method to directly perform queries against the database,
 	 * use of these methods does not facilitate mocking, which can result in slower test times.
-	 * Use this class instead of inline SOQL. 
-	 * Each of this class's methods eventually ties back to an underlying `Database` method, 
+	 * Use this class instead of inline SOQL.
+	 * Each of this class's methods eventually ties back to an underlying `Database` method,
 	 * ex., `query()` -> `Database.query()`.
 	 * To mock this instance, use the included `MockSoql` class, or use your own class which extends `Soql`.
-	**/
+	 **/
 
 	// These operators are frequently used in WHERE clauses
 	public static final Operator EQUALS = new Soql.Operator('=');

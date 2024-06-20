@@ -34,7 +34,7 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldMockLeadConvertWithExistingRecords() {
-		Account account = (Account) new MockRecord(Account.SObjectType)?.withId()?.toSObject(); 
+		Account account = (Account) new MockRecord(Account.SObjectType)?.withId()?.toSObject();
 		Map<Id, Lead> leads = new Map<Id, Lead>();
 		List<Database.LeadConvert> leadsToConvert = new List<Database.LeadConvert>();
 		for (Integer i = 0; i < TEST_SIZE; i++) {

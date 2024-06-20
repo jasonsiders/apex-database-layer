@@ -1,5 +1,5 @@
 public abstract class ChildRelationshipService {
-	/** 
+	/**
 	 * This small service aims to make it easier to retrieve Schema.ChildRelationship objects from their linked SObjectField.
 	 * Unlike SObjectTypes/SObjectFields, they do not have a declarable token, ex. Account.Contacts.
 	 * Callers typically have to perform expensive & verbose describe operations to retrieve this object.
@@ -7,7 +7,7 @@ public abstract class ChildRelationshipService {
 	 * `Schema.ChildRelationship rel = ChildRelationshipService.getChildRelationshipFrom(Contact.AccountId);`
 	 * As an added bonus, the relationship information for the lookup field's referenceTo object is cached,
 	 * so that successive calls to the same object do not take the same processing time.
-	**/
+	 **/
 	static final Map<SObjectType, ChildRelationshipService.CachedDescribe> DESCRIBES = new Map<SObjectType, ChildRelationshipService.CachedDescribe>();
 
 	public static Schema.ChildRelationship getChildRelationshipFrom(SObjectField lookupField, SObjectType referenceTo) {
