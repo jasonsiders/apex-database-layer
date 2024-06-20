@@ -1,5 +1,16 @@
 @SuppressWarnings('PMD.CognitiveComplexity, PMD.ExcessivePublicCount')
 public inherited sharing virtual class Soql extends Soql.Builder {
+	/**
+	 * This class is responsible for performing query operations with the Salesforce database.
+	 * While apex allows developers an inline method to directly perform queries against the database, 
+	 * use of these methods does not facilitate mocking, which can result in slower test times.
+	 * Use this class instead of inline SOQL. 
+	 * Each of this class's methods eventually ties back to an underlying `Database` method, 
+	 * ex., `query()` -> `Database.query()`.
+	 * To mock this instance, use the included `MockSoql` class, or use your own class which extends `Soql`.
+	**/
+
+	// These operators are frequently used in WHERE clauses
 	public static final Operator EQUALS = new Soql.Operator('=');
 	public static final Operator NOT_EQUALS = new Soql.Operator('!=');
 	public static final Operator IN_COLLECTION = new Soql.Operator('IN');
@@ -14,8 +25,9 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 	public static final Operator NOT_ENDS_WITH = new Soql.EndsWithOperator('NOT LIKE');
 	public static final Operator CONTAINS = new Soql.ContainsOperator('LIKE');
 	public static final Operator NOT_CONTAINS = new Soql.ContainsOperator('NOT LIKE');
-	static final Soql.LogicType DEFAULT_LOGIC_TYPE = Soql.LogicType.ALL_CONDITIONS;
-	static final String ID_REFERENCE = 'Id';
+	// Other constants
+	private static final Soql.LogicType DEFAULT_LOGIC_TYPE = Soql.LogicType.ALL_CONDITIONS;
+	private static final String ID_REFERENCE = 'Id';
 
 	public Soql(DatabaseLayer database) {
 		this();
