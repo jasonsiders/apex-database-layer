@@ -6,11 +6,10 @@ private class MockDmlTest {
 		Map<Id, Lead> leads = new Map<Id, Lead>();
 		List<Database.LeadConvert> leadsToConvert = new List<Database.LeadConvert>();
 		for (Integer i = 0; i < TEST_SIZE; i++) {
-			Id leadId = SObjectUtils.mockRecordId(Lead.SObjectType);
-			Lead lead = new Lead(Id = leadId);
+			Lead lead = (Lead) new MockRecord(Lead.SObjectType)?.withId()?.toSObject();
 			leads?.put(lead?.Id, lead);
 			Database.LeadConvert leadToConvert = new Database.LeadConvert();
-			leadToConvert?.setLeadId(leadId);
+			leadToConvert?.setLeadId(lead?.Id);
 			leadToConvert?.setConvertedStatus('Foo!');
 			leadsToConvert?.add(leadToConvert);
 		}
@@ -35,16 +34,15 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldMockLeadConvertWithExistingRecords() {
-		Id accountId = SObjectUtils.mockRecordId(Account.SObjectType);
+		Account account = (Account) new MockRecord(Account.SObjectType)?.withId()?.toSObject(); 
 		Map<Id, Lead> leads = new Map<Id, Lead>();
 		List<Database.LeadConvert> leadsToConvert = new List<Database.LeadConvert>();
 		for (Integer i = 0; i < TEST_SIZE; i++) {
-			Id leadId = SObjectUtils.mockRecordId(Lead.SObjectType);
-			Lead lead = new Lead(Id = leadId);
+			Lead lead = (Lead) new MockRecord(Lead.SObjectType)?.withId()?.toSObject();
 			leads?.put(lead?.Id, lead);
 			Database.LeadConvert leadToConvert = new Database.LeadConvert();
-			leadToConvert?.setLeadId(leadId);
-			leadToConvert?.setAccountId(accountId);
+			leadToConvert?.setLeadId(lead?.Id);
+			leadToConvert?.setAccountId(account?.Id);
 			leadToConvert?.setConvertedStatus('Foo!');
 			leadsToConvert?.add(leadToConvert);
 		}
@@ -61,7 +59,7 @@ private class MockDmlTest {
 			Id leadId = result?.getLeadId();
 			Lead lead = leads?.get(leadId);
 			Assert.areNotEqual(null, lead, 'No lead w/matching Id: ' + leadId);
-			Assert.areEqual(accountId, result?.getAccountId(), 'Did not use existing AccountId');
+			Assert.areEqual(account?.Id, result?.getAccountId(), 'Did not use existing AccountId');
 			Assert.areNotEqual(null, result?.getContactId(), 'Missing ConvertedContactId');
 			Assert.areNotEqual(null, result?.getOpportunityId(), 'Missing ConvertedOpportunityId');
 		}
@@ -71,8 +69,7 @@ private class MockDmlTest {
 	static void shouldThrowExceptionIfMissingLeadIdOnConvert() {
 		List<Database.LeadConvert> leadsToConvert = new List<Database.LeadConvert>();
 		for (Integer i = 0; i < TEST_SIZE; i++) {
-			Id leadId = SObjectUtils.mockRecordId(Lead.SObjectType);
-			Lead lead = new Lead(Id = leadId);
+			Lead lead = (Lead) new MockRecord(Lead.SObjectType)?.withId()?.toSObject();
 			Database.LeadConvert leadToConvert = new Database.LeadConvert();
 			// ! Missing lead id -- will cause an error
 			leadToConvert?.setConvertedStatus('Foo!');
@@ -95,10 +92,9 @@ private class MockDmlTest {
 	static void shouldThrowExceptionIfMissingLeadStatusConvert() {
 		List<Database.LeadConvert> leadsToConvert = new List<Database.LeadConvert>();
 		for (Integer i = 0; i < TEST_SIZE; i++) {
-			Id leadId = SObjectUtils.mockRecordId(Lead.SObjectType);
-			Lead lead = new Lead(Id = leadId);
+			Lead lead = (Lead) new MockRecord(Lead.SObjectType)?.withId()?.toSObject();
 			Database.LeadConvert leadToConvert = new Database.LeadConvert();
-			leadToConvert?.setLeadId(leadId);
+			leadToConvert?.setLeadId(lead?.Id);
 			// ! Missing converted status -- will cause an error
 			leadsToConvert?.add(leadToConvert);
 		}
@@ -119,9 +115,9 @@ private class MockDmlTest {
 	static void shouldThrowExceptionIfErrorInjectedOnConvert() {
 		List<Database.LeadConvert> leadsToConvert = new List<Database.LeadConvert>();
 		for (Integer i = 0; i < TEST_SIZE; i++) {
-			Id leadId = SObjectUtils.mockRecordId(Lead.SObjectType);
+			Lead lead = (Lead) new MockRecord(Lead.SObjectType)?.withId()?.toSObject();
 			Database.LeadConvert leadToConvert = new Database.LeadConvert();
-			leadToConvert?.setLeadId(leadId);
+			leadToConvert?.setLeadId(lead?.Id);
 			leadToConvert?.setConvertedStatus('Some Status');
 			leadsToConvert?.add(leadToConvert);
 		}
@@ -143,9 +139,9 @@ private class MockDmlTest {
 	static void shouldFailSilentlyIfErrorAndNotAllOrNoneOnConvert() {
 		List<Database.LeadConvert> leadsToConvert = new List<Database.LeadConvert>();
 		for (Integer i = 0; i < TEST_SIZE; i++) {
-			Id leadId = SObjectUtils.mockRecordId(Lead.SObjectType);
+			Lead lead = (Lead) new MockRecord(Lead.SObjectType)?.withId()?.toSObject();
 			Database.LeadConvert leadToConvert = new Database.LeadConvert();
-			leadToConvert?.setLeadId(leadId);
+			leadToConvert?.setLeadId(lead?.Id);
 			leadToConvert?.setConvertedStatus('Some Status');
 			leadsToConvert?.add(leadToConvert);
 		}
@@ -593,7 +589,7 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldProvideUsefulInformationAboutProcessedRecords() {
-		Lead testLead = (Lead) MockDmlTest.initRecord(Lead.SObjectType, true);
+		Lead testLead = (Lead) new MockRecord(Lead.SObjectType)?.withId()?.toSObject();
 		// Pre-test asserts
 		Assert.areEqual(false, MockDml.Updated.wasProcessed(testLead), 'Pre-test: Should not have been processed');
 		Assert.areEqual(null, MockDml.Updated.getRecord(testLead), 'Pre-test: Lead was processed');
@@ -672,7 +668,11 @@ private class MockDmlTest {
 	static List<SObject> initRecords(SObjectType objectType, Boolean withId) {
 		List<SObject> records = new List<SObject>();
 		for (Integer i = 0; i < TEST_SIZE; i++) {
-			SObject record = MockDmlTest.initRecord(objectType, withId);
+			MockRecord mock = new MockRecord(objectType);
+			if (withId == true) {
+				mock?.withId();
+			}
+			SObject record = mock?.toSObject();
 			records?.add(record);
 		}
 		return records;
@@ -680,15 +680,6 @@ private class MockDmlTest {
 
 	static List<SObject> initRecords(SObjectType objectType) {
 		return MockDmlTest.initRecords(objectType, false);
-	}
-
-	static SObject initRecord(SObjectType objectType, Boolean withId) {
-		Id recordId = (withId) ? SObjectUtils.mockRecordId(objectType) : null;
-		return objectType?.newSObject(recordId);
-	}
-
-	static SObject initRecord(SObjectType objectType) {
-		return MockDmlTest.initRecord(objectType, false);
 	}
 
 	// **** INNER **** //

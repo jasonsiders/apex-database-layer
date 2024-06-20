@@ -513,7 +513,7 @@ private class SoqlTest {
 
 	@IsTest
 	static void shouldGenerateSubqueryFromChildRelationship() {
-		Schema.ChildRelationship rel = SObjectUtils.getChildRelationshipFrom(Case.AccountId);
+		Schema.ChildRelationship rel = ChildRelationshipService.getChildRelationshipFrom(Case.AccountId);
 
 		Test.startTest();
 		String result = new Soql.Subquery(rel)?.addSelect(Case.Id)?.toString();
