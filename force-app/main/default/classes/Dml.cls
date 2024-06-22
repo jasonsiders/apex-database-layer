@@ -9,6 +9,10 @@ public with sharing virtual class Dml {
 	 * Each of this class's methods eventually ties back to an underlying `Database` method,
 	 * ex., `new Dml().doInsert()` -> `Database.insert()`.
 	 * To mock this instance, use the included `MockDml` class, or your own class which extends `Dml`.
+	 * - NOTE: This class is intentionally set to API 59.0
+	 * More recent versions do not support using "normal" SObjects in Database.*async/immediate methods
+	 * This functionality is necessary for us to be able to properly cover these methods in tests,
+	 * since we cannot introduce external objects as a part of this package.
 	 **/
 	static final System.AccessLevel DEFAULT_ACCESS_LEVEL = System.AccessLevel.USER_MODE;
 
