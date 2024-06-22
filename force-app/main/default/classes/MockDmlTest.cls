@@ -1,6 +1,10 @@
 @IsTest
 @SuppressWarnings('PMD.EmptyCatchBlock')
 private class MockDmlTest {
+	// **** CONSTANTS **** //
+	static final Integer TEST_SIZE = 20;
+
+	// **** TESTS **** //
 	@IsTest
 	static void shouldMockLeadConvert() {
 		Map<Id, Lead> leads = new Map<Id, Lead>();
@@ -312,7 +316,6 @@ private class MockDmlTest {
 	@IsTest
 	static void shouldThrowExceptionIfErrorOnInsert() {
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType);
-		MockDml.ConditionalFailure failure = new MockDmlTest.ExampleFailure();
 		Dml dml = new MockDml()?.fail();
 
 		Test.startTest();
@@ -663,8 +666,6 @@ private class MockDmlTest {
 	}
 
 	// **** HELPER **** //
-	static final Integer TEST_SIZE = 20;
-
 	static List<SObject> initRecords(SObjectType objectType, Boolean withId) {
 		List<SObject> records = new List<SObject>();
 		for (Integer i = 0; i < TEST_SIZE; i++) {

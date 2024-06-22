@@ -1,6 +1,10 @@
 @IsTest
 @SuppressWarnings('PMD.EmptyCatchBlock')
 private class MockSoqlTest {
+	// **** CONSTANTS **** //
+	static final Integer NUM_ACCS = 10;
+
+	// **** TESTS **** //
 	@IsTest
 	static void shouldMockCountQuery() {
 		// Build a query
@@ -261,8 +265,6 @@ private class MockSoqlTest {
 	}
 
 	// **** HELPER **** //
-	static final Integer NUM_ACCS = 10;
-
 	static List<Account> initAccounts(Integer numAccounts) {
 		List<Account> accounts = new List<Account>();
 		for (Integer i = 0; i < numAccounts; i++) {

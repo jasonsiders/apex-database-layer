@@ -1,5 +1,9 @@
 @IsTest
 private class DmlTest {
+	// **** CONSTANTS **** //
+	static final Integer TEST_SIZE = 2;
+
+	// **** TESTS **** //
 	@IsTest
 	static void shouldDoInsert() {
 		Account account = DmlTest.initAccount();
@@ -332,7 +336,6 @@ private class DmlTest {
 	}
 
 	// **** HELPER **** //
-	static final Integer TEST_SIZE = 2;
 	static List<Database.DeleteResult> deleteCallbacksMade = new List<Database.DeleteResult>();
 	static List<Database.SaveResult> saveCallbacksMade = new List<Database.SaveResult>();
 

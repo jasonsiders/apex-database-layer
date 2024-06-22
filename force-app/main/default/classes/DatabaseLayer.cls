@@ -4,9 +4,19 @@ public class DatabaseLayer {
 	 * Use the `newDml()` and `newSoql()` methods to construct instances of these types.
 	 * Automatically inject mock versions of these classes via the `useMocks()` method.
 	 **/
-	// **** STATIC **** //
+	// **** CONSTANTS **** //
 	static final DatabaseLayer INSTANCE = new DatabaseLayer();
 
+	// **** MEMBER **** //
+	private Dml dml;
+	private Soql soql;
+
+	private DatabaseLayer() {
+		this.dml = new Dml(this);
+		this.soql = new Soql(this);
+	}
+
+	// **** STATIC **** //
 	public static Dml newDml() {
 		// Returns a new instance of the current Dml type
 		return INSTANCE?.dml?.clone();
@@ -30,14 +40,5 @@ public class DatabaseLayer {
 		INSTANCE.dml = new MockDml();
 		INSTANCE.dml = new Dml(INSTANCE);
 		INSTANCE.soql = new Soql(INSTANCE);
-	}
-
-	// **** MEMBER **** //
-	private Dml dml;
-	private Soql soql;
-
-	private DatabaseLayer() {
-		this.dml = new Dml(this);
-		this.soql = new Soql(this);
 	}
 }
