@@ -7,8 +7,35 @@
 ## Usage
 
 ### Constructing Database Objects: The `DatabaseLayer` Class
-- Using `DatabaseLayer.newDml()` and `DatabaseLayer.newSoql()` in place of `new` keyword
-- Using `DatabaseLayer.useMocks()` and `DatabaseLayer.useRealData()` in `@IsTest` context.
+The `DatabaseLayer` class is responsible for constructing new `Dml` and `Soql` objects:
+```java
+Dml myDml = DatabaseLayer.newDml();
+Soql mySoql = DatabaseLayer.newSoql(Account.SObjectType);
+```
+
+By default, each of these methods will return base implementations of the `Dml` and `Soql` classes, which directly interact with the Salesforce database. In `@IsTest` context, you can use the `DatabaseLayer.useMocks()` method. Once this is done, the `newDml()` and `newSoql()` methods will return mock instances of their respective objects:
+```java
+@IsTest 
+static void shouldUseMockDml() {
+    // Assuming ExampleClass has a Dml property called "dmlInstance"
+    DatabaseLayer.useMocks();
+    ExampleClass example = new ExampleClass();
+    Assert.isInstanceOfType(example.dmlInstance, MockDml.class, 'Not using mocks');
+}
+```
+You can also revert the `DatabaseLayer` class to use real database operations by calling `DatabaseLayer.useRealData()`. This should only be used in cases where some (but not all) database operations should be mocked:
+```java
+@IsTest
+static void shouldUseMixedOfMocksAndRealDml() {
+    DatabaseLayer.useMocks();
+    ExampleClass mockExample = new ExampleClass();
+    Assert.isInstanceOfType(mockExample.dmlInstance, MockDml.class, 'Not using mocks');
+    // Now switch to using real data, will apply to any new Dml classes going forward
+    DatabaseLayer.useRealData();
+    ExampleClass databaseExample = new ExampleClass();
+    Assert.isNotInstanceOfType(databaseExample.dmlInstance, MockDml.class, 'Using mocks?');
+}
+```
 
 ### Building Test Records: The `MockRecord` Class
 - Using the `MockRecord` class to build test records without real DML or SOQL
