@@ -1,18 +1,43 @@
-# Salesforce DX Project: Next Steps
+# Apex Database Mocks
+(Some introductory text here...)
 
-Now that you’ve created a Salesforce DX project, what’s next? Here are some documentation resources to get you started.
+## Production Usage
+(Some introductory text here...)
 
-## How Do You Plan to Deploy Your Changes?
+### Constructing Database Objects: The `DatabaseLayer` Class
+- Constructing Dml: `DatabaseLayer.newDml()`
+- Constructing Soql: `DatabaseLayer.newSoql(SObjectType)`
 
-Do you want to deploy a set of changes, or create a self-contained application? Choose a [development model](https://developer.salesforce.com/tools/vscode/en/user-guide/development-models).
+### Performing CRUD Operations: The `Dml` Class
+- DML Methods vs. the `Database` class's DML Methods
+- The `doDml()` method and the `Dml.Operation` enum
+- Configuration Options
+- Give brief overviews before redirecting to the [`Dml`](force-app/main/default/classes/Dml/README.md) class's documentation.
 
-## Configure Your Salesforce DX Project
+### Performing Query Operations: The `Soql` Class
+- Performing Queries/Query Methods
+- Building Queries
+- Give brief overviews before redirecting to the [`Soql`](force-app/main/default/classes/Soql/README.md) class's documentation.
 
-The `sfdx-project.json` file contains useful configuration information for your project. See [Salesforce DX Project Configuration](https://developer.salesforce.com/docs/atlas.en-us.sfdx_dev.meta/sfdx_dev/sfdx_dev_ws_config.htm) in the _Salesforce DX Developer Guide_ for details about this file.
+## Test Usage
+(Some introductory text here...)
 
-## Read All About It
+### Substituting Mocks in @IsTest Scenarios
+- Using `DatabaseLayer.useMocks()` and `DatabaseLayer.useRealData()` methods
 
--   [Salesforce Extensions Documentation](https://developer.salesforce.com/tools/vscode/)
--   [Salesforce CLI Setup Guide](https://developer.salesforce.com/docs/atlas.en-us.sfdx_setup.meta/sfdx_setup/sfdx_setup_intro.htm)
--   [Salesforce DX Developer Guide](https://developer.salesforce.com/docs/atlas.en-us.sfdx_dev.meta/sfdx_dev/sfdx_dev_intro.htm)
--   [Salesforce CLI Command Reference](https://developer.salesforce.com/docs/atlas.en-us.sfdx_cli_reference.meta/sfdx_cli_reference/cli_reference.htm)
+### Building Test Records
+- Using the `MockRecord` class to build test records without real DML or SOQL
+
+### Mocking DML Operations
+- Mocking successful operations
+  - Simulates a successful DML operation by default. 
+  - Using the `MockDml.History` objects to assert performed DML.
+- Mocking failed operations
+  - MockDml's `fail()` & `failIf()` methods, and the `MockDml.ConditionalFailure` interface.
+
+### Mocking SOQL Operations
+- Simulating queries
+  - The `MockSoql.Simulator` interface and `setMock()` method
+  - (TODO) The `MockSoql.StaticSimulator` class?
+- Constructing `AggregateResults`: The `MockSoql.AggregateResult` class
+- Mocking `QueryLocators`
