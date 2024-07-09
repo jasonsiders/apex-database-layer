@@ -1,8 +1,14 @@
 # Apex Database Layer
 (Some introductory text here...)
 
+
 ## Getting Started
-- Available as an unlocked package, see the Releases tab in GH
+`apex-database-layer` is available as an unlocked package. You can find the latest or past versions in the [Releases](https://github.com/jasonsiders/apex-database-layer/releases) tab.
+
+Use the following command to install the package in your environment:
+```
+sf package install -p {{package_version_id}}
+```
 
 ## Usage
 
