@@ -103,7 +103,6 @@ View the [docs](docs/DML.md) to learn more about the `Dml` and `MockDml` classes
 
 ### Performing SOQL Operations
 
-#### The `Soql` Class
 The `Soql` class is responsible for querying records from the database. It wraps the standard `Database.query` and related methods. You can use its flexible builder pattern to compose a wide range of queries.
 
 ```java
@@ -119,10 +118,54 @@ List<User> users = soql?.query();
 ```
 
 In apex tests, you can mock all of your query operations by calling `DatabaseLayer.useMocks()`. This will automatically substitute real `Soql` objects with a `MockSoql` object. 
+By default, `MockSoql` objects will return an empty list of results. You can inject mock results for each query set using the `setMock()` method:
 
-- [ ] Simulating queries
-	- The `setMock()`, `setError()` methods
-	- The `MockSoql.Simulator` interface
+```java
+DatabaseLayer.useMocks();
+Account account = new Account(Name = 'Test Account');
+MockSoql soql = DatabaseLayer.newQuery(Account.SObjectType);
+soql?.setMock(new List<Account>{ account });
+List<Account> results = (List<Account>) soql?.query();
+Assert.areEqual(1, results?.size(), 'Wrong # of results');
+```
+
+Mocking queries by passing the records to be returned (as shown above) should work for most use cases. If needed, you can implement your own custom logic by creating a class that implements the `MockSoql.Simulator` interface:
+```java
+public class MySimulator implements MockSoql.Simulator {
+	// This implementation generates a List<Opportunity> with random values
+	public Object simulateQuery() {
+		Integer numOpps = Integer.valueOf(Math.random() * 200);
+		List<Opportunity> opps = new List<Opportunity>();
+		for (Integer i = 0; i < numOpps; i++) {
+			Opportunity opp = new Opportunity();
+			opp.Amount = Decimal.valueOf(Math.random() * 10000);
+			opps?.add(opp);
+		}
+		return opps;
+	}
+}
+```
+You can pass that object to the `setMock()` method, as shown below:
+```java
+DatabaseLayer.useMocks();
+MockSoql.Simulator simulator = new MySimulator();
+MockSoql soql = (MockSoql) DatabaseLayer.newSoql(Opportunity.SObjectType);
+soql?.setMock(simulator);
+List<Opportunity> opps = soql?.query();
+```
+
+You can also simulate query errors via the `setError()` method:
+```java
+DatabaseLayer.useMocks();
+MockSoql soql = DatabaseLayer.newQuery(Account.SObjectType);
+soql?.setError();
+try {
+	soql?.query();
+	Assert.fail('Did not throw an exception');
+} catch (Exception error) {
+	// As expected
+}
+```
 
 View the [docs](docs/SOQL.md) to learn more about the `Soql` and `MockSoql` classes.
 
