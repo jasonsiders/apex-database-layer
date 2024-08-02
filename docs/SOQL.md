@@ -4,6 +4,8 @@
 
 ## Public Methods
 
+
+
 ## Public Inner Types
 
 ### `Soql.AggregateResult`

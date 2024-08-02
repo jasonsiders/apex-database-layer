@@ -19,7 +19,7 @@ This package can be thought of in four categories, each with its own distinct se
 - `MockRecord`: Mocking SObject records for test purposes
 
 ### Performing DML Operations
-The `Dml` class is responsible for inserting, modifying, and deleting records in the salesforce database. It wraps the relevant methods in the standard [Database](https://developer.salesforce.com/docs/atlas.en-us.apexref.meta/apexref/apex_methods_system_database.htm) class, like `Database.insert`. Use the `Dml` class in place of these methods.
+The `Dml` class is responsible for inserting, modifying, and deleting records in the salesforce database. It wraps the relevant methods in the standard [Database](https://developer.salesforce.com/docs/atlas.en-us.apexref.meta/apexref/apex_methods_system_database.htm) class, like `Database.insert`. Use the `Dml` class and its methods in place of these system methods, as demonstrated below:
 
 ```java
 // Don't use these built-in platform methods
@@ -30,16 +30,25 @@ Dml myDml = DatabaseLayer.newDml();
 myDml?.doInsert(records);
 ```
 
-In `@IsTest` context, you can run your custom logic without using actual DML by calling `DatabaseLayer.useMocks()`. This will automatically substitute real `Dml` objects with a `MockDml` object. 
+In apex tests, you can mock all of your DML operations by calling `DatabaseLayer.useMocks()`. This will automatically substitute real `Dml` objects with a `MockDml` object. 
 
-By default this class will simulate successful DML operations. To simulate failures, use the `fail()` method:
+By default this class will simulate successful DML operations:
+```java
+DatabaseLayer.useMocks();
+Account account = new Account(Name = 'Test Account');
+DatabaseLayer.newDml()?.doInsert(account);
+Assert.isNotNull(account?.Id, 'Was not inserted');
+```
+
+To simulate DML failures, use the `fail()` method:
 
 ```java
 DatabaseLayer.useMocks();
+Account account = new Account(Name = 'Test Account');
 MockDml dml = (MockDml) DatabaseLayer.newDml();
 dml?.fail();
 // All subsuquent dml operations should fail
-dml?.doInsert(); 
+dml?.doInsert(account); 
 ```
 
 If necessary, you can inject "smarter" failure logic via the `MockDml.ConditionalFailure` interface and the `failIf()` method:
@@ -59,7 +68,9 @@ public class ExampleFailure implements MockDml.ConditionalFailure {
 		}
 	}
 }
+```
 
+```java
 // Inject the conditional logic via the failIf() method
 DatabaseLayer.useMocks();
 MockDml dml = (MockDml) DatabaseLayer.newDml();
@@ -72,15 +83,18 @@ dml?.doInsert();
 `MockDml` does not actually modify records in the database, so you cannot use SOQL to retrieve changes and perform assertions against them. Instead, use history objects, like `MockDml.INSERTED` to retrieve modified SObject records in memory:
 
 ```java
-DatabaseLayer.useMocks();
-List<Lead> leads = MyTest.initLeads();
+@IsTest 
+static void someTest() {
+    DatabaseLayer.useMocks();
+    Account acc = new Account(Name = 'John Doe');
+    
+    Test.startTest();
+    DatabaseLayer.newDml()?.doInsert(acc);
+    Test.stopTest();
 
-Test.startTest();
-myFoo?.doBar(leads);
-Test.stopTest();
-
-List<Lead> updatedLeads = MockDml.UPDATED?.get(Lead.SObjectType);
-Assert.areEqual(leads?.size(), updatedLeads?.size(), 'Wrong # of updated Leads');
+    List<Account> insertedAccs = MockDml.Inserted.getRecords(Account.SObjectType);
+    Assert.areEqual(1, insertedAccs?.size(), 'Account was not inserted');
+}
 ```
 
 View the [docs](docs/DML.md) to learn more about the `Dml` and `MockDml` classes.
@@ -118,10 +132,10 @@ This approach allows for mocks to be automatically substituted at runtime during
 ```java
 @IsTest 
 static void shouldUseMockDml() {
-	// Assuming ExampleClass has a Dml property called "dmlInstance"
+	// Assuming ExampleClass has a Dml property called "dml"
 	DatabaseLayer.useMocks();
 	ExampleClass example = new ExampleClass();
-	Assert.isInstanceOfType(example.dmlInstance, MockDml.class, 'Not using mocks');
+	Assert.isInstanceOfType(example.dml, MockDml.class, 'Not using mocks');
 }
 ```
 
@@ -132,11 +146,12 @@ You can also revert the `DatabaseLayer` class to use real database operations by
 static void shouldUseMixedOfMocksAndRealDml() {
 	DatabaseLayer.useMocks();
 	ExampleClass mockExample = new ExampleClass();
-	Assert.isInstanceOfType(mockExample.dmlInstance, MockDml.class, 'Not using mocks');
-	// Now switch to using real data, will apply to any new Dml classes going forward
+	Assert.isInstanceOfType(mockExample.dml, MockDml.class, 'Not using mocks');
+	// Now switch to using real data, 
+	// will apply to any new Dml classes going forward
 	DatabaseLayer.useRealData();
 	ExampleClass databaseExample = new ExampleClass();
-	Assert.isNotInstanceOfType(databaseExample.dmlInstance, MockDml.class, 'Using mocks?');
+	Assert.isNotInstanceOfType(databaseExample.dml, MockDml.class, 'Using mocks?');
 }
 ```
 

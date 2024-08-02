@@ -121,8 +121,6 @@ static void someTest() {
 
     List<Account> insertedAccs = MockDml.Inserted.getRecords(Account.SObjectType);
     Assert.areEqual(1, insertedAccs?.size(), 'Account was not inserted');
-    Account insertedAcc = insertedAccs[0];
-    Assert.areEqual(acc?.Name, insertedAcc?.Name, 'Wrong Account Name');)
 }
 ```
 
