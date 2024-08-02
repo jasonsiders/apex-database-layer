@@ -5,7 +5,7 @@ public class DatabaseLayer {
 	 * Automatically inject mock versions of these classes via the `useMocks()` method.
 	 **/
 	// **** CONSTANTS **** //
-	static final DatabaseLayer INSTANCE = new DatabaseLayer();
+	private static final DatabaseLayer INSTANCE = new DatabaseLayer();
 
 	// **** MEMBER **** //
 	private Dml dml;

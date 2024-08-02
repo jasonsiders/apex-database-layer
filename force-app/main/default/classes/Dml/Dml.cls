@@ -14,7 +14,7 @@ public with sharing virtual class Dml {
 	 * This functionality is necessary for us to be able to properly cover these methods in tests,
 	 * since we cannot introduce external objects as a part of this package.
 	 **/
-	static final System.AccessLevel DEFAULT_ACCESS_LEVEL = System.AccessLevel.USER_MODE;
+	private static final System.AccessLevel DEFAULT_ACCESS_LEVEL = System.AccessLevel.USER_MODE;
 
 	protected System.AccessLevel accessLevel = System.AccessLevel.USER_MODE;
 	protected Object callback;

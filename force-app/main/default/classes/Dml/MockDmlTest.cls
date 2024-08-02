@@ -2,7 +2,7 @@
 @SuppressWarnings('PMD.EmptyCatchBlock')
 private class MockDmlTest {
 	// **** CONSTANTS **** //
-	static final Integer TEST_SIZE = 20;
+	private static final Integer TEST_SIZE = 20;
 
 	// **** TESTS **** //
 	@IsTest

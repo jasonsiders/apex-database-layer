@@ -15,8 +15,8 @@ public class MockDml extends Dml {
 	public static final MockDml.RecordHistory UPDATED = new MockDml.RecordHistory(Dml.Operation.DO_UPDATE);
 	public static final MockDml.RecordHistory UPSERTED = new MockDml.RecordHistory(Dml.Operation.DO_UPSERT);
 	public static final MockDml.PlatformEventHistory PUBLISHED = new MockDml.PlatformEventHistory();
-	static final String EVENT_UUID_FIELD = 'EventUuid';
-	static final String MOCK_STATUS_CODE = 'MOCK_DML';
+	private static final String EVENT_UUID_FIELD = 'EventUuid';
+	private static final String MOCK_STATUS_CODE = 'MOCK_DML';
 
 	public static void eraseAllHistories() {
 		// Reset all of the history objects to their original state

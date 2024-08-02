@@ -4,7 +4,7 @@ public class MockSoql extends Soql {
 	 * This class mocks SOQL queries. By default, each query will return empty results.
 	 * Users can use the `setMock()` method to inject an object which will simulate the query & return results
 	 **/
-	static final String AGGREGATE_KEY_PREFIX = 'expr';
+	private static final String AGGREGATE_KEY_PREFIX = 'expr';
 	private MockSoql.Simulator simulator;
 
 	public MockSoql() {

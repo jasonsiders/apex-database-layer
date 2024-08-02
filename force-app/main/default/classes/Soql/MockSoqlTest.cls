@@ -2,7 +2,7 @@
 @SuppressWarnings('PMD.EmptyCatchBlock')
 private class MockSoqlTest {
 	// **** CONSTANTS **** //
-	static final Integer NUM_ACCS = 10;
+	private static final Integer NUM_ACCS = 10;
 
 	// **** TESTS **** //
 	@IsTest

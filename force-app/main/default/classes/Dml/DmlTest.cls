@@ -1,7 +1,7 @@
 @IsTest
 private class DmlTest {
 	// **** CONSTANTS **** //
-	static final Integer TEST_SIZE = 2;
+	private static final Integer TEST_SIZE = 2;
 
 	// **** TESTS **** //
 	@IsTest

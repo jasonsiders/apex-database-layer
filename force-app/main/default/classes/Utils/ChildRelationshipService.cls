@@ -8,7 +8,7 @@ public abstract class ChildRelationshipService {
 	 * As an added bonus, the relationship information for the lookup field's referenceTo object is cached,
 	 * so that successive calls to the same object do not take the same processing time.
 	 **/
-	static final Map<SObjectType, ChildRelationshipService.CachedDescribe> DESCRIBES = new Map<SObjectType, ChildRelationshipService.CachedDescribe>();
+	private static final Map<SObjectType, CachedDescribe> DESCRIBES = new Map<SObjectType, CachedDescribe>();
 
 	public static Schema.ChildRelationship getChildRelationshipFrom(SObjectField lookupField, SObjectType referenceTo) {
 		// Returns the Schema.ChildRelationshp on the referenceTo SObjectType, that the provided lookupField points to.
