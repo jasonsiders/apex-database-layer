@@ -16,10 +16,24 @@ public class MockSoql extends Soql {
 		this.fromEntity(objectType);
 	}
 
+	public Soql setError(Exception error) {
+		MockSoql.Simulator simulator = new MockSoql.StaticResults(error);
+		return this.setMock(simulator);
+	}
+
+	public Soql setError() {
+		return this.setError(new System.QueryException());
+	}
+
 	public Soql setMock(MockSoql.Simulator simulator) {
 		// Inject an Simulator object, which will return mock results when the query runs.
 		this.simulator = simulator;
 		return this;
+	}
+
+	public Soql setMock(Object results) {
+		MockSoql.Simulator simulator = new MockSoql.StaticResults(results);
+		return this.setMock(simulator);
 	}
 
 	// **** OVERRIDES **** //
@@ -153,5 +167,25 @@ public class MockSoql extends Soql {
 		 *  - Throw an exception
 		 **/
 		Object simulateQuery();
+	}
+
+	private class StaticResults implements MockSoql.Simulator {
+		Exception error; 
+		Object results;
+
+		private StaticResults(Exception error) {
+			this.error = error; 
+		}
+
+		private StaticResults(Object results) {
+			this.results = results;
+		}
+
+		public Object simulateQuery() {
+			if (error != null) {
+				throw error;
+			}
+			return results;
+		}
 	}
 }

@@ -121,8 +121,8 @@ List<User> users = soql?.query();
 In apex tests, you can mock all of your query operations by calling `DatabaseLayer.useMocks()`. This will automatically substitute real `Soql` objects with a `MockSoql` object. 
 
 - [ ] Simulating queries
-	- The `MockSoql.Simulator` interface and `setMock()` method
-	- (TODO) The `MockSoql.StaticSimulator` class?
+	- The `setMock()`, `setError()` methods
+	- The `MockSoql.Simulator` interface
 
 View the [docs](docs/SOQL.md) to learn more about the `Soql` and `MockSoql` classes.
 
