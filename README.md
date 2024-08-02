@@ -177,7 +177,7 @@ The `DatabaseLayer` class is responsible for constructing new `Dml` and `Soql` o
 
 ```java
 Dml myDml = DatabaseLayer.newDml();
-Soql mySoql = DatabaseLayer.newSoql(Account.SObjectType);
+Soql mySoql = (Soql) DatabaseLayer.newSoql(Account.SObjectType);
 ```
 
 This approach allows for mocks to be automatically substituted at runtime during tests, if desired. By default, each of these methods will return base implementations of the `Dml` and `Soql` classes, which directly interact with the Salesforce database. In `@IsTest` context, you can use the `DatabaseLayer.useMocks()` method. Once this is done, the `newDml()` and `newSoql()` methods will return mock instances of their respective objects:
