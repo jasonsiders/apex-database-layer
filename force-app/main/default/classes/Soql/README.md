@@ -1,1 +1,0 @@
-# Query Operations: The `Soql` and `MockSoql` Classes
