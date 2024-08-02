@@ -19,23 +19,67 @@ This package can be thought of in four categories, each with its own distinct se
 - `MockRecord`: Mocking SObject records for test purposes
 
 ### Performing DML Operations
-- [ ] Give brief overviews before redirecting to the [`Dml`](force-app/main/default/classes/Dml/README.md) class's documentation.
+The `Dml` class is responsible for inserting, modifying, and deleting records in the salesforce database. It wraps the relevant methods in the standard [Database](https://developer.salesforce.com/docs/atlas.en-us.apexref.meta/apexref/apex_methods_system_database.htm) class, like `Database.insert`. Use the `Dml` class in place of these methods.
 
-#### The `Dml` Class
-The `Dml` class is responsible for inserting, modifying, and deleting records in the salesforce database. It wraps the relevant methods in the standard [Database](https://developer.salesforce.com/docs/atlas.en-us.apexref.meta/apexref/apex_methods_system_database.htm) class, like `Database.insert`. 
+```java
+// Don't use these built-in platform methods
+insert records;
+Database.insert(records);
+// Instead, use the Dml class's methods
+Dml myDml = DatabaseLayer.newDml();
+myDml?.doInsert(records);
+```
 
-- Performing DML
-	- DML Methods vs. the `Database` class's DML Methods
-		- Static vs. member, configuring using a builder pattern
-		- Include an example of this
-	- The `doDml()` method and the `Dml.Operation` enum
+In `@IsTest` context, you can run your custom logic without using actual DML by calling `DatabaseLayer.useMocks()`. This will automatically substitute real `Dml` objects with a `MockDml` object. 
 
-#### The `MockDml` Class
-- Mocking successful operations
-	- Simulates a successful DML operation by default. 
-	- Using the `MockDml.History` objects to assert performed DML.
-- Mocking failed operations
-	- MockDml's `fail()` & `failIf()` methods, and the `MockDml.ConditionalFailure` interface.
+By default this class will simulate successful DML operations. To simulate failures, use the `fail()` method:
+
+```java
+DatabaseLayer.useMocks();
+MockDml dml = (MockDml) DatabaseLayer.newDml();
+dml?.fail();
+// All subsuquent dml operations should fail
+dml?.doInsert(); 
+```
+
+If necessary, you can inject "smarter" failure logic via the `MockDml.ConditionalFailure` interface and the `failIf()` method:
+
+```java
+public class Example implements MockDml.ConditionalFailure {
+	// Return an Exception if the record/operation should fail
+	// Ex., fail any updated Accounts from Florida
+	public Exception checkFailure(Dml.Operation operation, SObject record) {
+		Boolean shouldFail = (
+			operation == Dml.Operation.DO_UPDATE && 
+			record?.getSObjectType() == Account.SObjectType && 
+			record?.get(Account.BillingState) == 'FL'
+		);
+		return (shouldFail) ? new System.DmlException() : null;
+	}
+}
+
+// Inject the conditional logic via the failIf() method
+DatabaseLayer.useMocks();
+MockDml dml = (MockDml) DatabaseLayer.newDml();
+MockDml.ConditionalFailure logic = new MockDml.ConditionalFailure();
+dml?.failIf(logic);
+// This won't fail, because it's not an update!
+dml?.doInsert();
+```
+
+`MockDml` does not actually modify records in the database, so you cannot use SOQL to retrieve changes and perform assertions against them. Instead, use history objects, like `MockDml.INSERTED` to retrieve modified SObject records in memory:
+
+```java
+DatabaseLayer.useMocks();
+List<Lead> leads = MyTest.initLeads();
+
+Test.startTest();
+myFoo?.doBar(leads);
+Test.stopTest();
+
+List<Lead> updatedLeads = MockDml.UPDATED?.get(Lead.SObjectType);
+Assert.areEqual(leads?.size(), updatedLeads?.size(), 'Wrong # of updated Leads');
+```
 
 ### Performing SOQL Operations
 - [ ] Give brief overviews before redirecting to the [`Soql`](force-app/main/default/classes/Soql/README.md) class's documentation.
@@ -53,7 +97,6 @@ The `Dml` class is responsible for inserting, modifying, and deleting records in
 
 ### Constructing Database Objects
 
-#### The `DatabaseLayer` Class
 The `DatabaseLayer` class is responsible for constructing new `Dml` and `Soql` objects:
 
 ```java
@@ -66,10 +109,10 @@ This approach allows for mocks to be automatically substituted at runtime during
 ```java
 @IsTest 
 static void shouldUseMockDml() {
-		// Assuming ExampleClass has a Dml property called "dmlInstance"
-		DatabaseLayer.useMocks();
-		ExampleClass example = new ExampleClass();
-		Assert.isInstanceOfType(example.dmlInstance, MockDml.class, 'Not using mocks');
+	// Assuming ExampleClass has a Dml property called "dmlInstance"
+	DatabaseLayer.useMocks();
+	ExampleClass example = new ExampleClass();
+	Assert.isInstanceOfType(example.dmlInstance, MockDml.class, 'Not using mocks');
 }
 ```
 
@@ -78,19 +121,18 @@ You can also revert the `DatabaseLayer` class to use real database operations by
 ```java
 @IsTest
 static void shouldUseMixedOfMocksAndRealDml() {
-		DatabaseLayer.useMocks();
-		ExampleClass mockExample = new ExampleClass();
-		Assert.isInstanceOfType(mockExample.dmlInstance, MockDml.class, 'Not using mocks');
-		// Now switch to using real data, will apply to any new Dml classes going forward
-		DatabaseLayer.useRealData();
-		ExampleClass databaseExample = new ExampleClass();
-		Assert.isNotInstanceOfType(databaseExample.dmlInstance, MockDml.class, 'Using mocks?');
+	DatabaseLayer.useMocks();
+	ExampleClass mockExample = new ExampleClass();
+	Assert.isInstanceOfType(mockExample.dmlInstance, MockDml.class, 'Not using mocks');
+	// Now switch to using real data, will apply to any new Dml classes going forward
+	DatabaseLayer.useRealData();
+	ExampleClass databaseExample = new ExampleClass();
+	Assert.isNotInstanceOfType(databaseExample.dmlInstance, MockDml.class, 'Using mocks?');
 }
 ```
 
 ### Building Test Records
 
-#### The `MockRecord` Class
 The benefits of mocking database operations is undeniable, but the process of mocking SObject records in the absence of real DML or SOQL can sometimes be tedious. The `MockRecord` class solves most of the pains associated with this process, including:
 - Simulate record inserts
 - Set read-only fields (including system-level fields)
