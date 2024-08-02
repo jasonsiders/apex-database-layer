@@ -137,11 +137,6 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		NULLS_LAST
 	}
 
-	public enum SortDirection {
-		ASCENDING,
-		DESCENDING
-	}
-
 	public enum Scope {
 		// https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_select_using_scope.htm
 		DELEGATED,
@@ -151,6 +146,11 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		MY_TERRITORY,
 		MY_TEAM_TERRITORY,
 		TEAM
+	}
+
+	public enum SortDirection {
+		ASCENDING,
+		DESCENDING
 	}
 
 	public enum Usage {

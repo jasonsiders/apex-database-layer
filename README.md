@@ -83,10 +83,11 @@ List<Lead> updatedLeads = MockDml.UPDATED?.get(Lead.SObjectType);
 Assert.areEqual(leads?.size(), updatedLeads?.size(), 'Wrong # of updated Leads');
 ```
 
+View the [docs](docs/DML.md) to learn more about the `Dml` and `MockDml` classes.
+
 ---
 
 ### Performing SOQL Operations
-- [ ] Give brief overviews before redirecting to the [`Soql`](force-app/main/default/classes/Soql/README.md) class's documentation.
 
 #### The `Soql` Class
 - Performing Queries/Query Methods
@@ -98,6 +99,8 @@ Assert.areEqual(leads?.size(), updatedLeads?.size(), 'Wrong # of updated Leads')
 	- (TODO) The `MockSoql.StaticSimulator` class?
 - [ ] Constructing `AggregateResults`: The `MockSoql.AggregateResult` class
 - [ ] Special Considerations for Mocking `QueryLocators`
+
+View the [docs](docs/SOQL.md) to learn more about the `Soql` and `MockSoql` classes.
 
 ---
 
