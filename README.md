@@ -45,23 +45,25 @@ dml?.doInsert();
 If necessary, you can inject "smarter" failure logic via the `MockDml.ConditionalFailure` interface and the `failIf()` method:
 
 ```java
-public class Example implements MockDml.ConditionalFailure {
-	// Return an Exception if the record/operation should fail
-	// Ex., fail any updated Accounts from Florida
+public class ExampleFailure implements MockDml.ConditionalFailure {
 	public Exception checkFailure(Dml.Operation operation, SObject record) {
-		Boolean shouldFail = (
+		// Return an Exception if the record/operation should fail
+		// In this case, any updated Accounts will fail
+		if (
 			operation == Dml.Operation.DO_UPDATE && 
-			record?.getSObjectType() == Account.SObjectType && 
-			record?.get(Account.BillingState) == 'FL'
-		);
-		return (shouldFail) ? new System.DmlException() : null;
+			record?.getSObjectType() == Account.SObjectType
+		) {
+			return new System.DmlException();
+		} else {
+			return null;
+		}
 	}
 }
 
 // Inject the conditional logic via the failIf() method
 DatabaseLayer.useMocks();
 MockDml dml = (MockDml) DatabaseLayer.newDml();
-MockDml.ConditionalFailure logic = new MockDml.ConditionalFailure();
+MockDml.ConditionalFailure logic = new ExampleFailure();
 dml?.failIf(logic);
 // This won't fail, because it's not an update!
 dml?.doInsert();
@@ -81,6 +83,8 @@ List<Lead> updatedLeads = MockDml.UPDATED?.get(Lead.SObjectType);
 Assert.areEqual(leads?.size(), updatedLeads?.size(), 'Wrong # of updated Leads');
 ```
 
+---
+
 ### Performing SOQL Operations
 - [ ] Give brief overviews before redirecting to the [`Soql`](force-app/main/default/classes/Soql/README.md) class's documentation.
 
@@ -94,6 +98,8 @@ Assert.areEqual(leads?.size(), updatedLeads?.size(), 'Wrong # of updated Leads')
 	- (TODO) The `MockSoql.StaticSimulator` class?
 - [ ] Constructing `AggregateResults`: The `MockSoql.AggregateResult` class
 - [ ] Special Considerations for Mocking `QueryLocators`
+
+---
 
 ### Constructing Database Objects
 
@@ -131,23 +137,38 @@ static void shouldUseMixedOfMocksAndRealDml() {
 }
 ```
 
-### Building Test Records
+---
 
-The benefits of mocking database operations is undeniable, but the process of mocking SObject records in the absence of real DML or SOQL can sometimes be tedious. The `MockRecord` class solves most of the pains associated with this process, including:
-- Simulate record inserts
+### Building Test Records
+While mocking database operations can provide many benefits, the process of mocking SObject records in the absence of real DML or SOQL can be tedious. 
+
+The `MockRecord` class addresses many of the pains associated with this process, including:
 - Set read-only fields (including system-level fields)
+- Simulate record inserts
 - Simulate parent and child relationship retrievals through SOQL
 
 Use the class's fluent builder pattern to generate a record to your specifications, and then cast it back to a concrete SObject. Example:
 
 ```java
+Account realAccount = [
+	SELECT 
+		Id, CreatedDate, Owner.Name, 
+		(SELECT Id FROM Contacts) 
+	FROM Account 
+	LIMIT 1
+];
+// Let's make a test record that can be used to mock the above query!
+User mockUser = (User) new MockRecord(User.SObjectType)
+	?.setField(User.Name, 'John Doe')
+	?.withId()
+	?.toSObject();
 Contact mockContact = (Contact) new MockRecord(Contact.SObjectType)
 	?.withId()
 	?.toSObject();
 Account mockAccount = (Account) new MockRecord(Account.SObjectType)
 	?.setField(Account.Name, 'John Doe Enterprises')
-	?.setField(Account.CreatedDate, DateTime.now?.addDays(-100))
-	?.setLookup(Account.OwnerId, new User(Id = UserInfo.getUserId()))
+	?.setField(Account.CreatedDate, DateTime.now()?.addDays(-100))
+	?.setLookup(Account.OwnerId, mockUser)
 	?.setRelatedList(Contact.AccountId, new List<Contact>{ mockContact })
 	?.withId()
 	?.toSObject();
