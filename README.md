@@ -104,15 +104,25 @@ View the [docs](docs/DML.md) to learn more about the `Dml` and `MockDml` classes
 ### Performing SOQL Operations
 
 #### The `Soql` Class
-- Performing Queries/Query Methods
-- Building Queries
+The `Soql` class is responsible for querying records from the database. It wraps the standard `Database.query` and related methods. You can use its flexible builder pattern to compose a wide range of queries.
 
-#### The `MockSoql` Class
+```java
+Soql soql = (Soql) DatabaseLayer.newSoql(User.SObjectType)
+	?.addSelect(User.FirstName)
+	?.addSelect(User.LastName)
+	?.addSelect(User.Email)
+	?.addWhere(User.IsActive, Soql.EQUALS, true)
+	?.addWhere('Profile.Name', Soql.EQUALS, 'System Administrator')
+	?.orderBy(User.CreatedDate, Soql.SortDirection.ASCENDING)
+	?.setRowLimit(1);
+List<User> users = soql?.query();
+```
+
+In apex tests, you can mock all of your query operations by calling `DatabaseLayer.useMocks()`. This will automatically substitute real `Soql` objects with a `MockSoql` object. 
+
 - [ ] Simulating queries
 	- The `MockSoql.Simulator` interface and `setMock()` method
 	- (TODO) The `MockSoql.StaticSimulator` class?
-- [ ] Constructing `AggregateResults`: The `MockSoql.AggregateResult` class
-- [ ] Special Considerations for Mocking `QueryLocators`
 
 View the [docs](docs/SOQL.md) to learn more about the `Soql` and `MockSoql` classes.
 

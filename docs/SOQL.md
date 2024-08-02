@@ -27,3 +27,9 @@
 ### `Soql.Usage`
 
 ## Mocking SOQL Queries
+
+- [ ] Simulating queries
+	- The `MockSoql.Simulator` interface and `setMock()` method
+	- (TODO) The `MockSoql.StaticSimulator` class?
+- [ ] Constructing `AggregateResults`: The `MockSoql.AggregateResult` class
+- [ ] Special Considerations for Mocking `QueryLocators`
