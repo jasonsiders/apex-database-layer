@@ -11,10 +11,10 @@ public class MockDml extends Dml {
 	public static final MockDml.RecordHistory CONVERTED = new MockDml.RecordHistory(Dml.Operation.DO_CONVERT);
 	public static final MockDml.RecordHistory DELETED = new MockDml.RecordHistory(Dml.Operation.DO_DELETE);
 	public static final MockDml.RecordHistory INSERTED = new MockDml.RecordHistory(Dml.Operation.DO_INSERT);
+	public static final MockDml.PlatformEventHistory PUBLISHED = new MockDml.PlatformEventHistory();
 	public static final MockDml.RecordHistory UNDELETED = new MockDml.RecordHistory(Dml.Operation.DO_UNDELETE);
 	public static final MockDml.RecordHistory UPDATED = new MockDml.RecordHistory(Dml.Operation.DO_UPDATE);
 	public static final MockDml.RecordHistory UPSERTED = new MockDml.RecordHistory(Dml.Operation.DO_UPSERT);
-	public static final MockDml.PlatformEventHistory PUBLISHED = new MockDml.PlatformEventHistory();
 	private static final String EVENT_UUID_FIELD = 'EventUuid';
 	private static final String MOCK_STATUS_CODE = 'MOCK_DML';
 
@@ -342,12 +342,12 @@ public class MockDml extends Dml {
 			return this;
 		}
 
-		public List<SObject> getAll() {
-			// Retrieves all records, regardless of their SObjectType in a flat List<SObject>
-			List<SObject> allRecords = new List<SObject>();
+		public Map<SObjectType, List<SObject>> getAll() {
+			// Retrieve all records processed by the current operation, grouped by SObjectType
+			Map<SObjectType, List<SObject>> allRecords = new Map<SObjectType, List<SObject>>();
 			for (SObjectType objectType : this.recordMap?.keySet()) {
-				List<SObject> records = this.getRecords(objectType);
-				allRecords?.addAll(records);
+				List<SObject> recordList = this.recordMap?.get(objectType)?.values();
+				allRecords?.put(objectType, recordList);
 			}
 			return allRecords;
 		}
