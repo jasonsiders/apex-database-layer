@@ -236,7 +236,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			return this.value;
 		}
 
-		public Binder setValue(Object value) {
+		public Soql.Binder setValue(Object value) {
 			this.value = value;
 			return this;
 		}
@@ -763,8 +763,8 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			this.relationshipName = relationship?.getRelationshipName();
 		}
 
-		public SubQuery(SObjectField lookupField) {
-			this(ChildRelationshipService.getChildRelationshipFrom(lookupField));
+		public SubQuery(SObjectField lookupFieldOnChildObject) {
+			this(ChildRelationshipService.getChildRelationshipFrom(lookupFieldOnChildObject));
 		}
 
 		public override String getFrom() {
