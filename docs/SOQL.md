@@ -4,8 +4,6 @@
 
 ## Public Methods
 
-## Public Methods
-
 ### Performing Queries
 
 #### `aggregateQuery`
@@ -32,41 +30,13 @@ Fetches the first result of the query or returns `null` if no results are found.
 ### Building Queries
 These methods are derived from the `Soql.Builder` inner class. The `Soql` class extends this base class, along with other inner types, like `Soql.InnerClass` and `Soql.Subquery`.
 
-#### `bind`
-!TODO!
+#### `addHaving`
+Adds conditions to the HAVING clause of the query.
 
-- `Soql.Builder bind(Map<String, Object> bindMap)`
-- `Soql.Builder bind(String key, Object value)`
-- `Soql.Builder bind(Soql.Binder binder)`
-
-#### `deselectAll`
-!TODO!
-
-- `Soql.Builder deselectAll()`
-
-#### `deselect`
-!TODO!
-
-- `Soql.Builder deselect(String fieldName)`
-- `Soql.Builder deselect(SObjectField field)`
-
-#### `defineAccess`
-!TODO!
-
-- `Soql.Builder defineAccess(System.AccessLevel accessLevel)`
-
-#### `reset`
-!TODO!
-
-- `Soql.Builder reset()`
-
-#### `selectAll`
-!TODO!
-
-- `Soql.Builder selectAll()`
+- `Soql.Builder addHaving(Soql.Aggregation agg, Soql.Operator operator, Object value)`
 
 #### `addSelect`
-!TODO!
+Adds fields or aggregations to the SELECT clause of the query.
 
 - `Soql.Builder addSelect(String fieldName, String alias)`
 - `Soql.Builder addSelect(SObjectField field, String alias)`
@@ -75,16 +45,8 @@ These methods are derived from the `Soql.Builder` inner class. The `Soql` class 
 - `Soql.Builder addSelect(Soql.Aggregation aggregation)`
 - `Soql.Builder addSelect(Soql.SubQuery subQuery)`
 
-#### `fromEntity`
-!TODO!
-- `Soql.Builder fromEntity(SObjectType objectType)`
-
-#### `usingScope`
-!TODO!
-- `Soql.Builder usingScope(Soql.Scope scope)`
-
 #### `addWhere`
-!TODO!
+Adds conditions to the WHERE clause of the query.
 
 - `Soql.Builder addWhere(Soql.Criteria criteria)`
 - `Soql.Builder addWhere(String fieldName, Soql.Operator operator, Object value)`
@@ -92,65 +54,103 @@ These methods are derived from the `Soql.Builder` inner class. The `Soql` class 
 - `Soql.Builder addWhere(String fieldName, Soql.Operator operator, Soql.Binder binder)`
 - `Soql.Builder addWhere(SObjectField field, Soql.Operator operator, Soql.Binder binder)`
 
-#### `setWhereLogic`
-!TODO!
+#### `bind`
+Adds binding variables to the query. Binding variables are used to dynamically insert values into the query.
 
-- `Soql.Builder setWhereLogic(Soql.LogicType newLogicType)`
+- `Soql.Builder bind(Map<String, Object> bindMap)`
+- `Soql.Builder bind(String key, Object value)`
+- `Soql.Builder bind(Soql.Binder binder)`
 
-#### `withSecurityEnforced`
-!TODO!
+#### `defineAccess`
+Sets the access level for the query.
 
-- `Soql.Builder withSecurityEnforced()`
+- `Soql.Builder defineAccess(System.AccessLevel accessLevel)`
+
+#### `deselect`
+Removes specific fields from the SELECT clause of the query.
+
+- `Soql.Builder deselect(String fieldName)`
+- `Soql.Builder deselect(SObjectField field)`
+
+#### `deselectAll`
+Removes all fields from the SELECT clause of the query, essentially clearing any previously selected fields.
+
+- `Soql.Builder deselectAll()`
+
+#### `fromEntity`
+Sets the entity from which to query data.
+
+- `Soql.Builder fromEntity(SObjectType objectType)`
 
 #### `groupBy`
-!TODO!
+Adds fields to the GROUP BY clause of the query.
 
 - `Soql.Builder groupBy(String fieldName)`
 - `Soql.Builder groupBy(SObjectField field)`
 
-#### `addHaving`
-!TODO!
-
-- `Soql.Builder addHaving(Soql.Aggregation agg, Soql.Operator operator, Object value)`
-
-#### `setHavingLogic`
-!TODO!
-
-- `Soql.Builder setHavingLogic(Soql.LogicType newLogicType)`
-
 #### `orderBy`
-!TODO!
+Adds fields to the ORDER BY clause of the query.
 
 - `Soql.Builder orderBy(Soql.SortOrder sortOrder)`
 - `Soql.Builder orderBy(String fieldName, Soql.SortDirection direction)`
 - `Soql.Builder orderBy(SObjectField field, Soql.SortDirection direction)`
 
+#### `reset`
+Resets the builder to its default state, clearing all previously set clauses and parameters.
+
+- `Soql.Builder reset()`
+
+#### `selectAll`
+Selects all fields from the specified entity by querying the schema for all available fields.
+
+- `Soql.Builder selectAll()`
+
+#### `setHavingLogic`
+Sets the logical operator (AND/OR) for combining HAVING conditions.
+
+- `Soql.Builder setHavingLogic(Soql.LogicType newLogicType)`
+
 #### `setRowLimit`
-!TODO!
+Sets the maximum number of rows to return in the query result.
 
 - `Soql.Builder setRowLimit(Integer rowLimit)`
 
 #### `setRowOffset`
-!TODO!
+Sets the number of rows to skip before starting to return results.
 
 - `Soql.Builder setRowOffset(Integer rowOffset)`
 
 #### `setUsage`
-!TODO!
+Sets the usage context for the query.
 
 - `Soql.Builder setUsage(Soql.Usage usage)`
 
+#### `setWhereLogic`
+Sets the logical operator (AND/OR) for combining WHERE conditions.
+
+- `Soql.Builder setWhereLogic(Soql.LogicType newLogicType)`
+
+#### `usingScope`
+Sets the scope for the query.
+
+- `Soql.Builder usingScope(Soql.Scope scope)`
+
+#### `withSecurityEnforced`
+Enforces security in the query to ensure that the user has appropriate access to the queried records.
+
+- `Soql.Builder withSecurityEnforced()`
+
 ## Public Inner Types
 
-### `Soql.AggregateResult`
-### `Soql.Aggregation`
-### `Soql.Binder`
-### `Soql.Condition` 
-### `Soql.Criteria`
-### `Soql.ConditionalLogic`
-### `Soql.Function`
-### `Soql.InnerQuery`
-Represents inner query logic, often used for filtering results in a `WHERE` clause. 
+### AggregateResult
+### Aggregation
+### Binder
+### Condition 
+### Criteria
+### ConditionalLogic
+### Function
+### InnerQuery
+Represents inner query logic, used for filtering results in a `WHERE` clause. 
 
 For example:
 ```sql
@@ -165,30 +165,33 @@ WHERE Id IN (
 
 This class extends `Soql.Builder`, and therefore has all of the same query-building [methods](#building-queries).
 
-### `Soql.LogicType`
-### `Soql.NullOrder`
-### `Soql.QueryLocator`
-### `Soql.Scope`
-### `Soql.SortDirection`
-### `Soql.SortOrder`
-### `Soql.Subquery`
+Constructors:
+- `InnerQuery(SObjectType objectType)`
+
+### LogicType
+### NullOrder
+### QueryLocator
+### Scope
+### SortDirection
+### SortOrder
+### Subquery
 Represents child relationship queries within the broader query structure, used to return child objects related to the primary object. 
 
 For example:
 
 ```sql
-SELECT 
-	Id, 
-	(SELECT Id FROM Contacts) 
+SELECT Id, (SELECT Id FROM Contacts) 
 FROM Account`
 ```
 
 This class extends `Soql.Builder`, and therefore has all of the same query-building [methods](#building-queries).
 
+Constructors:
+
 - `Soql.SubQuery(Schema.ChildRelationship relationship)`
 - `Soql.SubQuery(SObjectField lookupFieldOnChildObject)`
 
-### `Soql.Usage`
+### Usage
 
 ## Mocking SOQL Queries
 
