@@ -320,14 +320,14 @@ Each of the above `History` object includes three public methods:
 #### `eraseHistory`
 Clears the current History object; once called, the `getAll()` and `getRecords()` methods will return empty structures. Returns self.
 
-Signature: `MockDml.History eraseHistory()`
+- `MockDml.History eraseHistory()`
 
 #### `getAll`
 Retrieves a map of records that were processed by the current DML operation, grouped by their `SObjectType`.
 
-Signature: `Map<SObjectType, List<SObject>> getAll()`
+- `Map<SObjectType, List<SObject>> getAll()`
 
 #### `getRecords`
 Retrieves a list of all records of the provided `SObjectType` that were processed by the current DML operation.
 
-Signature: `List<SObject> getRecords(SObjectType objectType)`
+- `List<SObject> getRecords(SObjectType objectType)`
