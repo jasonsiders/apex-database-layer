@@ -10,7 +10,6 @@ The `Dml` class is designed to streamline and enhance DML operations within Sale
 
 Used to convert leads using the provided `Database.LeadConvert` instances. It leverages the standard `Database.convertLead` method to perform the conversion.
 
-Signatures:
 - `List<Database.LeadConvertResult> doConvert(List<Database.LeadConvert> leadsToConvert)`
 - `Database.LeadConvertResult doConvert(Database.LeadConvert leadToConvert)`
 
@@ -18,7 +17,6 @@ Signatures:
 
 Used to delete records from the Salesforce database. It leverages the standard `Database.delete` method to perform the deletion.
 
-Signatures:
 - `List<Database.DeleteResult> doDelete(List<Id> recordIds)`
 - `Database.DeleteResult doDelete(Id recordId)`
 - `Database.DeleteResult doDelete(SObject record)`
@@ -28,7 +26,6 @@ Signatures:
 
 Used to delete records asynchronously from the Salesforce database. It leverages the standard `Database.deleteAsync` method to perform the deletion.
 
-Signatures:
 - `List<Database.DeleteResult> doDeleteAsync(List<SObject> records)`
 - `List<Database.DeleteResult> doDeleteAsync(List<Id> recordIds)`
 - `Database.DeleteResult doDeleteAsync(Id recordId)`
@@ -38,7 +35,6 @@ Signatures:
 
 Used to delete records immediately from the Salesforce database. It leverages the standard `Database.deleteImmediate` method to perform the deletion.
 
-Signatures:
 - `List<Database.DeleteResult> doDeleteImmediate(List<SObject> records)`
 - `List<Database.DeleteResult> doDeleteImmediate(List<Id> recordIds)`
 - `Database.DeleteResult doDeleteImmediate(Id recordId)`
@@ -48,7 +44,6 @@ Signatures:
 
 Used to perform dynamic DML operations on records. The type of operation to be perfomed is based on the specified `Dml.Operation` value.
 
-Signatures:
 - `List<Object> doDml(Operation operation, List<SObject> records)`
 - `Object doDml(Operation operation, SObject record)`
 
@@ -56,7 +51,6 @@ Signatures:
 
 Used to hard delete records from the Salesforce database. The specified records are deleted permanently, and cannot be recovered from the recycle bin.
 
-Signatures:
 - `List<Database.DeleteResult> doHardDelete(List<Id> recordIds)`
 - `Database.DeleteResult doHardDelete(Id recordId)`
 - `List<Database.DeleteResult> doHardDelete(List<SObject> records)`
@@ -66,7 +60,6 @@ Signatures:
 
 Used to insert records into the Salesforce database. It leverages the standard `Database.insert` method to perform the insertion.
 
-Signatures:
 - `List<Database.SaveResult> doInsert(List<SObject> records)`
 - `Database.SaveResult doInsert(SObject record)`
 
@@ -74,7 +67,6 @@ Signatures:
 
 Used to insert records asynchronously into the Salesforce database. It leverages the standard `Database.insertAsync` method to perform the insertion.
 
-Signatures:
 - `List<Database.SaveResult> doInsertAsync(List<SObject> records)`
 - `Database.SaveResult doInsertAsync(SObject record)`
 
@@ -82,7 +74,6 @@ Signatures:
 
 Used to insert records immediately into the Salesforce database. It leverages the standard `Database.insertImmediate` method to perform the insertion.
 
-Signatures:
 - `List<Database.SaveResult> doInsertImmediate(List<SObject> records)`
 - `Database.SaveResult doInsertImmediate(SObject record)`
 
@@ -90,7 +81,6 @@ Signatures:
 
 Used to publish platform events to the Salesforce event bus.
 
-Signatures:
 - `List<Database.SaveResult> doPublish(List<SObject> events)`
 - `Database.SaveResult doPublish(SObject event)`
 
@@ -98,7 +88,6 @@ Signatures:
 
 Used to undelete records from the Salesforce recycle bin, restoring them to their original state.
 
-Signatures:
 - `List<Database.UndeleteResult> doUndelete(List<Id> recordIds)`
 - `Database.UndeleteResult doUndelete(Id recordId)`
 - `Database.UndeleteResult doUndelete(SObject record)`
@@ -108,7 +97,6 @@ Signatures:
 
 Used to update records in the Salesforce database. It leverages the standard `Database.update` method to perform the update.
 
-Signatures:
 - `List<Database.SaveResult> doUpdate(List<SObject> records)`
 - `Database.SaveResult doUpdate(SObject record)`
 
@@ -116,7 +104,6 @@ Signatures:
 
 Used to update records asynchronously in the Salesforce database. It leverages the standard `Database.updateAsync` method to perform the update.
 
-Signatures:
 - `List<Database.SaveResult> doUpdateAsync(List<SObject> records)`
 - `Database.SaveResult doUpdateAsync(SObject record)`
 
@@ -124,7 +111,6 @@ Signatures:
 
 Used to update records immediately in the Salesforce database. It leverages the standard `Database.updateImmediate` method to perform the update.
 
-Signatures:
 - `List<Database.SaveResult> doUpdateImmediate(List<SObject> records)`
 - `Database.SaveResult doUpdateImmediate(SObject record)`
 
@@ -132,7 +118,6 @@ Signatures:
 
 Used to insert or update records in the Salesforce database, based on whether the records already exist. It leverages the standard `Database.upsert` method to perform the operation.
 
-Signatures:
 - `List<Database.UpsertResult> doUpsert(List<SObject> records)`
 - `Database.UpsertResult doUpsert(SObject record)`
 
@@ -142,89 +127,76 @@ Signatures:
 
 This method returns the current access level to be used in all DML operations.
 
-Signatures:
 - `System.AccessLevel getAccessLevel()`
 
 #### `getAllOrNone`
 
 This method returns the current all-or-none behavior to be used in all DML operations. Defaults to `true` to mirror the behavior of standard `Database` DML methods.
 
-Signatures:
 - `Boolean getAllOrNone()`
 
 #### `getDeleteCallback`
 
 This method returns the current `AsyncDeleteCallback` to be used in `doDeleteAsync()` operations.
 
-Signatures:
 - `DataSource.AsyncDeleteCallback getDeleteCallback()`
 
 #### `getSaveCallback`
 
 This method returns the current `AsyncSaveCallback` to be used in `doInsertAsync()` and `doUpdateAsync()` operations.
 
-Signatures:
 - `DataSource.AsyncSaveCallback getSaveCallback()`
 
 #### `getDmlOptions`
 
 This method returns the current `DmlOptions` class to be used in all DML operations.
 
-Signatures:
 - `Database.DmlOptions getDmlOptions()`
 
 #### `getExternalIdField`
 
 This method returns the current external ID field to be used in upsert operations.
 
-Signatures:
 - `SObjectField getExternalIdField()`
 
 #### `reset`
 
 This method resets the current DML class's parameters to their default values.
 
-Signatures:
 - `Dml reset()`
 
 #### `setAccessLevel`
 
 This method sets the access level to be used in DML operations.
 
-Signatures:
 - `Dml setAccessLevel(System.AccessLevel level)`
 
 #### `setAllOrNone`
 
 This method sets the all-or-none parameter for DML methods, determining whether partial failures will cause the entire operation to fail.
 
-Signatures:
 - `Dml setAllOrNone(Boolean value)`
 
 #### `setCallback`
 
 This method sets the callback function to be run in `doDeleteAsync()` operations.
 
-Signatures:
 - `Dml setCallback(DataSource.AsyncDeleteCallback deleteCallback)`
 
 This method sets the callback function to be run in `doInsertAsync()` and `doUpdateAsync()` operations.
 
-Signatures:
 - `Dml setCallback(DataSource.AsyncSaveCallback saveCallback)`
 
 #### `setDmlOptions`
 
 This method sets the `DmlOptions` to be used in all DML operations going forward.
 
-Signatures:
 - `Dml setDmlOptions(Database.DmlOptions dmlOptions)`
 
 #### `setExternalIdField`
 
 This method sets the external ID field to be used in upsert operations, instead of the record ID.
 
-Signatures:
 - `Dml setExternalIdField(SObjectField field)`
 
 ## Public Inner Types
