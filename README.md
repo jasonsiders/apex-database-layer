@@ -211,7 +211,7 @@ static void shouldUseMixedOfMocksAndRealDml() {
 ---
 
 ### Building Test Records
-While mocking database operations can provide many benefits, the process of mocking SObject records in the absence of real DML or SOQL can be tedious. 
+While mocking database operations can provide many benefits, mocking SObject records in the absence of real DML or SOQL can be tedious. 
 
 The `MockRecord` class addresses many of the pains associated with this process, including:
 - Set read-only fields (including system-level fields)
