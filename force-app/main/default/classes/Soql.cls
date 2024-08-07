@@ -209,7 +209,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			return formatted?.trim();
 		}
 
-		public Aggregation withAlias(String alias) {
+		public Soql.Aggregation withAlias(String alias) {
 			this.alias = alias;
 			return this;
 		}
