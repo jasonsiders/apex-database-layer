@@ -578,8 +578,36 @@ Soql soql = (Soql) DatabaseLayer.newSoql(Account.SObjectType)
 
 ## Mocking SOQL Queries
 
-- [ ] Simulating queries
-	- The `MockSoql.Simulator` interface and `setMock()` method
-	- (TODO) The `MockSoql.StaticSimulator` class?
-- [ ] Constructing `AggregateResults`: The `MockSoql.AggregateResult` class
-- [ ] Special Considerations for Mocking `QueryLocators`
+The `MockSoql` class can be used in place of a normal `Soql` object in the `@IsTest` context. The `MockSoql` class allows developers to inject dynamic static or dynamic results in their query objects, instead of actually querying the Salesforce database.
+
+### Instantiating Mocks
+In `@IsTest` context, mock SOQL operations by calling the `DatabaseLayer.useMocks()` method. Once this is done, the `DatabaseLayer.newSoql()` method will return `MockSoql` objects. If the `newSoql` method is called _before_ `useMocks`, then those objects will continue to be instances of `Soql`, and not `MockSoql`. To prevent issues, call the `useMocks()` method as the first line in your test. 
+
+### Injecting Mock Query Results
+- [ ] TODO!
+
+#### Static Results
+- [ ] TODO!
+
+#### Custom/Dynamic Results
+- [ ] TODO!
+
+#### Simulating SOQL Failures
+- [ ] TODO!
+
+#### The `MockSoql.Simulator` Interface
+- [ ] TODO!
+
+### Mocking Special Query Return Types
+Some queries return special types that cannot be directly constructed in tests. Where this is the case, use one of the `MockSoql` types below to inject query results:
+
+#### The `MockSoql.AggregateResult` Class
+- [ ] TODO!
+
+#### The `MockSoql.QueryLocator` Class
+- [ ] TODO!
+- [ ] Add the caveat about testing batch classes
+
+#### The `MockSoql.QueryLocatorIterator` Class
+- [ ] TODO!
+
