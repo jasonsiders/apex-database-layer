@@ -314,7 +314,7 @@ private class SoqlTest {
 		Soql soql = (Soql) DatabaseLayer.newSoql(User.SObjectType)
 			?.addWhere(User.IsActive, Soql.EQUALS, true)
 			?.addWhere('Profile.Name', Soql.EQUALS, 'System Administrator')
-			?.setWhereLogic(Soql.LogicType.ANY_CONDITIONS)
+			?.setOuterWhereLogic(Soql.LogicType.ANY_CONDITIONS)
 			?.setRowLimit(1);
 		String expected = 'SELECT Id FROM User WHERE IsActive = true OR Profile.Name = \'System Administrator\' LIMIT 1';
 
@@ -397,7 +397,7 @@ private class SoqlTest {
 			?.groupBy(User.ProfileId)
 			?.addHaving(count, Soql.GREATER_THAN, 1)
 			?.addHaving(count, Soql.LESS_OR_EQUAL, 100)
-			?.setHavingLogic(Soql.LogicType.ANY_CONDITIONS);
+			?.setOuterHavingLogic(Soql.LogicType.ANY_CONDITIONS);
 		String expected = 'SELECT ProfileId FROM User GROUP BY ProfileId HAVING COUNT(Id) > 1 OR COUNT(Id) <= 100';
 
 		Test.startTest();

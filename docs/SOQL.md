@@ -122,11 +122,11 @@ Selects all fields from the specified entity by querying the schema for all avai
 
 - `Soql.Builder selectAll()`
 
-#### `setHavingLogic`
+#### `setOuterHavingLogic`
 
 Sets the logical operator (AND/OR) for combining HAVING conditions.
 
-- `Soql.Builder setHavingLogic(Soql.LogicType newLogicType)`
+- `Soql.Builder setOuterHavingLogic(Soql.LogicType newLogicType)`
 
 #### `setRowLimit`
 
@@ -146,11 +146,11 @@ Sets the usage context for the query.
 
 - `Soql.Builder setUsage(Soql.Usage usage)`
 
-#### `setWhereLogic`
+#### `setOuterWhereLogic`
 
 Sets the logical operator (AND/OR) for combining WHERE conditions.
 
-- `Soql.Builder setWhereLogic(Soql.LogicType newLogicType)`
+- `Soql.Builder setOuterWhereLogic(Soql.LogicType newLogicType)`
 
 #### `usingScope`
 
@@ -228,11 +228,38 @@ Set the underlying value to be substituted for the bind variable. This is done a
 
 ### Condition 
 
-- [ ] !TODO!
+Represents a single `WHERE` clause element. For example, `WHERE StageName = 'Closed Won'`. 
+```java
+Soql.Condition condition = new Soql.Condition(
+	Opportunity.StageName, 
+	Soql.Operator.EQUALS, 
+	'Closed Won'
+);
+```
 
-### Criteria
+Add `Soql.Condition` objects to an existing where via the `addWhere` method. When multiple conditions are present, the query will use `AND` logic to specify that all conditions must be true by default:
+```java
+// SELECT Id FROM Opportunity WHERE StageName = 'Closed Won' AND Amount > 1000000
+Soql.Condition isClosedWon = new Soql.Condition(
+	Opportunity.StageName,
+	Soql.Operator.EQUALS,
+	'Closed Won'
+);
+Soql.Condition worthAMil = new Soql.Condition(
+	Opportunity.Amount,
+	Soql.Operator.GREATER_THAN,
+	1000000
+);
+Soql soql = (Soql) DatabaseLayer.newSoql(Opportunity.SObjectType)
+	?.addWhere(isClosedWon)
+	?.addWhere(worthAMil);
+```
 
-- [ ] !TODO!
+To use `OR` logic instead, use the [`setOuterWhereLogic`](#setouterwherelogic) SOQL method. To use complex or nested logic, use the [Soql.ConditionalLogic](#conditionallogic) class. 
+
+#### Constructors
+- `Soql.Condition(String property, Soql.Operator operator, Object value)`
+- `Soql.Condition(SObjectField field, Soql.Operator operator, Object value)`
 
 ### ConditionalLogic
 
@@ -268,18 +295,36 @@ This class extends `Soql.Builder`, and therefore has all of the same query-build
 
 ### LogicType
 
-Indicates the enclosing logic for `Soql.ConditionalLogic` objects used in _WHERE_ or _HAVING_ clauses.  Values include:
+Indicates the enclosing logic for the `Soql.ConditionalLogic` objects used in _WHERE_ or _HAVING_ clauses.  Values include:
 - `ALL_CONDITIONS`
 - `ANY_CONDITIONS`
 
-Use in the `setWhereLogic` or `setHavingLogic` SOQL methods. Example:
+Use in the `setOuterWhereLogic` or `setOuterHavingLogic` SOQL methods. Example:
 ```java
 Soql soql = (Soql) DatabaseLayer.newSoql(User.SObjectType)
 	?.addWhere(User.IsActive, Soql.EQUALS, true)
 	?.addWhere('Profile.Name', Soql.EQUALS, 'System Administrator')
-	?.setWhereLogic(Soql.LogicType.ANY_CONDITIONS);
+	?.setOuterWhereLogic(Soql.LogicType.ANY_CONDITIONS);
 ```
 
+When `setOuterWhereLogic(Soql.LogicType.ANY_CONDITIONS)` is used, any new criterion added to the query via the `addWhere` method will be added with an `OR` keyword. For example:
+```java
+// SELECT Id FROM Opportunity WHERE StageName = 'Closed Won' OR Amount > 1000000
+Soql.Condition isClosedWon = new Soql.Condition(
+	Opportunity.StageName,
+	Soql.Operator.EQUALS,
+	'Closed Won'
+);
+Soql.Condition worthAMil = new Soql.Condition(
+	Opportunity.Amount,
+	Soql.Operator.GREATER_THAN,
+	1000000
+);
+Soql soql = (Soql) DatabaseLayer.newSoql(Opportunity.SObjectType)
+	?.setOuterWhereLogic(Soql.LogicType.ANY_CONDITIONS)
+	?.setWhere(isClosedWon)
+	?.setWhere(worthAMil);
+```
 ### NullOrder
 
 Indicates how null values should be processed in _ORDER BY_ clauses. Values include:

@@ -392,7 +392,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			return this.addWhere(field?.toString(), operator, binder);
 		}
 
-		public Soql.Builder setWhereLogic(Soql.LogicType newLogicType) {
+		public Soql.Builder setOuterWhereLogic(Soql.LogicType newLogicType) {
 			this.whereCriteria?.setLogicType(newLogicType);
 			return this;
 		}
@@ -425,7 +425,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			return this;
 		}
 
-		public Soql.Builder setHavingLogic(Soql.LogicType newLogicType) {
+		public Soql.Builder setOuterHavingLogic(Soql.LogicType newLogicType) {
 			this.havingCriteria?.setLogicType(newLogicType);
 			return this;
 		}
