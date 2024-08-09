@@ -199,7 +199,7 @@ Adds an alias to the aggregation. Ex., `numRecords`.
 
 ### Binder
 
-Registers a bind variable to be used in the query. For example, `SELECT Id FROM Account WHERE Name = :foo`. 
+Registers a bind variable to be used in the query. Ex, `SELECT Id FROM Account WHERE Name = :foo`. 
 
 Use this method in conjunction with the `addWhere` and `bind` SOQL methods. 
 
@@ -286,24 +286,44 @@ This pattern faciliates building extremely complex query logic, like the (unnece
 	)
 */
 // (Account.BillingState = 'CA' AND Amount > 2000000)
-Soql.Condition fromCa = new Soql.Condition('Account.BillingState', Soql.Operator.EQUALS, 'CA');
-Soql.Condition greaterThan2Mil = new Soql.Condition(Opportunity.Amount, Soql.Operator.GREATER_THAN, 2000000);
+Soql.Condition fromCa = new Soql.Condition(
+	'Account.BillingState', 
+	Soql.Operator.EQUALS, 
+	'CA'
+);
+Soql.Condition greaterThan2Mil = new Soql.Condition(
+	Opportunity.Amount, 
+	Soql.Operator.GREATER_THAN, 
+	2000000
+);
 Soql.ConditionalLogic nest1 = new Soql.ConditionalLogic()
 	?.addCondition(fromCa)
 	?.addCondition(greaterThan2Mil);
 // (CloseDate >= 2024-01-01 OR (...))
-Soql.Condition closedThisYear = new Soql.Condition(Opportunity.CloseDate, Soql.Operator.GREATER_OR_EQUAL, Date.newInstance(2024, 01, 01));
+Soql.Condition closedThisYear = new Soql.Condition(
+	Opportunity.CloseDate, 
+	Soql.Operator.GREATER_OR_EQUAL, 
+	Date.newInstance(2024, 01, 01)
+);
 Soql.ConditionalLogic nest2 = new Soql.ConditionalLogic()
 	?.addCondition(closedThisYear)
 	?.addCondition(nest1)
 	?.setLogicType(Soql.LogicType.ANY_CONDITIONS);
 // (Amount > 1000000 AND (...))
-Soql.Condition greaterThan1Mil = new Soql.Condition(Opportunity.Amount, Soql.Operator.GREATER_THAN, 1000000);
+Soql.Condition greaterThan1Mil = new Soql.Condition(
+	Opportunity.Amount, 
+	Soql.Operator.GREATER_THAN, 
+	1000000
+);
 Soql.ConditionalLogic nest3 = new Soql.ConditionalLogic()
 	?.addCondition(greaterThan1Mil)
 	?.addCondition(nest2);
 // IsWon = true OR (...)
-Soql.Condition isWon = new Soql.Condition(Opportunity.IsWon, Soql.Operator.EQUALS, true);
+Soql.Condition isWon = new Soql.Condition(
+	Opportunity.IsWon, 
+	Soql.Operator.EQUALS, 
+	true
+);
 Soql soql = DatabaseLayer.newSoql(Opportunity.SObjectType)
 	?.setOuterWhereLogic(Soql.LogicType.ANY_CONDITIONS)
 	?.setWhere(isWon)
@@ -349,13 +369,13 @@ Determines the enclosing `Soql.LogicType` object. This affects the delimiter tha
 
 Enumerates the different [Aggregate Functions](https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_select_agg_functions.htm) that can be used in SOQL queries. Valid options include:
 
-- AVG
-- COUNT
-- COUNT_DISTINCT
-- FORMAT
-- MIN
-- MAX
-- SUM
+- `AVG`
+- `COUNT`
+- `COUNT_DISTINCT`
+- `FORMAT`
+- `MIN`
+- `MAX`
+- `SUM`
 
 ### InnerQuery
 
