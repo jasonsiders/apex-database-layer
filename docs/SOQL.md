@@ -1,6 +1,6 @@
 # The `Soql` Class
 
-- ! TODO ! Add some general information about the class
+The `Soql` class is designed to facilitate the construction and execution of SOQL queries within the Salesforce platform. This class abstracts direct inline SOQL queries, promoting testability by allowing query methods to be mocked using the `MockSoql` class. The class allows developers to create and execute fully customizable queries, with methods that map directly to Salesforce's underlying `Database` query methods. Use this class in place of inline SOQL to pave the way for faster, more scalable unit test that run independent of the Salesforce database.
 
 ## Public Methods
 
