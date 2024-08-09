@@ -257,13 +257,93 @@ Soql soql = (Soql) DatabaseLayer.newSoql(Opportunity.SObjectType)
 
 To use `OR` logic instead, use the [`setOuterWhereLogic`](#setouterwherelogic) SOQL method. To use complex or nested logic, use the [Soql.ConditionalLogic](#conditionallogic) class. 
 
+Like `Soql.ConditionalLogic`, the `Soql.Conditional` class implements a base `Soql.Criteria` interface, which the framework uses internally to keep things tidy. 
+
 #### Constructors
+
 - `Soql.Condition(String property, Soql.Operator operator, Object value)`
 - `Soql.Condition(SObjectField field, Soql.Operator operator, Object value)`
 
 ### ConditionalLogic
 
-- [ ] !TODO!
+Represents a set of criterion to be added to a query. These criterion can be `Soql.Condition` objects, or other (nested) `Soql.ConditionalLogic` objects. Depending on the specified `Soql.LogicType`, these conditions are be delimited by `AND` or `OR` keywords. 
+
+This pattern faciliates building extremely complex query logic, like the (unnecessarily complex) one below:
+```java
+/*
+	SELECT Id FROM Opportunity WHERE (
+		IsWon = true 
+		OR (
+			Amount > 1000000
+			AND (
+				CloseDate >= 2024-01-01 
+				OR (
+					Account.BillingState = 'CA'
+					AND Amount > 20000000
+				)
+			)
+		)
+	)
+*/
+// (Account.BillingState = 'CA' AND Amount > 2000000)
+Soql.Condition fromCa = new Soql.Condition('Account.BillingState', Soql.Operator.EQUALS, 'CA');
+Soql.Condition greaterThan2Mil = new Soql.Condition(Opportunity.Amount, Soql.Operator.GREATER_THAN, 2000000);
+Soql.ConditionalLogic nest1 = new Soql.ConditionalLogic()
+	?.addCondition(fromCa)
+	?.addCondition(greaterThan2Mil);
+// (CloseDate >= 2024-01-01 OR (...))
+Soql.Condition closedThisYear = new Soql.Condition(Opportunity.CloseDate, Soql.Operator.GREATER_OR_EQUAL, Date.newInstance(2024, 01, 01));
+Soql.ConditionalLogic nest2 = new Soql.ConditionalLogic()
+	?.addCondition(closedThisYear)
+	?.addCondition(nest1)
+	?.setLogicType(Soql.LogicType.ANY_CONDITIONS);
+// (Amount > 1000000 AND (...))
+Soql.Condition greaterThan1Mil = new Soql.Condition(Opportunity.Amount, Soql.Operator.GREATER_THAN, 1000000);
+Soql.ConditionalLogic nest3 = new Soql.ConditionalLogic()
+	?.addCondition(greaterThan1Mil)
+	?.addCondition(nest2);
+// IsWon = true OR (...)
+Soql.Condition isWon = new Soql.Condition(Opportunity.IsWon, Soql.Operator.EQUALS, true);
+Soql soql = DatabaseLayer.newSoql(Opportunity.SObjectType)
+	?.setOuterWhereLogic(Soql.LogicType.ANY_CONDITIONS)
+	?.setWhere(isWon)
+	?.setWhere(nest3);
+```
+
+By default, the `Soql` class uses an internal `Soql.ConditionalLogic` object as the "enclosing" logic for `WHERE` and `HAVING` clauses. Calls to the `addWhere` or `addHaving` Soql methods add the criterion to the appropriate `Soql.ConditionalLogic` object under the hood. Calling the `setOuterWhereLogic` and `setOuterHavingLogic` Soql methods change the appropriate object's `Soql.LogicType`.
+
+```java
+// SELECT Id FROM Opportunity WHERE StageName = 'Closed Won' AND Amount > 1000000
+Soql.Condition isClosedWon = new Soql.Condition(
+	Opportunity.StageName,
+	Soql.Operator.EQUALS,
+	'Closed Won'
+);
+Soql.Condition worthAMil = new Soql.Condition(
+	Opportunity.Amount,
+	Soql.Operator.GREATER_THAN,
+	1000000
+);
+Soql soql = (Soql) DatabaseLayer.newSoql(Opportunity.SObjectType)
+	?.addWhere(isClosedWon)
+	?.addWhere(worthAMil);
+```
+
+Like `Soql.Condition`, the `Soql.ConditionalLogic` class implements a base `Soql.Criteria` interface, which the framework uses internally to keep things tidy. 
+
+#### `addCondition`
+
+Adds a `Soql.Criteria` object (`Soql.Condition` or another `Soql.ConditionalLogic` object(s)) to the current list of criterion. 
+
+- `Soql.ConditionalLogic addCondition(List<Soql.Criteria> criterion)`
+- `Soql.ConditionalLogic addCondition(Soql.Criteria criteria)`
+- `Soql.ConditionalLogic addCondition(String fieldName, Soql.Operator operator, Object value)`
+- `Soql.ConditionalLogic addCondition(SObjectField field, Soql.Operator operator, Object value)`
+
+#### `setLogicType`
+Determines the enclosing `Soql.LogicType` object. This affects the delimiter that will be applied to the `Soql.ConditionalLogic`'s criterion at runtime; `ANY_CONDITIONS` will produce an "OR" delimiter. `ALL_CONDITIONS` will produce an "AND" delimiter. By default, the `Soql.ConditionalLogic` uses `Soql.LogicType.ALL_CONDITIONS`; there is no need to set this explicitly in most cases except for changing this to use "OR" logic. 
+
+- `Soql.ConditionalLogic setLogicType(Soql.LogicType logicType)`
 
 ### Function
 

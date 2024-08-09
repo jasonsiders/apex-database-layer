@@ -582,13 +582,13 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		private List<Soql.Criteria> criterion = new List<Soql.Criteria>();
 		private Soql.LogicType logicType = Soql.LogicType.ALL_CONDITIONS;
 
-		public ConditionalLogic addConditions(List<Soql.Criteria> criterion) {
+		public ConditionalLogic addCondition(List<Soql.Criteria> criterion) {
 			this.criterion?.addAll(criterion);
 			return this;
 		}
 
 		public ConditionalLogic addCondition(Soql.Criteria criteria) {
-			return this.addConditions(new List<Soql.Criteria>{ criteria });
+			return this.addCondition(new List<Soql.Criteria>{ criteria });
 		}
 
 		public ConditionalLogic addCondition(String fieldName, Soql.Operator operator, Object value) {
