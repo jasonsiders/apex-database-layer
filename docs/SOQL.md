@@ -2,6 +2,21 @@
 
 The `Soql` class is designed to facilitate the construction and execution of SOQL queries within the Salesforce platform. This class abstracts direct inline SOQL queries, promoting testability by allowing query methods to be mocked using the `MockSoql` class. The class allows developers to create and execute fully customizable queries, with methods that map directly to Salesforce's underlying `Database` query methods. Use this class in place of inline SOQL to pave the way for faster, more scalable unit test that run independent of the Salesforce database.
 
+## Constructing `Soql` Objects
+
+`Soql` objects cannot be directly constructed via the `new` keyword. Instead, use `DatabaseLayer.newDml()`, and cast the result to the `Soql` type:
+```java
+Soql soql = (Soql) DatabaseLayer.newSoql(Account.SObjectType);
+```
+
+The `DatabaseLayer` class is responsible for instantiating database objects of the correct type at runtime. In `@IsTest` context, developers can call `DatabaseLayer.useMocks()`, and an instance of the `MockSoql` class will be returned instead:
+
+```java
+DatabaseLayer.useMocks();
+Soql soql = (Soql) DatabaseLayer.newSoql(Account.SObjectType);
+Assert.isInstanceOfType(soql, MockSoql.class, 'Not a mock');
+```
+
 ## Public Methods
 
 ### Performing Queries

@@ -2,6 +2,21 @@
 
 The `Dml` class is designed to streamline and enhance DML operations within Salesforce. It encapsulates standard DML keywords and Database methods, providing a simplified interface for CRUD operations. This class enables developers to easily mock DML operations, improving unit testing and reducing complexity. Additionally, it supports dynamic and asynchronous DML execution, immediate operations, and custom extensibility. Use the `Dml` class to write cleaner, more maintainable code while efficiently managing complex business logic.
 
+## Constructing `Dml` Objects
+
+`Dml` objects cannot be directly constructed via the `new` keyword. Instead, use `DatabaseLayer.newDml()`:
+```java
+Dml dml = DatabaseLayer.newDml();
+```
+
+The `DatabaseLayer` class is responsible for instantiating database objects of the correct type at runtime. In `@IsTest` context, developers can call `DatabaseLayer.useMocks()`, and an instance of the `MockDml` class will be returned instead:
+
+```java
+DatabaseLayer.useMocks();
+Dml dml = DatabaseLayer.useMocks();
+Assert.isInstanceOfType(dml, MockDml.class, 'Not a mock');
+```
+
 ## Public Methods
 
 ### Performing DML
