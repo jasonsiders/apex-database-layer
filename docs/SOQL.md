@@ -425,7 +425,29 @@ Soql soql = (Soql) DatabaseLayer.newSoql(Opportunity.SObject)?.orderBy(sortOrder
 
 ### QueryLocator
 
-- [ ] !TODO!
+Decorates `Database.QueryLocator` objects that are returned by `Database.getQueryLocator`. These objects cannot be serialized or mocked by other means. 
+
+Use this object in conjunction with the `getQueryLocator` method:
+
+```java
+Soql soql = DatabaseLayer.newSoql(Account.SObjectType);
+Soql.QueryLocator locator = soql?.getQueryLocator();
+```
+
+#### `getCursor`
+Returns the underlying `Database.QueryLocator` object used to construct this object.
+
+- `Database.QueryLocator getCursor()`
+
+#### `getQuery`
+Returns the query from the underlying `Database.QueryLocator`'s `getQuery()` method.
+
+- `String getQuery()`
+
+#### `iterator`
+Returns a `System.Iterator<SObject>` from the underlying `Database.QueryLocator`'s `iterator()` method.
+
+- `System.Iterator<SObject> iterator()`
 
 ### Scope
 
@@ -461,7 +483,27 @@ Soql soql = (Soql) DatabaseLayer.newSoql(Opportunity.SObjectType)
 
 ### SortOrder
 
-- [ ] !TODO!
+Represents the `ORDER BY` clause in a SOQL query. Use this object in conjunction with the `orderBy` SOQL method. For example:
+
+```java
+Soql.SortOrder firstCreated = new Soql.SortOrder(
+	Account.CreatedDate, 
+	Soql.SortDirection.ASCENDING
+);
+Soql soql = new Soql(Account.SObjectType)?.orderBy(firstCreated);
+```
+
+#### Constructors
+
+- `SortOrder(List<String> fieldNames, Soql.SortDirection direction)`
+- `SortOrder(String fieldName, Soql.SortDirection)`
+- `SortOrder(List<SObjectField> fields, Soql.SortDirection direction)`
+- `SortOrder(SObjectField field, Soql.SortDirection direction)`
+
+#### `setNullOrder`
+Adds an optional "null order" clause to the `ORDER BY` condition. For example, "ORDER BY ExternalId__c ASC NULLS LAST"
+
+- `Soql.SortOrder setNullOrder(Soql.NullOrder nullOrder)`
 
 ### Subquery
 
