@@ -1,7 +1,7 @@
 # Apex Database Layer
-Welcome to the apex-database-layer, a comprehensive toolkit designed to simplify database operations and enhance testing capabilities within Salesforce. This package abstracts standard DML and SOQL operations, offering a more flexible, testable, and mockable approach to handling database interactions in your Apex code.
+Welcome to the `apex-database-layer`, a comprehensive toolkit designed to simplify database operations and enhance testing capabilities within Salesforce. This package abstracts standard DML and SOQL operations, offering a more flexible, testable, and mockable approach to handling database interactions in your Apex code.
 
-Whether you're building complex applications or writing robust tests, the apex-database-layer equips you with tools to streamline your development process. By leveraging this package, you can ensure that your database logic is not only efficient but also easily adaptable to various testing scenarios.
+Whether you're building complex applications or writing robust tests, the `apex-database-layer` equips you with tools to streamline your development process. By leveraging this package, you can ensure that your database logic is not only efficient but also easily adaptable to various testing scenarios.
 
 
 ## Getting Started
