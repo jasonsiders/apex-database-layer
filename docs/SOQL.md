@@ -23,7 +23,7 @@ Assert.isInstanceOfType(soql, MockSoql.class, 'Not a mock');
 
 #### `aggregateQuery`
 
-Performs aggregate queries and returns results as a list of `Soql.AggregateResult` objects. This method wraps the `Schema.AggregateResult` objects to provide mockable results in tests.
+Performs aggregate queries and returns results as a list of `Soql.AggregateResult` objects. This type wraps the `Schema.AggregateResult` objects to provide mockable results in tests.
 - `List<Soql.AggregateResult> aggregateQuery()`
 
 #### `countQuery`
@@ -183,7 +183,7 @@ Enforces security in the query to ensure that the user has appropriate access to
 
 ### AggregateResult
 
-Wraps the `Schema.AggregateResult` class, which cannot be mocked otherwise. Objects of this type are returned by the `aggregateQuery` SOQL method, and can be mocked by the `MockSoql.AggregateResult` class.
+Wraps the `Schema.AggregateResult` class, which cannot be mocked otherwise. Objects of this type are returned by the `aggregateQuery` SOQL method, and can be mocked by the `MockSoql.AggregateResult` class
 
 #### `get`
 
@@ -595,19 +595,39 @@ In `@IsTest` context, mock SOQL operations by calling the `DatabaseLayer.useMock
 #### Simulating SOQL Failures
 - [ ] TODO!
 
-#### The `MockSoql.Simulator` Interface
+### The `MockSoql.Simulator` Interface
 - [ ] TODO!
 
-### Mocking Special Query Return Types
-Some queries return special types that cannot be directly constructed in tests. Where this is the case, use one of the `MockSoql` types below to inject query results:
+### The `MockSoql.AggregateResult` Class
+A constructable version of the `Soql.AggregateResult` class, which wraps the `Schema.AggregateResult` class and its methods. `Schema.AggregateResult` objects cannot be directly constructed, serialized, or otherwise mocked. 
 
-#### The `MockSoql.AggregateResult` Class
-- [ ] TODO!
+Use this object in conjunction with the `setMock` method, or the `MockSoql.Simulator` interface to inject results for aggregate queries. For example:
 
-#### The `MockSoql.QueryLocator` Class
+```java
+DatabaseLayer.useMocks();
+String alias = 'numRecords';
+Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, Account.Id)
+	?.withAlias(alias);
+MockSoql soql = (MockSoql) DatabaseLayer.newQuery(Account.SObjectType)
+	?.addSelect(count);
+MockSoql.AggregateResult agg = new MockSoql.AggregateResult()
+	?.addParameter(alias, 100);
+soql?.setMock(new List<MockSoql.AggregateResult>{ agg });
+List<Soql.AggregateResult> results = soql?.aggregateQuery();
+Assert.areEqual(1, results?.size(), 'Wrong # of results');
+Assert.areEqual(100, results[0]?.get(alias), 'Wrong count');
+```
+
+#### `addParameter`
+Adds a column to the current `AggregateResult`. These can be created with or without an _alias_. If an alias isn't provided, the column is assigned a default alias, ex. `expr0'`. This mirrors the behavior of the underlying `Schema.AggregateResult` object. 
+
+- `MockSoql.AggregateResult addParameter(String alias, Object value)`
+- `MockSoql.AggregateResult addParameter(Object value)`
+
+### The `MockSoql.QueryLocator` Class
 - [ ] TODO!
 - [ ] Add the caveat about testing batch classes
 
-#### The `MockSoql.QueryLocatorIterator` Class
+### The `MockSoql.QueryLocatorIterator` Class
 - [ ] TODO!
 

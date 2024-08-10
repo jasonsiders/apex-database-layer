@@ -82,9 +82,9 @@ public class MockSoql extends Soql {
 			super(null);
 		}
 
-		public AggregateResult addParameter(String key, Object value) {
-			this.params?.put(key, value);
-			this.incrementAliasedKeyCount(key);
+		public AggregateResult addParameter(String alias, Object value) {
+			this.params?.put(alias, value);
+			this.incrementAliasedKeyCount(alias);
 			return this;
 		}
 
