@@ -584,6 +584,15 @@ The `MockSoql` class can be used in place of a normal `Soql` object in the `@IsT
 In `@IsTest` context, mock SOQL operations by calling the `DatabaseLayer.useMocks()` method. Once this is done, the `DatabaseLayer.newSoql()` method will return `MockSoql` objects. If the `newSoql` method is called _before_ `useMocks`, then those objects will continue to be instances of `Soql`, and not `MockSoql`. To prevent issues, call the `useMocks()` method as the first line in your test. 
 
 ### Injecting Mock Query Results
+By default, the `MockSoql`'s query methods will return an empty result set of the type that you are expecting:
+
+```java
+DatabaseLayer.useMocks()`
+MockSoql soql = (MockSoql) DatabaseLayer.newSoql(Account.SObjectType);
+List<Account> results = soql?.query();
+Assert.areEqual(0, results?.size(), 'Wrong # of resuls');
+```
+
 - [ ] TODO!
 
 #### Static Results
@@ -593,6 +602,9 @@ In `@IsTest` context, mock SOQL operations by calling the `DatabaseLayer.useMock
 - [ ] TODO!
 
 #### Simulating SOQL Failures
+- [ ] TODO!
+
+#### Mocking Query Locators
 - [ ] TODO!
 
 ### The `MockSoql.Simulator` Interface
@@ -623,11 +635,3 @@ Adds a column to the current `AggregateResult`. These can be created with or wit
 
 - `MockSoql.AggregateResult addParameter(String alias, Object value)`
 - `MockSoql.AggregateResult addParameter(Object value)`
-
-### The `MockSoql.QueryLocator` Class
-- [ ] TODO!
-- [ ] Add the caveat about testing batch classes
-
-### The `MockSoql.QueryLocatorIterator` Class
-- [ ] TODO!
-
