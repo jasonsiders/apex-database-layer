@@ -595,16 +595,16 @@ Assert.areEqual(0, results?.size(), 'Wrong # of resuls');
 
 - [ ] TODO!
 
-#### Static Results
+#### Inject Static Results with the `setMock` Method
 - [ ] TODO!
 
-#### Custom/Dynamic Results
+#### Inject Dynamic Results with the `setMock` Method
 - [ ] TODO!
 
-#### Simulating SOQL Failures
+#### Inject Exceptions with the `setError` Method
 - [ ] TODO!
 
-#### Mocking Query Locators
+### Mocking Query Locators
 - [ ] TODO!
 
 ### The `MockSoql.Simulator` Interface
