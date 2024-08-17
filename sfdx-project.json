@@ -5,8 +5,8 @@
 			"default": true
 		}
 	],
-	"name": "apxsp-mockdb",
+	"name": "apex-database-layer",
 	"namespace": "",
 	"sfdcLoginUrl": "https://login.salesforce.com",
-	"sourceApiVersion": "59.0"
+	"sourceApiVersion": "61.0"
 }

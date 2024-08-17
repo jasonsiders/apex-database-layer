@@ -4,7 +4,7 @@ public class MockSoql extends Soql {
 	 * This class mocks SOQL queries. By default, each query will return empty results.
 	 * Users can use the `setMock()` method to inject an object which will simulate the query & return results
 	 **/
-	static final String AGGREGATE_KEY_PREFIX = 'expr';
+	private static final String AGGREGATE_KEY_PREFIX = 'expr';
 	private MockSoql.Simulator simulator;
 
 	public MockSoql() {
@@ -16,10 +16,24 @@ public class MockSoql extends Soql {
 		this.fromEntity(objectType);
 	}
 
+	public Soql setError(Exception error) {
+		MockSoql.Simulator simulator = new MockSoql.StaticResults(error);
+		return this.setMock(simulator);
+	}
+
+	public Soql setError() {
+		return this.setError(new System.QueryException());
+	}
+
 	public Soql setMock(MockSoql.Simulator simulator) {
 		// Inject an Simulator object, which will return mock results when the query runs.
 		this.simulator = simulator;
 		return this;
+	}
+
+	public Soql setMock(List<Object> results) {
+		MockSoql.Simulator simulator = new MockSoql.StaticResults(results);
+		return this.setMock(simulator);
 	}
 
 	// **** OVERRIDES **** //
@@ -68,9 +82,9 @@ public class MockSoql extends Soql {
 			super(null);
 		}
 
-		public AggregateResult addParameter(String key, Object value) {
-			this.params?.put(key, value);
-			this.incrementAliasedKeyCount(key);
+		public AggregateResult addParameter(String alias, Object value) {
+			this.params?.put(alias, value);
+			this.incrementAliasedKeyCount(alias);
 			return this;
 		}
 
@@ -152,6 +166,26 @@ public class MockSoql extends Soql {
 		 * 	- Return a List<MockSoql.AggregateResult>
 		 *  - Throw an exception
 		 **/
-		Object simulateQuery();
+		List<Object> simulateQuery();
+	}
+
+	private class StaticResults implements MockSoql.Simulator {
+		private Exception error; 
+		private List<Object> results;
+
+		private StaticResults(Exception error) {
+			this.error = error; 
+		}
+
+		private StaticResults(List<Object> results) {
+			this.results = results;
+		}
+
+		public List<Object> simulateQuery() {
+			if (this.error != null) {
+				throw this.error;
+			}
+			return this.results;
+		}
 	}
 }

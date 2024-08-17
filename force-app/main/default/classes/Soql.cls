@@ -2,13 +2,13 @@
 public inherited sharing virtual class Soql extends Soql.Builder {
 	/**
 	 * This class is responsible for performing query operations with the Salesforce database.
-	 * While apex allows developers an inline method to directly perform queries against the database, 
+	 * While apex allows developers an inline method to directly perform queries against the database,
 	 * use of these methods does not facilitate mocking, which can result in slower test times.
-	 * Use this class instead of inline SOQL. 
-	 * Each of this class's methods eventually ties back to an underlying `Database` method, 
+	 * Use this class instead of inline SOQL.
+	 * Each of this class's methods eventually ties back to an underlying `Database` method,
 	 * ex., `query()` -> `Database.query()`.
 	 * To mock this instance, use the included `MockSoql` class, or use your own class which extends `Soql`.
-	**/
+	 **/
 
 	// These operators are frequently used in WHERE clauses
 	public static final Operator EQUALS = new Soql.Operator('=');
@@ -137,11 +137,6 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		NULLS_LAST
 	}
 
-	public enum SortDirection {
-		ASCENDING,
-		DESCENDING
-	}
-
 	public enum Scope {
 		// https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_select_using_scope.htm
 		DELEGATED,
@@ -151,6 +146,11 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		MY_TERRITORY,
 		MY_TEAM_TERRITORY,
 		TEAM
+	}
+
+	public enum SortDirection {
+		ASCENDING,
+		DESCENDING
 	}
 
 	public enum Usage {
@@ -209,7 +209,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			return formatted?.trim();
 		}
 
-		public Aggregation withAlias(String alias) {
+		public Soql.Aggregation withAlias(String alias) {
 			this.alias = alias;
 			return this;
 		}
@@ -236,7 +236,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			return this.value;
 		}
 
-		public Binder setValue(Object value) {
+		public Soql.Binder setValue(Object value) {
 			this.value = value;
 			return this;
 		}
@@ -392,7 +392,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			return this.addWhere(field?.toString(), operator, binder);
 		}
 
-		public Soql.Builder setWhereLogic(Soql.LogicType newLogicType) {
+		public Soql.Builder setOuterWhereLogic(Soql.LogicType newLogicType) {
 			this.whereCriteria?.setLogicType(newLogicType);
 			return this;
 		}
@@ -425,7 +425,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			return this;
 		}
 
-		public Soql.Builder setHavingLogic(Soql.LogicType newLogicType) {
+		public Soql.Builder setOuterHavingLogic(Soql.LogicType newLogicType) {
 			this.havingCriteria?.setLogicType(newLogicType);
 			return this;
 		}
@@ -582,13 +582,13 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		private List<Soql.Criteria> criterion = new List<Soql.Criteria>();
 		private Soql.LogicType logicType = Soql.LogicType.ALL_CONDITIONS;
 
-		public ConditionalLogic addConditions(List<Soql.Criteria> criterion) {
+		public ConditionalLogic addCondition(List<Soql.Criteria> criterion) {
 			this.criterion?.addAll(criterion);
 			return this;
 		}
 
 		public ConditionalLogic addCondition(Soql.Criteria criteria) {
-			return this.addConditions(new List<Soql.Criteria>{ criteria });
+			return this.addCondition(new List<Soql.Criteria>{ criteria });
 		}
 
 		public ConditionalLogic addCondition(String fieldName, Soql.Operator operator, Object value) {
@@ -763,8 +763,8 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			this.relationshipName = relationship?.getRelationshipName();
 		}
 
-		public SubQuery(SObjectField lookupField) {
-			this(ChildRelationshipService.getChildRelationshipFrom(lookupField));
+		public SubQuery(SObjectField lookupFieldOnChildObject) {
+			this(ChildRelationshipService.getChildRelationshipFrom(lookupFieldOnChildObject));
 		}
 
 		public override String getFrom() {
