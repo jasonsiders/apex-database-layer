@@ -31,7 +31,7 @@ public class MockSoql extends Soql {
 		return this;
 	}
 
-	public Soql setMock(Object results) {
+	public Soql setMock(List<Object> results) {
 		MockSoql.Simulator simulator = new MockSoql.StaticResults(results);
 		return this.setMock(simulator);
 	}
@@ -166,26 +166,26 @@ public class MockSoql extends Soql {
 		 * 	- Return a List<MockSoql.AggregateResult>
 		 *  - Throw an exception
 		 **/
-		Object simulateQuery();
+		List<Object> simulateQuery();
 	}
 
 	private class StaticResults implements MockSoql.Simulator {
-		Exception error; 
-		Object results;
+		private Exception error; 
+		private List<Object> results;
 
 		private StaticResults(Exception error) {
 			this.error = error; 
 		}
 
-		private StaticResults(Object results) {
+		private StaticResults(List<Object> results) {
 			this.results = results;
 		}
 
-		public Object simulateQuery() {
-			if (error != null) {
-				throw error;
+		public List<Object> simulateQuery() {
+			if (this.error != null) {
+				throw this.error;
 			}
-			return results;
+			return this.results;
 		}
 	}
 }

@@ -593,16 +593,104 @@ List<Account> results = soql?.query();
 Assert.areEqual(0, results?.size(), 'Wrong # of resuls');
 ```
 
-- [ ] TODO!
+Each `MockSoql` object can be injected with static query results, logic that determines the query results, or an Exception. When the query runs, those results will be returned instead of what is actually in the Salesforce database.
+
+For this reason, it's best practice to store each Soql object in a `@TestVisible` class variable (member or static), that can be easily accessed by your test code if needed.
 
 #### Inject Static Results with the `setMock` Method
-- [ ] TODO!
+The easiest way to simulate queries is to use the `setMock` method with a static `List<Object>`. The provided results will be returned each time the query runs:
+
+```java
+DatabaseLayer.useMocks();
+Account mockAccount = new MockRecord(Account.SObjectType)?.withId()?.toSObject();
+MockSoql soql = (MockSoql) DatabaseLayer.newSoql(Account.SObjectType);
+soql.useMocks(new List<Account>{ mockAccount });
+List<Account> results = soql?.query();
+Assert.areEqual(1, results?.size(), 'Wrong # of results');
+```
+
+Most of the time, this will be a `List<SObject>`, but you can also pass a `List<MockSoql.AggregateResult>` or a custom list type for aggregate queries:
+
+```java
+public class MyCustomType {
+	String state;
+	Integer numRecords;
+}
+```
+
+```java
+DatabaseLayer.useMocks();
+MyCustomType mockResult = new MyCustomType();
+mockResult.state = 'CA';
+mockResult.numRecords = 123;
+Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, Account.Id)
+	?.withAlias('numRecords');
+MockSoql soql = (MockSoql) DatabaseLayer.newSoql(Account.SObjectType)
+	?.addSelect(Account.BillingState, 'state')
+	?.addSelect(count);
+soql.useMocks(new List<MyCustomType>{ mockResult });
+List<MyCustomType> results = (List<MyCustomType>) soql?.query(
+	List<MyCustomType>.class
+);
+```
 
 #### Inject Dynamic Results with the `setMock` Method
-- [ ] TODO!
+Certain testing scenarios may require custom logic to determine the results returned by a query. For these scenarios, developers can leverage the `MockSoql.Simulator` interface with the `setMock` method.
+
+The `MockSoql.Simulator` interface has one required method, which returns a `List<Object>`. This method will be run each time the query is run.
+
+```java
+private class CustomTaskQueryLogic implements MockSoql.Simulator {
+	public List<Object> simulateQuery() {
+		// For each inserted contact, return a Task
+		List<Task> results = new List<Task>();
+		List<Contact> contacts = (List<Contact>) MockDml.Inserted.getRecords(
+			Contact.SObjectType
+		);
+		for (Contact contact : contacts) {
+			Task task = (Task) new MockRecord(Task.SObjectType)
+				?.setField(Task.Subject, 'Introductory Call')
+				?.setField(Task.WhatId, contact?.AccountId)
+				?.setField(Task.WhoId, contact?.Id)
+				?.withId()
+				?.toSObject();
+			results?.add(task);
+		}
+		return results;
+	}
+}
+```
+
+```java
+// Establish Dml & Soql objects to be used
+DatabaseLayer.useMocks();
+Dml dml = DatabaseLayer.newDml();
+MockSoql soql = (MockSoql) DatabaseLayer.newSoql(Task.SObjectType)
+	?.addSelect(Task.WhatId)
+	?.addSelect(Task.WhoId);
+// Mock with a custom class that leverages MockDml.Inserted to generate results
+soql?.setMock(new CustomTaskQueryLogic());
+// Mock insert an account + related contact
+Account mockAccount = (Account) new MockRecord(Account.SObjectType)?.toSObject();
+dml?.doInsert(mockAccount);
+Contact mockContact = (Contact) new MockRecord(Contact.SObjectType)
+	?.setField(Contact.AccountId, mockAccount?.Id)
+	?.toSObject();
+dml?.doInsert(mockContact);
+
+Test.startTest();
+List<Task> tasks = soql?.query();
+Test.stopTest();
+
+// Expecting 1 task x each inserted Contact
+Assert.areEqual(1, tasks?.size(), 'Wrong # of tasks');
+Task firstTask = tasks[0];
+Assert.areEqual(mockAccount?.Id, firstTask?.WhatId, 'Wrong WhatId');
+Assert.areEqual(mockContact?.Id, firstTask?.WhoId, 'Wrong WhoId');
+```
 
 #### Inject Exceptions with the `setError` Method
-- [ ] TODO!
+Developers can simulate `Database.QueryException`s and other errors that may occur when running queries, by using 
 
 ### Mocking Query Locators
 - [ ] TODO!
@@ -620,7 +708,7 @@ DatabaseLayer.useMocks();
 String alias = 'numRecords';
 Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, Account.Id)
 	?.withAlias(alias);
-MockSoql soql = (MockSoql) DatabaseLayer.newQuery(Account.SObjectType)
+MockSoql soql = (MockSoql) DatabaseLayer.newSoql(Account.SObjectType)
 	?.addSelect(count);
 MockSoql.AggregateResult agg = new MockSoql.AggregateResult()
 	?.addParameter(alias, 100);

@@ -232,6 +232,35 @@ private class MockSoqlTest {
 		Test.stopTest();
 	}
 
+	@IsTest 
+	static void shouldUseCustomSimulatorMocks() {
+		// Establish Dml & Soql objects to be used
+		DatabaseLayer.useMocks();
+		Dml dml = DatabaseLayer.newDml();
+		MockSoql soql = (MockSoql) DatabaseLayer.newSoql(Task.SObjectType)
+			?.addSelect(Task.WhatId)
+			?.addSelect(Task.WhoId);
+		// Mock with a custom class that leverages MockDml.Inserted to generate results
+		soql?.setMock(new CustomTaskQueryLogic());
+		// Mock insert an account + related contact
+		Account mockAccount = (Account) new MockRecord(Account.SObjectType)?.toSObject();
+		dml?.doInsert(mockAccount);
+		Contact mockContact = (Contact) new MockRecord(Contact.SObjectType)
+			?.setField(Contact.AccountId, mockAccount?.Id)
+			?.toSObject();
+		dml?.doInsert(mockContact);
+
+		Test.startTest();
+		List<Task> tasks = soql?.query();
+		Test.stopTest();
+
+		// Expecting 1 task x each inserted Contact
+		Assert.areEqual(1, tasks?.size(), 'Wrong # of tasks');
+		Task firstTask = tasks[0];
+		Assert.areEqual(mockAccount?.Id, firstTask?.WhatId, 'Wrong WhatId');
+		Assert.areEqual(mockContact?.Id, firstTask?.WhoId, 'Wrong WhoId');
+	}
+
 	@IsTest
 	static void shouldReturnEmptyListIfNoMocks() {
 		// If a MockSoql is ran, and no Simulator is injected, the methods will automatically return an empty List
@@ -266,6 +295,24 @@ private class MockSoqlTest {
 	}
 
 	// **** INNER **** //
+	private class CustomTaskQueryLogic implements MockSoql.Simulator {
+		public List<Object> simulateQuery() {
+			// For each inserted contact, return a Task
+			List<Task> results = new List<Task>();
+			List<Contact> contacts = (List<Contact>) MockDml.Inserted.getRecords(Contact.SObjectType);
+			for (Contact contact : contacts) {
+				Task task = (Task) new MockRecord(Task.SObjectType)
+					?.setField(Task.Subject, 'Introductory Call')
+					?.setField(Task.WhatId, contact?.AccountId)
+					?.setField(Task.WhoId, contact?.Id)
+					?.withId()
+					?.toSObject();
+				results?.add(task);
+			}
+			return results;
+		}
+	}
+
 	private class SampleWrapper {
 		public Integer numRecords;
 		public String profileName;
