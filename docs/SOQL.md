@@ -246,9 +246,9 @@ Set the underlying value to be substituted for the bind variable. This is done a
 Represents a single `WHERE` clause element. For example, `WHERE StageName = 'Closed Won'`. 
 ```java
 Soql.Condition condition = new Soql.Condition(
-	Opportunity.StageName, 
-	Soql.Operator.EQUALS, 
-	'Closed Won'
+  Opportunity.StageName, 
+  Soql.Operator.EQUALS, 
+  'Closed Won'
 );
 ```
 
@@ -256,18 +256,18 @@ Add `Soql.Condition` objects to an existing where via the `addWhere` method. Whe
 ```java
 // SELECT Id FROM Opportunity WHERE StageName = 'Closed Won' AND Amount > 1000000
 Soql.Condition isClosedWon = new Soql.Condition(
-	Opportunity.StageName,
-	Soql.Operator.EQUALS,
-	'Closed Won'
+  Opportunity.StageName,
+  Soql.Operator.EQUALS,
+  'Closed Won'
 );
 Soql.Condition worthAMil = new Soql.Condition(
-	Opportunity.Amount,
-	Soql.Operator.GREATER_THAN,
-	1000000
+  Opportunity.Amount,
+  Soql.Operator.GREATER_THAN,
+  1000000
 );
 Soql soql = (Soql) DatabaseLayer.newSoql(Opportunity.SObjectType)
-	?.addWhere(isClosedWon)
-	?.addWhere(worthAMil);
+  ?.addWhere(isClosedWon)
+  ?.addWhere(worthAMil);
 ```
 
 To use `OR` logic instead, use the [`setOuterWhereLogic`](#setouterwherelogic) SOQL method. To use complex or nested logic, use the [Soql.ConditionalLogic](#conditionallogic) class. 
@@ -286,63 +286,63 @@ Represents a set of criterion to be added to a query. These criterion can be `So
 This pattern faciliates building extremely complex query logic, like the (unnecessarily complex) one below:
 ```java
 /*
-	SELECT Id FROM Opportunity WHERE (
-		IsWon = true 
-		OR (
-			Amount > 1000000
-			AND (
-				CloseDate >= 2024-01-01 
-				OR (
-					Account.BillingState = 'CA'
-					AND Amount > 20000000
-				)
-			)
-		)
-	)
+  SELECT Id FROM Opportunity WHERE (
+    IsWon = true 
+    OR (
+      Amount > 1000000
+      AND (
+        CloseDate >= 2024-01-01 
+        OR (
+          Account.BillingState = 'CA'
+          AND Amount > 20000000
+        )
+      )
+    )
+  )
 */
 // (Account.BillingState = 'CA' AND Amount > 2000000)
 Soql.Condition fromCa = new Soql.Condition(
-	'Account.BillingState', 
-	Soql.Operator.EQUALS, 
-	'CA'
+  'Account.BillingState', 
+  Soql.Operator.EQUALS, 
+  'CA'
 );
 Soql.Condition greaterThan2Mil = new Soql.Condition(
-	Opportunity.Amount, 
-	Soql.Operator.GREATER_THAN, 
-	2000000
+  Opportunity.Amount, 
+  Soql.Operator.GREATER_THAN, 
+  2000000
 );
 Soql.ConditionalLogic nest1 = new Soql.ConditionalLogic()
-	?.addCondition(fromCa)
-	?.addCondition(greaterThan2Mil);
+  ?.addCondition(fromCa)
+  ?.addCondition(greaterThan2Mil);
 // (CloseDate >= 2024-01-01 OR (...))
 Soql.Condition closedThisYear = new Soql.Condition(
-	Opportunity.CloseDate, 
-	Soql.Operator.GREATER_OR_EQUAL, 
-	Date.newInstance(2024, 01, 01)
+  Opportunity.CloseDate, 
+  Soql.Operator.GREATER_OR_EQUAL, 
+  Date.newInstance(2024, 01, 01)
 );
 Soql.ConditionalLogic nest2 = new Soql.ConditionalLogic()
-	?.addCondition(closedThisYear)
-	?.addCondition(nest1)
-	?.setLogicType(Soql.LogicType.ANY_CONDITIONS);
+  ?.addCondition(closedThisYear)
+  ?.addCondition(nest1)
+  ?.setLogicType(Soql.LogicType.ANY_CONDITIONS);
 // (Amount > 1000000 AND (...))
 Soql.Condition greaterThan1Mil = new Soql.Condition(
-	Opportunity.Amount, 
-	Soql.Operator.GREATER_THAN, 
-	1000000
+  Opportunity.Amount, 
+  Soql.Operator.GREATER_THAN, 
+  1000000
 );
 Soql.ConditionalLogic nest3 = new Soql.ConditionalLogic()
-	?.addCondition(greaterThan1Mil)
-	?.addCondition(nest2);
+  ?.addCondition(greaterThan1Mil)
+  ?.addCondition(nest2);
 // IsWon = true OR (...)
 Soql.Condition isWon = new Soql.Condition(
-	Opportunity.IsWon, 
-	Soql.Operator.EQUALS, 
-	true
+  Opportunity.IsWon, 
+  Soql.Operator.EQUALS, 
+  true
 );
 Soql soql = DatabaseLayer.newSoql(Opportunity.SObjectType)
-	?.setOuterWhereLogic(Soql.LogicType.ANY_CONDITIONS)
-	?.setWhere(isWon)
-	?.setWhere(nest3);
+  ?.setOuterWhereLogic(Soql.LogicType.ANY_CONDITIONS)
+  ?.setWhere(isWon)
+  ?.setWhere(nest3);
 ```
 
 By default, the `Soql` class uses an internal `Soql.ConditionalLogic` object as the "enclosing" logic for `WHERE` and `HAVING` clauses. Calls to the `addWhere` or `addHaving` Soql methods add the criterion to the appropriate `Soql.ConditionalLogic` object under the hood. Calling the `setOuterWhereLogic` and `setOuterHavingLogic` Soql methods change the appropriate object's `Soql.LogicType`.
@@ -350,18 +350,18 @@ By default, the `Soql` class uses an internal `Soql.ConditionalLogic` object as 
 ```java
 // SELECT Id FROM Opportunity WHERE StageName = 'Closed Won' AND Amount > 1000000
 Soql.Condition isClosedWon = new Soql.Condition(
-	Opportunity.StageName,
-	Soql.Operator.EQUALS,
-	'Closed Won'
+  Opportunity.StageName,
+  Soql.Operator.EQUALS,
+  'Closed Won'
 );
 Soql.Condition worthAMil = new Soql.Condition(
-	Opportunity.Amount,
-	Soql.Operator.GREATER_THAN,
-	1000000
+  Opportunity.Amount,
+  Soql.Operator.GREATER_THAN,
+  1000000
 );
 Soql soql = (Soql) DatabaseLayer.newSoql(Opportunity.SObjectType)
-	?.addWhere(isClosedWon)
-	?.addWhere(worthAMil);
+  ?.addWhere(isClosedWon)
+  ?.addWhere(worthAMil);
 ```
 
 Like `Soql.Condition`, the `Soql.ConditionalLogic` class implements a base `Soql.Criteria` interface, which the framework uses internally to keep things tidy. 
@@ -399,9 +399,9 @@ Represents inner query logic, used for filtering results in a `WHERE` clause. Us
 ```java
 // SELECT Id FROM Account WHERE Id IN (SELECT AccountId FROM Opportunity WHERE IsWon = true)
 Soql.InnerQuery inner = new Soql.InnerQuery(Opportunity.SObjectType)
-	?.addSelect(Opportunity.AccountId);
+  ?.addSelect(Opportunity.AccountId);
 Soql soql = (Soql) Database.newSoql(Account.SObjectType)
-	?.addSelect(inner);
+  ?.addSelect(inner);
 ```
 
 This class extends `Soql.Builder`, and therefore has all of the same query-building [methods](#building-queries).
@@ -417,28 +417,28 @@ Indicates the enclosing logic for the `Soql.ConditionalLogic` objects used in _W
 Use in the `setOuterWhereLogic` or `setOuterHavingLogic` SOQL methods. Example:
 ```java
 Soql soql = (Soql) DatabaseLayer.newSoql(User.SObjectType)
-	?.addWhere(User.IsActive, Soql.EQUALS, true)
-	?.addWhere('Profile.Name', Soql.EQUALS, 'System Administrator')
-	?.setOuterWhereLogic(Soql.LogicType.ANY_CONDITIONS);
+  ?.addWhere(User.IsActive, Soql.EQUALS, true)
+  ?.addWhere('Profile.Name', Soql.EQUALS, 'System Administrator')
+  ?.setOuterWhereLogic(Soql.LogicType.ANY_CONDITIONS);
 ```
 
 When `setOuterWhereLogic(Soql.LogicType.ANY_CONDITIONS)` is used, any new criterion added to the query via the `addWhere` method will be added with an `OR` keyword. For example:
 ```java
 // SELECT Id FROM Opportunity WHERE StageName = 'Closed Won' OR Amount > 1000000
 Soql.Condition isClosedWon = new Soql.Condition(
-	Opportunity.StageName,
-	Soql.Operator.EQUALS,
-	'Closed Won'
+  Opportunity.StageName,
+  Soql.Operator.EQUALS,
+  'Closed Won'
 );
 Soql.Condition worthAMil = new Soql.Condition(
-	Opportunity.Amount,
-	Soql.Operator.GREATER_THAN,
-	1000000
+  Opportunity.Amount,
+  Soql.Operator.GREATER_THAN,
+  1000000
 );
 Soql soql = (Soql) DatabaseLayer.newSoql(Opportunity.SObjectType)
-	?.setOuterWhereLogic(Soql.LogicType.ANY_CONDITIONS)
-	?.setWhere(isClosedWon)
-	?.setWhere(worthAMil);
+  ?.setOuterWhereLogic(Soql.LogicType.ANY_CONDITIONS)
+  ?.setWhere(isClosedWon)
+  ?.setWhere(worthAMil);
 ```
 ### NullOrder
 
@@ -451,8 +451,8 @@ Use this in conjunction with the `Soql.SortOrder` class's `setNullOrder` method.
 
 ```java
 Soql.SortOrder sortOrder = new Soql.SortOrder(
-	Opportunity.CloseDate, 
-	Soql.SortDirection.DESCENDING
+  Opportunity.CloseDate, 
+  Soql.SortDirection.DESCENDING
 );
 sortOrder?.setNullOrder(Soql.NullOrder.NULLS_FIRST);
 Soql soql = (Soql) DatabaseLayer.newSoql(Opportunity.SObject)?.orderBy(sortOrder);
@@ -500,7 +500,7 @@ Use this in conjunction with the `usingScope` SOQL method. For example:
 
 ```java
 Soql soql = (Soql) DatabaseLayer.newSoql(User.SObjectType)
-	?.usingScope(Soql.Scope.EVERYTHING);
+  ?.usingScope(Soql.Scope.EVERYTHING);
 ```
 
 ### SortDirection
@@ -513,7 +513,7 @@ Indicates the direction of the _ORDER BY_ clause. Values include:
 Use this in conjunction with the `orderBy` SOQL method. For example:
 ```java
 Soql soql = (Soql) DatabaseLayer.newSoql(Opportunity.SObjectType)
-	?.orderBy(Opportunity.Amount, Soql.SortDirection.DESCENDING);
+  ?.orderBy(Opportunity.Amount, Soql.SortDirection.DESCENDING);
 ```
 
 ### SortOrder
@@ -522,8 +522,8 @@ Represents the `ORDER BY` clause in a SOQL query. Use this object in conjunction
 
 ```java
 Soql.SortOrder firstCreated = new Soql.SortOrder(
-	Account.CreatedDate, 
-	Soql.SortDirection.ASCENDING
+  Account.CreatedDate, 
+  Soql.SortDirection.ASCENDING
 );
 Soql soql = new Soql(Account.SObjectType)?.orderBy(firstCreated);
 ```
@@ -573,7 +573,7 @@ Use this in conjunction with the SOQL `setUsage` method. For example:
 ```java
 // SELECT Id FROM Account FOR UPDATE
 Soql soql = (Soql) DatabaseLayer.newSoql(Account.SObjectType)
-	?.setUsage(Soql.Usage.FOR_UPDATE);
+  ?.setUsage(Soql.Usage.FOR_UPDATE);
 ```
 
 ## Mocking SOQL Queries
@@ -613,8 +613,8 @@ Most of the time, this will be a `List<SObject>`, but you can also pass a `List<
 
 ```java
 public class MyCustomType {
-	String state;
-	Integer numRecords;
+  String state;
+  Integer numRecords;
 }
 ```
 
@@ -624,13 +624,13 @@ MyCustomType mockResult = new MyCustomType();
 mockResult.state = 'CA';
 mockResult.numRecords = 123;
 Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, Account.Id)
-	?.withAlias('numRecords');
+  ?.withAlias('numRecords');
 MockSoql soql = (MockSoql) DatabaseLayer.newSoql(Account.SObjectType)
-	?.addSelect(Account.BillingState, 'state')
-	?.addSelect(count);
+  ?.addSelect(Account.BillingState, 'state')
+  ?.addSelect(count);
 soql.useMocks(new List<MyCustomType>{ mockResult });
 List<MyCustomType> results = (List<MyCustomType>) soql?.query(
-	List<MyCustomType>.class
+  List<MyCustomType>.class
 );
 ```
 
@@ -641,23 +641,23 @@ The `MockSoql.Simulator` interface has one required method, which returns a `Lis
 
 ```java
 private class CustomTaskQueryLogic implements MockSoql.Simulator {
-	public List<Object> simulateQuery() {
-		// For each inserted contact, return a Task
-		List<Task> results = new List<Task>();
-		List<Contact> contacts = (List<Contact>) MockDml.Inserted.getRecords(
-			Contact.SObjectType
-		);
-		for (Contact contact : contacts) {
-			Task task = (Task) new MockRecord(Task.SObjectType)
-				?.setField(Task.Subject, 'Introductory Call')
-				?.setField(Task.WhatId, contact?.AccountId)
-				?.setField(Task.WhoId, contact?.Id)
-				?.withId()
-				?.toSObject();
-			results?.add(task);
-		}
-		return results;
-	}
+  public List<Object> simulateQuery() {
+    // For each inserted contact, return a Task
+    List<Task> results = new List<Task>();
+    List<Contact> contacts = (List<Contact>) MockDml.Inserted.getRecords(
+      Contact.SObjectType
+    );
+    for (Contact contact : contacts) {
+      Task task = (Task) new MockRecord(Task.SObjectType)
+        ?.setField(Task.Subject, 'Introductory Call')
+        ?.setField(Task.WhatId, contact?.AccountId)
+        ?.setField(Task.WhoId, contact?.Id)
+        ?.withId()
+        ?.toSObject();
+      results?.add(task);
+    }
+    return results;
+  }
 }
 ```
 
@@ -666,16 +666,16 @@ private class CustomTaskQueryLogic implements MockSoql.Simulator {
 DatabaseLayer.useMocks();
 Dml dml = DatabaseLayer.newDml();
 MockSoql soql = (MockSoql) DatabaseLayer.newSoql(Task.SObjectType)
-	?.addSelect(Task.WhatId)
-	?.addSelect(Task.WhoId);
+  ?.addSelect(Task.WhatId)
+  ?.addSelect(Task.WhoId);
 // Mock with a custom class that leverages MockDml.Inserted to generate results
 soql?.setMock(new CustomTaskQueryLogic());
 // Mock insert an account + related contact
 Account mockAccount = (Account) new MockRecord(Account.SObjectType)?.toSObject();
 dml?.doInsert(mockAccount);
 Contact mockContact = (Contact) new MockRecord(Contact.SObjectType)
-	?.setField(Contact.AccountId, mockAccount?.Id)
-	?.toSObject();
+  ?.setField(Contact.AccountId, mockAccount?.Id)
+  ?.toSObject();
 dml?.doInsert(mockContact);
 
 Test.startTest();
@@ -726,22 +726,22 @@ There is one limitation to this approach, and that is that frameworks that rely 
 
 ```java
 public class MyBatch implements Database.Batchable<SObject> {
-	@TestVisible
-	private Soql soql = (Soql) DatabaseLayer.newSoql(Account.SObjectType);
+  @TestVisible
+  private Soql soql = (Soql) DatabaseLayer.newSoql(Account.SObjectType);
 
-	public Database.QueryLocator start(Database.BatchableContext ctx) {
-		// The getCursor() method returns the underlying
-		// Database.QueryLocator expected by this method
-		return soql?.getQueryLocator()?.getCursor();
-	}
+  public Database.QueryLocator start(Database.BatchableContext ctx) {
+    // The getCursor() method returns the underlying
+    // Database.QueryLocator expected by this method
+    return soql?.getQueryLocator()?.getCursor();
+  }
 
-	public void execute(Database.BatchableContext ctx, List<Account> accs) {
-		// ...
-	}
+  public void execute(Database.BatchableContext ctx, List<Account> accs) {
+    // ...
+  }
 
-	public void finish(Database.BatchableContext ctx) {
-		// ...
-	}
+  public void finish(Database.BatchableContext ctx) {
+    // ...
+  }
 }
 ```
 
@@ -750,13 +750,13 @@ The Soql class's `getQueryLocator` method returns a `Soql.QueryLocator`. In mock
 ```java
 @IsTest 
 static void cannotMockBatchableQueryLocator() {
-	DatabaseLayer.useMocks();
-	MyBatch job = new MyBatch();
+  DatabaseLayer.useMocks();
+  MyBatch job = new MyBatch();
 
-	Test.startTest();
-	Database.executeBatch(job);
-	Test.stopTest(); 
-	// ! System.NullPointerException
+  Test.startTest();
+  Database.executeBatch(job);
+  Test.stopTest(); 
+  // ! System.NullPointerException
 }
 ```
 
@@ -774,11 +774,11 @@ Use this object in conjunction with the `setMock` method, or the `MockSoql.Simul
 DatabaseLayer.useMocks();
 String alias = 'numRecords';
 Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, Account.Id)
-	?.withAlias(alias);
+  ?.withAlias(alias);
 MockSoql soql = (MockSoql) DatabaseLayer.newSoql(Account.SObjectType)
-	?.addSelect(count);
+  ?.addSelect(count);
 MockSoql.AggregateResult agg = new MockSoql.AggregateResult()
-	?.addParameter(alias, 100);
+  ?.addParameter(alias, 100);
 soql?.setMock(new List<MockSoql.AggregateResult>{ agg });
 List<Soql.AggregateResult> results = soql?.aggregateQuery();
 Assert.areEqual(1, results?.size(), 'Wrong # of results');
