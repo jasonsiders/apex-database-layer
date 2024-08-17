@@ -258,10 +258,10 @@ Account account = new Account(Name = 'John Doe');
 MockDml dml = (MockDml) DatabaseLayer.newDml();
 dml?.fail();
 try {
-    dml?.doInsert(account);
-    Assert.fail('DML operation did not fail');
+	dml?.doInsert(account);
+	Assert.fail('DML operation did not fail');
 } catch (System.DmlException error) {
-    // As expected!
+	// As expected!
 }
 ```
 
@@ -290,15 +290,15 @@ Evaluates a given SObject record and DML operation, and returns an Exception obj
 Example:
 ```java
 public class ExampleFailure implements MockDml.ConditionalFailure {
-    public Exception checkFailure(Dml.Operation operation, SObject record) {
-        // Fail any operations that manipulate Account records
-        if (record?.getSObjectType() == Account.SObjectType) {
-            return new System.DmlException();
-        } else {
-            // Success!
-            return null;
-        }
-    }
+	public Exception checkFailure(Dml.Operation operation, SObject record) {
+		// Fail any operations that manipulate Account records
+		if (record?.getSObjectType() == Account.SObjectType) {
+			return new System.DmlException();
+		} else {
+			// Success!
+			return null;
+		}
+	}
 }
 ```
 
@@ -308,15 +308,15 @@ Since the `MockDml` class does not actually manipulate records in the database, 
 ```java
 @IsTest 
 static void someTest() {
-    DatabaseLayer.useMocks();
-    Account acc = new Account(Name = 'John Doe');
-    
-    Test.startTest();
-    DatabaseLayer.newDml()?.doInsert(acc);
-    Test.stopTest();
+	DatabaseLayer.useMocks();
+	Account acc = new Account(Name = 'John Doe');
+	
+	Test.startTest();
+	DatabaseLayer.newDml()?.doInsert(acc);
+	Test.stopTest();
 
-    List<Account> insertedAccs = MockDml.Inserted.getRecords(Account.SObjectType);
-    Assert.areEqual(1, insertedAccs?.size(), 'Account was not inserted');
+	List<Account> insertedAccs = MockDml.Inserted.getRecords(Account.SObjectType);
+	Assert.areEqual(1, insertedAccs?.size(), 'Account was not inserted');
 }
 ```
 
