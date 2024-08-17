@@ -57,18 +57,18 @@ If necessary, you can inject "smarter" failure logic via the `MockDml.Conditiona
 
 ```java
 public class ExampleFailure implements MockDml.ConditionalFailure {
-	public Exception checkFailure(Dml.Operation operation, SObject record) {
-		// Return an Exception if the record/operation should fail
-		// In this case, any updated Accounts will fail
-		if (
-			operation == Dml.Operation.DO_UPDATE && 
-			record?.getSObjectType() == Account.SObjectType
-		) {
-			return new System.DmlException();
-		} else {
-			return null;
-		}
-	}
+  public Exception checkFailure(Dml.Operation operation, SObject record) {
+    // Return an Exception if the record/operation should fail
+    // In this case, any updated Accounts will fail
+    if (
+      operation == Dml.Operation.DO_UPDATE && 
+      record?.getSObjectType() == Account.SObjectType
+    ) {
+      return new System.DmlException();
+    } else {
+      return null;
+    }
+  }
 }
 ```
 
@@ -87,15 +87,15 @@ dml?.doInsert();
 ```java
 @IsTest 
 static void someTest() {
-    DatabaseLayer.useMocks();
-    Account acc = new Account(Name = 'John Doe');
-    
-    Test.startTest();
-    DatabaseLayer.newDml()?.doInsert(acc);
-    Test.stopTest();
+  DatabaseLayer.useMocks();
+  Account acc = new Account(Name = 'John Doe');
+  
+  Test.startTest();
+  DatabaseLayer.newDml()?.doInsert(acc);
+  Test.stopTest();
 
-    List<Account> insertedAccs = MockDml.Inserted.getRecords(Account.SObjectType);
-    Assert.areEqual(1, insertedAccs?.size(), 'Account was not inserted');
+  List<Account> insertedAccs = MockDml.Inserted.getRecords(Account.SObjectType);
+  Assert.areEqual(1, insertedAccs?.size(), 'Account was not inserted');
 }
 ```
 
@@ -109,13 +109,13 @@ The `Soql` class is responsible for querying records from the database. It wraps
 
 ```java
 Soql soql = (Soql) DatabaseLayer.newSoql(User.SObjectType)
-	?.addSelect(User.FirstName)
-	?.addSelect(User.LastName)
-	?.addSelect(User.Email)
-	?.addWhere(User.IsActive, Soql.EQUALS, true)
-	?.addWhere('Profile.Name', Soql.EQUALS, 'System Administrator')
-	?.orderBy(User.CreatedDate, Soql.SortDirection.ASCENDING)
-	?.setRowLimit(1);
+  ?.addSelect(User.FirstName)
+  ?.addSelect(User.LastName)
+  ?.addSelect(User.Email)
+  ?.addWhere(User.IsActive, Soql.EQUALS, true)
+  ?.addWhere('Profile.Name', Soql.EQUALS, 'System Administrator')
+  ?.orderBy(User.CreatedDate, Soql.SortDirection.ASCENDING)
+  ?.setRowLimit(1);
 List<User> users = soql?.query();
 ```
 
@@ -134,17 +134,17 @@ Assert.areEqual(1, results?.size(), 'Wrong # of results');
 Mocking queries by passing the records to be returned (as shown above) should work for most use cases. If needed, you can implement your own custom logic by creating a class that implements the `MockSoql.Simulator` interface:
 ```java
 public class MySimulator implements MockSoql.Simulator {
-	// This implementation generates a List<Opportunity> with random values
-	public Object simulateQuery() {
-		Integer numOpps = Integer.valueOf(Math.random() * 200);
-		List<Opportunity> opps = new List<Opportunity>();
-		for (Integer i = 0; i < numOpps; i++) {
-			Opportunity opp = new Opportunity();
-			opp.Amount = Decimal.valueOf(Math.random() * 10000);
-			opps?.add(opp);
-		}
-		return opps;
-	}
+  // This implementation generates a List<Opportunity> with random values
+  public Object simulateQuery() {
+    Integer numOpps = Integer.valueOf(Math.random() * 200);
+    List<Opportunity> opps = new List<Opportunity>();
+    for (Integer i = 0; i < numOpps; i++) {
+      Opportunity opp = new Opportunity();
+      opp.Amount = Decimal.valueOf(Math.random() * 10000);
+      opps?.add(opp);
+    }
+    return opps;
+  }
 }
 ```
 You can pass that object to the `setMock()` method, as shown below:
@@ -162,10 +162,10 @@ DatabaseLayer.useMocks();
 MockSoql soql = DatabaseLayer.newQuery(Account.SObjectType);
 soql?.setError();
 try {
-	soql?.query();
-	Assert.fail('Did not throw an exception');
+  soql?.query();
+  Assert.fail('Did not throw an exception');
 } catch (Exception error) {
-	// As expected
+  // As expected
 }
 ```
 
@@ -187,10 +187,10 @@ This approach allows for mocks to be automatically substituted at runtime during
 ```java
 @IsTest 
 static void shouldUseMockDml() {
-	// Assuming ExampleClass has a Dml property called "dml"
-	DatabaseLayer.useMocks();
-	ExampleClass example = new ExampleClass();
-	Assert.isInstanceOfType(example.dml, MockDml.class, 'Not using mocks');
+  // Assuming ExampleClass has a Dml property called "dml"
+  DatabaseLayer.useMocks();
+  ExampleClass example = new ExampleClass();
+  Assert.isInstanceOfType(example.dml, MockDml.class, 'Not using mocks');
 }
 ```
 
@@ -199,14 +199,14 @@ You can also revert the `DatabaseLayer` class to use real database operations by
 ```java
 @IsTest
 static void shouldUseMixedOfMocksAndRealDml() {
-	DatabaseLayer.useMocks();
-	ExampleClass mockExample = new ExampleClass();
-	Assert.isInstanceOfType(mockExample.dml, MockDml.class, 'Not using mocks');
-	// Now switch to using real data, 
-	// will apply to any new Dml classes going forward
-	DatabaseLayer.useRealData();
-	ExampleClass databaseExample = new ExampleClass();
-	Assert.isNotInstanceOfType(databaseExample.dml, MockDml.class, 'Using mocks?');
+  DatabaseLayer.useMocks();
+  ExampleClass mockExample = new ExampleClass();
+  Assert.isInstanceOfType(mockExample.dml, MockDml.class, 'Not using mocks');
+  // Now switch to using real data, 
+  // will apply to any new Dml classes going forward
+  DatabaseLayer.useRealData();
+  ExampleClass databaseExample = new ExampleClass();
+  Assert.isNotInstanceOfType(databaseExample.dml, MockDml.class, 'Using mocks?');
 }
 ```
 
@@ -224,25 +224,25 @@ Use the class's fluent builder pattern to generate a record to your specificatio
 
 ```java
 Account realAccount = [
-	SELECT 
-		Id, CreatedDate, Owner.Name, 
-		(SELECT Id FROM Contacts) 
-	FROM Account 
-	LIMIT 1
+  SELECT 
+    Id, CreatedDate, Owner.Name, 
+    (SELECT Id FROM Contacts) 
+  FROM Account 
+  LIMIT 1
 ];
 // Let's make a test record that can be used to mock the above query!
 User mockUser = (User) new MockRecord(User.SObjectType)
-	?.setField(User.Name, 'John Doe')
-	?.withId()
-	?.toSObject();
+  ?.setField(User.Name, 'John Doe')
+  ?.withId()
+  ?.toSObject();
 Contact mockContact = (Contact) new MockRecord(Contact.SObjectType)
-	?.withId()
-	?.toSObject();
+  ?.withId()
+  ?.toSObject();
 Account mockAccount = (Account) new MockRecord(Account.SObjectType)
-	?.setField(Account.Name, 'John Doe Enterprises')
-	?.setField(Account.CreatedDate, DateTime.now()?.addDays(-100))
-	?.setLookup(Account.OwnerId, mockUser)
-	?.setRelatedList(Contact.AccountId, new List<Contact>{ mockContact })
-	?.withId()
-	?.toSObject();
+  ?.setField(Account.Name, 'John Doe Enterprises')
+  ?.setField(Account.CreatedDate, DateTime.now()?.addDays(-100))
+  ?.setLookup(Account.OwnerId, mockUser)
+  ?.setRelatedList(Contact.AccountId, new List<Contact>{ mockContact })
+  ?.withId()
+  ?.toSObject();
 ```
