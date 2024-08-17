@@ -8,28 +8,28 @@ public class MockDml extends Dml {
 	 * or the `failIf()` method and the `ConditionalLogic` interface.
 	 **/
 	// **** STATIC **** //
-	public static MockDml.RecordHistory Converted = new MockDml.RecordHistory(Dml.Operation.DO_CONVERT);
-	public static MockDml.RecordHistory Deleted = new MockDml.RecordHistory(Dml.Operation.DO_DELETE);
-	public static MockDml.RecordHistory Inserted = new MockDml.RecordHistory(Dml.Operation.DO_INSERT);
-	public static MockDml.RecordHistory Undeleted = new MockDml.RecordHistory(Dml.Operation.DO_UNDELETE);
-	public static MockDml.RecordHistory Updated = new MockDml.RecordHistory(Dml.Operation.DO_UPDATE);
-	public static MockDml.RecordHistory Upserted = new MockDml.RecordHistory(Dml.Operation.DO_UPSERT);
-	public static MockDml.PlatformEventHistory Published = new MockDml.PlatformEventHistory();
-	static final String EVENT_UUID_FIELD = 'EventUuid';
-	static final String MOCK_STATUS_CODE = 'MOCK_DML';
+	public static final MockDml.RecordHistory CONVERTED = new MockDml.RecordHistory(Dml.Operation.DO_CONVERT);
+	public static final MockDml.RecordHistory DELETED = new MockDml.RecordHistory(Dml.Operation.DO_DELETE);
+	public static final MockDml.RecordHistory INSERTED = new MockDml.RecordHistory(Dml.Operation.DO_INSERT);
+	public static final MockDml.PlatformEventHistory PUBLISHED = new MockDml.PlatformEventHistory();
+	public static final MockDml.RecordHistory UNDELETED = new MockDml.RecordHistory(Dml.Operation.DO_UNDELETE);
+	public static final MockDml.RecordHistory UPDATED = new MockDml.RecordHistory(Dml.Operation.DO_UPDATE);
+	public static final MockDml.RecordHistory UPSERTED = new MockDml.RecordHistory(Dml.Operation.DO_UPSERT);
+	private static final String EVENT_UUID_FIELD = 'EventUuid';
+	private static final String MOCK_STATUS_CODE = 'MOCK_DML';
 
 	public static void eraseAllHistories() {
 		// Reset all of the history objects to their original state
 		// Useful for isolating the actual changes being tested, ie., after test setup
 		for (
 			MockDml.History history : new List<MockDml.History>{
-				MockDml.Converted,
-				MockDml.Deleted,
-				MockDml.Inserted,
-				MockDml.Published,
+				MockDml.CONVERTED,
+				MockDml.DELETED,
+				MockDml.INSERTED,
+				MockDml.PUBLISHED,
 				MockDml.Undeleted,
-				MockDml.Updated,
-				MockDml.Upserted
+				MockDml.UPDATED,
+				MockDml.UPSERTED
 			}
 		) {
 			history?.eraseHistory();
@@ -78,7 +78,7 @@ public class MockDml extends Dml {
 		List<MockDml.Result> results = new List<MockDml.Result>();
 		for (Id recordId : recordIds) {
 			SObject record = recordId?.getSObjectType()?.newSObject(recordId);
-			MockDml.Result result = this.generateMockResult(MockDml.Deleted, record);
+			MockDml.Result result = this.generateMockResult(MockDml.DELETED, record);
 			results?.add(result);
 		}
 		return this.toDeleteResults(results);
@@ -106,7 +106,7 @@ public class MockDml extends Dml {
 	public override List<Database.SaveResult> doInsert(List<SObject> records) {
 		List<MockDml.Result> results = new List<MockDml.Result>();
 		for (SObject record : records) {
-			MockDml.Result result = this.generateMockResult(MockDml.Inserted, record);
+			MockDml.Result result = this.generateMockResult(MockDml.INSERTED, record);
 			results?.add(result);
 		}
 		return this.toSaveResults(results);
@@ -129,7 +129,7 @@ public class MockDml extends Dml {
 	public override List<Database.SaveResult> doPublish(List<SObject> events) {
 		List<MockDml.Result> results = new List<MockDml.Result>();
 		for (SObject event : events) {
-			MockDml.Result result = this.generateMockResult(MockDml.Published, event);
+			MockDml.Result result = this.generateMockResult(MockDml.PUBLISHED, event);
 			results?.add(result);
 		}
 		return this.toSaveResults(results);
@@ -148,7 +148,7 @@ public class MockDml extends Dml {
 	public override List<Database.SaveResult> doUpdate(List<SObject> records) {
 		List<MockDml.Result> results = new List<MockDml.Result>();
 		for (SObject record : records) {
-			MockDml.Result result = this.generateMockResult(MockDml.Updated, record);
+			MockDml.Result result = this.generateMockResult(MockDml.UPDATED, record);
 			results?.add(result);
 		}
 		return this.toSaveResults(results);
@@ -171,7 +171,7 @@ public class MockDml extends Dml {
 	public override List<Database.UpsertResult> doUpsert(List<SObject> records) {
 		List<MockDml.Result> results = new List<MockDml.Result>();
 		for (SObject record : records) {
-			MockDml.Result result = this.generateMockResult(MockDml.Upserted, record);
+			MockDml.Result result = this.generateMockResult(MockDml.UPSERTED, record);
 			results?.add(result);
 		}
 		return this.toUpsertResults(results);
@@ -216,7 +216,7 @@ public class MockDml extends Dml {
 		try {
 			// Simulate converting the lead
 			this.validateConvertedLead(leadToConvert);
-			this.generateMockResult(MockDml.Converted, leadRecord);
+			this.generateMockResult(MockDml.CONVERTED, leadRecord);
 			// Simulate creating an Account/Contact/Opportunity, if their Id wasn't already provided
 			this.simulateInsertIfNew(accountRecord);
 			this.simulateInsertIfNew(contactRecord);
@@ -230,13 +230,13 @@ public class MockDml extends Dml {
 				?.setId(opportunityRecord);
 		} catch (System.DmlException error) {
 			// Unregister any of successful related records up to this point
-			MockDml.Inserted?.unregisterDml(accountRecord);
-			MockDml.Inserted?.unregisterDml(contactRecord);
-			MockDml.Inserted?.unregisterDml(opportunityRecord);
-			MockDml.Converted?.unregisterDml(leadRecord);
+			MockDml.INSERTED?.unregisterDml(accountRecord);
+			MockDml.INSERTED?.unregisterDml(contactRecord);
+			MockDml.INSERTED?.unregisterDml(opportunityRecord);
+			MockDml.CONVERTED?.unregisterDml(leadRecord);
 			// Respect the originally defined allOrNone behavior when handling the error
 			this.setAllOrNone(originalAllOrNone);
-			return (MockDml.LeadConvertResult) this.handleDmlError(MockDml.Converted, leadRecord, error);
+			return (MockDml.LeadConvertResult) this.handleDmlError(MockDml.CONVERTED, leadRecord, error);
 		}
 	}
 
@@ -261,7 +261,7 @@ public class MockDml extends Dml {
 		if (record?.Id == null) {
 			SObjectType objectType = record?.getSObjectType();
 			record.Id = MockRecord.initRecordId(objectType);
-			this.generateMockResult(MockDml.Inserted, record);
+			this.generateMockResult(MockDml.INSERTED, record);
 		}
 	}
 
@@ -342,12 +342,12 @@ public class MockDml extends Dml {
 			return this;
 		}
 
-		public List<SObject> getAll() {
-			// Retrieves all records, regardless of their SObjectType in a flat List<SObject>
-			List<SObject> allRecords = new List<SObject>();
+		public Map<SObjectType, List<SObject>> getAll() {
+			// Retrieve all records processed by the current operation, grouped by SObjectType
+			Map<SObjectType, List<SObject>> allRecords = new Map<SObjectType, List<SObject>>();
 			for (SObjectType objectType : this.recordMap?.keySet()) {
-				List<SObject> records = this.getRecords(objectType);
-				allRecords?.addAll(records);
+				List<SObject> recordList = this.recordMap?.get(objectType)?.values();
+				allRecords?.put(objectType, recordList);
 			}
 			return allRecords;
 		}

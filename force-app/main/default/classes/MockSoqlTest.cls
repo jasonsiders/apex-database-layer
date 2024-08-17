@@ -1,6 +1,10 @@
 @IsTest
 @SuppressWarnings('PMD.EmptyCatchBlock')
 private class MockSoqlTest {
+	// **** CONSTANTS **** //
+	private static final Integer NUM_ACCS = 10;
+
+	// **** TESTS **** //
 	@IsTest
 	static void shouldMockCountQuery() {
 		// Build a query
@@ -8,8 +12,7 @@ private class MockSoqlTest {
 		MockSoql soql = (MockSoql) new MockSoql(Account.SObjectType)?.addSelect(count);
 		// Inject the query w/mock results
 		List<Account> accounts = MockSoqlTest.initAccounts(NUM_ACCS);
-		MockSoql.Simulator simulator = new SampleSimulator()?.injectResults(accounts);
-		soql?.setMock(simulator);
+		soql?.setMock(accounts);
 
 		Test.startTest();
 		Integer results = soql?.countQuery();
@@ -24,8 +27,7 @@ private class MockSoqlTest {
 		// Build a query
 		MockSoql soql = (MockSoql) new MockSoql(Account.SObjectType)?.addSelect(Account.Name);
 		// Inject the query w/a mock error
-		MockSoql.Simulator simulator = new SampleSimulator().injectError();
-		soql?.setMock(simulator);
+		soql?.setError();
 
 		Test.startTest();
 		try {
@@ -44,8 +46,7 @@ private class MockSoqlTest {
 		MockSoql soql = (MockSoql) new MockSoql(Account.SObjectType)?.addSelect(Account.Name);
 		// Inject the query w/mock results
 		List<Account> accounts = MockSoqlTest.initAccounts(NUM_ACCS);
-		MockSoql.Simulator simulator = new SampleSimulator()?.injectResults(accounts);
-		soql?.setMock(simulator);
+		soql?.setMock(accounts);
 
 		Test.startTest();
 		Soql.QueryLocator locator = soql?.getQueryLocator();
@@ -76,8 +77,7 @@ private class MockSoqlTest {
 		// Build a query
 		MockSoql soql = (MockSoql) new MockSoql(Account.SObjectType)?.addSelect(Account.Name);
 		// Inject the query w/a mock error
-		MockSoql.Simulator simulator = new SampleSimulator()?.injectError();
-		soql?.setMock(simulator);
+		soql?.setError();
 
 		Test.startTest();
 		try {
@@ -96,8 +96,7 @@ private class MockSoqlTest {
 		MockSoql soql = (MockSoql) new MockSoql(Account.SObjectType)?.addSelect(Account.Name);
 		// Inject the query w/mock results
 		List<Account> accounts = MockSoqlTest.initAccounts(NUM_ACCS);
-		MockSoql.Simulator simulator = new SampleSimulator()?.injectResults(accounts);
-		soql?.setMock(simulator);
+		soql?.setMock(accounts);
 
 		Test.startTest();
 		List<Account> results = soql?.query();
@@ -112,8 +111,7 @@ private class MockSoqlTest {
 		// Build a query
 		MockSoql soql = (MockSoql) new MockSoql(Account.SObjectType)?.addSelect(Account.Name);
 		// Inject the query w/a mock error
-		MockSoql.Simulator simulator = new SampleSimulator()?.injectError();
-		soql?.setMock(simulator);
+		soql?.setError();
 
 		Test.startTest();
 		try {
@@ -142,8 +140,7 @@ private class MockSoqlTest {
 			?.addParameter('Bar Profile')
 			?.addParameter(45);
 		List<Soql.AggregateResult> mockResults = new List<Soql.AggregateResult>{ mockResult1, mockResult2 };
-		MockSoql.Simulator simulator = new SampleSimulator()?.injectResults(mockResults);
-		soql?.setMock(simulator);
+		soql?.setMock(mockResults);
 
 		Test.startTest();
 		List<Soql.AggregateResult> results = soql?.aggregateQuery();
@@ -171,8 +168,7 @@ private class MockSoqlTest {
 			?.addSelect(count)
 			?.groupBy('Profile.Name');
 		// Inject an error
-		MockSoql.Simulator simulator = new SampleSimulator()?.injectError();
-		soql?.setMock(simulator);
+		soql?.setError();
 
 		Test.startTest();
 		try {
@@ -197,8 +193,7 @@ private class MockSoqlTest {
 		SampleWrapper mockResult1 = new SampleWrapper()?.wrap('Foo Profile', 123);
 		SampleWrapper mockResult2 = new SampleWrapper()?.wrap('Bar Profile', 45);
 		List<SampleWrapper> mockResults = new List<SampleWrapper>{ mockResult1, mockResult2 };
-		MockSoql.Simulator simulator = new SampleSimulator()?.injectResults(mockResults);
-		soql?.setMock(simulator);
+		soql?.setMock(mockResults);
 
 		Test.startTest();
 		List<SampleWrapper> results = (List<SampleWrapper>) soql?.query(List<SampleWrapper>.class);
@@ -224,8 +219,7 @@ private class MockSoqlTest {
 			?.addSelect(count)
 			?.groupBy('Profile.Name');
 		// Inject an error
-		MockSoql.Simulator simulator = new SampleSimulator()?.injectError(new System.TypeException());
-		soql?.setMock(simulator);
+		soql?.setError(new System.TypeException());
 
 		Test.startTest();
 		try {
@@ -236,6 +230,35 @@ private class MockSoqlTest {
 			Assert.areEqual(0, Limits.getQueries(), 'Actually executed SOQL');
 		}
 		Test.stopTest();
+	}
+
+	@IsTest 
+	static void shouldUseCustomSimulatorMocks() {
+		// Establish Dml & Soql objects to be used
+		DatabaseLayer.useMocks();
+		Dml dml = DatabaseLayer.newDml();
+		MockSoql soql = (MockSoql) DatabaseLayer.newSoql(Task.SObjectType)
+			?.addSelect(Task.WhatId)
+			?.addSelect(Task.WhoId);
+		// Mock with a custom class that leverages MockDml.Inserted to generate results
+		soql?.setMock(new CustomTaskQueryLogic());
+		// Mock insert an account + related contact
+		Account mockAccount = (Account) new MockRecord(Account.SObjectType)?.toSObject();
+		dml?.doInsert(mockAccount);
+		Contact mockContact = (Contact) new MockRecord(Contact.SObjectType)
+			?.setField(Contact.AccountId, mockAccount?.Id)
+			?.toSObject();
+		dml?.doInsert(mockContact);
+
+		Test.startTest();
+		List<Task> tasks = soql?.query();
+		Test.stopTest();
+
+		// Expecting 1 task x each inserted Contact
+		Assert.areEqual(1, tasks?.size(), 'Wrong # of tasks');
+		Task firstTask = tasks[0];
+		Assert.areEqual(mockAccount?.Id, firstTask?.WhatId, 'Wrong WhatId');
+		Assert.areEqual(mockContact?.Id, firstTask?.WhoId, 'Wrong WhoId');
 	}
 
 	@IsTest
@@ -261,8 +284,6 @@ private class MockSoqlTest {
 	}
 
 	// **** HELPER **** //
-	static final Integer NUM_ACCS = 10;
-
 	static List<Account> initAccounts(Integer numAccounts) {
 		List<Account> accounts = new List<Account>();
 		for (Integer i = 0; i < numAccounts; i++) {
@@ -274,30 +295,21 @@ private class MockSoqlTest {
 	}
 
 	// **** INNER **** //
-	private class SampleSimulator implements MockSoql.Simulator {
-		private Exception error;
-		private Object results;
-
-		public SampleSimulator injectError(Exception error) {
-			this.error = error;
-			return this;
-		}
-
-		public SampleSimulator injectError() {
-			return this.injectError(new System.QueryException());
-		}
-
-		public SampleSimulator injectResults(Object results) {
-			this.results = results;
-			return this;
-		}
-
-		public Object simulateQuery() {
-			if (this.error != null) {
-				throw error;
-			} else {
-				return this.results;
+	private class CustomTaskQueryLogic implements MockSoql.Simulator {
+		public List<Object> simulateQuery() {
+			// For each inserted contact, return a Task
+			List<Task> results = new List<Task>();
+			List<Contact> contacts = (List<Contact>) MockDml.Inserted.getRecords(Contact.SObjectType);
+			for (Contact contact : contacts) {
+				Task task = (Task) new MockRecord(Task.SObjectType)
+					?.setField(Task.Subject, 'Introductory Call')
+					?.setField(Task.WhatId, contact?.AccountId)
+					?.setField(Task.WhoId, contact?.Id)
+					?.withId()
+					?.toSObject();
+				results?.add(task);
 			}
+			return results;
 		}
 	}
 
