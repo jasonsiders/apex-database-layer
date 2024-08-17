@@ -690,13 +690,80 @@ Assert.areEqual(mockContact?.Id, firstTask?.WhoId, 'Wrong WhoId');
 ```
 
 #### Inject Exceptions with the `setError` Method
-Developers can simulate `Database.QueryException`s and other errors that may occur when running queries, by using 
+Developers can simulate `Database.QueryException`s and other errors that may occur when running queries, by using the `setError` method:
+
+```java
+DatabaseLayer.useMocks();
+MockSoql soql = (MockSoql) DatabaseLayer.newSoql(Account.SObjectType);
+soql?.setError();
+soql?.query(); // ! System.QueryException
+```
+
+Callers can specify the exact exception to be thrown, if desired:
+```java
+DatabaseLayer.useMocks();
+System.NullPointerException npe = new System.NullPointerException();
+MockSoql soql = (MockSoql) DatabaseLayer.newSoql(Account.SObjectType);
+soql?.setError(npe);
+soql?.query(); // ! System.NullPointerException
+```
 
 ### Mocking Query Locators
-- [ ] TODO!
+The `Database.QueryLocator` object cannot be mocked in a traditional sense, since it manually constructed, or JSON-deserialized. The only way to create an object of this type is by directly interacting with the Salesforce database, via the `Database.getQueryLocator` method. 
 
-### The `MockSoql.Simulator` Interface
-- [ ] TODO!
+For this reason, the `Soql` class uses a decorator class, `Soql.QueryLocator`. For the most part, developers can interact with this object the same way they would with a `Database.QueryLocator`:
+
+```java
+Soql soql = (Soql) DatabaseLayer.newSoql(Account.SObjectType);
+Soql.QueryLocator locator = soql?.getQueryLocator();
+String query = locator?.getQuery();
+System.Iterator<SObject> iterator = locator?.iterator();
+```
+
+In mock implementations there is no underlying `Database.QueryLocator` driving the interactions; instead, the `MockSoql` class injects its mock results to the iterator returned by the query locator's `iterator` method.
+
+There is one limitation to this approach, and that is that frameworks that rely on the underlying `Database.QueryLocator` object cannot be mocked. This is most prevalent in `Database.Batchable` classes that return a query locator object in its `start()` method. For example:
+
+```java
+public class MyBatch implements Database.Batchable<SObject> {
+	@TestVisible
+	private Soql soql = (Soql) DatabaseLayer.newSoql(Account.SObjectType);
+
+	public Database.QueryLocator start(Database.BatchableContext ctx) {
+		// The getCursor() method returns the underlying
+		// Database.QueryLocator expected by this method
+		return soql?.getQueryLocator()?.getCursor();
+	}
+
+	public void execute(Database.BatchableContext ctx, List<Account> accs) {
+		// ...
+	}
+
+	public void finish(Database.BatchableContext ctx) {
+		// ...
+	}
+}
+```
+
+The Soql class's `getQueryLocator` method returns a `Soql.QueryLocator`. In mock contexts, this object's underlying `Database.QueryLocator` will be `null`. This means that the `start` method will return a null object, causing the batch to fail:
+
+```java
+@IsTest 
+static void cannotMockBatchableQueryLocator() {
+	DatabaseLayer.useMocks();
+	MyBatch job = new MyBatch();
+
+	Test.startTest();
+	Database.executeBatch(job);
+	Test.stopTest(); 
+	// ! System.NullPointerException
+}
+```
+
+Developers can employ one of the following strategies to work around this:
+- Have your unit tests call the batch's `start`, `execute`, and `finish` methods invidually. 
+- Amend the `start` method to return an [iterable object](https://developer.salesforce.com/docs/atlas.en-us.apexcode.meta/apexcode/apex_classes_iterable.htm) instead.
+- Use `System.Queueable` jobs paired with a `System.Finalizer` instead of `Database.Batchable`.
 
 ### The `MockSoql.AggregateResult` Class
 A constructable version of the `Soql.AggregateResult` class, which wraps the `Schema.AggregateResult` class and its methods. `Schema.AggregateResult` objects cannot be directly constructed, serialized, or otherwise mocked. 
