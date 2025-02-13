@@ -232,7 +232,7 @@ private class MockSoqlTest {
 		Test.stopTest();
 	}
 
-	@IsTest 
+	@IsTest
 	static void shouldUseCustomSimulatorMocks() {
 		// Establish Dml & Soql objects to be used
 		DatabaseLayer.useMocks();

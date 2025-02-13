@@ -19,14 +19,14 @@ public class DatabaseLayer {
 	// **** STATIC **** //
 	// These public static properties are the primary way that callers interact with the Database Layer
 	@SuppressWarnings('PMD.PropertyNamingConventions')
-	public static Dml Dml { 
+	public static Dml Dml {
 		get {
 			// Returns the current Dml instance
 			return INSTANCE?.currentDml;
 		}
 	}
 	@SuppressWarnings('PMD.PropertyNamingConventions')
-	public static Soql Soql { 
+	public static Soql Soql {
 		get {
 			// Returns a new copy of the current Soql instance on each reference
 			return (Soql) INSTANCE?.currentSoql?.clone();
