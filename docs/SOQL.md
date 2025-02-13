@@ -4,16 +4,16 @@ The `Soql` class is designed to facilitate the construction and execution of SOQ
 
 ## Constructing `Soql` Objects
 
-`Soql` objects cannot be directly constructed via the `new` keyword. Instead, use `DatabaseLayer.newDml()`, and cast the result to the `Soql` type:
+`Soql` objects cannot be directly constructed via the `new` keyword. Instead, use `DatabaseLayer.Dml`, and cast the result to the `Soql` type:
 ```java
-Soql soql = (Soql) DatabaseLayer.newSoql(Account.SObjectType);
+Soql soql = (Soql) DatabaseLayer.Soql.fromSObject(Account.SObjectType);
 ```
 
 The `DatabaseLayer` class is responsible for instantiating database objects of the correct type at runtime. In `@IsTest` context, developers can call `DatabaseLayer.useMocks()`, and an instance of the `MockSoql` class will be returned instead:
 
 ```java
 DatabaseLayer.useMocks();
-Soql soql = (Soql) DatabaseLayer.newSoql(Account.SObjectType);
+Soql soql = (Soql) DatabaseLayer.Soql.fromSObject(Account.SObjectType);
 Assert.isInstanceOfType(soql, MockSoql.class, 'Not a mock');
 ```
 
@@ -104,11 +104,11 @@ Removes all fields from the SELECT clause of the query, essentially clearing any
 
 - `Soql.Builder deselectAll()`
 
-#### `fromEntity`
+#### `fromSObject`
 
 Sets the entity from which to query data.
 
-- `Soql.Builder fromEntity(SObjectType objectType)`
+- `Soql.Builder fromSObject(SObjectType objectType)`
 
 #### `groupBy`
 
@@ -265,7 +265,7 @@ Soql.Condition worthAMil = new Soql.Condition(
   Soql.Operator.GREATER_THAN,
   1000000
 );
-Soql soql = (Soql) DatabaseLayer.newSoql(Opportunity.SObjectType)
+Soql soql = (Soql) DatabaseLayer.Soql.fromSObject(Opportunity.SObjectType)
   ?.addWhere(isClosedWon)
   ?.addWhere(worthAMil);
 ```
@@ -339,7 +339,7 @@ Soql.Condition isWon = new Soql.Condition(
   Soql.Operator.EQUALS, 
   true
 );
-Soql soql = DatabaseLayer.newSoql(Opportunity.SObjectType)
+Soql soql = DatabaseLayer.Soql.fromSObject(Opportunity.SObjectType)
   ?.setOuterWhereLogic(Soql.LogicType.ANY_CONDITIONS)
   ?.setWhere(isWon)
   ?.setWhere(nest3);
@@ -359,7 +359,7 @@ Soql.Condition worthAMil = new Soql.Condition(
   Soql.Operator.GREATER_THAN,
   1000000
 );
-Soql soql = (Soql) DatabaseLayer.newSoql(Opportunity.SObjectType)
+Soql soql = (Soql) DatabaseLayer.Soql.fromSObject(Opportunity.SObjectType)
   ?.addWhere(isClosedWon)
   ?.addWhere(worthAMil);
 ```
@@ -400,7 +400,7 @@ Represents inner query logic, used for filtering results in a `WHERE` clause. Us
 // SELECT Id FROM Account WHERE Id IN (SELECT AccountId FROM Opportunity WHERE IsWon = true)
 Soql.InnerQuery inner = new Soql.InnerQuery(Opportunity.SObjectType)
   ?.addSelect(Opportunity.AccountId);
-Soql soql = (Soql) Database.newSoql(Account.SObjectType)
+Soql soql = (Soql) Database.Soql.fromSObjectType(Account.SObjectType)
   ?.addSelect(inner);
 ```
 
@@ -416,7 +416,7 @@ Indicates the enclosing logic for the `Soql.ConditionalLogic` objects used in _W
 
 Use in the `setOuterWhereLogic` or `setOuterHavingLogic` SOQL methods. Example:
 ```java
-Soql soql = (Soql) DatabaseLayer.newSoql(User.SObjectType)
+Soql soql = (Soql) DatabaseLayer.Soql.fromSObject(User.SObjectType)
   ?.addWhere(User.IsActive, Soql.EQUALS, true)
   ?.addWhere('Profile.Name', Soql.EQUALS, 'System Administrator')
   ?.setOuterWhereLogic(Soql.LogicType.ANY_CONDITIONS);
@@ -435,7 +435,7 @@ Soql.Condition worthAMil = new Soql.Condition(
   Soql.Operator.GREATER_THAN,
   1000000
 );
-Soql soql = (Soql) DatabaseLayer.newSoql(Opportunity.SObjectType)
+Soql soql = (Soql) DatabaseLayer.Soql.fromSObject(Opportunity.SObjectType)
   ?.setOuterWhereLogic(Soql.LogicType.ANY_CONDITIONS)
   ?.setWhere(isClosedWon)
   ?.setWhere(worthAMil);
@@ -455,7 +455,7 @@ Soql.SortOrder sortOrder = new Soql.SortOrder(
   Soql.SortDirection.DESCENDING
 );
 sortOrder?.setNullOrder(Soql.NullOrder.NULLS_FIRST);
-Soql soql = (Soql) DatabaseLayer.newSoql(Opportunity.SObject)?.orderBy(sortOrder);
+Soql soql = (Soql) DatabaseLayer.Soql.fromSObject(Opportunity.SObject)?.orderBy(sortOrder);
 ```
 
 ### QueryLocator
@@ -465,7 +465,7 @@ Decorates `Database.QueryLocator` objects that are returned by `Database.getQuer
 Use this object in conjunction with the `getQueryLocator` method:
 
 ```java
-Soql soql = DatabaseLayer.newSoql(Account.SObjectType);
+Soql soql = DatabaseLayer.Soql.fromSObject(Account.SObjectType);
 Soql.QueryLocator locator = soql?.getQueryLocator();
 ```
 
@@ -499,7 +499,7 @@ Enumerates possible values to be used with the optional [_USING SCOPE_](https://
 Use this in conjunction with the `usingScope` SOQL method. For example:
 
 ```java
-Soql soql = (Soql) DatabaseLayer.newSoql(User.SObjectType)
+Soql soql = (Soql) DatabaseLayer.Soql.fromSObject(User.SObjectType)
   ?.usingScope(Soql.Scope.EVERYTHING);
 ```
 
@@ -512,7 +512,7 @@ Indicates the direction of the _ORDER BY_ clause. Values include:
 
 Use this in conjunction with the `orderBy` SOQL method. For example:
 ```java
-Soql soql = (Soql) DatabaseLayer.newSoql(Opportunity.SObjectType)
+Soql soql = (Soql) DatabaseLayer.Soql.fromSObject(Opportunity.SObjectType)
   ?.orderBy(Opportunity.Amount, Soql.SortDirection.DESCENDING);
 ```
 
@@ -549,7 +549,7 @@ Use this in conjunction with the `addSelect` SOQL method. For example:
 ```java
 // SELECT Id, (SELECT Id FROM Contacts) FROM Account
 Soql.SubQuery sub = new Soql.SubQuery(Contact.AccountId);
-Soql soql = (Soql) Database.newSoql(Account.SObjectType).addSelect(sub);
+Soql soql = (Soql) Database.Soql.fromSObjectType(Account.SObjectType).addSelect(sub);
 ```
 
 This class extends `Soql.Builder`, and therefore has all of the same query-building [methods](#building-queries).
@@ -572,7 +572,7 @@ Use this in conjunction with the SOQL `setUsage` method. For example:
 
 ```java
 // SELECT Id FROM Account FOR UPDATE
-Soql soql = (Soql) DatabaseLayer.newSoql(Account.SObjectType)
+Soql soql = (Soql) DatabaseLayer.Soql.fromSObject(Account.SObjectType)
   ?.setUsage(Soql.Usage.FOR_UPDATE);
 ```
 
@@ -581,14 +581,14 @@ Soql soql = (Soql) DatabaseLayer.newSoql(Account.SObjectType)
 The `MockSoql` class can be used in place of a normal `Soql` object in the `@IsTest` context. The `MockSoql` class allows developers to inject dynamic static or dynamic results in their query objects, instead of actually querying the Salesforce database.
 
 ### Instantiating Mocks
-In `@IsTest` context, mock SOQL operations by calling the `DatabaseLayer.useMocks()` method. Once this is done, the `DatabaseLayer.newSoql()` method will return `MockSoql` objects. If the `newSoql` method is called _before_ `useMocks`, then those objects will continue to be instances of `Soql`, and not `MockSoql`. To prevent issues, call the `useMocks()` method as the first line in your test. 
+In `@IsTest` context, mock SOQL operations by calling the `DatabaseLayer.useMocks()` method. Once this is done, the `DatabaseLayer.Soql.fromSObject()` method will return `MockSoql` objects. If the `Soql.fromSObjectType` method is called _before_ `useMocks`, then those objects will continue to be instances of `Soql`, and not `MockSoql`. To prevent issues, call the `useMocks()` method as the first line in your test. 
 
 ### Injecting Mock Query Results
 By default, the `MockSoql`'s query methods will return an empty result set of the type that you are expecting:
 
 ```java
 DatabaseLayer.useMocks()`
-MockSoql soql = (MockSoql) DatabaseLayer.newSoql(Account.SObjectType);
+MockSoql soql = (MockSoql) DatabaseLayer.Soql.fromSObject(Account.SObjectType);
 List<Account> results = soql?.query();
 Assert.areEqual(0, results?.size(), 'Wrong # of resuls');
 ```
@@ -603,7 +603,7 @@ The easiest way to simulate queries is to use the `setMock` method with a static
 ```java
 DatabaseLayer.useMocks();
 Account mockAccount = new MockRecord(Account.SObjectType)?.withId()?.toSObject();
-MockSoql soql = (MockSoql) DatabaseLayer.newSoql(Account.SObjectType);
+MockSoql soql = (MockSoql) DatabaseLayer.Soql.fromSObject(Account.SObjectType);
 soql.useMocks(new List<Account>{ mockAccount });
 List<Account> results = soql?.query();
 Assert.areEqual(1, results?.size(), 'Wrong # of results');
@@ -625,7 +625,7 @@ mockResult.state = 'CA';
 mockResult.numRecords = 123;
 Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, Account.Id)
   ?.withAlias('numRecords');
-MockSoql soql = (MockSoql) DatabaseLayer.newSoql(Account.SObjectType)
+MockSoql soql = (MockSoql) DatabaseLayer.Soql.fromSObject(Account.SObjectType)
   ?.addSelect(Account.BillingState, 'state')
   ?.addSelect(count);
 soql.useMocks(new List<MyCustomType>{ mockResult });
@@ -664,19 +664,18 @@ private class CustomTaskQueryLogic implements MockSoql.Simulator {
 ```java
 // Establish Dml & Soql objects to be used
 DatabaseLayer.useMocks();
-Dml dml = DatabaseLayer.newDml();
-MockSoql soql = (MockSoql) DatabaseLayer.newSoql(Task.SObjectType)
+MockSoql soql = (MockSoql) DatabaseLayer.Soql.fromSObject(Task.SObjectType)
   ?.addSelect(Task.WhatId)
   ?.addSelect(Task.WhoId);
 // Mock with a custom class that leverages MockDml.Inserted to generate results
 soql?.setMock(new CustomTaskQueryLogic());
 // Mock insert an account + related contact
 Account mockAccount = (Account) new MockRecord(Account.SObjectType)?.toSObject();
-dml?.doInsert(mockAccount);
+DatabaseLayer.Dml.doInsert(mockAccount);
 Contact mockContact = (Contact) new MockRecord(Contact.SObjectType)
   ?.setField(Contact.AccountId, mockAccount?.Id)
   ?.toSObject();
-dml?.doInsert(mockContact);
+DatabaseLayer.Dml.doInsert(mockContact);
 
 Test.startTest();
 List<Task> tasks = soql?.query();
@@ -694,7 +693,7 @@ Developers can simulate `Database.QueryException`s and other errors that may occ
 
 ```java
 DatabaseLayer.useMocks();
-MockSoql soql = (MockSoql) DatabaseLayer.newSoql(Account.SObjectType);
+MockSoql soql = (MockSoql) DatabaseLayer.Soql.fromSObject(Account.SObjectType);
 soql?.setError();
 soql?.query(); // ! System.QueryException
 ```
@@ -703,7 +702,7 @@ Callers can specify the exact exception to be thrown, if desired:
 ```java
 DatabaseLayer.useMocks();
 System.NullPointerException npe = new System.NullPointerException();
-MockSoql soql = (MockSoql) DatabaseLayer.newSoql(Account.SObjectType);
+MockSoql soql = (MockSoql) DatabaseLayer.Soql.fromSObject(Account.SObjectType);
 soql?.setError(npe);
 soql?.query(); // ! System.NullPointerException
 ```
@@ -714,7 +713,7 @@ The `Database.QueryLocator` object cannot be mocked in a traditional sense, sinc
 For this reason, the `Soql` class uses a decorator class, `Soql.QueryLocator`. For the most part, developers can interact with this object the same way they would with a `Database.QueryLocator`:
 
 ```java
-Soql soql = (Soql) DatabaseLayer.newSoql(Account.SObjectType);
+Soql soql = (Soql) DatabaseLayer.Soql.fromSObject(Account.SObjectType);
 Soql.QueryLocator locator = soql?.getQueryLocator();
 String query = locator?.getQuery();
 System.Iterator<SObject> iterator = locator?.iterator();
@@ -727,7 +726,7 @@ There is one limitation to this approach, and that is that frameworks that rely 
 ```java
 public class MyBatch implements Database.Batchable<SObject> {
   @TestVisible
-  private Soql soql = (Soql) DatabaseLayer.newSoql(Account.SObjectType);
+  private Soql soql = (Soql) DatabaseLayer.Soql.fromSObject(Account.SObjectType);
 
   public Database.QueryLocator start(Database.BatchableContext ctx) {
     // The getCursor() method returns the underlying
@@ -775,7 +774,7 @@ DatabaseLayer.useMocks();
 String alias = 'numRecords';
 Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, Account.Id)
   ?.withAlias(alias);
-MockSoql soql = (MockSoql) DatabaseLayer.newSoql(Account.SObjectType)
+MockSoql soql = (MockSoql) DatabaseLayer.Soql.fromSObject(Account.SObjectType)
   ?.addSelect(count);
 MockSoql.AggregateResult agg = new MockSoql.AggregateResult()
   ?.addParameter(alias, 100);

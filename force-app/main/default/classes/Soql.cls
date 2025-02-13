@@ -356,7 +356,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		// * FROM *
-		public Soql.Builder fromEntity(SObjectType objectType) {
+		public Soql.Builder fromSObject(SObjectType objectType) {
 			this.entity = objectType?.toString();
 			return this;
 		}
@@ -652,7 +652,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
 		public InnerQuery(SObjectType objectType) {
 			this();
-			this.fromEntity(objectType);
+			this.fromSObject(objectType);
 		}
 
 		public override String toString() {

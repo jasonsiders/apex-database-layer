@@ -9,7 +9,7 @@ private class DmlTest {
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();
-		Database.SaveResult result = DatabaseLayer.newDml()?.doInsert(account);
+		Database.SaveResult result = DatabaseLayer.Dml.doInsert(account);
 		Test.stopTest();
 
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
@@ -20,7 +20,7 @@ private class DmlTest {
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();
-		Database.SaveResult result = DatabaseLayer.newDml()?.doInsertAsync(account);
+		Database.SaveResult result = DatabaseLayer.Dml.doInsertAsync(account);
 		Test.stopTest();
 
 		// Note: This should fail, since Account isn't an external object.
@@ -37,7 +37,7 @@ private class DmlTest {
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();
-		Database.SaveResult result = DatabaseLayer.newDml()?.doInsertImmediate(account);
+		Database.SaveResult result = DatabaseLayer.Dml.doInsertImmediate(account);
 		Test.stopTest();
 
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
@@ -49,7 +49,7 @@ private class DmlTest {
 		insert account;
 
 		Test.startTest();
-		Database.SaveResult result = DatabaseLayer.newDml()?.doUpdate(account);
+		Database.SaveResult result = DatabaseLayer.Dml.doUpdate(account);
 		Test.stopTest();
 
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
@@ -61,7 +61,7 @@ private class DmlTest {
 		insert account;
 
 		Test.startTest();
-		Database.SaveResult result = DatabaseLayer.newDml()?.doUpdateAsync(account);
+		Database.SaveResult result = DatabaseLayer.Dml.doUpdateAsync(account);
 		Test.stopTest();
 
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
@@ -73,7 +73,7 @@ private class DmlTest {
 		insert account;
 
 		Test.startTest();
-		Database.SaveResult result = DatabaseLayer.newDml()?.doUpdateImmediate(account);
+		Database.SaveResult result = DatabaseLayer.Dml.doUpdateImmediate(account);
 		Test.stopTest();
 
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
@@ -84,7 +84,7 @@ private class DmlTest {
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();
-		Database.UpsertResult result = DatabaseLayer.newDml()?.doUpsert(account);
+		Database.UpsertResult result = DatabaseLayer.Dml.doUpsert(account);
 		Test.stopTest();
 
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
@@ -96,7 +96,7 @@ private class DmlTest {
 		SObjectField field = Account.Id;
 
 		Test.startTest();
-		Dml dml = DatabaseLayer.newDml()?.setExternalIdField(field);
+		Dml dml = DatabaseLayer.Dml.setExternalIdField(field);
 		Database.UpsertResult result = dml?.doUpsert(acc);
 		Test.stopTest();
 
@@ -110,7 +110,7 @@ private class DmlTest {
 		insert account;
 
 		Test.startTest();
-		Database.DeleteResult result = DatabaseLayer.newDml()?.doDelete(account);
+		Database.DeleteResult result = DatabaseLayer.Dml.doDelete(account);
 		Test.stopTest();
 
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
@@ -122,7 +122,7 @@ private class DmlTest {
 		insert account;
 
 		Test.startTest();
-		Database.DeleteResult result = DatabaseLayer.newDml()?.doDeleteAsync(account);
+		Database.DeleteResult result = DatabaseLayer.Dml.doDeleteAsync(account);
 		Test.stopTest();
 
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
@@ -134,7 +134,7 @@ private class DmlTest {
 		insert account;
 
 		Test.startTest();
-		Database.DeleteResult result = DatabaseLayer.newDml()?.doDeleteImmediate(account);
+		Database.DeleteResult result = DatabaseLayer.Dml.doDeleteImmediate(account);
 		Test.stopTest();
 
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
@@ -146,7 +146,7 @@ private class DmlTest {
 		insert account;
 
 		Test.startTest();
-		Database.DeleteResult result = DatabaseLayer.newDml()?.doHardDelete(account);
+		Database.DeleteResult result = DatabaseLayer.Dml.doHardDelete(account);
 		Test.stopTest();
 
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
@@ -159,7 +159,7 @@ private class DmlTest {
 		delete account;
 
 		Test.startTest();
-		Database.UndeleteResult result = DatabaseLayer.newDml()?.doUndelete(account);
+		Database.UndeleteResult result = DatabaseLayer.Dml.doUndelete(account);
 		Test.stopTest();
 
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
@@ -170,7 +170,7 @@ private class DmlTest {
 		BatchApexErrorEvent event = new BatchApexErrorEvent();
 
 		Test.startTest();
-		Database.SaveResult result = DatabaseLayer.newDml()?.doPublish(event);
+		Database.SaveResult result = DatabaseLayer.Dml.doPublish(event);
 		Test.stopTest();
 
 		// Note: Standard platform events that are available in all Salesforce orgs
@@ -197,7 +197,7 @@ private class DmlTest {
 		leadToConvert?.setConvertedStatus(status?.ApiName);
 
 		Test.startTest();
-		Database.LeadConvertResult result = DatabaseLayer.newDml()?.doConvert(leadToConvert);
+		Database.LeadConvertResult result = DatabaseLayer.Dml.doConvert(leadToConvert);
 		Test.stopTest();
 
 		Assert.areEqual(true, result?.isSuccess(), 'Did not succeed: ' + result?.getErrors());
@@ -210,7 +210,7 @@ private class DmlTest {
 		Account account2 = DmlTest.initAccount();
 		Account account3 = DmlTest.initAccount();
 		BatchApexErrorEvent event = new BatchApexErrorEvent();
-		Dml myDml = DatabaseLayer.newDml()?.setAllOrNone(false);
+		Dml myDml = DatabaseLayer.Dml.setAllOrNone(false);
 
 		Test.startTest();
 		// * Insert Methods
@@ -277,7 +277,7 @@ private class DmlTest {
 
 		Test.startTest();
 		try {
-			DatabaseLayer.newDml()?.doDml(null, account);
+			DatabaseLayer.Dml.doDml(null, account);
 			Assert.fail('An Exception was not thrown');
 		} catch (System.DmlException error) {
 			Assert.areEqual(true, error?.getMessage()?.startsWith('Unsupported'), 'Wrong error message');
@@ -293,7 +293,7 @@ private class DmlTest {
 		DataSource.AsyncDeleteCallback callback = new TestDeleteCallback();
 
 		Test.startTest();
-		Dml dml = DatabaseLayer.newDml()?.setCallback(callback);
+		Dml dml = DatabaseLayer.Dml.setCallback(callback);
 		Test.stopTest();
 
 		Assert.isInstanceOfType(dml?.getDeleteCallback(), TestDeleteCallback.class, 'Did not set custom callback');
@@ -309,7 +309,7 @@ private class DmlTest {
 		DataSource.AsyncSaveCallback callback = new TestSaveCallback();
 
 		Test.startTest();
-		Dml dml = DatabaseLayer.newDml()?.setCallback(callback);
+		Dml dml = DatabaseLayer.Dml.setCallback(callback);
 		Test.stopTest();
 
 		Assert.isInstanceOfType(dml?.getSaveCallback(), TestSaveCallback.class, 'Did not set custom callback');

@@ -236,19 +236,18 @@ private class MockSoqlTest {
 	static void shouldUseCustomSimulatorMocks() {
 		// Establish Dml & Soql objects to be used
 		DatabaseLayer.useMocks();
-		Dml dml = DatabaseLayer.newDml();
-		MockSoql soql = (MockSoql) DatabaseLayer.newSoql(Task.SObjectType)
+		MockSoql soql = (MockSoql) DatabaseLayer.Soql.fromSObject(Task.SObjectType)
 			?.addSelect(Task.WhatId)
 			?.addSelect(Task.WhoId);
 		// Mock with a custom class that leverages MockDml.Inserted to generate results
 		soql?.setMock(new CustomTaskQueryLogic());
 		// Mock insert an account + related contact
 		Account mockAccount = (Account) new MockRecord(Account.SObjectType)?.toSObject();
-		dml?.doInsert(mockAccount);
+		DatabaseLayer.Dml.doInsert(mockAccount);
 		Contact mockContact = (Contact) new MockRecord(Contact.SObjectType)
 			?.setField(Contact.AccountId, mockAccount?.Id)
 			?.toSObject();
-		dml?.doInsert(mockContact);
+		DatabaseLayer.Dml.doInsert(mockContact);
 
 		Test.startTest();
 		List<Task> tasks = soql?.query();

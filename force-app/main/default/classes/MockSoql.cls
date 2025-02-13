@@ -13,7 +13,7 @@ public class MockSoql extends Soql {
 
 	public MockSoql(SObjectType objectType) {
 		this();
-		this.fromEntity(objectType);
+		this.fromSObject(objectType);
 	}
 
 	public Soql setError(Exception error) {

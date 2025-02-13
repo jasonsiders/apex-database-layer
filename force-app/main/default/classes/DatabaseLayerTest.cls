@@ -3,7 +3,7 @@ private class DatabaseLayerTest {
 	@IsTest
 	static void shouldInitRealDmlObjectByDefault() {
 		Test.startTest();
-		Dml result = DatabaseLayer.newDml();
+		Dml result = DatabaseLayer.Dml;
 		Test.stopTest();
 
 		Assert.isInstanceOfType(result, Dml.class, 'Should be Dml');
@@ -15,7 +15,7 @@ private class DatabaseLayerTest {
 		DatabaseLayer.useMocks();
 
 		Test.startTest();
-		Dml result = DatabaseLayer.newDml();
+		Dml result = DatabaseLayer.Dml;
 		Test.stopTest();
 
 		Assert.isInstanceOfType(result, Dml.class, 'Should be Dml');
@@ -29,7 +29,7 @@ private class DatabaseLayerTest {
 		Test.startTest();
 		// Now switch back to using real database objects
 		DatabaseLayer.useRealData();
-		Dml result = DatabaseLayer.newDml();
+		Dml result = DatabaseLayer.Dml;
 		Test.stopTest();
 
 		Assert.isInstanceOfType(result, Dml.class, 'Should be Dml');
@@ -39,7 +39,7 @@ private class DatabaseLayerTest {
 	@IsTest
 	static void shouldInitRealSoqlObjectByDefault() {
 		Test.startTest();
-		Soql result = DatabaseLayer.newSoql(Account.SObjectType);
+		Soql result = DatabaseLayer.Soql;
 		Test.stopTest();
 
 		Assert.isInstanceOfType(result, Soql.class, 'Should be Soql');
@@ -51,7 +51,7 @@ private class DatabaseLayerTest {
 		DatabaseLayer.useMocks();
 
 		Test.startTest();
-		Soql result = DatabaseLayer.newSoql(Account.SObjectType);
+		Soql result = DatabaseLayer.Soql;
 		Test.stopTest();
 
 		Assert.isInstanceOfType(result, Soql.class, 'Should be Soql');
@@ -65,7 +65,7 @@ private class DatabaseLayerTest {
 		Test.startTest();
 		// Now switch back to using real database objects
 		DatabaseLayer.useRealData();
-		Soql result = DatabaseLayer.newSoql(Account.SObjectType);
+		Soql result = DatabaseLayer.Soql;
 		Test.stopTest();
 
 		Assert.isInstanceOfType(result, Soql.class, 'Should be Soql');

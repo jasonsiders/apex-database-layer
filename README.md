@@ -28,8 +28,7 @@ The `Dml` class is responsible for inserting, modifying, and deleting records in
 insert records;
 Database.insert(records);
 // Instead, use the Dml class's methods
-Dml myDml = DatabaseLayer.newDml();
-myDml?.doInsert(records);
+DatabaseLayer.Dml.doInsert(records);
 ```
 
 In apex tests, you can mock all of your DML operations by calling `DatabaseLayer.useMocks()`. This will automatically substitute real `Dml` objects with a `MockDml` object. 
@@ -38,7 +37,7 @@ By default this class will simulate successful DML operations:
 ```java
 DatabaseLayer.useMocks();
 Account account = new Account(Name = 'Test Account');
-DatabaseLayer.newDml()?.doInsert(account);
+DatabaseLayer.Dml.doInsert(account);
 Assert.isNotNull(account?.Id, 'Was not inserted');
 ```
 
@@ -47,7 +46,7 @@ To simulate DML failures, use the `fail()` method:
 ```java
 DatabaseLayer.useMocks();
 Account account = new Account(Name = 'Test Account');
-MockDml dml = (MockDml) DatabaseLayer.newDml();
+MockDml dml = (MockDml) DatabaseLayer.Dml;
 dml?.fail();
 // All subsuquent dml operations should fail
 dml?.doInsert(account); 
@@ -75,7 +74,7 @@ public class ExampleFailure implements MockDml.ConditionalFailure {
 ```java
 // Inject the conditional logic via the failIf() method
 DatabaseLayer.useMocks();
-MockDml dml = (MockDml) DatabaseLayer.newDml();
+MockDml dml = (MockDml) DatabaseLayer.Dml;
 MockDml.ConditionalFailure logic = new ExampleFailure();
 dml?.failIf(logic);
 // This won't fail, because it's not an update!
@@ -91,7 +90,7 @@ static void someTest() {
   Account acc = new Account(Name = 'John Doe');
   
   Test.startTest();
-  DatabaseLayer.newDml()?.doInsert(acc);
+  DatabaseLayer.Dml.doInsert(acc);
   Test.stopTest();
 
   List<Account> insertedAccs = MockDml.Inserted.getRecords(Account.SObjectType);
@@ -108,7 +107,7 @@ View the [docs](docs/DML.md) to learn more about the `Dml` and `MockDml` classes
 The `Soql` class is responsible for querying records from the database. It wraps the standard `Database.query` and related methods. You can use its flexible builder pattern to compose a wide range of queries.
 
 ```java
-Soql soql = (Soql) DatabaseLayer.newSoql(User.SObjectType)
+Soql soql = (Soql) DatabaseLayer.Soql.fromSObject(User.SObjectType)
   ?.addSelect(User.FirstName)
   ?.addSelect(User.LastName)
   ?.addSelect(User.Email)
@@ -151,7 +150,7 @@ You can pass that object to the `setMock()` method, as shown below:
 ```java
 DatabaseLayer.useMocks();
 MockSoql.Simulator simulator = new MySimulator();
-MockSoql soql = (MockSoql) DatabaseLayer.newSoql(Opportunity.SObjectType);
+MockSoql soql = (MockSoql) DatabaseLayer.Soql.fromSObject(Opportunity.SObjectType);
 soql?.setMock(simulator);
 List<Opportunity> opps = soql?.query();
 ```
@@ -178,11 +177,11 @@ View the [docs](docs/SOQL.md) to learn more about the `Soql` and `MockSoql` clas
 The `DatabaseLayer` class is responsible for constructing new `Dml` and `Soql` objects:
 
 ```java
-Dml myDml = DatabaseLayer.newDml();
-Soql mySoql = (Soql) DatabaseLayer.newSoql(Account.SObjectType);
+Dml myDml = DatabaseLayer.Dml;
+Soql mySoql = (Soql) DatabaseLayer.Soql.fromSObject(Account.SObjectType);
 ```
 
-This approach allows for mocks to be automatically substituted at runtime during tests, if desired. By default, each of these methods will return base implementations of the `Dml` and `Soql` classes, which directly interact with the Salesforce database. In `@IsTest` context, you can use the `DatabaseLayer.useMocks()` method. Once this is done, the `newDml()` and `newSoql()` methods will return mock instances of their respective objects:
+This approach allows for mocks to be automatically substituted at runtime during tests, if desired. By default, each of these methods will return base implementations of the `Dml` and `Soql` classes, which directly interact with the Salesforce database. In `@IsTest` context, you can use the `DatabaseLayer.useMocks()` method. Once this is done, the `Dml` and `Soql` static properties will reflect mock instances of their respective objects:
 
 ```java
 @IsTest 

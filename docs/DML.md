@@ -4,17 +4,16 @@ The `Dml` class is designed to streamline and enhance DML operations within Sale
 
 ## Constructing `Dml` Objects
 
-`Dml` objects cannot be directly constructed via the `new` keyword. Instead, use `DatabaseLayer.newDml()`:
+`Dml` objects cannot be directly constructed via the `new` keyword. Instead, refer to the `DatabaseLayer.Dml` static property:
 ```java
-Dml dml = DatabaseLayer.newDml();
+DatabaseLayer.Dml.doInsert(record);
 ```
 
 The `DatabaseLayer` class is responsible for instantiating database objects of the correct type at runtime. In `@IsTest` context, developers can call `DatabaseLayer.useMocks()`, and an instance of the `MockDml` class will be returned instead:
 
 ```java
 DatabaseLayer.useMocks();
-Dml dml = DatabaseLayer.useMocks();
-Assert.isInstanceOfType(dml, MockDml.class, 'Not a mock');
+Assert.isInstanceOfType(DatabaseLayer.Dml, MockDml.class, 'Not a mock');
 ```
 
 ## Public Methods
@@ -239,14 +238,14 @@ Values:
 The `MockDml` class can be used in placed of a normal `Dml` class in the `@IsTest` context. The `MockDml` class manipulates the SObject records in memory, instead of actually inserting, modifying or deleting records in the Salesforce database.
 
 ### Instantiating Mocks
-In `@IsTest` context, mock DML operations by calling the `DatabaseLayer.useMocks()` method. Once this is done, the `DatabaseLayer.newDml()` method will return `MockDml` objects. If the `newDml()` methood is called _before_ `useMocks()`, then those objects will continue to be instances of `Dml`. To prevent issues, call the `useMocks()` method as the first line in your test. 
+In `@IsTest` context, mock DML operations by calling the `DatabaseLayer.useMocks()` method. Once this is done, the `DatabaseLayer.Dml` method will return `MockDml` objects. If the `Dml` methood is called _before_ `useMocks()`, then those objects will continue to be instances of `Dml`. To prevent issues, call the `useMocks()` method as the first line in your test. 
 
 ### Simulating DML Failures
 By default, `MockDml` objects will simulate successful DML operations:
 ```java
 DatabaseLayer.useMocks();
 Account account = new Account(Name = 'My Account');
-Database.SaveResult result = DatabaseLayer.newDml()?.doInsert(account);
+Database.SaveResult result = DatabaseLayer.Dml.doInsert(account);
 Assert.isTrue(result?.isSuccess(), 'DML did not succeed');
 Assert.isNotNull(account?.Id, 'Account was not inserted');
 ```
@@ -255,7 +254,7 @@ To simulate failed DML operations, you must first indicate to the `MockDml` clas
 ```java
 DatabaseLayer.useMocks();
 Account account = new Account(Name = 'John Doe');
-MockDml dml = (MockDml) DatabaseLayer.newDml();
+MockDml dml = (MockDml) DatabaseLayer.Dml;
 dml?.fail();
 try {
 	dml?.doInsert(account);
@@ -270,10 +269,10 @@ If your `Dml` object is responsible for more than one operation, or if you only 
 ```java
 DatabaseLayer.useMocks();
 Account account = new Account(Name = 'My Account');
-MockDml dml = (MockDml) DatabaseLayer.newDml()?.setAllOrNone(false);
+MockDml dml = (MockDml) DatabaseLayer.Dml.setAllOrNone(false);
 MockDml.ConditionalFailure logic = new ExampleFailure();
 dml?.failIf(logic);
-Database.SaveResult result = DatabaseLayer.newDml()?.doInsert(account);
+Database.SaveResult result = DatabaseLayer.Dml.doInsert(account);
 Assert.isFalse(result?.isSuccess, 'DML Operation did not fail');
 Assert.isNull(account?.Id, 'Account was inserted');
 ```
@@ -312,7 +311,7 @@ static void someTest() {
 	Account acc = new Account(Name = 'John Doe');
 	
 	Test.startTest();
-	DatabaseLayer.newDml()?.doInsert(acc);
+	DatabaseLayer.Dml.doInsert(acc);
 	Test.stopTest();
 
 	List<Account> insertedAccs = MockDml.Inserted.getRecords(Account.SObjectType);
