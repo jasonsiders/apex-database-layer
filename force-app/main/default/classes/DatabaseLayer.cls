@@ -37,7 +37,7 @@ public class DatabaseLayer {
 	private static MockDml useMockDml() {
 		// Replace the current Dml instances with mocks of these types
 		// Subsuquent calls to DatabaseLayer.Dml will now return mocks
-		INSTANCE.currentDml = new MockDml();
+		INSTANCE.currentDml = new MockDml(INSTANCE);
 		return (MockDml) INSTANCE.currentDml;
 	}
 
