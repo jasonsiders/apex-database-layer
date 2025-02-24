@@ -7,6 +7,7 @@ private class MockDmlTest {
 	// **** TESTS **** //
 	@IsTest
 	static void shouldMockLeadConvert() {
+		DatabaseLayer.useMockDml();
 		Map<Id, Lead> leads = new Map<Id, Lead>();
 		List<Database.LeadConvert> leadsToConvert = new List<Database.LeadConvert>();
 		for (Integer i = 0; i < TEST_SIZE; i++) {
@@ -19,7 +20,7 @@ private class MockDmlTest {
 		}
 
 		Test.startTest();
-		List<Database.LeadConvertResult> results = new MockDml()?.doConvert(leadsToConvert);
+		List<Database.LeadConvertResult> results = DatabaseLayer.Dml?.doConvert(leadsToConvert);
 		Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
 		Test.stopTest();
 
@@ -42,6 +43,7 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldMockLeadConvertWithExistingRecords() {
+		DatabaseLayer.useMockDml();
 		Account account = (Account) new MockRecord(Account.SObjectType)?.withId()?.toSObject();
 		Map<Id, Lead> leads = new Map<Id, Lead>();
 		List<Database.LeadConvert> leadsToConvert = new List<Database.LeadConvert>();
@@ -56,7 +58,7 @@ private class MockDmlTest {
 		}
 
 		Test.startTest();
-		List<Database.LeadConvertResult> results = new MockDml()?.doConvert(leadsToConvert);
+		List<Database.LeadConvertResult> results = DatabaseLayer.Dml?.doConvert(leadsToConvert);
 		Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
 		Test.stopTest();
 
@@ -79,6 +81,7 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldThrowExceptionIfMissingLeadIdOnConvert() {
+		DatabaseLayer.useMockDml();
 		List<Database.LeadConvert> leadsToConvert = new List<Database.LeadConvert>();
 		for (Integer i = 0; i < TEST_SIZE; i++) {
 			Lead lead = (Lead) new MockRecord(Lead.SObjectType)?.withId()?.toSObject();
@@ -90,7 +93,7 @@ private class MockDmlTest {
 
 		Test.startTest();
 		try {
-			new MockDml()?.doConvert(leadsToConvert);
+			DatabaseLayer.Dml?.doConvert(leadsToConvert);
 			Assert.fail('An error was not thrown for missing Lead Id');
 		} catch (System.DmlException error) {
 			// As expected
@@ -102,6 +105,7 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldThrowExceptionIfMissingLeadStatusConvert() {
+		DatabaseLayer.useMockDml();
 		List<Database.LeadConvert> leadsToConvert = new List<Database.LeadConvert>();
 		for (Integer i = 0; i < TEST_SIZE; i++) {
 			Lead lead = (Lead) new MockRecord(Lead.SObjectType)?.withId()?.toSObject();
@@ -113,7 +117,7 @@ private class MockDmlTest {
 
 		Test.startTest();
 		try {
-			new MockDml()?.doConvert(leadsToConvert);
+			DatabaseLayer.Dml?.doConvert(leadsToConvert);
 			Assert.fail('An error was not thrown for missing converted status');
 		} catch (System.DmlException error) {
 			// As expected
@@ -157,10 +161,10 @@ private class MockDmlTest {
 			leadToConvert?.setConvertedStatus('Some Status');
 			leadsToConvert?.add(leadToConvert);
 		}
-		DatabaseLayer.useMockDml()?.fail()?.setAllOrNone(false);
+		DatabaseLayer.useMockDml()?.fail();
 
 		Test.startTest();
-		List<Database.LeadConvertResult> results = DatabaseLayer.Dml.doConvert(leadsToConvert);
+		List<Database.LeadConvertResult> results = DatabaseLayer.Dml.doConvert(leadsToConvert, false);
 		Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
 		Test.stopTest();
 
@@ -173,10 +177,11 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldMockDelete() {
+		DatabaseLayer.useMockDml();
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
 
 		Test.startTest();
-		List<Database.DeleteResult> results = new MockDml()?.doDelete(leads);
+		List<Database.DeleteResult> results = DatabaseLayer.Dml?.doDelete(leads);
 		Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
 		Test.stopTest();
 
@@ -193,10 +198,11 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldMockDeleteAsync() {
+		DatabaseLayer.useMockDml();
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
 
 		Test.startTest();
-		List<Database.DeleteResult> results = new MockDml()?.doDeleteAsync(leads);
+		List<Database.DeleteResult> results = DatabaseLayer.Dml?.doDeleteAsync(leads);
 		Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
 		Test.stopTest();
 
@@ -213,10 +219,11 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldMockDeleteImmediate() {
+		DatabaseLayer.useMockDml();
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
 
 		Test.startTest();
-		List<Database.DeleteResult> results = new MockDml()?.doDeleteImmediate(leads);
+		List<Database.DeleteResult> results = DatabaseLayer.Dml?.doDeleteImmediate(leads);
 		Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
 		Test.stopTest();
 
@@ -232,21 +239,18 @@ private class MockDmlTest {
 	}
 
 	@IsTest
-	static void shouldMockHardDelete() {
+	static void shouldMockEmptyRecycleBin() {
+		DatabaseLayer.useMockDml();
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
+		DatabaseLayer.Dml?.doDelete(leads);
 
 		Test.startTest();
-		List<Database.DeleteResult> results = new MockDml()?.doHardDelete(leads);
+		List<Database.EmptyRecycleBinResult> results = DatabaseLayer.Dml?.emptyRecycleBin(leads);
 		Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
 		Test.stopTest();
 
 		Assert.areEqual(leads?.size(), results?.size(), 'Wrong # of results');
-		Assert.areEqual(
-			leads?.size(),
-			MockDml.Deleted?.getRecords(Lead.SObjectType)?.size(),
-			'Wrong # of deleted records'
-		);
-		for (Database.DeleteResult result : results) {
+		for (Database.EmptyRecycleBinResult result : results) {
 			Assert.areEqual(true, result?.isSuccess(), 'Should not have succeeded');
 		}
 	}
@@ -271,10 +275,10 @@ private class MockDmlTest {
 	@IsTest
 	static void shouldFailSilentlyIfErrorAndNotAllOrNoneOnDelete() {
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
-		DatabaseLayer.useMockDml()?.fail()?.setAllOrNone(false);
+		DatabaseLayer.useMockDml()?.fail();
 
 		Test.startTest();
-		List<Database.DeleteResult> results = DatabaseLayer.Dml.doDelete(leads);
+		List<Database.DeleteResult> results = DatabaseLayer.Dml.doDelete(leads, false);
 		Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
 		Test.stopTest();
 
@@ -288,10 +292,11 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldMockInsert() {
+		DatabaseLayer.useMockDml();
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType);
 
 		Test.startTest();
-		List<Database.SaveResult> results = new MockDml()?.doInsert(leads);
+		List<Database.SaveResult> results = DatabaseLayer.Dml?.doInsert(leads);
 		Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
 		Test.stopTest();
 
@@ -309,10 +314,11 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldMockInsertAsync() {
+		DatabaseLayer.useMockDml();
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType);
 
 		Test.startTest();
-		List<Database.SaveResult> results = new MockDml()?.doInsertAsync(leads);
+		List<Database.SaveResult> results = DatabaseLayer.Dml?.doInsertAsync(leads);
 		Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
 		Test.stopTest();
 
@@ -330,10 +336,11 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldMockInsertImmediate() {
+		DatabaseLayer.useMockDml();
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType);
 
 		Test.startTest();
-		List<Database.SaveResult> results = new MockDml()?.doInsertImmediate(leads);
+		List<Database.SaveResult> results = DatabaseLayer.Dml?.doInsertImmediate(leads);
 		Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
 		Test.stopTest();
 
@@ -369,10 +376,10 @@ private class MockDmlTest {
 	@IsTest
 	static void shouldFailSilentlyIfErrorAndNotAllOrNoneOnInsert() {
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType);
-		DatabaseLayer.useMockDml()?.fail()?.setAllOrNone(false);
+		DatabaseLayer.useMockDml()?.fail();
 
 		Test.startTest();
-		List<Database.SaveResult> results = DatabaseLayer.Dml.doInsert(leads);
+		List<Database.SaveResult> results = DatabaseLayer.Dml.doInsert(leads, false);
 		Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
 		Test.stopTest();
 
@@ -386,10 +393,11 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldMockPublish() {
+		DatabaseLayer.useMockDml();
 		List<BatchApexErrorEvent> events = MockDmlTest.initRecords(BatchApexErrorEvent.SObjectType);
 
 		Test.startTest();
-		List<Database.SaveResult> results = new MockDml()?.doPublish(events);
+		List<Database.SaveResult> results = DatabaseLayer.Dml?.doPublish(events);
 		Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
 		Test.stopTest();
 
@@ -429,10 +437,10 @@ private class MockDmlTest {
 	@IsTest
 	static void shouldFailSilentlyIfErrorAndNotAllOrNoneOnPublish() {
 		List<BatchApexErrorEvent> events = MockDmlTest.initRecords(BatchApexErrorEvent.SObjectType);
-		DatabaseLayer.useMockDml()?.fail()?.setAllOrNone(false);
+		DatabaseLayer.useMockDml()?.fail();
 
 		Test.startTest();
-		List<Database.SaveResult> results = DatabaseLayer.Dml.doPublish(events);
+		List<Database.SaveResult> results = DatabaseLayer.Dml.doPublish(events, false);
 		Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
 		Test.stopTest();
 
@@ -450,10 +458,11 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldMockUndelete() {
+		DatabaseLayer.useMockDml();
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
 
 		Test.startTest();
-		List<Database.UndeleteResult> results = new MockDml()?.doUndelete(leads);
+		List<Database.UndeleteResult> results = DatabaseLayer.Dml?.doUndelete(leads);
 		Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
 		Test.stopTest();
 
@@ -471,8 +480,8 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldThrowExceptionIfErrorOnUndelete() {
-		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
 		DatabaseLayer.useMockDml()?.fail();
+		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
 
 		Test.startTest();
 		try {
@@ -489,10 +498,10 @@ private class MockDmlTest {
 	@IsTest
 	static void shouldFailSilentlyIfErrorAndNotAllOrNoneOnUndelete() {
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
-		DatabaseLayer.useMockDml()?.fail()?.setAllOrNone(false);
+		DatabaseLayer.useMockDml()?.fail();
 
 		Test.startTest();
-		List<Database.UndeleteResult> results = DatabaseLayer.Dml.doUndelete(leads);
+		List<Database.UndeleteResult> results = DatabaseLayer.Dml.doUndelete(leads, false);
 		Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
 		Test.stopTest();
 
@@ -506,10 +515,11 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldMockUpdate() {
+		DatabaseLayer.useMockDml();
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
 
 		Test.startTest();
-		List<Database.SaveResult> results = new MockDml()?.doUpdate(leads);
+		List<Database.SaveResult> results = DatabaseLayer.Dml?.doUpdate(leads);
 		Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
 		Test.stopTest();
 
@@ -527,10 +537,11 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldMockUpdateAsync() {
+		DatabaseLayer.useMockDml();
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
 
 		Test.startTest();
-		List<Database.SaveResult> results = new MockDml()?.doUpdateAsync(leads);
+		List<Database.SaveResult> results = DatabaseLayer.Dml?.doUpdateAsync(leads);
 		Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
 		Test.stopTest();
 
@@ -548,10 +559,11 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldMockUpdateImmediate() {
+		DatabaseLayer.useMockDml();
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
 
 		Test.startTest();
-		List<Database.SaveResult> results = new MockDml()?.doUpdateImmediate(leads);
+		List<Database.SaveResult> results = DatabaseLayer.Dml?.doUpdateImmediate(leads);
 		Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
 		Test.stopTest();
 
@@ -569,8 +581,8 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldThrowExceptionIfErrorOnUpdate() {
-		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
 		DatabaseLayer.useMockDml()?.fail();
+		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
 
 		Test.startTest();
 		try {
@@ -586,11 +598,11 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldFailSilentlyIfErrorAndNotAllOrNoneOnUpdate() {
+		DatabaseLayer.useMockDml()?.fail();
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
-		DatabaseLayer.useMockDml()?.fail()?.setAllOrNone(false);
 
 		Test.startTest();
-		List<Database.SaveResult> results = DatabaseLayer.Dml.doUpdate(leads);
+		List<Database.SaveResult> results = DatabaseLayer.Dml.doUpdate(leads, false);
 		Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
 		Test.stopTest();
 
@@ -604,10 +616,11 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldMockUpsert() {
+		DatabaseLayer.useMockDml();
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
 
 		Test.startTest();
-		List<Database.UpsertResult> results = new MockDml()?.doUpsert(leads);
+		List<Database.UpsertResult> results = DatabaseLayer.Dml?.doUpsert(leads);
 		Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
 		Test.stopTest();
 
@@ -625,8 +638,8 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldThrowExceptionIfErrorOnUpsert() {
-		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
 		DatabaseLayer.useMockDml()?.fail();
+		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
 
 		Test.startTest();
 		try {
@@ -642,11 +655,11 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldFailSilentlyIfErrorAndNotAllOrNoneOnUpsert() {
+		DatabaseLayer.useMockDml()?.fail();
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
-		DatabaseLayer.useMockDml()?.fail()?.setAllOrNone(false);
 
 		Test.startTest();
-		List<Database.UpsertResult> results = DatabaseLayer.Dml.doUpsert(leads);
+		List<Database.UpsertResult> results = DatabaseLayer.Dml.doUpsert(leads, false);
 		Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
 		Test.stopTest();
 
@@ -660,6 +673,7 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldProvideUsefulInformationAboutProcessedRecords() {
+		DatabaseLayer.useMockDml();
 		Lead testLead = (Lead) new MockRecord(Lead.SObjectType)?.withId()?.toSObject();
 		// Pre-test asserts
 		Assert.areEqual(false, MockDml.Updated.wasProcessed(testLead), 'Pre-test: Should not have been processed');
@@ -669,7 +683,7 @@ private class MockDmlTest {
 		testLead.Company = 'Credicor Inc.';
 
 		Test.startTest();
-		new MockDml()?.doUpdate(testLead);
+		DatabaseLayer.Dml?.doUpdate(testLead);
 		Test.stopTest();
 
 		// Post-test asserts
@@ -712,21 +726,21 @@ private class MockDmlTest {
 	static void shouldClearFailures() {
 		// The MockDml class provides a way to clear failures from an object
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
-		MockDml dml = new MockDml()?.fail();
+		MockDml mockDml = DatabaseLayer.useMockDml()?.fail();
 
 		Test.startTest();
 		// Since the DML object has a failure, it will throw an error when run:
 		try {
-			dml?.doUpdate(leads);
+			mockDml?.doUpdate(leads);
 			Assert.fail('Did not throw an error');
 		} catch (System.DmlException error) {
 			// As expected...
 		}
 
 		// Now clear the failure and try again - an error should NOT be thrown
-		dml?.clearFailures();
+		mockDml?.clearFailures();
 		try {
-			dml?.doUpdate(leads);
+			mockDml?.doUpdate(leads);
 		} catch (System.DmlException error) {
 			Assert.fail('An error was thrown; failures were not cleared');
 		}

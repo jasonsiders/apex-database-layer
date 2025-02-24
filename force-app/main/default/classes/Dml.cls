@@ -115,7 +115,7 @@ public with sharing virtual class Dml {
 		System.AccessLevel accessLevel
 	) {
 		List<Id> recordIds = this.getListOfIds(records);
-		return Database.delete(recordIds, allOrNone, accessLevel);
+		return this.doDelete(recordIds, allOrNone, accessLevel);
 	}
 
 	public List<Database.DeleteResult> doDelete(List<SObject> records, Boolean allOrNone) {
