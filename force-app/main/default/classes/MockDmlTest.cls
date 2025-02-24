@@ -419,28 +419,24 @@ private class MockDmlTest {
 		DatabaseLayer.useMockDml()?.fail();
 
 		Test.startTest();
-		try {
-			DatabaseLayer.Dml.doPublish(events);
-			Assert.fail('Did not throw an error');
-		} catch (Exception error) {
-			// ...as expected...
-			Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
-			Assert.areEqual(
-				0,
-				MockDml.Published?.getRecords(BatchApexErrorEvent.SObjectType)?.size(),
-				'Wrong # of published records'
-			);
-		}
+		DatabaseLayer.Dml.doPublish(events);
+		Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
 		Test.stopTest();
+
+		Assert.areEqual(
+			0,
+			MockDml.Published?.getRecords(BatchApexErrorEvent.SObjectType)?.size(),
+			'Wrong # of published records'
+		);
 	}
 
 	@IsTest
-	static void shouldFailSilentlyIfErrorAndNotAllOrNoneOnPublish() {
+	static void shouldFailSilentlyIfErrorOnPublish() {
 		List<BatchApexErrorEvent> events = MockDmlTest.initRecords(BatchApexErrorEvent.SObjectType);
 		DatabaseLayer.useMockDml()?.fail();
 
 		Test.startTest();
-		List<Database.SaveResult> results = DatabaseLayer.Dml.doPublish(events, false);
+		List<Database.SaveResult> results = DatabaseLayer.Dml.doPublish(events);
 		Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
 		Test.stopTest();
 
@@ -745,6 +741,20 @@ private class MockDmlTest {
 			Assert.fail('An error was thrown; failures were not cleared');
 		}
 		Test.stopTest();
+	}
+
+	@IsTest
+	static void shouldGetAllRecordsFromHistory() {
+		DatabaseLayer.useMockDml();
+		List<Account> accounts = MockDmlTest.initRecords(Account.SObjectType, false);
+		DatabaseLayer.Dml.doInsert(accounts);
+
+		Test.startTest();
+		Map<SObjectType, List<SObject>> results = MockDml.INSERTED.getAll();
+		Test.stopTest();
+
+		Assert.areEqual(true, results?.containsKey(Account.SObjectType), 'No Accounts inserted');
+		Assert.areEqual(accounts?.size(), results?.get(Account.SObjectType)?.size(), 'Wrong # of Accounts inserted');
 	}
 
 	// **** HELPER **** //

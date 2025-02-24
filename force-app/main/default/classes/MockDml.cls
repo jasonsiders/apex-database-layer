@@ -154,6 +154,7 @@ public class MockDml extends Dml {
 		callback = callback ?? Dml.DEFAULT_EVENT_CALLBACK;
 		List<MockDml.Result> results = new List<MockDml.Result>();
 		for (SObject event : events) {
+			// Note: EventBus.publish() always runs in allOrNone=false context
 			MockDml.Result result = this.generateMockResult(MockDml.PUBLISHED, event, false);
 			results?.add(result);
 		}
