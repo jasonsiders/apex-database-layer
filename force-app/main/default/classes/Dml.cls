@@ -167,17 +167,37 @@ public with sharing virtual class Dml {
 		return Database.deleteAsync(records, callback, accessLevel);
 	}
 
-	public List<Database.DeleteResult> doDeleteAsync(List<SObject> records, DataSource.AsyncDeleteCallback callback);
-	public List<Database.DeleteResult> doDeleteAsync(List<SObject> records, System.AccessLevel accessLevel);
-	public List<Database.DeleteResult> doDeleteAsync(List<SObject> records);
+	public List<Database.DeleteResult> doDeleteAsync(List<SObject> records, DataSource.AsyncDeleteCallback callback) {
+		return this.doDeleteAsync(records, callback, DEFAULT_ACCESS_LEVEL);
+	}
+
+	public List<Database.DeleteResult> doDeleteAsync(List<SObject> records, System.AccessLevel accessLevel) {
+		DataSource.AsyncDeleteCallback callback = new DefaultDeleteCallback();
+		return this.doDeleteAsync(records, callback, accessLevel);
+	}
+
+	public List<Database.DeleteResult> doDeleteAsync(List<SObject> records) {
+		return this.doDeleteAsync(records, DEFAULT_ACCESS_LEVEL);
+	}
+
 	public Database.DeleteResult doDeleteAsync(
 		SObject record,
 		DataSource.AsyncDeleteCallback callback,
 		System.AccessLevel accessLevel
-	);
-	public Database.DeleteResult doDeleteAsync(SObject record, DataSource.AsyncDeleteCallback callback);
-	public Database.DeleteResult doDeleteAsync(SObject record, System.AccessLevel accessLevel);
-	public Database.DeleteResult doDeleteAsync(SObject record);
+	) {
+		return this.doDeleteAsync(new List<SObject>{ record }, callback, accessLevel)?.get(0);
+	}
+
+	public Database.DeleteResult doDeleteAsync(SObject record, DataSource.AsyncDeleteCallback callback) {
+		return this.doDeleteAsync(record, callback, DEFAULT_ACCESS_LEVEL);
+	}
+
+	public Database.DeleteResult doDeleteAsync(SObject record, System.AccessLevel accessLevel) {
+		return this.doDeleteAsync(new List<SObject>{ record }, accessLevel)?.get(0);
+	}
+	public Database.DeleteResult doDeleteAsync(SObject record) {
+		return this.doDeleteAsync(record, DEFAULT_ACCESS_LEVEL);
+	}
 
 	// ** DeleteImmediate Methods
 	public virtual List<Database.DeleteResult> doDeleteImmediate(
@@ -187,9 +207,17 @@ public with sharing virtual class Dml {
 		return Database.deleteImmediate(records, accessLevel);
 	}
 
-	public List<Database.DeleteResult> doDeleteImmediate(List<SObject> records);
-	public Database.DeleteResult doDeleteImmediate(SObject record, System.AccessLevel accessLevel);
-	public Database.DeleteResult doDeleteImmediate(SObject record);
+	public List<Database.DeleteResult> doDeleteImmediate(List<SObject> records) {
+		return this.doDeleteImmediate(records, DEFAULT_ACCESS_LEVEL);
+	}
+
+	public Database.DeleteResult doDeleteImmediate(SObject record, System.AccessLevel accessLevel) {
+		return this.doDeleteImmediate(new List<SObject>{ record }, accessLevel)?.get(0);
+	}
+
+	public Database.DeleteResult doDeleteImmediate(SObject record) {
+		return this.doDeleteImmediate(record, DEFAULT_ACCESS_LEVEL);
+	}
 
 	// ** Insert Methods
 	public virtual List<Database.SaveResult> doInsert(
@@ -200,17 +228,53 @@ public with sharing virtual class Dml {
 		return Database.insert(records, options, accessLevel);
 	}
 
-	public List<Database.SaveResult> doInsert(List<SObject> records, Boolean allOrNone, System.AccessLevel accessLevel);
-	public List<Database.SaveResult> doInsert(List<SObject> records, Database.DmlOptions options);
-	public List<Database.SaveResult> doInsert(List<SObject> records, Boolean allOrNone);
-	public List<Database.SaveResult> doInsert(List<SObject> records, System.AccessLevel accessLevel);
-	public List<Database.SaveResult> doInsert(List<SObject> records);
-	public Database.SaveResult doInsert(SObject record, Database.DmlOptions options, System.AccessLevel accessLevel);
-	public Database.SaveResult doInsert(SObject record, Boolean allOrNone, System.AccessLevel accessLevel);
-	public Database.SaveResult doInsert(SObject record, Database.DmlOptions options);
-	public Database.SaveResult doInsert(SObject record, Boolean allOrNone);
-	public Database.SaveResult doInsert(SObject record, System.AccessLevel accessLevel);
-	public Database.SaveResult doInsert(SObject record);
+	public List<Database.SaveResult> doInsert(
+		List<SObject> records,
+		Boolean allOrNone,
+		System.AccessLevel accessLevel
+	) {
+		return this.doInsert(records, this.initOptions(allOrNone), accessLevel);
+	}
+
+	public List<Database.SaveResult> doInsert(List<SObject> records, Database.DmlOptions options) {
+		return this.doInsert(records, options, DEFAULT_ACCESS_LEVEL);
+	}
+
+	public List<Database.SaveResult> doInsert(List<SObject> records, Boolean allOrNone) {
+		return this.doInsert(records, allOrNone, DEFAULT_ACCESS_LEVEL);
+	}
+
+	public List<Database.SaveResult> doInsert(List<SObject> records, System.AccessLevel accessLevel) {
+		return this.doInsert(records, true, accessLevel);
+	}
+
+	public List<Database.SaveResult> doInsert(List<SObject> records) {
+		return this.doInsert(records, DEFAULT_ACCESS_LEVEL);
+	}
+
+	public Database.SaveResult doInsert(SObject record, Database.DmlOptions options, System.AccessLevel accessLevel) {
+		return this.doInsert(new List<SObject>{ record }, options, accessLevel)?.get(0);
+	}
+
+	public Database.SaveResult doInsert(SObject record, Boolean allOrNone, System.AccessLevel accessLevel) {
+		return this.doInsert(record, this.initOptions(allOrNone), accessLevel);
+	}
+
+	public Database.SaveResult doInsert(SObject record, Database.DmlOptions options) {
+		return this.doInsert(record, options, DEFAULT_ACCESS_LEVEL);
+	}
+
+	public Database.SaveResult doInsert(SObject record, Boolean allOrNone) {
+		return this.doInsert(record, allOrNone, DEFAULT_ACCESS_LEVEL);
+	}
+
+	public Database.SaveResult doInsert(SObject record, System.AccessLevel accessLevel) {
+		return this.doInsert(record, true, accessLevel);
+	}
+
+	public Database.SaveResult doInsert(SObject record) {
+		return this.doInsert(record, DEFAULT_ACCESS_LEVEL);
+	}
 
 	// ** InsertAsync Methods
 	public virtual List<Database.SaveResult> doInsertAsync(
@@ -221,17 +285,29 @@ public with sharing virtual class Dml {
 		return Database.insertAsync(records, callback, accessLevel);
 	}
 
-	public List<Database.SaveResult> doInsertAsync(List<SObject> records, DataSource.AsyncSaveCallback callback);
-	public List<Database.SaveResult> doInsertAsync(List<SObject> records, System.AccessLevel accessLevel);
-	public List<Database.SaveResult> doInsertAsync(List<SObject> records);
+	public List<Database.SaveResult> doInsertAsync(List<SObject> records, DataSource.AsyncSaveCallback callback) {
+		return this.doInsertAsync(records, callback, DEFAULT_ACCESS_LEVEL);
+	}
+
+	public List<Database.SaveResult> doInsertAsync(List<SObject> records, System.AccessLevel accessLevel) {
+		DataSource.AsyncSaveCallback callback = new Dml.DefaultSaveCallback();
+		return this.doInsertAsync(records, callback, accessLevel);
+	}
+
+	public List<Database.SaveResult> doInsertAsync(List<SObject> records) {
+		return this.doInsertAsync(records, DEFAULT_ACCESS_LEVEL);
+	}
+
 	public Database.SaveResult doInsertAsync(
-		SObject records,
+		SObject record,
 		DataSource.AsyncSaveCallback callback,
 		System.AccessLevel accessLevel
-	);
-	public Database.SaveResult doInsertAsync(SObject records, DataSource.AsyncSaveCallback callback);
-	public Database.SaveResult doInsertAsync(SObject records, System.AccessLevel accessLevel);
-	public Database.SaveResult doInsertAsync(SObject records);
+	) {
+		return this.doInsertAsync(new List<SObject>{ record }, callback, accessLevel)?.get(0);
+	}
+	public Database.SaveResult doInsertAsync(SObject record, DataSource.AsyncSaveCallback callback);
+	public Database.SaveResult doInsertAsync(SObject record, System.AccessLevel accessLevel);
+	public Database.SaveResult doInsertAsync(SObject record);
 
 	// ** InsertImmediate Methods
 	public virtual List<Database.SaveResult> doInsertImmediate(List<SObject> records, System.AccessLevel accessLevel) {
