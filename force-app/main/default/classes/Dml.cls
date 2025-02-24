@@ -238,12 +238,20 @@ public with sharing virtual class Dml {
 		return Database.insertImmediate(records, accessLevel);
 	}
 
+	public List<Database.SaveResult> doInsertImmediate(List<SObject> records);
+	public Database.SaveResult doInsertImmediate(SObject record, System.AccessLevel accessLevel);
+	public Database.SaveResult doInsertImmediate(SObject record);
+
 	// ** Publish Methods
 	public virtual List<Database.SaveResult> doPublish(List<SObject> events, Object callback) {
 		// Callback: "An Apex class that implements the EventPublishFailureCallback Interface or EventPublishSuccessCallback Interface."
 		// https://developer.salesforce.com/docs/atlas.en-us.apexref.meta/apexref/apex_class_System_eventbus.htm#apex_System_eventbus_publish_4
 		return EventBus.publish(events, callback);
 	}
+
+	public List<Database.SaveResult> doPublish(List<SObject> events);
+	public Database.SaveResult doPublish(SObject event, Object callback);
+	public Database.SaveResult doPublish(SObject event);
 
 	// ** Undelete Methods
 	public virtual List<Database.UndeleteResult> doUndelete(
@@ -254,6 +262,26 @@ public with sharing virtual class Dml {
 		return Database.undelete(recordIds, allOrNone, accessLevel);
 	}
 
+	public List<Database.UndeleteResult> doUndelete(List<Id> recordIds, Boolean allOrNone);
+	public List<Database.UndeleteResult> doUndelete(List<Id> recordIds, System.AccessLevel accessLevel);
+	public List<Database.UndeleteResult> doUndelete(List<Id> recordIds);
+	public List<Database.UndeleteResult> doUndelete(
+		List<SObject> records,
+		Boolean allOrNone,
+		System.AccessLevel accessLevel
+	);
+	public List<Database.UndeleteResult> doUndelete(List<SObject> records, Boolean allOrNone);
+	public List<Database.UndeleteResult> doUndelete(List<SObject> records, System.AccessLevel accessLevel);
+	public List<Database.UndeleteResult> doUndelete(List<SObject> records);
+	public Database.UndeleteResult doUndelete(Id recordId, Boolean allOrNone, System.AccessLevel accessLevel);
+	public Database.UndeleteResult doUndelete(Id recordId, Boolean allOrNone);
+	public Database.UndeleteResult doUndelete(Id recordId, System.AccessLevel accessLevel);
+	public Database.UndeleteResult doUndelete(Id recordId);
+	public Database.UndeleteResult doUndelete(SObject record, Boolean allOrNone, System.AccessLevel accessLevel);
+	public Database.UndeleteResult doUndelete(SObject record, Boolean allOrNone);
+	public Database.UndeleteResult doUndelete(SObject record, System.AccessLevel accessLevel);
+	public Database.UndeleteResult doUndelete(SObject record);
+
 	// ** Update Methods
 	public virtual List<Database.SaveResult> doUpdate(
 		List<SObject> records,
@@ -262,6 +290,16 @@ public with sharing virtual class Dml {
 	) {
 		return Database.update(records, options, accessLevel);
 	}
+
+	public List<Database.SaveResult> doUpdate(List<SObject> records, Database.DmlOptions options);
+	public List<Database.SaveResult> doUpdate(List<SObject> records, Boolean allOrNone);
+	public List<Database.SaveResult> doUpdate(List<SObject> records, System.AccessLevel accessLevel);
+	public List<Database.SaveResult> doUpdate(List<SObject> records);
+	public Database.SaveResult doUpdate(SObject record, Database.DmlOptions options, System.AccessLevel accessLevel);
+	public Database.SaveResult doUpdate(SObject record, Database.DmlOptions options);
+	public Database.SaveResult doUpdate(SObject record, Boolean allOrNone);
+	public Database.SaveResult doUpdate(SObject record, System.AccessLevel accessLevel);
+	public Database.SaveResult doUpdate(SObject record);
 
 	// ** UpdateAsync Methods
 	public virtual List<Database.SaveResult> doUpdateAsync(
@@ -272,10 +310,26 @@ public with sharing virtual class Dml {
 		return Database.updateAsync(records, callback, accessLevel);
 	}
 
+	public List<Database.SaveResult> doUpdateAsync(List<SObject> records, DataSource.AsyncSaveCallback callback);
+	public List<Database.SaveResult> doUpdateAsync(List<SObject> records, System.AccessLevel accessLevel);
+	public List<Database.SaveResult> doUpdateAsync(List<SObject> records);
+	public Database.SaveResult doUpdateAsync(
+		SObject record,
+		DataSource.AsyncSaveCallback callback,
+		System.AccessLevel accessLevel
+	);
+	public Database.SaveResult doUpdateAsync(SObject record, DataSource.AsyncSaveCallback callback);
+	public Database.SaveResult doUpdateAsync(SObject record, System.AccessLevel accessLevel);
+	public Database.SaveResult doUpdateAsync(SObject record);
+
 	// ** UpdateImmediate Methods
 	public virtual List<Database.SaveResult> doUpdateImmediate(List<SObject> records, System.AccessLevel accessLevel) {
 		return Database.updateImmediate(records, accessLevel);
 	}
+
+	public List<Database.SaveResult> doUpdateImmediate(List<SObject> records);
+	public Database.SaveResult doUpdateImmediate(SObject record, System.AccessLevel accessLevel);
+	public Database.SaveResult doUpdateImmediate(SObject record);
 
 	// ** Upsert Methods
 	public virtual List<Database.UpsertResult> doUpsert(
@@ -290,6 +344,35 @@ public with sharing virtual class Dml {
 			? Database.upsert(records, externalIdField, allOrNone, accessLevel)
 			: Database.upsert(records, allOrNone, accessLevel);
 	}
+
+	public List<Database.UpsertResult> doUpsert(List<SObject> records, SObjectField externalIdField, Boolean allOrNone);
+	public List<Database.UpsertResult> doUpsert(
+		List<SObject> records,
+		SObjectField externalIdField,
+		System.AccessLevel accessLevel
+	);
+	public List<Database.UpsertResult> doUpsert(
+		List<SObject> records,
+		Boolean allOrNone,
+		System.AccessLevel accessLevel
+	);
+	public List<Database.UpsertResult> doUpsert(List<SObject> records, SObjectField externalIdField);
+	public List<Database.UpsertResult> doUpsert(List<SObject> records, Boolean allOrNone);
+	public List<Database.UpsertResult> doUpsert(List<SObject> records, System.AccessLevel accessLevel);
+	public List<Database.UpsertResult> doUpsert(List<SObject> records);
+	public Database.UpsertResult doUpsert(
+		SObject record,
+		SObjectField externalIdField,
+		Boolean allOrNone,
+		System.AccessLevel accessLevel
+	);
+	public Database.UpsertResult doUpsert(SObject record, SObjectField externalIdField, Boolean allOrNone);
+	public Database.UpsertResult doUpsert(SObject record, SObjectField externalIdField, System.AccessLevel accessLevel);
+	public Database.UpsertResult doUpsert(SObject record, Boolean allOrNone, System.AccessLevel accessLevel);
+	public Database.UpsertResult doUpsert(SObject record, SObjectField externalIdField);
+	public Database.UpsertResult doUpsert(SObject record, Boolean allOrNone);
+	public Database.UpsertResult doUpsert(SObject record, System.AccessLevel accessLevel);
+	public Database.UpsertResult doUpsert(SObject record);
 
 	// ** EmptyRecycleBin Methods
 	public virtual List<Database.EmptyRecycleBinResult> emptyRecycleBin(List<Id> recordIds) {
