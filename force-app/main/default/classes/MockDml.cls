@@ -158,7 +158,7 @@ public class MockDml extends Dml {
 		callback = callback ?? new Dml.DefaultEventCallback();
 		List<MockDml.Result> results = new List<MockDml.Result>();
 		for (SObject event : events) {
-			MockDml.Result result = this.generateMockResult(MockDml.PUBLISHED, event);
+			MockDml.Result result = this.generateMockResult(MockDml.PUBLISHED, event, false);
 			results?.add(result);
 		}
 		/* TODO! Process callbacks, in bulk. 
@@ -169,8 +169,8 @@ public class MockDml extends Dml {
 		} else {
 			EventBus.EventPublishSuccessCallback successCallback = (EventBus.EventPublishSuccessCallback) callback;
 			successCallback?.onSuccess(event);
-		}
-		return this.toSaveResults(results); */
+		} */
+		return this.toSaveResults(results);
 	}
 
 	public override List<Database.UndeleteResult> doUndelete(
@@ -268,8 +268,9 @@ public class MockDml extends Dml {
 			// Note: Process resulting records using allOrNone=true, regardless of its original value
 			// This allows injected errors for Accounts/Contacts/Opps to be caught and handled appropriately
 			// 1. Simulate converting the lead
+			// ! TODO: Consider flipping #1 & #2?
 			this.validateConvertedLead(leadToConvert);
-			this.generateMockResult(MockDml.CONVERTED, leadRecord);
+			this.generateMockResult(MockDml.CONVERTED, leadRecord, true);
 			// 2. Simulate creating an Account/Contact/Opportunity, if their Id wasn't already provided
 			this.simulateInsertIfNew(accountRecord);
 			this.simulateInsertIfNew(contactRecord);
@@ -294,7 +295,7 @@ public class MockDml extends Dml {
 		if (record?.Id == null) {
 			SObjectType objectType = record?.getSObjectType();
 			record.Id = MockRecord.initRecordId(objectType);
-			this.generateMockResult(MockDml.INSERTED, record);
+			this.generateMockResult(MockDml.INSERTED, record, true);
 		}
 	}
 
