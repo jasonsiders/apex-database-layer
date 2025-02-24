@@ -21,10 +21,7 @@ public with sharing virtual class Dml {
 		// Instead, use the DatabaseLayer.Dml static property
 	}
 
-	// **** VIRTUAL **** //
-	// * All of these methods point to an underlying Database method to perform DML
-	// Each may have one or more overloads, for convenience
-	// Each may be overridden, ex., for DML mocking
+	// **** CONVERT METHODS **** //
 	public virtual List<Database.LeadConvertResult> doConvert(
 		List<Database.LeadConvert> leadsToConvert,
 		Database.DmlOptions options,
@@ -33,6 +30,29 @@ public with sharing virtual class Dml {
 		return Database.convertLead(leadsToConvert, options, accessLevel);
 	}
 
+	public virtual List<Database.LeadConvertResult> doConvert(
+		List<Database.LeadConvert> leadsToConvert,
+		Boolean allOrNone,
+		System.AccessLevel accessLevel
+	) {
+		return this.doConvert(leadsToConvert, this.initDmlOptions(allOrNone), accessLevel);
+	}
+
+	public virtual List<Database.LeadConvertResult> doConvert(
+		List<Database.LeadConvert> leadsToConvert,
+		Database.DmlOptions options
+	) {
+		return this.doConvert(leadsToConvert, options, DEFAULT_ACCESS_LEVEL);
+	}
+
+	public virtual List<Database.LeadConvertResult> doConvert(
+		List<Database.LeadConvert> leadsToConvert,
+		Boolean allOrNone
+	) {
+		return this.doConvert(leadsToConvert, this.initDmlOptions(allOrNone), DEFAULT_ACCESS_LEVEL);
+	}
+
+	// **** DELETE METHODS **** //
 	public virtual List<Database.DeleteResult> doDelete(
 		List<Id> recordIds,
 		Boolean allOrNone,
@@ -66,6 +86,7 @@ public with sharing virtual class Dml {
 		return results;
 	}
 
+	// **** INSERT METHODS **** //
 	public virtual List<Database.SaveResult> doInsert(
 		List<SObject> records,
 		Database.DmlOptions options,
@@ -86,12 +107,14 @@ public with sharing virtual class Dml {
 		return Database.insertImmediate(records, accessLevel);
 	}
 
+	// **** PUBLISH METHODS **** //
 	public virtual List<Database.SaveResult> doPublish(List<SObject> events, Object callback) {
 		// Callback: "An Apex class that implements the EventPublishFailureCallback Interface or EventPublishSuccessCallback Interface."
 		// https://developer.salesforce.com/docs/atlas.en-us.apexref.meta/apexref/apex_class_System_eventbus.htm#apex_System_eventbus_publish_4
 		return EventBus.publish(events, callback);
 	}
 
+	// **** UNDELETE METHODS **** //
 	public virtual List<Database.UndeleteResult> doUndelete(
 		List<Id> recordIds,
 		Boolean allOrNone,
@@ -100,6 +123,7 @@ public with sharing virtual class Dml {
 		return Database.undelete(recordIds, allOrNone, accessLevel);
 	}
 
+	// **** UPDATE METHODS **** //
 	public virtual List<Database.SaveResult> doUpdate(
 		List<SObject> records,
 		Database.DmlOptions options,
@@ -120,6 +144,7 @@ public with sharing virtual class Dml {
 		return Database.updateImmediate(records, accessLevel);
 	}
 
+	// **** UPSERT METHODS **** //
 	public virtual List<Database.UpsertResult> doUpsert(
 		List<SObject> records,
 		SObjectField externalIdField,
@@ -147,6 +172,12 @@ public with sharing virtual class Dml {
 			records?.add(record);
 		}
 		return records;
+	}
+
+	private Database.DmlOptions initDmlOptions(Boolean allOrNone) {
+		Database.DmlOptions options = new Database.DmlOptions();
+		options.OptAllOrNone = allOrNone;
+		return options;
 	}
 
 	// **** INNER **** //
