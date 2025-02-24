@@ -113,13 +113,9 @@ public class MockDml extends Dml {
 		return this.doDelete(records, accessLevel);
 	}
 
-	public override List<Database.DeleteResult> doHardDelete(
-		List<Id> recordIds,
-		Boolean allOrNone,
-		System.AccessLevel accessLevel
-	) {
-		// For mocking purposes, process the same as a "normal" doDelete operation,
-		return this.doDelete(recordIds, allOrNone, accessLevel);
+	public override List<Database.EmptyRecycleBinResult> emptyRecycleBin(List<Id> recordIds) {
+		// ! TODO
+		return new List<Database.EmptyRecycleBinResult>();
 	}
 
 	public override List<Database.SaveResult> doInsert(
@@ -155,7 +151,7 @@ public class MockDml extends Dml {
 
 	public override List<Database.SaveResult> doPublish(List<SObject> events, Object callback) {
 		// Ensure the callback is set; if null, use the default value
-		callback = callback ?? new Dml.DefaultEventCallback();
+		callback = callback ?? Dml.DEFAULT_EVENT_CALLBACK;
 		List<MockDml.Result> results = new List<MockDml.Result>();
 		for (SObject event : events) {
 			MockDml.Result result = this.generateMockResult(MockDml.PUBLISHED, event, false);
