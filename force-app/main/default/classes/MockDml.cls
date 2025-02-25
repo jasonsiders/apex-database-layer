@@ -12,6 +12,7 @@ public class MockDml extends Dml {
 	public static final MockDml.RecordHistory DELETED = new MockDml.RecordHistory(Dml.Operation.DO_DELETE);
 	public static final MockDml.RecordHistory INSERTED = new MockDml.RecordHistory(Dml.Operation.DO_INSERT);
 	public static final MockDml.PlatformEventHistory PUBLISHED = new MockDml.PlatformEventHistory();
+	public static final MockDml.RecordHistory PURGED = new MockDml.RecordHistory(Dml.Operation.EMPTY_RECYCLE_BIN);
 	public static final MockDml.RecordHistory UNDELETED = new MockDml.RecordHistory(Dml.Operation.DO_UNDELETE);
 	public static final MockDml.RecordHistory UPDATED = new MockDml.RecordHistory(Dml.Operation.DO_UPDATE);
 	public static final MockDml.RecordHistory UPSERTED = new MockDml.RecordHistory(Dml.Operation.DO_UPSERT);
@@ -114,8 +115,13 @@ public class MockDml extends Dml {
 	}
 
 	public override List<Database.EmptyRecycleBinResult> emptyRecycleBin(List<Id> recordIds) {
-		// ! TODO
-		return new List<Database.EmptyRecycleBinResult>();
+		List<MockDml.Result> results = new List<MockDml.Result>();
+		for (Id recordId : recordIds) {
+			SObject record = recordId?.getSObjectType()?.newSObject(recordId);
+			MockDml.Result result = this.generateMockResult(MockDml.PURGED, record, true);
+			results?.add(result);
+		}
+		return this.toEmptyRecycleBinResults(results);
 	}
 
 	public override List<Database.SaveResult> doInsert(
@@ -300,6 +306,13 @@ public class MockDml extends Dml {
 		return (List<Database.LeadConvertResult>) this.toDatabaseResults(
 			results,
 			List<Database.LeadConvertResult>.class
+		);
+	}
+
+	private List<Database.EmptyRecycleBinResult> toEmptyRecycleBinResults(List<MockDml.Result> results) {
+		return (List<Database.EmptyRecycleBinResult>) this.toDatabaseResults(
+			results,
+			List<Database.EmptyRecycleBinResult>.class
 		);
 	}
 

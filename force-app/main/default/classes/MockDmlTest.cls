@@ -250,6 +250,7 @@ private class MockDmlTest {
 		Test.stopTest();
 
 		Assert.areEqual(leads?.size(), results?.size(), 'Wrong # of results');
+		Assert.areEqual(results?.size(), MockDml.PURGED?.getRecords(Lead.SObjectType)?.size(), 'Wrong # purged');
 		for (Database.EmptyRecycleBinResult result : results) {
 			Assert.areEqual(true, result?.isSuccess(), 'Should not have succeeded');
 		}

@@ -727,6 +727,7 @@ public with sharing virtual class Dml {
 		DO_UPDATE,
 		DO_UPDATE_ASYNC,
 		DO_UPDATE_IMMEDIATE,
-		DO_UPSERT
+		DO_UPSERT,
+		EMPTY_RECYCLE_BIN
 	}
 }
