@@ -12,7 +12,7 @@ public class MockDml extends Dml {
 	public static final MockDml.RecordHistory DELETED = new MockDml.RecordHistory(Dml.Operation.DO_DELETE);
 	public static final MockDml.RecordHistory INSERTED = new MockDml.RecordHistory(Dml.Operation.DO_INSERT);
 	public static final MockDml.PlatformEventHistory PUBLISHED = new MockDml.PlatformEventHistory();
-	public static final MockDml.RecordHistory PURGED = new MockDml.RecordHistory(Dml.Operation.EMPTY_RECYCLE_BIN);
+	public static final MockDml.RecordHistory PURGED = new MockDml.RecordHistory(Dml.Operation.DO_PURGE);
 	public static final MockDml.RecordHistory UNDELETED = new MockDml.RecordHistory(Dml.Operation.DO_UNDELETE);
 	public static final MockDml.RecordHistory UPDATED = new MockDml.RecordHistory(Dml.Operation.DO_UPDATE);
 	public static final MockDml.RecordHistory UPSERTED = new MockDml.RecordHistory(Dml.Operation.DO_UPSERT);
