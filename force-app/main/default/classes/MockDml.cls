@@ -155,35 +155,13 @@ public class MockDml extends Dml {
 		return this.doInsert(records, accessLevel);
 	}
 
-	public override List<Database.SaveResult> doPublish(List<SObject> events, Object callback) {
+	public override List<Database.SaveResult> doPublish(List<SObject> events) {
 		// Ensure the callback is set; if null, use the default value
-		PublishContext successContext = new PublishContext();
-		PublishContext failureContext = new PublishContext();
 		List<MockDml.Result> results = new List<MockDml.Result>();
 		for (SObject event : events) {
 			// Note: EventBus.publish() always runs in allOrNone=false context
 			MockDml.Result result = this.generateMockResult(MockDml.PUBLISHED, event, false);
 			results?.add(result);
-			// Store the event's uuid in the correct context class, to be referenced by callbacks
-			PublishContext context = (result.success == true) ? successContext : failureContext;
-			context?.addEvent(event);
-		}
-		// Process callbacks, in bulk.
-		if (
-			successContext?.hasEvents() &&
-			callback != null &&
-			callback instanceof EventBus.EventPublishSuccessCallback
-		) {
-			EventBus.EventPublishSuccessCallback successCallback = (EventBus.EventPublishSuccessCallback) callback;
-			successCallback?.onSuccess(successContext);
-		}
-		if (
-			failureContext?.hasEvents() &&
-			callback != null &&
-			callback instanceof EventBus.EventPublishFailureCallback
-		) {
-			EventBus.EventPublishFailureCallback failureCallback = (EventBus.EventPublishFailureCallback) callback;
-			failureCallback?.onFailure(failureContext);
 		}
 		return this.toSaveResults(results);
 	}
@@ -593,24 +571,6 @@ public class MockDml extends Dml {
 				this.opportunityid = record?.Id;
 			}
 			return this;
-		}
-	}
-
-	private class PublishContext implements EventBus.FailureResult, EventBus.SuccessResult {
-		List<String> uuids = new List<String>();
-
-		public List<String> getEventUuids() {
-			return this.uuids;
-		}
-
-		private PublishContext addEvent(SObject event) {
-			String uuid = (String) event?.get(EVENT_UUID_FIELD);
-			this.uuids?.add(uuid);
-			return this;
-		}
-
-		private Boolean hasEvents() {
-			return this.uuids?.isEmpty() == false;
 		}
 	}
 

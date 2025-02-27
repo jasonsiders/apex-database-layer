@@ -347,22 +347,14 @@ public with sharing virtual class Dml {
 	}
 
 	// ** Publish Methods
-	public virtual List<Database.SaveResult> doPublish(List<SObject> events, Object callback) {
+	public virtual List<Database.SaveResult> doPublish(List<SObject> events) {
 		// Callback: "An Apex class that implements the EventPublishFailureCallback Interface or EventPublishSuccessCallback Interface."
 		// https://developer.salesforce.com/docs/atlas.en-us.apexref.meta/apexref/apex_class_System_eventbus.htm#apex_System_eventbus_publish_4
-		return (callback != null) ? EventBus.publish(events, callback) : EventBus.publish(events);
-	}
-
-	public List<Database.SaveResult> doPublish(List<SObject> events) {
-		return this.doPublish(events, null);
-	}
-
-	public Database.SaveResult doPublish(SObject event, Object callback) {
-		return this.doPublish(new List<SObject>{ event }, callback)?.get(0);
+		return EventBus.publish(events);
 	}
 
 	public Database.SaveResult doPublish(SObject event) {
-		return this.doPublish(event, null);
+		return this.doPublish(new List<SObject>{ event })?.get(0);
 	}
 
 	// ** Undelete Methods
