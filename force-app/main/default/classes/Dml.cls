@@ -318,15 +318,15 @@ public with sharing virtual class Dml {
 	}
 
 	public Database.SaveResult doInsertAsync(SObject record, DataSource.AsyncSaveCallback callback) {
-		return this.doInsertAsync(record, callback, DEFAULT_ACCESS_LEVEL);
+		return this.doInsertAsync(new List<SObject>{ record }, callback)?.get(0);
 	}
 
 	public Database.SaveResult doInsertAsync(SObject record, System.AccessLevel accessLevel) {
-		return this.doInsertAsync(record, DEFAULT_SAVE_CALLBACK, accessLevel);
+		return this.doInsertAsync(new List<SObject>{ record }, accessLevel)?.get(0);
 	}
 
 	public Database.SaveResult doInsertAsync(SObject record) {
-		return this.doInsertAsync(record, DEFAULT_ACCESS_LEVEL);
+		return this.doInsertAsync(new List<SObject>{ record })?.get(0);
 	}
 
 	// ** InsertImmediate Methods
@@ -343,7 +343,7 @@ public with sharing virtual class Dml {
 	}
 
 	public Database.SaveResult doInsertImmediate(SObject record) {
-		return this.doInsertImmediate(record, DEFAULT_ACCESS_LEVEL);
+		return this.doInsertImmediate(new List<SObject>{ record })?.get(0);
 	}
 
 	// ** Publish Methods

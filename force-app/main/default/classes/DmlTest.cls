@@ -92,11 +92,75 @@ private class DmlTest {
 	}
 
 	@IsTest
+	static void shouldDoInsertAsyncWithAccessLevel() {
+		Account account = DmlTest.initAccount();
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doInsertAsync(account, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		// Note: This should fail, since Account isn't an external object.
+		// This doesn't seem to happen for updateAsync() or deleteAsync() - not sure why.
+		// Without defining a custom external object, not possible to test the happy path for this
+		Assert.areEqual(false, result?.isSuccess(), 'InsertAsync succeeded on non-external object');
+		Database.Error error = result?.getErrors()[0] ?? null;
+		System.StatusCode expected = System.StatusCode.CANNOT_INSERT_UPDATE_ACTIVATE_ENTITY;
+		Assert.areEqual(expected, error?.getStatusCode(), 'Wrong Error Code');
+	}
+
+	@IsTest
+	static void shouldDoInsertAsyncWithCallback() {
+		Account account = DmlTest.initAccount();
+		DataSource.AsyncSaveCallback callback = new DmlTest.SaveCallback();
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doInsertAsync(account, callback);
+		Test.stopTest();
+
+		// Note: This should fail, since Account isn't an external object.
+		// This doesn't seem to happen for updateAsync() or deleteAsync() - not sure why.
+		// Without defining a custom external object, not possible to test the happy path for this
+		Assert.areEqual(false, result?.isSuccess(), 'InsertAsync succeeded on non-external object');
+		Database.Error error = result?.getErrors()[0] ?? null;
+		System.StatusCode expected = System.StatusCode.CANNOT_INSERT_UPDATE_ACTIVATE_ENTITY;
+		Assert.areEqual(expected, error?.getStatusCode(), 'Wrong Error Code');
+	}
+
+	@IsTest
+	static void shouldDoInsertAsyncWithCallbackAndAccessLevel() {
+		Account account = DmlTest.initAccount();
+		DataSource.AsyncSaveCallback callback = new DmlTest.SaveCallback();
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doInsertAsync(account, callback, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		// Note: This should fail, since Account isn't an external object.
+		// This doesn't seem to happen for updateAsync() or deleteAsync() - not sure why.
+		// Without defining a custom external object, not possible to test the happy path for this
+		Assert.areEqual(false, result?.isSuccess(), 'InsertAsync succeeded on non-external object');
+		Database.Error error = result?.getErrors()[0] ?? null;
+		System.StatusCode expected = System.StatusCode.CANNOT_INSERT_UPDATE_ACTIVATE_ENTITY;
+		Assert.areEqual(expected, error?.getStatusCode(), 'Wrong Error Code');
+	}
+
+	@IsTest
 	static void shouldDoInsertImmediate() {
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();
 		Database.SaveResult result = DatabaseLayer.Dml.doInsertImmediate(account);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldInsertImmediateWithAccessLevel() {
+		Account account = DmlTest.initAccount();
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doInsertImmediate(account, System.AccessLevel.SYSTEM_MODE);
 		Test.stopTest();
 
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
@@ -285,7 +349,7 @@ private class DmlTest {
 	static void shouldDoDeleteAsyncWithCallback() {
 		Account account = DmlTest.initAccount();
 		insert account;
-		DataSource.AsyncDeleteCallback callback = new DmlTest.TestDeleteCallback();
+		DataSource.AsyncDeleteCallback callback = new DmlTest.DeleteCallback();
 
 		Test.startTest();
 		Database.DeleteResult result = DatabaseLayer.Dml.doDeleteAsync(account, callback);
@@ -298,7 +362,7 @@ private class DmlTest {
 	static void shouldDoDeleteAsyncWithCallbackAndAccessLevel() {
 		Account account = DmlTest.initAccount();
 		insert account;
-		DataSource.AsyncDeleteCallback callback = new DmlTest.TestDeleteCallback();
+		DataSource.AsyncDeleteCallback callback = new DmlTest.DeleteCallback();
 
 		Test.startTest();
 		Database.DeleteResult result = DatabaseLayer.Dml.doDeleteAsync(
@@ -496,13 +560,13 @@ private class DmlTest {
 		return leadToConvert;
 	}
 
-	private class TestDeleteCallback extends DataSource.AsyncDeleteCallback {
+	private class DeleteCallback extends DataSource.AsyncDeleteCallback {
 		public override void processDelete(Database.DeleteResult result) {
 			DmlTest.deleteCallbacksMade?.add(result);
 		}
 	}
 
-	private class TestSaveCallback extends DataSource.AsyncSaveCallback {
+	private class SaveCallback extends DataSource.AsyncSaveCallback {
 		public override void processSave(Database.SaveResult result) {
 			DmlTest.saveCallbacksMade?.add(result);
 		}
