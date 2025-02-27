@@ -436,7 +436,11 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldMockPublishWithCallbackOnFail() {
-		DatabaseLayer.useMockDml()?.fail();
+		MockDml.ConditionalFailure condition = new MockDmlTest.ExampleFailure(
+			Dml.Operation.DO_PUBLISH,
+			BatchApexErrorEvent.SObjectType
+		);
+		DatabaseLayer.useMockDml()?.failIf(condition);
 		List<BatchApexErrorEvent> events = MockDmlTest.initRecords(BatchApexErrorEvent.SObjectType);
 		Object callback = new MockDmlTest.EventCallback();
 
@@ -466,7 +470,7 @@ private class MockDmlTest {
 
 		Assert.areEqual(
 			0,
-			MockDml.Published?.getRecords(BatchApexErrorEvent.SObjectType)?.size(),
+			MockDml.PUBLISHED?.getRecords(BatchApexErrorEvent.SObjectType)?.size(),
 			'Wrong # of published records'
 		);
 	}
@@ -484,7 +488,7 @@ private class MockDmlTest {
 		Assert.areEqual(events?.size(), results?.size(), 'Wrong # of results');
 		Assert.areEqual(
 			0,
-			MockDml.Published?.getRecords(BatchApexErrorEvent.SObjectType)?.size(),
+			MockDml.PUBLISHED?.getRecords(BatchApexErrorEvent.SObjectType)?.size(),
 			'Wrong # of published records'
 		);
 		for (Database.SaveResult result : results) {
@@ -739,7 +743,10 @@ private class MockDmlTest {
 	@IsTest
 	static void shouldInjectCustomFailureLogic() {
 		List<Account> accounts = MockDmlTest.initRecords(Account.SObjectType, false);
-		MockDml.ConditionalFailure failure = new MockDmlTest.ExampleFailure();
+		MockDml.ConditionalFailure failure = new MockDmlTest.ExampleFailure(
+			Dml.Operation.DO_UPDATE,
+			Account.SObjectType
+		);
 		DatabaseLayer.useMockDml().failIf(failure);
 
 		Test.startTest();
@@ -818,11 +825,31 @@ private class MockDmlTest {
 
 	// **** INNER **** //
 	public class ExampleFailure implements MockDml.ConditionalFailure {
+		private Dml.Operation failingOperation;
+		private SObjectType failingSObjectType;
+
+		public ExampleFailure(Dml.Operation operation, SObjectType objectType) {
+			this.failingOperation = operation;
+			this.failingSObjectType = objectType;
+		}
+
 		public Exception checkFailure(Dml.Operation operation, SObject record) {
 			// Only throw an error if updating an Account
 			Boolean shouldFail =
-				operation == Dml.Operation.DO_UPDATE &&
-				record?.getSObjectType() == Account.SObjectType;
+				operation == this.failingOperation &&
+				record?.getSObjectType() == this.failingSObjectType;
+			System.debug(
+				'Check Failure: ' +
+					operation +
+					' == ' +
+					this.failingOperation +
+					'?\n' +
+					record?.getSObjectType() +
+					' == ' +
+					this.failingSObjectType +
+					'?\n' +
+					shouldFail
+			);
 			return shouldFail ? new System.DmlException() : null;
 		}
 	}
@@ -845,7 +872,7 @@ private class MockDmlTest {
 				Task task = new Task(Subject = uuid + ': ' + status);
 				tasks?.add(task);
 			}
-			insert tasks;
+			DatabaseLayer.Dml.doInsert(tasks);
 		}
 	}
 }

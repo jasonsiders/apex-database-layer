@@ -163,7 +163,9 @@ public class MockDml extends Dml {
 		for (SObject event : events) {
 			// Note: EventBus.publish() always runs in allOrNone=false context
 			MockDml.Result result = this.generateMockResult(MockDml.PUBLISHED, event, false);
-			PublishContext context = result.success ? successContext : failureContext;
+			results?.add(result);
+			// Store the event's uuid in the correct context class, to be referenced by callbacks
+			PublishContext context = (result.success == true) ? successContext : failureContext;
 			context?.addEvent(event);
 		}
 		// Process callbacks, in bulk.
@@ -281,7 +283,6 @@ public class MockDml extends Dml {
 			// Note: Process resulting records using allOrNone=true, regardless of its original value
 			// This allows injected errors for Accounts/Contacts/Opps to be caught and handled appropriately
 			// 1. Simulate converting the lead
-			// ! TODO: Consider flipping #1 & #2?
 			this.validateConvertedLead(leadToConvert);
 			this.generateMockResult(MockDml.CONVERTED, leadRecord, true);
 			// 2. Simulate creating an Account/Contact/Opportunity, if their Id wasn't already provided
