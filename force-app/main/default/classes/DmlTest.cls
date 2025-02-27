@@ -1,7 +1,7 @@
 @IsTest
 private class DmlTest {
 	// **** CONSTANTS **** //
-	private static final Integer TEST_SIZE = 2;
+	private static final LeadStatus CONVERTED_STATUS = DmlTest.getConvertedStatus();
 
 	// **** TESTS **** //
 	@IsTest
@@ -185,15 +185,7 @@ private class DmlTest {
 	static void shouldDoConvert() {
 		Lead lead = DmlTest.initLead();
 		insert lead;
-		LeadStatus status = [
-			SELECT ApiName
-			FROM LeadStatus
-			WHERE IsConverted = TRUE
-			LIMIT 1
-		];
-		Database.LeadConvert leadToConvert = new Database.LeadConvert();
-		leadToConvert?.setLeadId(lead?.Id);
-		leadToConvert?.setConvertedStatus(status?.ApiName);
+		Database.LeadConvert leadToConvert = DmlTest.initLeadConvert(lead);
 
 		Test.startTest();
 		Database.LeadConvertResult result = DatabaseLayer.Dml.doConvert(leadToConvert);
@@ -202,9 +194,90 @@ private class DmlTest {
 		Assert.areEqual(true, result?.isSuccess(), 'Did not succeed: ' + result?.getErrors());
 	}
 
+	@IsTest
+	static void shouldDoConvertWithAllOrNone() {
+		Lead lead = DmlTest.initLead();
+		insert lead;
+		Database.LeadConvert leadToConvert = DmlTest.initLeadConvert(lead);
+
+		Test.startTest();
+		Database.LeadConvertResult result = DatabaseLayer.Dml.doConvert(leadToConvert, true);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'Did not succeed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoConvertWithDmlOptions() {
+		Lead lead = DmlTest.initLead();
+		insert lead;
+		Database.LeadConvert leadToConvert = DmlTest.initLeadConvert(lead);
+		Database.DmlOptions options = new Database.DmlOptions();
+		options.OptAllOrNone = true;
+
+		Test.startTest();
+		Database.LeadConvertResult result = DatabaseLayer.Dml.doConvert(leadToConvert, options);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'Did not succeed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoConvertWithAccessLevel() {
+		Lead lead = DmlTest.initLead();
+		insert lead;
+		Database.LeadConvert leadToConvert = DmlTest.initLeadConvert(lead);
+
+		Test.startTest();
+		Database.LeadConvertResult result = DatabaseLayer.Dml.doConvert(leadToConvert, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'Did not succeed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoConvertWithDmlOptionsAndAccessLevel() {
+		Lead lead = DmlTest.initLead();
+		insert lead;
+		Database.LeadConvert leadToConvert = DmlTest.initLeadConvert(lead);
+		Database.DmlOptions options = new Database.DmlOptions();
+		options.OptAllOrNone = true;
+
+		Test.startTest();
+		Database.LeadConvertResult result = DatabaseLayer.Dml.doConvert(
+			leadToConvert,
+			options,
+			System.AccessLevel.SYSTEM_MODE
+		);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'Did not succeed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoConvertWithAllOrNoneAndAccessLevel() {
+		Lead lead = DmlTest.initLead();
+		insert lead;
+		Database.LeadConvert leadToConvert = DmlTest.initLeadConvert(lead);
+
+		Test.startTest();
+		Database.LeadConvertResult result = DatabaseLayer.Dml.doConvert(
+			leadToConvert,
+			true,
+			System.AccessLevel.SYSTEM_MODE
+		);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'Did not succeed: ' + result?.getErrors());
+	}
+
 	// **** HELPER **** //
 	static List<Database.DeleteResult> deleteCallbacksMade = new List<Database.DeleteResult>();
 	static List<Database.SaveResult> saveCallbacksMade = new List<Database.SaveResult>();
+
+	static LeadStatus getConvertedStatus() {
+		return [SELECT ApiName FROM LeadStatus WHERE IsConverted = TRUE LIMIT 1] ?? null;
+	}
 
 	static Account initAccount() {
 		return new Account(Name = 'Robinson Industries');
@@ -217,6 +290,13 @@ private class DmlTest {
 
 	static Lead initLead() {
 		return new Lead(Company = 'Tharsis Inc.', FirstName = 'John', LastName = 'Doe');
+	}
+
+	static Database.LeadConvert initLeadConvert(Lead lead) {
+		Database.LeadConvert leadToConvert = new Database.LeadConvert();
+		leadToConvert?.setLeadId(lead?.Id);
+		leadToConvert?.setConvertedStatus(CONVERTED_STATUS?.ApiName);
+		return leadToConvert;
 	}
 
 	private class TestDeleteCallback extends DataSource.AsyncDeleteCallback {

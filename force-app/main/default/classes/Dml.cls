@@ -49,6 +49,13 @@ public with sharing virtual class Dml {
 		return this.doConvert(leadsToConvert, options, DEFAULT_ACCESS_LEVEL);
 	}
 
+	public List<Database.LeadConvertResult> doConvert(
+		List<Database.LeadConvert> leadsToConvert,
+		System.AccessLevel level
+	) {
+		return this.doConvert(leadsToConvert, true, level);
+	}
+
 	public List<Database.LeadConvertResult> doConvert(List<Database.LeadConvert> leadsToConvert, Boolean allOrNone) {
 		return this.doConvert(leadsToConvert, this.initOptions(allOrNone));
 	}
@@ -70,20 +77,23 @@ public with sharing virtual class Dml {
 		Boolean allOrNone,
 		System.AccessLevel accessLevel
 	) {
-		Database.DmlOptions options = this.initOptions(allOrNone);
-		return this.doConvert(leadToConvert, options, accessLevel);
+		return this.doConvert(new List<Database.LeadConvert>{ leadToConvert }, allOrNone, accessLevel)?.get(0);
 	}
 
 	public Database.LeadConvertResult doConvert(Database.LeadConvert leadToConvert, Database.DmlOptions options) {
-		return this.doConvert(leadToConvert, options, DEFAULT_ACCESS_LEVEL);
+		return this.doConvert(new List<Database.LeadConvert>{ leadToConvert }, options)?.get(0);
 	}
 
 	public Database.LeadConvertResult doConvert(Database.LeadConvert leadToConvert, Boolean allOrNone) {
-		return this.doConvert(leadToConvert, allOrNone, DEFAULT_ACCESS_LEVEL);
+		return this.doConvert(new List<Database.LeadConvert>{ leadToConvert }, allOrNone)?.get(0);
+	}
+
+	public Database.LeadConvertResult doConvert(Database.LeadConvert leadToConvert, System.AccessLevel level) {
+		return this.doConvert(new List<Database.LeadConvert>{ leadToConvert }, level)?.get(0);
 	}
 
 	public Database.LeadConvertResult doConvert(Database.LeadConvert leadToConvert) {
-		return this.doConvert(leadToConvert, true);
+		return this.doConvert(new List<Database.LeadConvert>{ leadToConvert })?.get(0);
 	}
 
 	// ** Delete Methods
