@@ -228,7 +228,7 @@ public with sharing virtual class Dml {
 	}
 
 	public Database.DeleteResult doDeleteImmediate(SObject record) {
-		return this.doDeleteImmediate(record, DEFAULT_ACCESS_LEVEL);
+		return this.doDeleteImmediate(new List<SObject>{ record })?.get(0);
 	}
 
 	// ** Insert Methods

@@ -265,6 +265,18 @@ private class DmlTest {
 	}
 
 	@IsTest
+	static void shouldDoDeleteImmediateWithAccessLevel() {
+		Account account = DmlTest.initAccount();
+		insert account;
+
+		Test.startTest();
+		Database.DeleteResult result = DatabaseLayer.Dml.doDeleteImmediate(account, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
 	static void shouldDoHardDelete() {
 		Account account = DmlTest.initAccount();
 		insert account;
