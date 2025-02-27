@@ -96,12 +96,10 @@ private class DmlTest {
 		SObjectField field = Account.Id;
 
 		Test.startTest();
-		Dml dml = DatabaseLayer.Dml.setExternalIdField(field);
-		Database.UpsertResult result = dml?.doUpsert(acc);
+		Database.UpsertResult result = DatabaseLayer.Dml?.doUpsert(acc, field);
 		Test.stopTest();
 
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
-		Assert.areEqual(field, dml?.getExternalIdField(), 'Did not upsert by ' + field);
 	}
 
 	@IsTest
@@ -144,9 +142,10 @@ private class DmlTest {
 	static void shouldDoHardDelete() {
 		Account account = DmlTest.initAccount();
 		insert account;
+		delete account;
 
 		Test.startTest();
-		Database.DeleteResult result = DatabaseLayer.Dml.doHardDelete(account);
+		Database.EmptyRecycleBinResult result = DatabaseLayer.Dml.emptyRecycleBin(account);
 		Test.stopTest();
 
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
@@ -201,138 +200,6 @@ private class DmlTest {
 		Test.stopTest();
 
 		Assert.areEqual(true, result?.isSuccess(), 'Did not succeed: ' + result?.getErrors());
-	}
-
-	@IsTest
-	static void shouldDoDynamicDml() {
-		// The doDml() method allows for callers to dynamically specify the type of operation taking place
-		Account account1 = DmlTest.initAccount();
-		Account account2 = DmlTest.initAccount();
-		Account account3 = DmlTest.initAccount();
-		BatchApexErrorEvent event = new BatchApexErrorEvent();
-		Dml myDml = DatabaseLayer.Dml.setAllOrNone(false);
-
-		Test.startTest();
-		// * Insert Methods
-		Database.SaveResult insertResult = (Database.SaveResult) myDml?.doDml(Dml.Operation.DO_INSERT, account1);
-		Assert.areEqual(true, insertResult?.isSuccess(), 'Insert failed: ' + insertResult?.getErrors());
-		Database.SaveResult insertAsyncResult = (Database.SaveResult) myDml
-			?.doDml(Dml.Operation.DO_INSERT_ASYNC, account2);
-		// Note: insertAsync() not allowed on non-external objects
-		Assert.areEqual(false, insertAsyncResult?.isSuccess(), 'Async Insert succeeded for a non-external object');
-		Database.SaveResult insertImmediateResult = (Database.SaveResult) myDml
-			?.doDml(Dml.Operation.DO_INSERT_IMMEDIATE, account3);
-		Assert.areEqual(
-			true,
-			insertImmediateResult?.isSuccess(),
-			'Immediate Insert failed: ' + insertImmediateResult?.getErrors()
-		);
-		// * Update Methods
-		Database.SaveResult updateResult = (Database.SaveResult) myDml?.doDml(Dml.Operation.DO_UPDATE, account1);
-		Assert.areEqual(true, updateResult?.isSuccess(), 'Update failed: ' + updateResult?.getErrors());
-		Database.SaveResult updateAsyncResult = (Database.SaveResult) myDml
-			?.doDml(Dml.Operation.DO_UPDATE_ASYNC, account1);
-		Assert.areEqual(true, updateAsyncResult?.isSuccess(), 'Async Update failed: ' + updateAsyncResult?.getErrors());
-		Database.SaveResult updateImmediateResult = (Database.SaveResult) myDml
-			?.doDml(Dml.Operation.DO_UPDATE_IMMEDIATE, account1);
-		Assert.areEqual(
-			true,
-			updateImmediateResult?.isSuccess(),
-			'Immediate Update failed: ' + updateImmediateResult?.getErrors()
-		);
-		// * Upsert Methods
-		Database.UpsertResult upsertResult = (Database.UpsertResult) myDml?.doDml(Dml.Operation.DO_UPSERT, account1);
-		Assert.areEqual(true, upsertResult?.isSuccess(), 'Upsert failed: ' + upsertResult?.getErrors());
-		// Note: Before testing delete/undelete methods, ensure all records are inserted
-		upsert new List<Account>{ account1, account2, account3 };
-		// * Delete/Undelete Methods
-		Database.DeleteResult deleteResult = (Database.DeleteResult) myDml?.doDml(Dml.Operation.DO_DELETE, account1);
-		Assert.areEqual(true, deleteResult?.isSuccess(), 'Delete failed: ' + deleteResult?.getErrors());
-		Database.DeleteResult deleteAsyncResult = (Database.DeleteResult) myDml
-			?.doDml(Dml.Operation.DO_DELETE_ASYNC, account2);
-		Assert.areEqual(true, deleteAsyncResult?.isSuccess(), 'Async Delete failed: ' + deleteAsyncResult?.getErrors());
-		Database.DeleteResult deleteImmediateResult = (Database.DeleteResult) myDml
-			?.doDml(Dml.Operation.DO_DELETE_IMMEDIATE, account3);
-		Assert.areEqual(
-			true,
-			deleteImmediateResult?.isSuccess(),
-			'Immediate Delete failed: ' + deleteImmediateResult?.getErrors()
-		);
-		Database.UndeleteResult undeleteResult = (Database.UndeleteResult) myDml
-			?.doDml(Dml.Operation.DO_UNDELETE, account1);
-		Assert.areEqual(true, undeleteResult?.isSuccess(), 'Undelete failed: ' + undeleteResult?.getErrors());
-		Database.DeleteResult hardDeleteResult = (Database.DeleteResult) myDml
-			?.doDml(Dml.Operation.DO_HARD_DELETE, account1);
-		Assert.areEqual(true, hardDeleteResult?.isSuccess(), 'Hard Delete failed: ' + hardDeleteResult?.getErrors());
-		// * Publish Methods
-		// Note: EventBus.publish() not allowed on standard platform events
-		Database.SaveResult publishResult = (Database.SaveResult) myDml?.doDml(Dml.Operation.DO_PUBLISH, event);
-		Assert.areEqual(false, publishResult?.isSuccess(), 'Publish succeeded for a standard platform event');
-		Test.stopTest();
-	}
-
-	@IsTest
-	static void shouldThrowExceptionIfInvalidOperation() {
-		Account account = DmlTest.initAccount();
-
-		Test.startTest();
-		try {
-			DatabaseLayer.Dml.doDml(null, account);
-			Assert.fail('An Exception was not thrown');
-		} catch (System.DmlException error) {
-			Assert.areEqual(true, error?.getMessage()?.startsWith('Unsupported'), 'Wrong error message');
-		}
-		Test.stopTest();
-	}
-
-	@IsTest
-	static void shouldSetCustomDeleteCallback() {
-		// When updating external objects via the *async() methods,
-		// you can specify a custom callback class that will run when the Dml finishes processing
-		// By defualt, the Dml class runs a dummy/no-op class, but callers can specify their own logic
-		DataSource.AsyncDeleteCallback callback = new TestDeleteCallback();
-
-		Test.startTest();
-		Dml dml = DatabaseLayer.Dml.setCallback(callback);
-		Test.stopTest();
-
-		Assert.isInstanceOfType(dml?.getDeleteCallback(), TestDeleteCallback.class, 'Did not set custom callback');
-		// The Save Callback shouldn't be affected by this
-		Assert.isInstanceOfType(dml?.getSaveCallback(), Dml.DefaultSaveCallback.class, 'Save Callback was overwritten');
-	}
-
-	@IsTest
-	static void shouldSetCustomSaveCallback() {
-		// When updating external objects via the *async() methods,
-		// you can specify a custom callback class that will run when the Dml finishes processing
-		// By defualt, the Dml class runs a dummy/no-op class, but callers can specify their own logic
-		DataSource.AsyncSaveCallback callback = new TestSaveCallback();
-
-		Test.startTest();
-		Dml dml = DatabaseLayer.Dml.setCallback(callback);
-		Test.stopTest();
-
-		Assert.isInstanceOfType(dml?.getSaveCallback(), TestSaveCallback.class, 'Did not set custom callback');
-		// The Delete Callback shouldn't be affected by this
-		Assert.isInstanceOfType(
-			dml?.getDeleteCallback(),
-			Dml.DefaultDeleteCallback.class,
-			'Delete Callback was overwritten'
-		);
-	}
-
-	@IsTest
-	static void shouldRunDefaultCallbacksWithoutError() {
-		// Note: The DataSource.Async*Callback objects are not invoked when running the async DML methods in @IsTest context
-		// Ensure the default implementations of these objects can be invoked w/out error
-		Test.startTest();
-		try {
-			new Dml.DefaultDeleteCallback()?.processDelete(null);
-			new Dml.DefaultSaveCallback()?.processSave(null);
-		} catch (Exception error) {
-			Assert.fail('An error was thrown: ' + error);
-		}
-		Test.stopTest();
 	}
 
 	// **** HELPER **** //

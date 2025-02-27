@@ -415,6 +415,46 @@ private class MockDmlTest {
 	}
 
 	@IsTest
+	static void shouldMockPublishWithCallbackOnSuccess() {
+		DatabaseLayer.useMockDml();
+		List<BatchApexErrorEvent> events = MockDmlTest.initRecords(BatchApexErrorEvent.SObjectType);
+		Object callback = new MockDmlTest.EventCallback();
+
+		Test.startTest();
+		List<Database.SaveResult> results = DatabaseLayer.Dml?.doPublish(events, callback);
+		Test.stopTest();
+
+		List<Task> tasks = MockDml.INSERTED.getRecords(Task.SObjectType);
+		Assert.areEqual(events?.size(), tasks?.size(), 'Wrong # of Tasks inserted');
+		for (Integer i = 0; i < events?.size(); i++) {
+			BatchApexErrorEvent event = events?.get(i);
+			Task task = tasks?.get(i);
+			String expected = event?.EventUuid + ': Success';
+			Assert.areEqual(task?.Subject, expected, 'Wrong Subject');
+		}
+	}
+
+	@IsTest
+	static void shouldMockPublishWithCallbackOnFail() {
+		DatabaseLayer.useMockDml()?.fail();
+		List<BatchApexErrorEvent> events = MockDmlTest.initRecords(BatchApexErrorEvent.SObjectType);
+		Object callback = new MockDmlTest.EventCallback();
+
+		Test.startTest();
+		List<Database.SaveResult> results = DatabaseLayer.Dml?.doPublish(events, callback);
+		Test.stopTest();
+
+		List<Task> tasks = MockDml.INSERTED.getRecords(Task.SObjectType);
+		Assert.areEqual(events?.size(), tasks?.size(), 'Wrong # of Tasks inserted');
+		for (Integer i = 0; i < events?.size(); i++) {
+			BatchApexErrorEvent event = events?.get(i);
+			Task task = tasks?.get(i);
+			String expected = event?.EventUuid + ': Failed';
+			Assert.areEqual(task?.Subject, expected, 'Wrong Subject');
+		}
+	}
+
+	@IsTest
 	static void shouldThrowExceptionIfErrorOnPublish() {
 		List<BatchApexErrorEvent> events = MockDmlTest.initRecords(BatchApexErrorEvent.SObjectType);
 		DatabaseLayer.useMockDml()?.fail();
@@ -784,6 +824,28 @@ private class MockDmlTest {
 				operation == Dml.Operation.DO_UPDATE &&
 				record?.getSObjectType() == Account.SObjectType;
 			return shouldFail ? new System.DmlException() : null;
+		}
+	}
+
+	public class EventCallback implements EventBus.EventPublishFailureCallback, EventBus.EventPublishSuccessCallback {
+		public void onFailure(EventBus.FailureResult result) {
+			List<String> uuids = result?.getEventUuids();
+			this.createTasks(uuids, false);
+		}
+
+		public void onSuccess(EventBus.SuccessResult result) {
+			List<String> uuids = result?.getEventUuids();
+			this.createTasks(uuids, true);
+		}
+
+		private void createTasks(List<String> uuids, Boolean isSuccess) {
+			List<Task> tasks = new List<Task>();
+			for (String uuid : uuids) {
+				String status = (isSuccess) ? 'Success' : 'Failed';
+				Task task = new Task(Subject = uuid + ': ' + status);
+				tasks?.add(task);
+			}
+			insert tasks;
 		}
 	}
 }

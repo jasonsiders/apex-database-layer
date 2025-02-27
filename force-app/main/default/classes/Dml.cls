@@ -18,8 +18,6 @@ public with sharing virtual class Dml {
 	 **/
 	private static final System.AccessLevel DEFAULT_ACCESS_LEVEL = System.AccessLevel.USER_MODE;
 	private static final DataSource.AsyncDeleteCallback DEFAULT_DELETE_CALLBACK = new Dml.EmptyDeleteCallback();
-	@TestVisible
-	private static final Dml.EmptyEventCallback DEFAULT_EVENT_CALLBACK = new Dml.EmptyEventCallback();
 	private static final DataSource.AsyncSaveCallback DEFAULT_SAVE_CALLBACK = new Dml.EmptySaveCallback();
 
 	public Dml(DatabaseLayer factory) {
@@ -341,11 +339,11 @@ public with sharing virtual class Dml {
 	public virtual List<Database.SaveResult> doPublish(List<SObject> events, Object callback) {
 		// Callback: "An Apex class that implements the EventPublishFailureCallback Interface or EventPublishSuccessCallback Interface."
 		// https://developer.salesforce.com/docs/atlas.en-us.apexref.meta/apexref/apex_class_System_eventbus.htm#apex_System_eventbus_publish_4
-		return EventBus.publish(events, callback);
+		return (callback != null) ? EventBus.publish(events, callback) : EventBus.publish(events);
 	}
 
 	public List<Database.SaveResult> doPublish(List<SObject> events) {
-		return this.doPublish(events, DEFAULT_EVENT_CALLBACK);
+		return this.doPublish(events, null);
 	}
 
 	public Database.SaveResult doPublish(SObject event, Object callback) {
@@ -353,7 +351,7 @@ public with sharing virtual class Dml {
 	}
 
 	public Database.SaveResult doPublish(SObject event) {
-		return this.doPublish(event, DEFAULT_EVENT_CALLBACK);
+		return this.doPublish(event, null);
 	}
 
 	// ** Undelete Methods
@@ -686,20 +684,6 @@ public with sharing virtual class Dml {
 		 *  If a callback isn't defined, doDeleteAsync() will use this class to gracefully handle callbacks
 		 **/
 		public override void processDelete(Database.DeleteResult result) {
-			// Do nothing
-		}
-	}
-
-	@TestVisible
-	private class EmptyEventCallback implements EventBus.EventPublishFailureCallback, EventBus.EventPublishSuccessCallback {
-		/**
-		 * If a platform event callback isn't defined, doPublish() will use this class to gracefully handle callbacks
-		 **/
-		public void onFailure(EventBus.FailureResult result) {
-			// Do nothing
-		}
-
-		public void onSuccess(EventBus.SuccessResult result) {
 			// Do nothing
 		}
 	}
