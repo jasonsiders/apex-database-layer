@@ -200,14 +200,15 @@ public with sharing virtual class Dml {
 	}
 
 	public Database.DeleteResult doDeleteAsync(SObject record, DataSource.AsyncDeleteCallback callback) {
-		return this.doDeleteAsync(record, callback, DEFAULT_ACCESS_LEVEL);
+		return this.doDeleteAsync(new List<SObject>{ record }, callback)?.get(0);
 	}
 
 	public Database.DeleteResult doDeleteAsync(SObject record, System.AccessLevel accessLevel) {
 		return this.doDeleteAsync(new List<SObject>{ record }, accessLevel)?.get(0);
 	}
+
 	public Database.DeleteResult doDeleteAsync(SObject record) {
-		return this.doDeleteAsync(record, DEFAULT_ACCESS_LEVEL);
+		return this.doDeleteAsync(new List<SObject>{ record })?.get(0);
 	}
 
 	// ** DeleteImmediate Methods
@@ -670,16 +671,6 @@ public with sharing virtual class Dml {
 	private List<Id> getListOfIds(List<SObject> records) {
 		// Converts a List<SObject> into a List<Id>
 		return new List<Id>(new Map<Id, SObject>(records)?.keySet());
-	}
-
-	private List<SObject> getListOfRecords(List<Id> recordIds) {
-		// Converts a List<Id> into a List<SObject>
-		List<SObject> records = new List<SObject>();
-		for (Id recordId : recordIds) {
-			SObject record = recordId?.getSObjectType()?.newSObject(recordId);
-			records?.add(record);
-		}
-		return records;
 	}
 
 	private Database.DmlOptions initOptions(Boolean allOrNone) {

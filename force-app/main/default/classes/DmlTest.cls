@@ -211,6 +211,48 @@ private class DmlTest {
 	}
 
 	@IsTest
+	static void shouldDoDeleteAsyncWithAccessLevel() {
+		Account account = DmlTest.initAccount();
+		insert account;
+
+		Test.startTest();
+		Database.DeleteResult result = DatabaseLayer.Dml.doDeleteAsync(account, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoDeleteAsyncWithCallback() {
+		Account account = DmlTest.initAccount();
+		insert account;
+		DataSource.AsyncDeleteCallback callback = new DmlTest.TestDeleteCallback();
+
+		Test.startTest();
+		Database.DeleteResult result = DatabaseLayer.Dml.doDeleteAsync(account, callback);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoDeleteAsyncWithCallbackAndAccessLevel() {
+		Account account = DmlTest.initAccount();
+		insert account;
+		DataSource.AsyncDeleteCallback callback = new DmlTest.TestDeleteCallback();
+
+		Test.startTest();
+		Database.DeleteResult result = DatabaseLayer.Dml.doDeleteAsync(
+			account,
+			callback,
+			System.AccessLevel.SYSTEM_MODE
+		);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
 	static void shouldDoDeleteImmediate() {
 		Account account = DmlTest.initAccount();
 		insert account;
