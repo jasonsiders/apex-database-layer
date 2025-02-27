@@ -143,31 +143,31 @@ public with sharing virtual class Dml {
 	}
 
 	public Database.DeleteResult doDelete(Id recordId, Boolean allOrNone) {
-		return this.doDelete(recordId, allOrNone, DEFAULT_ACCESS_LEVEL);
+		return this.doDelete(new List<Id>{ recordId }, allOrNone)?.get(0);
 	}
 
 	public Database.DeleteResult doDelete(Id recordId, System.AccessLevel accessLevel) {
-		return this.doDelete(recordId, true, accessLevel);
+		return this.doDelete(new List<Id>{ recordId }, accessLevel)?.get(0);
 	}
 
 	public Database.DeleteResult doDelete(Id recordId) {
-		return this.doDelete(recordId, DEFAULT_ACCESS_LEVEL);
+		return this.doDelete(new List<Id>{ recordId })?.get(0);
 	}
 
 	public Database.DeleteResult doDelete(SObject record, Boolean allOrNone, System.AccessLevel accessLevel) {
-		return this.doDelete(record?.Id, allOrNone, accessLevel);
+		return this.doDelete(new List<SObject>{ record }, allOrNone, accessLevel)?.get(0);
 	}
 
 	public Database.DeleteResult doDelete(SObject record, Boolean allOrNone) {
-		return this.doDelete(record, allOrNone, DEFAULT_ACCESS_LEVEL);
+		return this.doDelete(new List<SObject>{ record }, allOrNone)?.get(0);
 	}
 
 	public Database.DeleteResult doDelete(SObject record, System.AccessLevel accessLevel) {
-		return this.doDelete(record, true, accessLevel);
+		return this.doDelete(new List<SObject>{ record }, accessLevel)?.get(0);
 	}
 
 	public Database.DeleteResult doDelete(SObject record) {
-		return this.doDelete(record, DEFAULT_ACCESS_LEVEL);
+		return this.doDelete(new List<SObject>{ record })?.get(0);
 	}
 
 	// ** DeleteAsync Methods

@@ -115,6 +115,90 @@ private class DmlTest {
 	}
 
 	@IsTest
+	static void shouldDoDeleteWithAccessLevel() {
+		Account account = DmlTest.initAccount();
+		insert account;
+
+		Test.startTest();
+		Database.DeleteResult result = DatabaseLayer.Dml.doDelete(account, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoDeleteWithAllOrNone() {
+		Account account = DmlTest.initAccount();
+		insert account;
+
+		Test.startTest();
+		Database.DeleteResult result = DatabaseLayer.Dml.doDelete(account, true);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoDeleteWithAllOrNoneAndAccessLevel() {
+		Account account = DmlTest.initAccount();
+		insert account;
+
+		Test.startTest();
+		Database.DeleteResult result = DatabaseLayer.Dml.doDelete(account, true, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoDeleteWithId() {
+		Account account = DmlTest.initAccount();
+		insert account;
+
+		Test.startTest();
+		Database.DeleteResult result = DatabaseLayer.Dml.doDelete(account?.Id);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoDeleteWithIdAndAccessLevel() {
+		Account account = DmlTest.initAccount();
+		insert account;
+
+		Test.startTest();
+		Database.DeleteResult result = DatabaseLayer.Dml.doDelete(account?.Id, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoDeleteWithIdAndAllOrNone() {
+		Account account = DmlTest.initAccount();
+		insert account;
+
+		Test.startTest();
+		Database.DeleteResult result = DatabaseLayer.Dml.doDelete(account?.Id, true);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoDeleteWithIdAndAllOrNoneAndAccessLevel() {
+		Account account = DmlTest.initAccount();
+		insert account;
+
+		Test.startTest();
+		Database.DeleteResult result = DatabaseLayer.Dml.doDelete(account?.Id, true, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
 	static void shouldDoDeleteAsync() {
 		Account account = DmlTest.initAccount();
 		insert account;
