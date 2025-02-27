@@ -15,6 +15,65 @@ private class DmlTest {
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
 	}
 
+	@Istest
+	static void shouldDoInsertWithAccessLevel() {
+		Account account = DmlTest.initAccount();
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doInsert(account, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoInsertWithAllOrNone() {
+		Account account = DmlTest.initAccount();
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doInsert(account, true);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoInsertWithDmlOptions() {
+		Account account = DmlTest.initAccount();
+		Database.DmlOptions options = new Database.DmlOptions();
+		options.OptAllOrNone = true;
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doInsert(account, options);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoInsertWithAllOrNoneAndAccessLevel() {
+		Account account = DmlTest.initAccount();
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doInsert(account, true, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoInsertWithDmlOptionsAndAccessLevel() {
+		Account account = DmlTest.initAccount();
+		Database.DmlOptions options = new Database.DmlOptions();
+		options.OptAllOrNone = true;
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doInsert(account, options, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
 	@IsTest
 	static void shouldDoInsertAsync() {
 		Account account = DmlTest.initAccount();

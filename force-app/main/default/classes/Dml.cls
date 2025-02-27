@@ -269,23 +269,23 @@ public with sharing virtual class Dml {
 	}
 
 	public Database.SaveResult doInsert(SObject record, Boolean allOrNone, System.AccessLevel accessLevel) {
-		return this.doInsert(record, this.initOptions(allOrNone), accessLevel);
+		return this.doInsert(new List<SObject>{ record }, allOrNone, accessLevel)?.get(0);
 	}
 
 	public Database.SaveResult doInsert(SObject record, Database.DmlOptions options) {
-		return this.doInsert(record, options, DEFAULT_ACCESS_LEVEL);
+		return this.doInsert(new List<SObject>{ record }, options)?.get(0);
 	}
 
 	public Database.SaveResult doInsert(SObject record, Boolean allOrNone) {
-		return this.doInsert(record, allOrNone, DEFAULT_ACCESS_LEVEL);
+		return this.doInsert(new List<SObject>{ record }, allOrNone)?.get(0);
 	}
 
 	public Database.SaveResult doInsert(SObject record, System.AccessLevel accessLevel) {
-		return this.doInsert(record, true, accessLevel);
+		return this.doInsert(new List<SObject>{ record }, accessLevel)?.get(0);
 	}
 
 	public Database.SaveResult doInsert(SObject record) {
-		return this.doInsert(record, DEFAULT_ACCESS_LEVEL);
+		return this.doInsert(new List<SObject>{ record })?.get(0);
 	}
 
 	// ** InsertAsync Methods
