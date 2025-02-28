@@ -9,11 +9,11 @@ public class DatabaseLayer {
 
 	// **** MEMBER **** //
 	private Dml currentDml;
-	private Soql currentSoql;
+	private SoqlProvider currentSoql;
 
 	private DatabaseLayer() {
 		this.currentDml = new Dml(this);
-		this.currentSoql = new Soql(this);
+		this.currentSoql = new SoqlProvider(this);
 	}
 
 	// **** STATIC **** //
@@ -26,10 +26,10 @@ public class DatabaseLayer {
 		}
 	}
 	@SuppressWarnings('PMD.PropertyNamingConventions')
-	public static Soql Soql {
+	public static SoqlProvider Soql {
 		get {
 			// Returns a new copy of the current Soql instance on each reference
-			return (Soql) INSTANCE?.currentSoql?.clone();
+			return INSTANCE?.currentSoql;
 		}
 	}
 
@@ -42,11 +42,10 @@ public class DatabaseLayer {
 	}
 
 	@TestVisible
-	private static MockSoql useMockSoql() {
+	private static SoqlProvider useMockSoql() {
 		// Replace the current Dml instances with mocks of these types
 		// Subsuquent calls to DatabaseLayer.Soql will now return mocks
-		INSTANCE.currentSoql = new MockSoql();
-		return (MockSoql) INSTANCE.currentSoql;
+		return INSTANCE.currentSoql?.useMocks(true);
 	}
 
 	@TestVisible
@@ -65,11 +64,10 @@ public class DatabaseLayer {
 	}
 
 	@TestVisible
-	private static Soql useRealSoql() {
+	private static SoqlProvider useRealSoql() {
 		// Replace the current Dml instances with real/non-mock versions of these types
 		// Subsuquent calls to DatabaseLayer.Soql will now return these versions.
-		INSTANCE.currentSoql = new Soql(INSTANCE);
-		return INSTANCE.currentSoql;
+		return INSTANCE.currentSoql?.useMocks(false);
 	}
 
 	@TestVisible
@@ -77,5 +75,24 @@ public class DatabaseLayer {
 		// Use real data for both DML and SOQL operations going forward.
 		DatabaseLayer.useRealDml();
 		DatabaseLayer.useRealSoql();
+	}
+
+	public class SoqlProvider {
+		private Boolean useMocks;
+
+		private SoqlProvider(DatabaseLayer factory) {
+			this.useMocks = false;
+		}
+
+		public Soql newQuery(SObjectType objectType) {
+			return (this.useMocks == true)
+				? (Soql) new MockSoql(INSTANCE)?.fromSObject(objectType)
+				: (Soql) new Soql(INSTANCE)?.fromSObject(objectType);
+		}
+
+		private SoqlProvider useMocks(Boolean useMocks) {
+			this.useMocks = useMocks;
+			return this;
+		}
 	}
 }

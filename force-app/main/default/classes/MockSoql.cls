@@ -7,13 +7,8 @@ public class MockSoql extends Soql {
 	private static final String AGGREGATE_KEY_PREFIX = 'expr';
 	private MockSoql.Simulator simulator;
 
-	public MockSoql() {
-		super();
-	}
-
-	public MockSoql(SObjectType objectType) {
-		this();
-		this.fromSObject(objectType);
+	public MockSoql(DatabaseLayer factory) {
+		super(factory);
 	}
 
 	public Soql setError(Exception error) {

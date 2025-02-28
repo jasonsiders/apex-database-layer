@@ -29,7 +29,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 	private static final Soql.LogicType DEFAULT_LOGIC_TYPE = Soql.LogicType.ALL_CONDITIONS;
 	private static final String ID_REFERENCE = 'Id';
 
-	public Soql(DatabaseLayer database) {
+	public Soql(DatabaseLayer factory) {
 		this();
 	}
 
