@@ -54,7 +54,7 @@ In `@IsTest` context, mock SOQL operations by calling the `DatabaseLayer.useMock
 By default, the `MockSoql`'s query methods will return an empty result set of the type that you are expecting:
 
 ```java
-DatabaseLayer.useMocks()`
+DatabaseLayer.useMocks();
 MockSoql soql = (MockSoql) DatabaseLayer.Soql.newQuery(Account.SObjectType);
 List<Account> results = soql?.query();
 Assert.areEqual(0, results?.size(), 'Wrong # of resuls');
@@ -62,7 +62,7 @@ Assert.areEqual(0, results?.size(), 'Wrong # of resuls');
 
 Each `MockSoql` object can be injected with static query results, logic that determines the query results, or an Exception. When the query runs, those results will be returned instead of what is actually in the Salesforce database.
 
-For this reason, it's best practice to store each Soql object in a `@TestVisible` class variable (member or static), that can be easily accessed by your test code if needed.
+For this reason, it's best practice to store each Soql object in a `@TestVisible` class variable, that can be easily accessed by your test code if needed.
 
 #### Inject Static Results with the `setMock` Method
 
@@ -81,8 +81,8 @@ Most of the time, this will be a `List<SObject>`, but you can also pass a `List<
 
 ```java
 public class MyCustomType {
-  String state;
-  Integer numRecords;
+  public String state { get; set; }
+  public Integer numRecords { get; set; }
 }
 ```
 
@@ -113,7 +113,7 @@ private class CustomTaskQueryLogic implements MockSoql.Simulator {
   public List<Object> simulateQuery() {
     // For each inserted contact, return a Task
     List<Task> results = new List<Task>();
-    List<Contact> contacts = (List<Contact>) MockDml.Inserted.getRecords(
+    List<Contact> contacts = (List<Contact>) MockDml.INSERTED.getRecords(
       Contact.SObjectType
     );
     for (Contact contact : contacts) {
@@ -136,7 +136,7 @@ DatabaseLayer.useMocks();
 MockSoql soql = (MockSoql) DatabaseLayer.Soql.newQuery(Task.SObjectType)
   ?.addSelect(Task.WhatId)
   ?.addSelect(Task.WhoId);
-// Mock with a custom class that leverages MockDml.Inserted to generate results
+// Mock with a custom class that leverages MockDml.INSERTED to generate results
 soql?.setMock(new CustomTaskQueryLogic());
 // Mock insert an account + related contact
 Account mockAccount = (Account) new MockRecord(Account.SObjectType)?.toSObject();
@@ -237,8 +237,8 @@ Developers can employ one of the following strategies to work around this:
 -   Amend the `start` method to return an [iterable object](https://developer.salesforce.com/docs/atlas.en-us.apexcode.meta/apexcode/apex_classes_iterable.htm) instead.
 -   Use `System.Queueable` jobs paired with a `System.Finalizer` instead of `Database.Batchable`.
 
-<detials>
-  <summary><h3>### The `MockSoql.AggregateResult` Class</h3></summary>
+<details>
+  <summary><h4>The <code>MockSoql.AggregateResult</code> Class</h4></summary>
 
 A constructable version of the `Soql.AggregateResult` class, which wraps the `Schema.AggregateResult` class and its methods. `Schema.AggregateResult` objects cannot be directly constructed, serialized, or otherwise mocked.
 
@@ -259,14 +259,14 @@ Assert.areEqual(1, results?.size(), 'Wrong # of results');
 Assert.areEqual(100, results[0]?.get(alias), 'Wrong count');
 ```
 
-</details>
-
 #### `addParameter`
 
 Adds a column to the current `AggregateResult`. These can be created with or without an _alias_. If an alias isn't provided, the column is assigned a default alias, ex. `expr0'`. This mirrors the behavior of the underlying `Schema.AggregateResult` object.
 
 -   `MockSoql.AggregateResult addParameter(String alias, Object value)`
 -   `MockSoql.AggregateResult addParameter(Object value)`
+
+</details>
 
 ---
 

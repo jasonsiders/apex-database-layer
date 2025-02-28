@@ -27,7 +27,7 @@ private class MockDmlTest {
 		Assert.areEqual(leadsToConvert?.size(), results?.size(), 'Wrong # of results');
 		Assert.areEqual(
 			results?.size(),
-			MockDml.Converted?.getRecords(Lead.SObjectType)?.size(),
+			MockDml.CONVERTED?.getRecords(Lead.SObjectType)?.size(),
 			'Wrong # of converted records'
 		);
 		for (Database.LeadConvertResult result : results) {
@@ -65,7 +65,7 @@ private class MockDmlTest {
 		Assert.areEqual(leadsToConvert?.size(), results?.size(), 'Wrong # of results');
 		Assert.areEqual(
 			results?.size(),
-			MockDml.Converted?.getRecords(Lead.SObjectType)?.size(),
+			MockDml.CONVERTED?.getRecords(Lead.SObjectType)?.size(),
 			'Wrong # of converted records'
 		);
 		for (Database.LeadConvertResult result : results) {
@@ -146,7 +146,7 @@ private class MockDmlTest {
 		} catch (Exception error) {
 			// ...as expected...
 			Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
-			Assert.areEqual(0, MockDml.Converted?.getRecords(Lead.SObjectType)?.size(), 'Wrong # of converted records');
+			Assert.areEqual(0, MockDml.CONVERTED?.getRecords(Lead.SObjectType)?.size(), 'Wrong # of converted records');
 		}
 		Test.stopTest();
 	}
@@ -169,7 +169,7 @@ private class MockDmlTest {
 		Test.stopTest();
 
 		Assert.areEqual(leadsToConvert?.size(), results?.size(), 'Wrong # of results');
-		Assert.areEqual(0, MockDml.Converted?.getRecords(Lead.SObjectType)?.size(), 'Wrong # of converted records');
+		Assert.areEqual(0, MockDml.CONVERTED?.getRecords(Lead.SObjectType)?.size(), 'Wrong # of converted records');
 		for (Database.LeadConvertResult result : results) {
 			Assert.areEqual(false, result?.isSuccess(), 'Should not have succeeded');
 		}
@@ -188,7 +188,7 @@ private class MockDmlTest {
 		Assert.areEqual(leads?.size(), results?.size(), 'Wrong # of results');
 		Assert.areEqual(
 			leads?.size(),
-			MockDml.Deleted?.getRecords(Lead.SObjectType)?.size(),
+			MockDml.DELETED?.getRecords(Lead.SObjectType)?.size(),
 			'Wrong # of deleted records'
 		);
 		for (Database.DeleteResult result : results) {
@@ -209,7 +209,7 @@ private class MockDmlTest {
 		Assert.areEqual(leads?.size(), results?.size(), 'Wrong # of results');
 		Assert.areEqual(
 			leads?.size(),
-			MockDml.Deleted?.getRecords(Lead.SObjectType)?.size(),
+			MockDml.DELETED?.getRecords(Lead.SObjectType)?.size(),
 			'Wrong # of deleted records'
 		);
 		for (Database.DeleteResult result : results) {
@@ -230,7 +230,7 @@ private class MockDmlTest {
 		Assert.areEqual(leads?.size(), results?.size(), 'Wrong # of results');
 		Assert.areEqual(
 			leads?.size(),
-			MockDml.Deleted?.getRecords(Lead.SObjectType)?.size(),
+			MockDml.DELETED?.getRecords(Lead.SObjectType)?.size(),
 			'Wrong # of deleted records'
 		);
 		for (Database.DeleteResult result : results) {
@@ -268,7 +268,7 @@ private class MockDmlTest {
 		} catch (Exception error) {
 			// ...as expected...
 			Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
-			Assert.areEqual(0, MockDml.Deleted?.getRecords(Lead.SObjectType)?.size(), 'Wrong # of deleted records');
+			Assert.areEqual(0, MockDml.DELETED?.getRecords(Lead.SObjectType)?.size(), 'Wrong # of deleted records');
 		}
 		Test.stopTest();
 	}
@@ -284,7 +284,7 @@ private class MockDmlTest {
 		Test.stopTest();
 
 		Assert.areEqual(leads?.size(), results?.size(), 'Wrong # of results');
-		Assert.areEqual(0, MockDml.Deleted?.getRecords(Lead.SObjectType)?.size(), 'Wrong # of deleted records');
+		Assert.areEqual(0, MockDml.DELETED?.getRecords(Lead.SObjectType)?.size(), 'Wrong # of deleted records');
 		for (Database.DeleteResult result : results) {
 			Assert.areEqual(false, result?.isSuccess(), 'Should not have succeeded');
 			Assert.areNotEqual(null, result?.getId(), 'Missing Id');
@@ -304,7 +304,7 @@ private class MockDmlTest {
 		Assert.areEqual(leads?.size(), results?.size(), 'Wrong # of results');
 		Assert.areEqual(
 			leads?.size(),
-			MockDml.Inserted?.getRecords(Lead.SObjectType)?.size(),
+			MockDml.INSERTED?.getRecords(Lead.SObjectType)?.size(),
 			'Wrong # of inserted records'
 		);
 		for (Database.SaveResult result : results) {
@@ -326,7 +326,7 @@ private class MockDmlTest {
 		Assert.areEqual(leads?.size(), results?.size(), 'Wrong # of results');
 		Assert.areEqual(
 			leads?.size(),
-			MockDml.Inserted?.getRecords(Lead.SObjectType)?.size(),
+			MockDml.INSERTED?.getRecords(Lead.SObjectType)?.size(),
 			'Wrong # of inserted records'
 		);
 		for (Database.SaveResult result : results) {
@@ -348,7 +348,7 @@ private class MockDmlTest {
 		Assert.areEqual(leads?.size(), results?.size(), 'Wrong # of results');
 		Assert.areEqual(
 			leads?.size(),
-			MockDml.Inserted?.getRecords(Lead.SObjectType)?.size(),
+			MockDml.INSERTED?.getRecords(Lead.SObjectType)?.size(),
 			'Wrong # of inserted records'
 		);
 		for (Database.SaveResult result : results) {
@@ -369,7 +369,7 @@ private class MockDmlTest {
 		} catch (Exception error) {
 			// ...as expected...
 			Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
-			Assert.areEqual(0, MockDml.Inserted?.getRecords(Lead.SObjectType)?.size(), 'Wrong # of inserted records');
+			Assert.areEqual(0, MockDml.INSERTED?.getRecords(Lead.SObjectType)?.size(), 'Wrong # of inserted records');
 		}
 		Test.stopTest();
 	}
@@ -385,7 +385,7 @@ private class MockDmlTest {
 		Test.stopTest();
 
 		Assert.areEqual(leads?.size(), results?.size(), 'Wrong # of results');
-		Assert.areEqual(0, MockDml.Inserted?.getRecords(Lead.SObjectType)?.size(), 'Wrong # of inserted records');
+		Assert.areEqual(0, MockDml.INSERTED?.getRecords(Lead.SObjectType)?.size(), 'Wrong # of inserted records');
 		for (Database.SaveResult result : results) {
 			Assert.areEqual(false, result?.isSuccess(), 'Should not have succeeded');
 			Assert.areEqual(null, result?.getId(), 'Insert failed, but has an Id?');
@@ -405,7 +405,7 @@ private class MockDmlTest {
 		Assert.areEqual(events?.size(), results?.size(), 'Wrong # of results');
 		Assert.areEqual(
 			events?.size(),
-			MockDml.Published?.getRecords(BatchApexErrorEvent.SObjectType)?.size(),
+			MockDml.PUBLISHED?.getRecords(BatchApexErrorEvent.SObjectType)?.size(),
 			'Wrong # of published records'
 		);
 		for (Database.SaveResult result : results) {
@@ -466,7 +466,7 @@ private class MockDmlTest {
 		Assert.areEqual(leads?.size(), results?.size(), 'Wrong # of results');
 		Assert.areEqual(
 			leads?.size(),
-			MockDml.Undeleted?.getRecords(Lead.SObjectType)?.size(),
+			MockDml.UNDELETED?.getRecords(Lead.SObjectType)?.size(),
 			'Wrong # of undeleted records'
 		);
 		for (Database.UndeleteResult result : results) {
@@ -487,7 +487,7 @@ private class MockDmlTest {
 		} catch (Exception error) {
 			// ...as expected...
 			Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
-			Assert.areEqual(0, MockDml.Undeleted?.getRecords(Lead.SObjectType)?.size(), 'Wrong # of undeleted records');
+			Assert.areEqual(0, MockDml.UNDELETED?.getRecords(Lead.SObjectType)?.size(), 'Wrong # of undeleted records');
 		}
 		Test.stopTest();
 	}
@@ -503,7 +503,7 @@ private class MockDmlTest {
 		Test.stopTest();
 
 		Assert.areEqual(leads?.size(), results?.size(), 'Wrong # of results');
-		Assert.areEqual(0, MockDml.Undeleted?.getRecords(Lead.SObjectType)?.size(), 'Wrong # of undeleted records');
+		Assert.areEqual(0, MockDml.UNDELETED?.getRecords(Lead.SObjectType)?.size(), 'Wrong # of undeleted records');
 		for (Database.UndeleteResult result : results) {
 			Assert.areEqual(false, result?.isSuccess(), 'Should not have succeeded');
 			Assert.areNotEqual(null, result?.getId(), 'Missing Id');
@@ -523,7 +523,7 @@ private class MockDmlTest {
 		Assert.areEqual(leads?.size(), results?.size(), 'Wrong # of results');
 		Assert.areEqual(
 			leads?.size(),
-			MockDml.Updated?.getRecords(Lead.SObjectType)?.size(),
+			MockDml.UPDATED?.getRecords(Lead.SObjectType)?.size(),
 			'Wrong # of updated records'
 		);
 		for (Database.SaveResult result : results) {
@@ -545,7 +545,7 @@ private class MockDmlTest {
 		Assert.areEqual(leads?.size(), results?.size(), 'Wrong # of results');
 		Assert.areEqual(
 			leads?.size(),
-			MockDml.Updated?.getRecords(Lead.SObjectType)?.size(),
+			MockDml.UPDATED?.getRecords(Lead.SObjectType)?.size(),
 			'Wrong # of updated records'
 		);
 		for (Database.SaveResult result : results) {
@@ -567,7 +567,7 @@ private class MockDmlTest {
 		Assert.areEqual(leads?.size(), results?.size(), 'Wrong # of results');
 		Assert.areEqual(
 			leads?.size(),
-			MockDml.Updated?.getRecords(Lead.SObjectType)?.size(),
+			MockDml.UPDATED?.getRecords(Lead.SObjectType)?.size(),
 			'Wrong # of updated records'
 		);
 		for (Database.SaveResult result : results) {
@@ -588,7 +588,7 @@ private class MockDmlTest {
 		} catch (Exception error) {
 			// ...as expected...
 			Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
-			Assert.areEqual(0, MockDml.Updated?.getRecords(Lead.SObjectType)?.size(), 'Wrong # of updated records');
+			Assert.areEqual(0, MockDml.UPDATED?.getRecords(Lead.SObjectType)?.size(), 'Wrong # of updated records');
 		}
 		Test.stopTest();
 	}
@@ -604,7 +604,7 @@ private class MockDmlTest {
 		Test.stopTest();
 
 		Assert.areEqual(leads?.size(), results?.size(), 'Wrong # of results');
-		Assert.areEqual(0, MockDml.Updated?.getRecords(Lead.SObjectType)?.size(), 'Wrong # of updated records');
+		Assert.areEqual(0, MockDml.UPDATED?.getRecords(Lead.SObjectType)?.size(), 'Wrong # of updated records');
 		for (Database.SaveResult result : results) {
 			Assert.areEqual(false, result?.isSuccess(), 'Should not have succeeded');
 			Assert.areNotEqual(null, result?.getId(), 'Missing Id');
@@ -624,7 +624,7 @@ private class MockDmlTest {
 		Assert.areEqual(leads?.size(), results?.size(), 'Wrong # of results');
 		Assert.areEqual(
 			leads?.size(),
-			MockDml.Upserted?.getRecords(Lead.SObjectType)?.size(),
+			MockDml.UPSERTED?.getRecords(Lead.SObjectType)?.size(),
 			'Wrong # of upserted records'
 		);
 		for (Database.UpsertResult result : results) {
@@ -645,7 +645,7 @@ private class MockDmlTest {
 		} catch (Exception error) {
 			// ...as expected...
 			Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
-			Assert.areEqual(0, MockDml.Upserted?.getRecords(Lead.SObjectType)?.size(), 'Wrong # of upserted records');
+			Assert.areEqual(0, MockDml.UPSERTED?.getRecords(Lead.SObjectType)?.size(), 'Wrong # of upserted records');
 		}
 		Test.stopTest();
 	}
@@ -661,7 +661,7 @@ private class MockDmlTest {
 		Test.stopTest();
 
 		Assert.areEqual(leads?.size(), results?.size(), 'Wrong # of results');
-		Assert.areEqual(0, MockDml.Upserted?.getRecords(Lead.SObjectType)?.size(), 'Wrong # of upserted records');
+		Assert.areEqual(0, MockDml.UPSERTED?.getRecords(Lead.SObjectType)?.size(), 'Wrong # of upserted records');
 		for (Database.UpsertResult result : results) {
 			Assert.areEqual(false, result?.isSuccess(), 'Should not have succeeded');
 			Assert.areNotEqual(null, result?.getId(), 'Missing Id');
@@ -673,10 +673,10 @@ private class MockDmlTest {
 		DatabaseLayer.useMockDml();
 		Lead testLead = (Lead) new MockRecord(Lead.SObjectType)?.withId()?.toSObject();
 		// Pre-test asserts
-		Assert.areEqual(false, MockDml.Updated.wasProcessed(testLead), 'Pre-test: Should not have been processed');
-		Assert.areEqual(null, MockDml.Updated.getRecord(testLead), 'Pre-test: Lead was processed');
-		Assert.areEqual(0, MockDml.Updated.getRecords(Lead.SObjectType)?.size(), 'Pre-test: Wrong # of lead updates');
-		Assert.areEqual(0, MockDml.Updated.getRecords(Lead.SObjectType)?.size(), 'Pre-test: Wrong # of total updates');
+		Assert.areEqual(false, MockDml.UPDATED.wasProcessed(testLead), 'Pre-test: Should not have been processed');
+		Assert.areEqual(null, MockDml.UPDATED.getRecord(testLead), 'Pre-test: Lead was processed');
+		Assert.areEqual(0, MockDml.UPDATED.getRecords(Lead.SObjectType)?.size(), 'Pre-test: Wrong # of lead updates');
+		Assert.areEqual(0, MockDml.UPDATED.getRecords(Lead.SObjectType)?.size(), 'Pre-test: Wrong # of total updates');
 		testLead.Company = 'Credicor Inc.';
 
 		Test.startTest();
@@ -684,16 +684,16 @@ private class MockDmlTest {
 		Test.stopTest();
 
 		// Post-test asserts
-		Assert.areEqual(true, MockDml.Updated.wasProcessed(testLead), 'Lead was not processed');
-		Lead updatedLead = (Lead) MockDml.Updated.getRecord(testLead);
+		Assert.areEqual(true, MockDml.UPDATED.wasProcessed(testLead), 'Lead was not processed');
+		Lead updatedLead = (Lead) MockDml.UPDATED.getRecord(testLead);
 		Assert.areNotEqual(null, updatedLead, 'Lead was not updated');
 		Assert.areEqual(testLead?.Company, updatedLead?.Company, 'Did not update Company');
-		Assert.areEqual(1, MockDml.Updated.getRecords(Lead.SObjectType)?.size(), 'Wrong # of lead updates');
-		Assert.areEqual(1, MockDml.Updated.getRecords(Lead.SObjectType)?.size(), 'Wrong # of total updates');
+		Assert.areEqual(1, MockDml.UPDATED.getRecords(Lead.SObjectType)?.size(), 'Wrong # of lead updates');
+		Assert.areEqual(1, MockDml.UPDATED.getRecords(Lead.SObjectType)?.size(), 'Wrong # of total updates');
 
 		// Callers can also call this method to erase the current history:
 		MockDml.eraseAllHistories();
-		Assert.areEqual(true, MockDml.Updated.getAll()?.isEmpty(), 'Did not reset history');
+		Assert.areEqual(true, MockDml.UPDATED.getAll()?.isEmpty(), 'Did not reset history');
 	}
 
 	@IsTest

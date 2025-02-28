@@ -243,7 +243,7 @@ private class MockSoqlTest {
 		MockSoql soql = (MockSoql) DatabaseLayer.Soql.newQuery(Task.SObjectType)
 			?.addSelect(Task.WhatId)
 			?.addSelect(Task.WhoId);
-		// Mock with a custom class that leverages MockDml.Inserted to generate results
+		// Mock with a custom class that leverages MockDml.INSERTED to generate results
 		soql?.setMock(new CustomTaskQueryLogic());
 		// Mock insert an account + related contact
 		Account mockAccount = (Account) new MockRecord(Account.SObjectType)?.toSObject();
@@ -302,7 +302,7 @@ private class MockSoqlTest {
 		public List<Object> simulateQuery() {
 			// For each inserted contact, return a Task
 			List<Task> results = new List<Task>();
-			List<Contact> contacts = (List<Contact>) MockDml.Inserted.getRecords(Contact.SObjectType);
+			List<Contact> contacts = (List<Contact>) MockDml.INSERTED.getRecords(Contact.SObjectType);
 			for (Contact contact : contacts) {
 				Task task = (Task) new MockRecord(Task.SObjectType)
 					?.setField(Task.Subject, 'Introductory Call')

@@ -1,6 +1,8 @@
 # The `Dml` Class
 
-The `Dml` class is designed to streamline and enhance DML operations within Salesforce. It encapsulates standard DML keywords and Database methods, providing a simplified interface for CRUD operations. This class enables developers to easily mock DML operations, improving unit testing and reducing complexity. Additionally, it supports dynamic and asynchronous DML execution, immediate operations, and custom extensibility. Use the `Dml` class to write cleaner, more maintainable code while efficiently managing complex business logic.
+The `Dml` class is designed to streamline and enhance DML operations within Salesforce.
+
+It encapsulates standard DML keywords and Database methods, providing a simplified interface for CRUD operations. This class enables developers to easily mock DML operations, improving unit testing and reducing complexity.
 
 ## Constructing `Dml` Objects
 
@@ -73,9 +75,10 @@ try {
 }
 ```
 
-If your `Dml` object is responsible for more than one operation, or if you only want a subset of records to fail (ie., to test `allOrNone=false` operations), you can inject precise failure logic by passing an instance of [`MockDml.ConditionalLogic`](#the-mockdmlconditionalfailure-interface) to the `failIf()` method:
+You can inject more precise failure logic by passing an instance of [`MockDml.ConditionalLogic`](#the-mockdmlconditionalfailure-interface) to the `failIf()` method. This can be useful if only one of multiple DML operations, or subset of records within the same DML operation should fail:
 
 ```java
+// The "ExampleFailure" class will only fail on DML updates
 MockDml.ConditionalFailure logic = new ExampleFailure();
 DatabaseLayer.useMockDml()?.failIf(logic);
 Database.SaveResult result = DatabaseLayer.Dml.doInsert(account);
@@ -90,11 +93,7 @@ Evaluates a given SObject record and DML operation, and returns an Exception obj
 -   If `allOrNone == true`, the Exception returned by the `checkFailure()` method is thrown, and the entire operation fails.
 -   If `allOrNone == false`, only the current SObject fails. The matching Database Result object returned by the DML operation will indicate that the record failed. The resulting error message for the result is derived from the Exception returned by the `checkFailure()` method.
 
-**Signatures**:
-
 -   `checkFailure(MockDml.Operation operation, SObject record)`
-
-Example:
 
 ```java
 public class ExampleFailure implements MockDml.ConditionalFailure {
@@ -114,7 +113,7 @@ public class ExampleFailure implements MockDml.ConditionalFailure {
 
 Since the `MockDml` class does not actually manipulate records in the database, you cannot use SOQL to retrieve changes. Instead, use the MockDml `History` objects to retrieve records that were manipulated by a `MockDml` instance.
 
-A `History` object exists for each major DML operation, and are enumerated as `public static final` properties on the `MockDml` class:
+A `History` object exists for each major DML operation, and are enumerated as static properties on the `MockDml` class:
 
 -   `MockDml.CONVERTED`
 -   `MockDml.DELETED`
@@ -123,8 +122,6 @@ A `History` object exists for each major DML operation, and are enumerated as `p
 -   `MockDml.UNDELETED`
 -   `MockDml.UPDATED`
 -   `MockDml.UPSERTED`
-
-Example:
 
 ```java
 @IsTest
@@ -136,7 +133,7 @@ static void someTest() {
 	DatabaseLayer.Dml.doInsert(acc);
 	Test.stopTest();
 
-	List<Account> insertedAccs = MockDml.Inserted.getRecords(Account.SObjectType);
+	List<Account> insertedAccs = MockDml.INSERTED.getRecords(Account.SObjectType);
 	Assert.areEqual(1, insertedAccs?.size(), 'Account was not inserted');
 }
 ```

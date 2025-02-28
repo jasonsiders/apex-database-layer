@@ -23,7 +23,8 @@ This package can be thought of in four categories, each with its own distinct se
 -   `DatabaseLayer`: Constructing `Dml` and `Soql` objects
 -   `MockRecord`: Mocking SObject records for test purposes
 
-### Performing DML Operations
+<details>
+  <summary><h3>Performing DML Operations</h3></summary>
 
 The `Dml` class is responsible for inserting, modifying, and deleting records in the salesforce database. It wraps the relevant methods in the standard [Database](https://developer.salesforce.com/docs/atlas.en-us.apexref.meta/apexref/apex_methods_system_database.htm) class, like `Database.insert`. Use the `Dml` class and its methods in place of these system methods, as demonstrated below:
 
@@ -98,16 +99,17 @@ static void someTest() {
   DatabaseLayer.Dml.doInsert(acc);
   Test.stopTest();
 
-  List<Account> insertedAccs = MockDml.Inserted.getRecords(Account.SObjectType);
+  List<Account> insertedAccs = MockDml.INSERTED.getRecords(Account.SObjectType);
   Assert.areEqual(1, insertedAccs?.size(), 'Account was not inserted');
 }
 ```
 
 View the [docs](docs/DML.md) to learn more about the `Dml` and `MockDml` classes.
 
----
+</details>
 
-### Performing SOQL Operations
+<details>
+  <summary><h3>Performing SOQL Operations</h3></summary>
 
 The `Soql` class is responsible for querying records from the database. It wraps the standard `Database.query` and related methods. You can use its flexible builder pattern to compose a wide range of queries.
 
@@ -179,9 +181,10 @@ try {
 
 View the [docs](docs/SOQL.md) to learn more about the `Soql` and `MockSoql` classes.
 
----
+</details>
 
-### Constructing Database Objects
+<details>
+  <summary><h3>Constructing Database Objects</h3></summary>
 
 The `DatabaseLayer` class is responsible for constructing new `Dml` and `Soql` objects:
 
@@ -218,9 +221,10 @@ static void shouldUseMixedOfMocksAndRealDml() {
 }
 ```
 
----
+</details>
 
-### Building Test Records
+<details>
+  <summary><h3>Building Test Records</h3></summary>
 
 While mocking database operations can provide many benefits, mocking SObject records in the absence of real DML or SOQL can be tedious.
 
@@ -256,3 +260,5 @@ Account mockAccount = (Account) new MockRecord(Account.SObjectType)
   ?.withId()
   ?.toSObject();
 ```
+
+</summary>

@@ -28,7 +28,7 @@ public class MockDml extends Dml {
 				MockDml.DELETED,
 				MockDml.INSERTED,
 				MockDml.PUBLISHED,
-				MockDml.Undeleted,
+				MockDml.UNDELETED,
 				MockDml.UPDATED,
 				MockDml.UPSERTED
 			}
@@ -174,7 +174,7 @@ public class MockDml extends Dml {
 		List<MockDml.Result> results = new List<MockDml.Result>();
 		for (Id recordId : recordIds) {
 			SObject record = recordId?.getSObjectType()?.newSObject(recordId);
-			MockDml.Result result = this.generateMockResult(MockDml.Undeleted, record, allOrNone);
+			MockDml.Result result = this.generateMockResult(MockDml.UNDELETED, record, allOrNone);
 			results?.add(result);
 		}
 		return this.toUndeleteResults(results);
