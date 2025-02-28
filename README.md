@@ -112,7 +112,7 @@ View the [docs](docs/DML.md) to learn more about the `Dml` and `MockDml` classes
 The `Soql` class is responsible for querying records from the database. It wraps the standard `Database.query` and related methods. You can use its flexible builder pattern to compose a wide range of queries.
 
 ```java
-Soql soql = (Soql) DatabaseLayer.Soql.fromSObject(User.SObjectType)
+Soql soql = (Soql) DatabaseLayer.Soql.newQuery(User.SObjectType)
   ?.addSelect(User.FirstName)
   ?.addSelect(User.LastName)
   ?.addSelect(User.Email)
@@ -158,7 +158,7 @@ You can pass that object to the `setMock()` method, as shown below:
 ```java
 DatabaseLayer.useMocks();
 MockSoql.Simulator simulator = new MySimulator();
-MockSoql soql = (MockSoql) DatabaseLayer.Soql.fromSObject(Opportunity.SObjectType);
+MockSoql soql = (MockSoql) DatabaseLayer.Soql.newQuery(Opportunity.SObjectType);
 soql?.setMock(simulator);
 List<Opportunity> opps = soql?.query();
 ```
@@ -187,7 +187,7 @@ The `DatabaseLayer` class is responsible for constructing new `Dml` and `Soql` o
 
 ```java
 Dml myDml = DatabaseLayer.Dml;
-Soql mySoql = (Soql) DatabaseLayer.Soql.fromSObject(Account.SObjectType);
+Soql mySoql = (Soql) DatabaseLayer.Soql.newQuery(Account.SObjectType);
 ```
 
 This approach allows for mocks to be automatically substituted at runtime during tests, if desired. By default, each of these methods will return base implementations of the `Dml` and `Soql` classes, which directly interact with the Salesforce database. In `@IsTest` context, you can use the `DatabaseLayer.useMocks()` method. Once this is done, the `Dml` and `Soql` static properties will reflect mock instances of their respective objects:
