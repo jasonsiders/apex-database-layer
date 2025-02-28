@@ -1,7 +1,10 @@
+@SuppressWarnings('PMD.ApexDoc, PMD.CyclomaticComplexity')
 @IsTest
 private class DmlTest {
-	// **** CONSTANTS **** //
-	private static final Integer TEST_SIZE = 2;
+	// **** VARIABLES **** //
+	private static final LeadStatus CONVERTED_STATUS = DmlTest.getConvertedStatus();
+	private static List<Database.DeleteResult> deleteCallbacksMade = new List<Database.DeleteResult>();
+	private static List<Database.SaveResult> saveCallbacksMade = new List<Database.SaveResult>();
 
 	// **** TESTS **** //
 	@IsTest
@@ -9,7 +12,66 @@ private class DmlTest {
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();
-		Database.SaveResult result = DatabaseLayer.newDml()?.doInsert(account);
+		Database.SaveResult result = DatabaseLayer.Dml.doInsert(account);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@Istest
+	static void shouldDoInsertWithAccessLevel() {
+		Account account = DmlTest.initAccount();
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doInsert(account, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoInsertWithAllOrNone() {
+		Account account = DmlTest.initAccount();
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doInsert(account, true);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoInsertWithDmlOptions() {
+		Account account = DmlTest.initAccount();
+		Database.DmlOptions options = new Database.DmlOptions();
+		options.OptAllOrNone = true;
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doInsert(account, options);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoInsertWithAllOrNoneAndAccessLevel() {
+		Account account = DmlTest.initAccount();
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doInsert(account, true, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoInsertWithDmlOptionsAndAccessLevel() {
+		Account account = DmlTest.initAccount();
+		Database.DmlOptions options = new Database.DmlOptions();
+		options.OptAllOrNone = true;
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doInsert(account, options, System.AccessLevel.SYSTEM_MODE);
 		Test.stopTest();
 
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
@@ -20,14 +82,67 @@ private class DmlTest {
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();
-		Database.SaveResult result = DatabaseLayer.newDml()?.doInsertAsync(account);
+		Database.SaveResult result = DatabaseLayer.Dml.doInsertAsync(account);
 		Test.stopTest();
 
 		// Note: This should fail, since Account isn't an external object.
 		// This doesn't seem to happen for updateAsync() or deleteAsync() - not sure why.
 		// Without defining a custom external object, not possible to test the happy path for this
 		Assert.areEqual(false, result?.isSuccess(), 'InsertAsync succeeded on non-external object');
-		Database.Error error = result?.getErrors()[0] ?? null;
+		Database.Error error = result?.getErrors()?.get(0) ?? null;
+		System.StatusCode expected = System.StatusCode.CANNOT_INSERT_UPDATE_ACTIVATE_ENTITY;
+		Assert.areEqual(expected, error?.getStatusCode(), 'Wrong Error Code');
+	}
+
+	@IsTest
+	static void shouldDoInsertAsyncWithAccessLevel() {
+		Account account = DmlTest.initAccount();
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doInsertAsync(account, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		// Note: This should fail, since Account isn't an external object.
+		// This doesn't seem to happen for updateAsync() or deleteAsync() - not sure why.
+		// Without defining a custom external object, not possible to test the happy path for this
+		Assert.areEqual(false, result?.isSuccess(), 'InsertAsync succeeded on non-external object');
+		Database.Error error = result?.getErrors()?.get(0) ?? null;
+		System.StatusCode expected = System.StatusCode.CANNOT_INSERT_UPDATE_ACTIVATE_ENTITY;
+		Assert.areEqual(expected, error?.getStatusCode(), 'Wrong Error Code');
+	}
+
+	@IsTest
+	static void shouldDoInsertAsyncWithCallback() {
+		Account account = DmlTest.initAccount();
+		DataSource.AsyncSaveCallback callback = new DmlTest.SaveCallback();
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doInsertAsync(account, callback);
+		Test.stopTest();
+
+		// Note: This should fail, since Account isn't an external object.
+		// This doesn't seem to happen for updateAsync() or deleteAsync() - not sure why.
+		// Without defining a custom external object, not possible to test the happy path for this
+		Assert.areEqual(false, result?.isSuccess(), 'InsertAsync succeeded on non-external object');
+		Database.Error error = result?.getErrors()?.get(0) ?? null;
+		System.StatusCode expected = System.StatusCode.CANNOT_INSERT_UPDATE_ACTIVATE_ENTITY;
+		Assert.areEqual(expected, error?.getStatusCode(), 'Wrong Error Code');
+	}
+
+	@IsTest
+	static void shouldDoInsertAsyncWithCallbackAndAccessLevel() {
+		Account account = DmlTest.initAccount();
+		DataSource.AsyncSaveCallback callback = new DmlTest.SaveCallback();
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doInsertAsync(account, callback, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		// Note: This should fail, since Account isn't an external object.
+		// This doesn't seem to happen for updateAsync() or deleteAsync() - not sure why.
+		// Without defining a custom external object, not possible to test the happy path for this
+		Assert.areEqual(false, result?.isSuccess(), 'InsertAsync succeeded on non-external object');
+		Database.Error error = result?.getErrors()?.get(0) ?? null;
 		System.StatusCode expected = System.StatusCode.CANNOT_INSERT_UPDATE_ACTIVATE_ENTITY;
 		Assert.areEqual(expected, error?.getStatusCode(), 'Wrong Error Code');
 	}
@@ -37,7 +152,18 @@ private class DmlTest {
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();
-		Database.SaveResult result = DatabaseLayer.newDml()?.doInsertImmediate(account);
+		Database.SaveResult result = DatabaseLayer.Dml.doInsertImmediate(account);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldInsertImmediateWithAccessLevel() {
+		Account account = DmlTest.initAccount();
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doInsertImmediate(account, System.AccessLevel.SYSTEM_MODE);
 		Test.stopTest();
 
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
@@ -49,7 +175,71 @@ private class DmlTest {
 		insert account;
 
 		Test.startTest();
-		Database.SaveResult result = DatabaseLayer.newDml()?.doUpdate(account);
+		Database.SaveResult result = DatabaseLayer.Dml.doUpdate(account);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoUpdateWithAccessLevel() {
+		Account account = DmlTest.initAccount();
+		insert account;
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doUpdate(account, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoUpdateWithAllOrNone() {
+		Account account = DmlTest.initAccount();
+		insert account;
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doUpdate(account, true);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoUpdateWithDmlOptions() {
+		Account account = DmlTest.initAccount();
+		insert account;
+		Database.DmlOptions options = new Database.DmlOptions();
+		options.OptAllOrNone = true;
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doUpdate(account, options);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoUpdateWithAllOrNoneAndAccessLevel() {
+		Account account = DmlTest.initAccount();
+		insert account;
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doUpdate(account, true, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoUpdateWithDmlOptionsAndAccessLevel() {
+		Account account = DmlTest.initAccount();
+		insert account;
+		Database.DmlOptions options = new Database.DmlOptions();
+		options.OptAllOrNone = true;
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doUpdate(account, options, System.AccessLevel.SYSTEM_MODE);
 		Test.stopTest();
 
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
@@ -61,7 +251,45 @@ private class DmlTest {
 		insert account;
 
 		Test.startTest();
-		Database.SaveResult result = DatabaseLayer.newDml()?.doUpdateAsync(account);
+		Database.SaveResult result = DatabaseLayer.Dml.doUpdateAsync(account);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoUpdateAsyncWithAccessLevel() {
+		Account account = DmlTest.initAccount();
+		insert account;
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doUpdateAsync(account, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoUpdateAsyncWithCallback() {
+		Account account = DmlTest.initAccount();
+		insert account;
+		DataSource.AsyncSaveCallback callback = new DmlTest.SaveCallback();
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doUpdateAsync(account, callback);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoUpdateAsyncWithCallbackAndAccessLevel() {
+		Account account = DmlTest.initAccount();
+		insert account;
+		DataSource.AsyncSaveCallback callback = new DmlTest.SaveCallback();
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doUpdateAsync(account, callback, System.AccessLevel.SYSTEM_MODE);
 		Test.stopTest();
 
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
@@ -73,7 +301,19 @@ private class DmlTest {
 		insert account;
 
 		Test.startTest();
-		Database.SaveResult result = DatabaseLayer.newDml()?.doUpdateImmediate(account);
+		Database.SaveResult result = DatabaseLayer.Dml.doUpdateImmediate(account);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoUpdateImmediateWithAccessLevel() {
+		Account account = DmlTest.initAccount();
+		insert account;
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doUpdateImmediate(account, System.AccessLevel.SYSTEM_MODE);
 		Test.stopTest();
 
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
@@ -84,7 +324,29 @@ private class DmlTest {
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();
-		Database.UpsertResult result = DatabaseLayer.newDml()?.doUpsert(account);
+		Database.UpsertResult result = DatabaseLayer.Dml.doUpsert(account);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoUpsertWithAccessLevel() {
+		Account account = DmlTest.initAccount();
+
+		Test.startTest();
+		Database.UpsertResult result = DatabaseLayer.Dml.doUpsert(account, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoUpsertWithAllOrNone() {
+		Account account = DmlTest.initAccount();
+
+		Test.startTest();
+		Database.UpsertResult result = DatabaseLayer.Dml.doUpsert(account, true);
 		Test.stopTest();
 
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
@@ -96,12 +358,62 @@ private class DmlTest {
 		SObjectField field = Account.Id;
 
 		Test.startTest();
-		Dml dml = DatabaseLayer.newDml()?.setExternalIdField(field);
-		Database.UpsertResult result = dml?.doUpsert(acc);
+		Database.UpsertResult result = DatabaseLayer.Dml?.doUpsert(acc, field);
 		Test.stopTest();
 
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
-		Assert.areEqual(field, dml?.getExternalIdField(), 'Did not upsert by ' + field);
+	}
+
+	@IsTest
+	static void shouldDoUpsertWithAllOrNoneAndAccessLevel() {
+		Account account = DmlTest.initAccount();
+
+		Test.startTest();
+		Database.UpsertResult result = DatabaseLayer.Dml.doUpsert(account, true, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoUpsertWithExternalIdFieldAndAccessLevel() {
+		Account acc = DmlTest.initAccount();
+		SObjectField externalIdField = Account.Id;
+
+		Test.startTest();
+		Database.UpsertResult result = DatabaseLayer.Dml.doUpsert(acc, externalIdField, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoUpsertWithExternalIdFieldAndAllOrNone() {
+		Account acc = DmlTest.initAccount();
+		SObjectField externalIdField = Account.Id;
+
+		Test.startTest();
+		Database.UpsertResult result = DatabaseLayer.Dml.doUpsert(acc, externalIdField, true);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoUpsertWithExternalIdFieldAndAllOrNoneAndAccessLevel() {
+		Account acc = DmlTest.initAccount();
+		SObjectField externalIdField = Account.Id;
+
+		Test.startTest();
+		Database.UpsertResult result = DatabaseLayer.Dml.doUpsert(
+			acc,
+			externalIdField,
+			true,
+			System.AccessLevel.SYSTEM_MODE
+		);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
 	}
 
 	@IsTest
@@ -110,7 +422,91 @@ private class DmlTest {
 		insert account;
 
 		Test.startTest();
-		Database.DeleteResult result = DatabaseLayer.newDml()?.doDelete(account);
+		Database.DeleteResult result = DatabaseLayer.Dml.doDelete(account);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoDeleteWithAccessLevel() {
+		Account account = DmlTest.initAccount();
+		insert account;
+
+		Test.startTest();
+		Database.DeleteResult result = DatabaseLayer.Dml.doDelete(account, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoDeleteWithAllOrNone() {
+		Account account = DmlTest.initAccount();
+		insert account;
+
+		Test.startTest();
+		Database.DeleteResult result = DatabaseLayer.Dml.doDelete(account, true);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoDeleteWithAllOrNoneAndAccessLevel() {
+		Account account = DmlTest.initAccount();
+		insert account;
+
+		Test.startTest();
+		Database.DeleteResult result = DatabaseLayer.Dml.doDelete(account, true, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoDeleteWithId() {
+		Account account = DmlTest.initAccount();
+		insert account;
+
+		Test.startTest();
+		Database.DeleteResult result = DatabaseLayer.Dml.doDelete(account?.Id);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoDeleteWithIdAndAccessLevel() {
+		Account account = DmlTest.initAccount();
+		insert account;
+
+		Test.startTest();
+		Database.DeleteResult result = DatabaseLayer.Dml.doDelete(account?.Id, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoDeleteWithIdAndAllOrNone() {
+		Account account = DmlTest.initAccount();
+		insert account;
+
+		Test.startTest();
+		Database.DeleteResult result = DatabaseLayer.Dml.doDelete(account?.Id, true);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoDeleteWithIdAndAllOrNoneAndAccessLevel() {
+		Account account = DmlTest.initAccount();
+		insert account;
+
+		Test.startTest();
+		Database.DeleteResult result = DatabaseLayer.Dml.doDelete(account?.Id, true, System.AccessLevel.SYSTEM_MODE);
 		Test.stopTest();
 
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
@@ -122,7 +518,49 @@ private class DmlTest {
 		insert account;
 
 		Test.startTest();
-		Database.DeleteResult result = DatabaseLayer.newDml()?.doDeleteAsync(account);
+		Database.DeleteResult result = DatabaseLayer.Dml.doDeleteAsync(account);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoDeleteAsyncWithAccessLevel() {
+		Account account = DmlTest.initAccount();
+		insert account;
+
+		Test.startTest();
+		Database.DeleteResult result = DatabaseLayer.Dml.doDeleteAsync(account, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoDeleteAsyncWithCallback() {
+		Account account = DmlTest.initAccount();
+		insert account;
+		DataSource.AsyncDeleteCallback callback = new DmlTest.DeleteCallback();
+
+		Test.startTest();
+		Database.DeleteResult result = DatabaseLayer.Dml.doDeleteAsync(account, callback);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoDeleteAsyncWithCallbackAndAccessLevel() {
+		Account account = DmlTest.initAccount();
+		insert account;
+		DataSource.AsyncDeleteCallback callback = new DmlTest.DeleteCallback();
+
+		Test.startTest();
+		Database.DeleteResult result = DatabaseLayer.Dml.doDeleteAsync(
+			account,
+			callback,
+			System.AccessLevel.SYSTEM_MODE
+		);
 		Test.stopTest();
 
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
@@ -134,19 +572,45 @@ private class DmlTest {
 		insert account;
 
 		Test.startTest();
-		Database.DeleteResult result = DatabaseLayer.newDml()?.doDeleteImmediate(account);
+		Database.DeleteResult result = DatabaseLayer.Dml.doDeleteImmediate(account);
 		Test.stopTest();
 
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
 	}
 
 	@IsTest
-	static void shouldDoHardDelete() {
+	static void shouldDoDeleteImmediateWithAccessLevel() {
 		Account account = DmlTest.initAccount();
 		insert account;
 
 		Test.startTest();
-		Database.DeleteResult result = DatabaseLayer.newDml()?.doHardDelete(account);
+		Database.DeleteResult result = DatabaseLayer.Dml.doDeleteImmediate(account, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldEmptyRecycleBin() {
+		Account account = DmlTest.initAccount();
+		insert account;
+		delete account;
+
+		Test.startTest();
+		Database.EmptyRecycleBinResult result = DatabaseLayer.Dml.emptyRecycleBin(account);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldEmptyRecycleBinWithId() {
+		Account account = DmlTest.initAccount();
+		insert account;
+		delete account;
+
+		Test.startTest();
+		Database.EmptyRecycleBinResult result = DatabaseLayer.Dml.emptyRecycleBin(account?.Id);
 		Test.stopTest();
 
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
@@ -159,7 +623,102 @@ private class DmlTest {
 		delete account;
 
 		Test.startTest();
-		Database.UndeleteResult result = DatabaseLayer.newDml()?.doUndelete(account);
+		Database.UndeleteResult result = DatabaseLayer.Dml.doUndelete(account);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoUndeleteWithAccessLevel() {
+		Account account = DmlTest.initAccount();
+		insert account;
+		delete account;
+
+		Test.startTest();
+		Database.UndeleteResult result = DatabaseLayer.Dml.doUndelete(account, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoUndeleteWithAllOrNone() {
+		Account account = DmlTest.initAccount();
+		insert account;
+		delete account;
+
+		Test.startTest();
+		Database.UndeleteResult result = DatabaseLayer.Dml.doUndelete(account, true);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoUndeleteWithAllOrNoneAndAccessLevel() {
+		Account account = DmlTest.initAccount();
+		insert account;
+		delete account;
+
+		Test.startTest();
+		Database.UndeleteResult result = DatabaseLayer.Dml.doUndelete(account, true, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoUndeleteWithId() {
+		Account account = DmlTest.initAccount();
+		insert account;
+		delete account;
+
+		Test.startTest();
+		Database.UndeleteResult result = DatabaseLayer.Dml.doUndelete(account?.Id);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoUndeleteWithIdAndAccessLevel() {
+		Account account = DmlTest.initAccount();
+		insert account;
+		delete account;
+
+		Test.startTest();
+		Database.UndeleteResult result = DatabaseLayer.Dml.doUndelete(account?.Id, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoUndeleteWithIdAndAllOrNone() {
+		Account account = DmlTest.initAccount();
+		insert account;
+		delete account;
+
+		Test.startTest();
+		Database.UndeleteResult result = DatabaseLayer.Dml.doUndelete(account?.Id, true);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoUndeleteWithIdAndAllOrNoneAndAccessLevel() {
+		Account account = DmlTest.initAccount();
+		insert account;
+		delete account;
+
+		Test.startTest();
+		Database.UndeleteResult result = DatabaseLayer.Dml.doUndelete(
+			account?.Id,
+			true,
+			System.AccessLevel.SYSTEM_MODE
+		);
 		Test.stopTest();
 
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
@@ -170,14 +729,14 @@ private class DmlTest {
 		BatchApexErrorEvent event = new BatchApexErrorEvent();
 
 		Test.startTest();
-		Database.SaveResult result = DatabaseLayer.newDml()?.doPublish(event);
+		Database.SaveResult result = DatabaseLayer.Dml.doPublish(event);
 		Test.stopTest();
 
 		// Note: Standard platform events that are available in all Salesforce orgs
 		// (like BatchApexErrorEvent) can't be inserted by users; rather, generated by the system.
 		// Without defining a custom platform event, not possible to test the happy path for this
 		Assert.areEqual(false, result?.isSuccess(), 'Publish succeeded on standard platform event');
-		Database.Error error = result?.getErrors()[0] ?? null;
+		Database.Error error = result?.getErrors()?.get(0) ?? null;
 		System.StatusCode expected = System.StatusCode.CANNOT_INSERT_UPDATE_ACTIVATE_ENTITY;
 		Assert.areEqual(expected, error?.getStatusCode(), 'Wrong Error Code');
 	}
@@ -186,158 +745,109 @@ private class DmlTest {
 	static void shouldDoConvert() {
 		Lead lead = DmlTest.initLead();
 		insert lead;
-		LeadStatus status = [
-			SELECT ApiName
-			FROM LeadStatus
-			WHERE IsConverted = TRUE
-			LIMIT 1
-		];
-		Database.LeadConvert leadToConvert = new Database.LeadConvert();
-		leadToConvert?.setLeadId(lead?.Id);
-		leadToConvert?.setConvertedStatus(status?.ApiName);
+		Database.LeadConvert leadToConvert = DmlTest.initLeadConvert(lead);
 
 		Test.startTest();
-		Database.LeadConvertResult result = DatabaseLayer.newDml()?.doConvert(leadToConvert);
+		Database.LeadConvertResult result = DatabaseLayer.Dml.doConvert(leadToConvert);
 		Test.stopTest();
 
 		Assert.areEqual(true, result?.isSuccess(), 'Did not succeed: ' + result?.getErrors());
 	}
 
 	@IsTest
-	static void shouldDoDynamicDml() {
-		// The doDml() method allows for callers to dynamically specify the type of operation taking place
-		Account account1 = DmlTest.initAccount();
-		Account account2 = DmlTest.initAccount();
-		Account account3 = DmlTest.initAccount();
-		BatchApexErrorEvent event = new BatchApexErrorEvent();
-		Dml myDml = DatabaseLayer.newDml()?.setAllOrNone(false);
+	static void shouldDoConvertWithAllOrNone() {
+		Lead lead = DmlTest.initLead();
+		insert lead;
+		Database.LeadConvert leadToConvert = DmlTest.initLeadConvert(lead);
 
 		Test.startTest();
-		// * Insert Methods
-		Database.SaveResult insertResult = (Database.SaveResult) myDml?.doDml(Dml.Operation.DO_INSERT, account1);
-		Assert.areEqual(true, insertResult?.isSuccess(), 'Insert failed: ' + insertResult?.getErrors());
-		Database.SaveResult insertAsyncResult = (Database.SaveResult) myDml
-			?.doDml(Dml.Operation.DO_INSERT_ASYNC, account2);
-		// Note: insertAsync() not allowed on non-external objects
-		Assert.areEqual(false, insertAsyncResult?.isSuccess(), 'Async Insert succeeded for a non-external object');
-		Database.SaveResult insertImmediateResult = (Database.SaveResult) myDml
-			?.doDml(Dml.Operation.DO_INSERT_IMMEDIATE, account3);
-		Assert.areEqual(
-			true,
-			insertImmediateResult?.isSuccess(),
-			'Immediate Insert failed: ' + insertImmediateResult?.getErrors()
-		);
-		// * Update Methods
-		Database.SaveResult updateResult = (Database.SaveResult) myDml?.doDml(Dml.Operation.DO_UPDATE, account1);
-		Assert.areEqual(true, updateResult?.isSuccess(), 'Update failed: ' + updateResult?.getErrors());
-		Database.SaveResult updateAsyncResult = (Database.SaveResult) myDml
-			?.doDml(Dml.Operation.DO_UPDATE_ASYNC, account1);
-		Assert.areEqual(true, updateAsyncResult?.isSuccess(), 'Async Update failed: ' + updateAsyncResult?.getErrors());
-		Database.SaveResult updateImmediateResult = (Database.SaveResult) myDml
-			?.doDml(Dml.Operation.DO_UPDATE_IMMEDIATE, account1);
-		Assert.areEqual(
-			true,
-			updateImmediateResult?.isSuccess(),
-			'Immediate Update failed: ' + updateImmediateResult?.getErrors()
-		);
-		// * Upsert Methods
-		Database.UpsertResult upsertResult = (Database.UpsertResult) myDml?.doDml(Dml.Operation.DO_UPSERT, account1);
-		Assert.areEqual(true, upsertResult?.isSuccess(), 'Upsert failed: ' + upsertResult?.getErrors());
-		// Note: Before testing delete/undelete methods, ensure all records are inserted
-		upsert new List<Account>{ account1, account2, account3 };
-		// * Delete/Undelete Methods
-		Database.DeleteResult deleteResult = (Database.DeleteResult) myDml?.doDml(Dml.Operation.DO_DELETE, account1);
-		Assert.areEqual(true, deleteResult?.isSuccess(), 'Delete failed: ' + deleteResult?.getErrors());
-		Database.DeleteResult deleteAsyncResult = (Database.DeleteResult) myDml
-			?.doDml(Dml.Operation.DO_DELETE_ASYNC, account2);
-		Assert.areEqual(true, deleteAsyncResult?.isSuccess(), 'Async Delete failed: ' + deleteAsyncResult?.getErrors());
-		Database.DeleteResult deleteImmediateResult = (Database.DeleteResult) myDml
-			?.doDml(Dml.Operation.DO_DELETE_IMMEDIATE, account3);
-		Assert.areEqual(
-			true,
-			deleteImmediateResult?.isSuccess(),
-			'Immediate Delete failed: ' + deleteImmediateResult?.getErrors()
-		);
-		Database.UndeleteResult undeleteResult = (Database.UndeleteResult) myDml
-			?.doDml(Dml.Operation.DO_UNDELETE, account1);
-		Assert.areEqual(true, undeleteResult?.isSuccess(), 'Undelete failed: ' + undeleteResult?.getErrors());
-		Database.DeleteResult hardDeleteResult = (Database.DeleteResult) myDml
-			?.doDml(Dml.Operation.DO_HARD_DELETE, account1);
-		Assert.areEqual(true, hardDeleteResult?.isSuccess(), 'Hard Delete failed: ' + hardDeleteResult?.getErrors());
-		// * Publish Methods
-		// Note: EventBus.publish() not allowed on standard platform events
-		Database.SaveResult publishResult = (Database.SaveResult) myDml?.doDml(Dml.Operation.DO_PUBLISH, event);
-		Assert.areEqual(false, publishResult?.isSuccess(), 'Publish succeeded for a standard platform event');
+		Database.LeadConvertResult result = DatabaseLayer.Dml.doConvert(leadToConvert, true);
 		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'Did not succeed: ' + result?.getErrors());
 	}
 
 	@IsTest
-	static void shouldThrowExceptionIfInvalidOperation() {
-		Account account = DmlTest.initAccount();
+	static void shouldDoConvertWithDmlOptions() {
+		Lead lead = DmlTest.initLead();
+		insert lead;
+		Database.LeadConvert leadToConvert = DmlTest.initLeadConvert(lead);
+		Database.DmlOptions options = new Database.DmlOptions();
+		options.OptAllOrNone = true;
 
 		Test.startTest();
+		Database.LeadConvertResult result = DatabaseLayer.Dml.doConvert(leadToConvert, options);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'Did not succeed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoConvertWithAccessLevel() {
+		Lead lead = DmlTest.initLead();
+		insert lead;
+		Database.LeadConvert leadToConvert = DmlTest.initLeadConvert(lead);
+
+		Test.startTest();
+		Database.LeadConvertResult result = DatabaseLayer.Dml.doConvert(leadToConvert, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'Did not succeed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoConvertWithDmlOptionsAndAccessLevel() {
+		Lead lead = DmlTest.initLead();
+		insert lead;
+		Database.LeadConvert leadToConvert = DmlTest.initLeadConvert(lead);
+		Database.DmlOptions options = new Database.DmlOptions();
+		options.OptAllOrNone = true;
+
+		Test.startTest();
+		Database.LeadConvertResult result = DatabaseLayer.Dml.doConvert(
+			leadToConvert,
+			options,
+			System.AccessLevel.SYSTEM_MODE
+		);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'Did not succeed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoConvertWithAllOrNoneAndAccessLevel() {
+		Lead lead = DmlTest.initLead();
+		insert lead;
+		Database.LeadConvert leadToConvert = DmlTest.initLeadConvert(lead);
+
+		Test.startTest();
+		Database.LeadConvertResult result = DatabaseLayer.Dml.doConvert(
+			leadToConvert,
+			true,
+			System.AccessLevel.SYSTEM_MODE
+		);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'Did not succeed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldProcessEmptyDeleteCallback() {
+		// Purely for code coverage -- run the default Async DML Callbacks
 		try {
-			DatabaseLayer.newDml()?.doDml(null, account);
-			Assert.fail('An Exception was not thrown');
-		} catch (System.DmlException error) {
-			Assert.areEqual(true, error?.getMessage()?.startsWith('Unsupported'), 'Wrong error message');
-		}
-		Test.stopTest();
-	}
-
-	@IsTest
-	static void shouldSetCustomDeleteCallback() {
-		// When updating external objects via the *async() methods,
-		// you can specify a custom callback class that will run when the Dml finishes processing
-		// By defualt, the Dml class runs a dummy/no-op class, but callers can specify their own logic
-		DataSource.AsyncDeleteCallback callback = new TestDeleteCallback();
-
-		Test.startTest();
-		Dml dml = DatabaseLayer.newDml()?.setCallback(callback);
-		Test.stopTest();
-
-		Assert.isInstanceOfType(dml?.getDeleteCallback(), TestDeleteCallback.class, 'Did not set custom callback');
-		// The Save Callback shouldn't be affected by this
-		Assert.isInstanceOfType(dml?.getSaveCallback(), Dml.DefaultSaveCallback.class, 'Save Callback was overwritten');
-	}
-
-	@IsTest
-	static void shouldSetCustomSaveCallback() {
-		// When updating external objects via the *async() methods,
-		// you can specify a custom callback class that will run when the Dml finishes processing
-		// By defualt, the Dml class runs a dummy/no-op class, but callers can specify their own logic
-		DataSource.AsyncSaveCallback callback = new TestSaveCallback();
-
-		Test.startTest();
-		Dml dml = DatabaseLayer.newDml()?.setCallback(callback);
-		Test.stopTest();
-
-		Assert.isInstanceOfType(dml?.getSaveCallback(), TestSaveCallback.class, 'Did not set custom callback');
-		// The Delete Callback shouldn't be affected by this
-		Assert.isInstanceOfType(
-			dml?.getDeleteCallback(),
-			Dml.DefaultDeleteCallback.class,
-			'Delete Callback was overwritten'
-		);
-	}
-
-	@IsTest
-	static void shouldRunDefaultCallbacksWithoutError() {
-		// Note: The DataSource.Async*Callback objects are not invoked when running the async DML methods in @IsTest context
-		// Ensure the default implementations of these objects can be invoked w/out error
-		Test.startTest();
-		try {
-			new Dml.DefaultDeleteCallback()?.processDelete(null);
-			new Dml.DefaultSaveCallback()?.processSave(null);
+			Test.startTest();
+			new Dml.EmptyDeleteCallback()?.processDelete(null);
+			new Dml.EmptySaveCallback()?.processSave(null);
+			Test.stopTest();
 		} catch (Exception error) {
-			Assert.fail('An error was thrown: ' + error);
+			Assert.fail('Failed to run Empty Callbacks');
 		}
-		Test.stopTest();
 	}
 
 	// **** HELPER **** //
-	static List<Database.DeleteResult> deleteCallbacksMade = new List<Database.DeleteResult>();
-	static List<Database.SaveResult> saveCallbacksMade = new List<Database.SaveResult>();
+	static LeadStatus getConvertedStatus() {
+		return [SELECT ApiName FROM LeadStatus WHERE IsConverted = TRUE LIMIT 1] ?? null;
+	}
 
 	static Account initAccount() {
 		return new Account(Name = 'Robinson Industries');
@@ -352,13 +862,20 @@ private class DmlTest {
 		return new Lead(Company = 'Tharsis Inc.', FirstName = 'John', LastName = 'Doe');
 	}
 
-	private class TestDeleteCallback extends DataSource.AsyncDeleteCallback {
+	static Database.LeadConvert initLeadConvert(Lead lead) {
+		Database.LeadConvert leadToConvert = new Database.LeadConvert();
+		leadToConvert?.setLeadId(lead?.Id);
+		leadToConvert?.setConvertedStatus(CONVERTED_STATUS?.ApiName);
+		return leadToConvert;
+	}
+
+	private class DeleteCallback extends DataSource.AsyncDeleteCallback {
 		public override void processDelete(Database.DeleteResult result) {
 			DmlTest.deleteCallbacksMade?.add(result);
 		}
 	}
 
-	private class TestSaveCallback extends DataSource.AsyncSaveCallback {
+	private class SaveCallback extends DataSource.AsyncSaveCallback {
 		public override void processSave(Database.SaveResult result) {
 			DmlTest.saveCallbacksMade?.add(result);
 		}

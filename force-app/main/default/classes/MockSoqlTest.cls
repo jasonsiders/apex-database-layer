@@ -1,5 +1,5 @@
+@SuppressWarnings('PMD.ApexDoc, PMD.EmptyCatchBlock')
 @IsTest
-@SuppressWarnings('PMD.EmptyCatchBlock')
 private class MockSoqlTest {
 	// **** CONSTANTS **** //
 	private static final Integer NUM_ACCS = 10;
@@ -9,7 +9,7 @@ private class MockSoqlTest {
 	static void shouldMockCountQuery() {
 		// Build a query
 		Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT);
-		MockSoql soql = (MockSoql) new MockSoql(Account.SObjectType)?.addSelect(count);
+		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()?.newQuery(Account.SObjectType)?.addSelect(count);
 		// Inject the query w/mock results
 		List<Account> accounts = MockSoqlTest.initAccounts(NUM_ACCS);
 		soql?.setMock(accounts);
@@ -25,7 +25,7 @@ private class MockSoqlTest {
 	@IsTest
 	static void shouldMockCountQueryErrors() {
 		// Build a query
-		MockSoql soql = (MockSoql) new MockSoql(Account.SObjectType)?.addSelect(Account.Name);
+		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()?.newQuery(Account.SObjectType)?.addSelect(Account.Name);
 		// Inject the query w/a mock error
 		soql?.setError();
 
@@ -43,7 +43,7 @@ private class MockSoqlTest {
 	@IsTest
 	static void shouldMockQueryLocator() {
 		// Build a query
-		MockSoql soql = (MockSoql) new MockSoql(Account.SObjectType)?.addSelect(Account.Name);
+		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()?.newQuery(Account.SObjectType)?.addSelect(Account.Name);
 		// Inject the query w/mock results
 		List<Account> accounts = MockSoqlTest.initAccounts(NUM_ACCS);
 		soql?.setMock(accounts);
@@ -75,7 +75,7 @@ private class MockSoqlTest {
 	@IsTest
 	static void shouldMockQueryLocatorErrors() {
 		// Build a query
-		MockSoql soql = (MockSoql) new MockSoql(Account.SObjectType)?.addSelect(Account.Name);
+		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()?.newQuery(Account.SObjectType)?.addSelect(Account.Name);
 		// Inject the query w/a mock error
 		soql?.setError();
 
@@ -93,7 +93,7 @@ private class MockSoqlTest {
 	@IsTest
 	static void shouldMockQuery() {
 		// Build query
-		MockSoql soql = (MockSoql) new MockSoql(Account.SObjectType)?.addSelect(Account.Name);
+		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()?.newQuery(Account.SObjectType)?.addSelect(Account.Name);
 		// Inject the query w/mock results
 		List<Account> accounts = MockSoqlTest.initAccounts(NUM_ACCS);
 		soql?.setMock(accounts);
@@ -109,7 +109,7 @@ private class MockSoqlTest {
 	@IsTest
 	static void shouldMockQueryErrors() {
 		// Build a query
-		MockSoql soql = (MockSoql) new MockSoql(Account.SObjectType)?.addSelect(Account.Name);
+		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()?.newQuery(Account.SObjectType)?.addSelect(Account.Name);
 		// Inject the query w/a mock error
 		soql?.setError();
 
@@ -128,7 +128,8 @@ private class MockSoqlTest {
 	static void shouldMockAggregateQuery() {
 		// Build an aggregate query
 		Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id);
-		MockSoql soql = (MockSoql) new MockSoql(User.SObjectType)
+		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()
+			?.newQuery(User.SObjectType)
 			?.addSelect('Profile.Name')
 			?.addSelect(count)
 			?.groupBy('Profile.Name');
@@ -150,8 +151,8 @@ private class MockSoqlTest {
 		Integer numResults = results?.size();
 		Assert.areEqual(mockResults?.size(), numResults, 'Wrong # of AggregateResults');
 		for (Integer i = 0; i < numResults; i++) {
-			Soql.AggregateResult expectedResult = mockResults[i];
-			Soql.AggregateResult actualResult = results[i];
+			Soql.AggregateResult expectedResult = mockResults?.get(i);
+			Soql.AggregateResult actualResult = results?.get(i);
 			// Note: AggregateResults assigns unaliased fields with an expr_N_ key, where _N_ is the column index
 			for (String key : new Set<String>{ 'expr0', 'expr1' }) {
 				Assert.areEqual(expectedResult?.get(key), actualResult?.get(key), key + ': Wrong value');
@@ -163,7 +164,8 @@ private class MockSoqlTest {
 	static void shouldMockAggregateQueryErrors() {
 		// Build an aggregate query
 		Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id);
-		MockSoql soql = (MockSoql) new MockSoql(User.SObjectType)
+		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()
+			?.newQuery(User.SObjectType)
 			?.addSelect('Profile.Name')
 			?.addSelect(count)
 			?.groupBy('Profile.Name');
@@ -185,7 +187,8 @@ private class MockSoqlTest {
 	static void shouldMockQueryAndCastToType() {
 		// Build an aggregate query
 		Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id);
-		MockSoql soql = (MockSoql) new MockSoql(User.SObjectType)
+		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()
+			?.newQuery(User.SObjectType)
 			?.addSelect('Profile.Name')
 			?.addSelect(count)
 			?.groupBy('Profile.Name');
@@ -203,8 +206,8 @@ private class MockSoqlTest {
 		Integer numResults = results?.size();
 		Assert.areEqual(mockResults?.size(), numResults, 'Wrong # of results returned');
 		for (Integer i = 0; i < numResults; i++) {
-			SampleWrapper expectedResult = mockResults[i];
-			SampleWrapper actualResult = results[i];
+			SampleWrapper expectedResult = mockResults?.get(i);
+			SampleWrapper actualResult = results?.get(i);
 			Assert.areEqual(expectedResult?.profileName, actualResult?.profileName, 'Wrong profileName');
 			Assert.areEqual(expectedResult?.numRecords, actualResult?.numRecords, 'Wrong numRecords');
 		}
@@ -214,7 +217,8 @@ private class MockSoqlTest {
 	static void shouldHandleErrorsWithMockAndCast() {
 		// Build an aggregate query
 		Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id);
-		MockSoql soql = (MockSoql) new MockSoql(User.SObjectType)
+		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()
+			?.newQuery(User.SObjectType)
 			?.addSelect('Profile.Name')
 			?.addSelect(count)
 			?.groupBy('Profile.Name');
@@ -232,23 +236,22 @@ private class MockSoqlTest {
 		Test.stopTest();
 	}
 
-	@IsTest 
+	@IsTest
 	static void shouldUseCustomSimulatorMocks() {
 		// Establish Dml & Soql objects to be used
 		DatabaseLayer.useMocks();
-		Dml dml = DatabaseLayer.newDml();
-		MockSoql soql = (MockSoql) DatabaseLayer.newSoql(Task.SObjectType)
+		MockSoql soql = (MockSoql) DatabaseLayer.Soql.newQuery(Task.SObjectType)
 			?.addSelect(Task.WhatId)
 			?.addSelect(Task.WhoId);
-		// Mock with a custom class that leverages MockDml.Inserted to generate results
+		// Mock with a custom class that leverages MockDml.INSERTED to generate results
 		soql?.setMock(new CustomTaskQueryLogic());
 		// Mock insert an account + related contact
 		Account mockAccount = (Account) new MockRecord(Account.SObjectType)?.toSObject();
-		dml?.doInsert(mockAccount);
+		DatabaseLayer.Dml.doInsert(mockAccount);
 		Contact mockContact = (Contact) new MockRecord(Contact.SObjectType)
 			?.setField(Contact.AccountId, mockAccount?.Id)
 			?.toSObject();
-		dml?.doInsert(mockContact);
+		DatabaseLayer.Dml.doInsert(mockContact);
 
 		Test.startTest();
 		List<Task> tasks = soql?.query();
@@ -256,7 +259,7 @@ private class MockSoqlTest {
 
 		// Expecting 1 task x each inserted Contact
 		Assert.areEqual(1, tasks?.size(), 'Wrong # of tasks');
-		Task firstTask = tasks[0];
+		Task firstTask = tasks?.get(0);
 		Assert.areEqual(mockAccount?.Id, firstTask?.WhatId, 'Wrong WhatId');
 		Assert.areEqual(mockContact?.Id, firstTask?.WhoId, 'Wrong WhoId');
 	}
@@ -264,7 +267,7 @@ private class MockSoqlTest {
 	@IsTest
 	static void shouldReturnEmptyListIfNoMocks() {
 		// If a MockSoql is ran, and no Simulator is injected, the methods will automatically return an empty List
-		MockSoql soql = (MockSoql) new MockSoql(Account.SObjectType);
+		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()?.newQuery(Account.SObjectType);
 
 		Test.startTest();
 		List<Soql.AggregateResult> aggregateResults = soql?.aggregateQuery();
@@ -299,7 +302,7 @@ private class MockSoqlTest {
 		public List<Object> simulateQuery() {
 			// For each inserted contact, return a Task
 			List<Task> results = new List<Task>();
-			List<Contact> contacts = (List<Contact>) MockDml.Inserted.getRecords(Contact.SObjectType);
+			List<Contact> contacts = (List<Contact>) MockDml.INSERTED.getRecords(Contact.SObjectType);
 			for (Contact contact : contacts) {
 				Task task = (Task) new MockRecord(Task.SObjectType)
 					?.setField(Task.Subject, 'Introductory Call')

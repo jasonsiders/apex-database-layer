@@ -1,3 +1,4 @@
+@SuppressWarnings('PMD.ApexDoc')
 @IsTest
 private class MockRecordTest {
 	@IsTest

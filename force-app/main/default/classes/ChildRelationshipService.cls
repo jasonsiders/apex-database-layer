@@ -1,3 +1,4 @@
+@SuppressWarnings('PMD.ApexDoc')
 public abstract class ChildRelationshipService {
 	/**
 	 * This small service aims to make it easier to retrieve Schema.ChildRelationship objects from their linked SObjectField.
@@ -22,7 +23,7 @@ public abstract class ChildRelationshipService {
 		// * Note: the Schema.getReferenceTo() method returns a List<SObjectType>, not a single SObjectType.
 		// Typically, a field is only be related to a single SObjectType; exceptions include polymorphic fields (ie, Task.WhatId).
 		List<SObjectType> references = lookupField?.getDescribe()?.getReferenceTo();
-		SObjectType referenceTo = references?.isEmpty() == false ? references[0] : null;
+		SObjectType referenceTo = references?.isEmpty() == false ? references?.get(0) : null;
 		return ChildRelationshipService.getChildRelationshipFrom(lookupField, referenceTo);
 	}
 
@@ -53,7 +54,8 @@ public abstract class ChildRelationshipService {
 		}
 
 		private List<Schema.ChildRelationship> getRelationshipList(SObjectType objectType) {
-			return objectType?.getDescribe()?.getChildRelationships() ?? new List<Schema.ChildRelationship>();
+			return objectType?.getDescribe(Schema.SObjectDescribeOptions.DEFERRED)?.getChildRelationships() ??
+				new List<Schema.ChildRelationship>();
 		}
 
 		private void mapRelationships(SObjectType objectType) {

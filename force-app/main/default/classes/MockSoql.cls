@@ -1,3 +1,4 @@
+@SuppressWarnings('PMD.ApexDoc')
 @IsTest
 public class MockSoql extends Soql {
 	/**
@@ -7,13 +8,8 @@ public class MockSoql extends Soql {
 	private static final String AGGREGATE_KEY_PREFIX = 'expr';
 	private MockSoql.Simulator simulator;
 
-	public MockSoql() {
-		super();
-	}
-
-	public MockSoql(SObjectType objectType) {
-		this();
-		this.fromEntity(objectType);
+	public MockSoql(DatabaseLayer factory) {
+		super(factory);
 	}
 
 	public Soql setError(Exception error) {
@@ -170,11 +166,11 @@ public class MockSoql extends Soql {
 	}
 
 	private class StaticResults implements MockSoql.Simulator {
-		private Exception error; 
+		private Exception error;
 		private List<Object> results;
 
 		private StaticResults(Exception error) {
-			this.error = error; 
+			this.error = error;
 		}
 
 		private StaticResults(List<Object> results) {
