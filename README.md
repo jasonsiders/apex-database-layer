@@ -61,11 +61,11 @@ If necessary, you can inject "smarter" failure logic via the `MockDml.Conditiona
 
 ```java
 public class ExampleFailure implements MockDml.ConditionalFailure {
-  public Exception checkFailure(Dml.Operation operation, SObject record) {
+  public Exception checkFailure(MockDml.Operation operation, SObject record) {
     // Return an Exception if the record/operation should fail
     // In this case, any updated Accounts will fail
     if (
-      operation == Dml.Operation.DO_UPDATE &&
+      operation == MockDml.Operation.DO_UPDATE &&
       record?.getSObjectType() == Account.SObjectType
     ) {
       return new System.DmlException();

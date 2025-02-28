@@ -700,7 +700,7 @@ private class MockDmlTest {
 	static void shouldInjectCustomFailureLogic() {
 		List<Account> accounts = MockDmlTest.initRecords(Account.SObjectType, false);
 		MockDml.ConditionalFailure failure = new MockDmlTest.ExampleFailure(
-			Dml.Operation.DO_UPDATE,
+			MockDml.Operation.DO_UPDATE,
 			Account.SObjectType
 		);
 		DatabaseLayer.useMockDml().failIf(failure);
@@ -781,15 +781,15 @@ private class MockDmlTest {
 
 	// **** INNER **** //
 	public class ExampleFailure implements MockDml.ConditionalFailure {
-		private Dml.Operation failingOperation;
+		private MockDml.Operation failingOperation;
 		private SObjectType failingSObjectType;
 
-		public ExampleFailure(Dml.Operation operation, SObjectType objectType) {
+		public ExampleFailure(MockDml.Operation operation, SObjectType objectType) {
 			this.failingOperation = operation;
 			this.failingSObjectType = objectType;
 		}
 
-		public Exception checkFailure(Dml.Operation operation, SObject record) {
+		public Exception checkFailure(MockDml.Operation operation, SObject record) {
 			// Only throw an error if updating an Account
 			Boolean shouldFail =
 				operation == this.failingOperation &&

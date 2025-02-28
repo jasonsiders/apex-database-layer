@@ -8,14 +8,14 @@ public class MockDml extends Dml {
 	 * or the `failIf()` method and the `ConditionalLogic` interface.
 	 **/
 	// **** STATIC **** //
-	public static final MockDml.RecordHistory CONVERTED = new MockDml.RecordHistory(Dml.Operation.DO_CONVERT);
-	public static final MockDml.RecordHistory DELETED = new MockDml.RecordHistory(Dml.Operation.DO_DELETE);
-	public static final MockDml.RecordHistory INSERTED = new MockDml.RecordHistory(Dml.Operation.DO_INSERT);
+	public static final MockDml.RecordHistory CONVERTED = new MockDml.RecordHistory(MockDml.Operation.DO_CONVERT);
+	public static final MockDml.RecordHistory DELETED = new MockDml.RecordHistory(MockDml.Operation.DO_DELETE);
+	public static final MockDml.RecordHistory INSERTED = new MockDml.RecordHistory(MockDml.Operation.DO_INSERT);
 	public static final MockDml.PlatformEventHistory PUBLISHED = new MockDml.PlatformEventHistory();
-	public static final MockDml.RecordHistory PURGED = new MockDml.RecordHistory(Dml.Operation.DO_PURGE);
-	public static final MockDml.RecordHistory UNDELETED = new MockDml.RecordHistory(Dml.Operation.DO_UNDELETE);
-	public static final MockDml.RecordHistory UPDATED = new MockDml.RecordHistory(Dml.Operation.DO_UPDATE);
-	public static final MockDml.RecordHistory UPSERTED = new MockDml.RecordHistory(Dml.Operation.DO_UPSERT);
+	public static final MockDml.RecordHistory PURGED = new MockDml.RecordHistory(MockDml.Operation.DO_PURGE);
+	public static final MockDml.RecordHistory UNDELETED = new MockDml.RecordHistory(MockDml.Operation.DO_UNDELETE);
+	public static final MockDml.RecordHistory UPDATED = new MockDml.RecordHistory(MockDml.Operation.DO_UPDATE);
+	public static final MockDml.RecordHistory UPSERTED = new MockDml.RecordHistory(MockDml.Operation.DO_UPSERT);
 	private static final String EVENT_UUID_FIELD = 'EventUuid';
 	private static final String MOCK_STATUS_CODE = 'MOCK_DML';
 
@@ -226,7 +226,7 @@ public class MockDml extends Dml {
 	}
 
 	// **** PRIVATE **** //
-	private void checkFailures(Dml.Operation operation, SObject record) {
+	private void checkFailures(MockDml.Operation operation, SObject record) {
 		// Runs all ConditionalFailures defined the current instance against each record.
 		for (MockDml.ConditionalFailure failure : this.failures) {
 			Exception error = failure?.checkFailure(operation, record);
@@ -240,7 +240,7 @@ public class MockDml extends Dml {
 		// Simulates a DML operation for a single record, returning a MockDml.Result,
 		// which calling methods can de/serialize into a Database.Save/Upsert/etc. Result.
 		try {
-			Dml.Operation operation = history?.getOperation();
+			MockDml.Operation operation = history?.getOperation();
 			// Determine if the operation should fail for the specific record
 			this.checkFailures(operation, record);
 			// Simulate successful dml, return a MockDml.Result w/out errors
@@ -349,7 +349,7 @@ public class MockDml extends Dml {
 		 * Its method should return an exception to be thrown in case of a DML failure, or null in case of success.
 		 * Pass objects that implement this interface to MockDml's `failIf()` method.
 		 **/
-		Exception checkFailure(Dml.Operation operation, SObject record);
+		Exception checkFailure(MockDml.Operation operation, SObject record);
 	}
 
 	public abstract class History {
@@ -357,10 +357,10 @@ public class MockDml extends Dml {
 		 * Responsible for recording records that were processed by a given DML operation.
 		 * It provides several methods that callers can use to assert if DML actually occurred.
 		 **/
-		protected Dml.Operation operation;
+		protected MockDml.Operation operation;
 		protected Map<SObjectType, Map<String, SObject>> recordMap;
 
-		protected History(Dml.Operation operation) {
+		protected History(MockDml.Operation operation) {
 			this.operation = operation;
 			this.recordMap = new Map<SObjectType, Map<String, SObject>>();
 		}
@@ -398,7 +398,7 @@ public class MockDml extends Dml {
 			recordMap?.remove(record?.Id);
 		}
 
-		protected Dml.Operation getOperation() {
+		protected MockDml.Operation getOperation() {
 			return this.operation;
 		}
 
@@ -411,10 +411,10 @@ public class MockDml extends Dml {
 			MockDml.Error dmlError = new MockDml.Error(error);
 			if (allOrNone == true) {
 				throw dmlError?.toDmlException();
-			} else if (this.operation == Dml.Operation.DO_CONVERT) {
+			} else if (this.operation == MockDml.Operation.DO_CONVERT) {
 				Lead lead = (Lead) record;
 				return new MockDml.LeadConvertResult(lead)?.addError(dmlError);
-			} else if (this.operation == Dml.Operation.DO_INSERT) {
+			} else if (this.operation == MockDml.Operation.DO_INSERT) {
 				// Note: When a record fails to be inserted, the resulting Database.SaveResult should have a null Id value
 				return new MockDml.RecordResult(record)?.clearId()?.addError(dmlError);
 			} else {
@@ -434,13 +434,24 @@ public class MockDml extends Dml {
 		}
 	}
 
+	public enum Operation {
+		DO_CONVERT,
+		DO_DELETE,
+		DO_INSERT,
+		DO_PUBLISH,
+		DO_PURGE,
+		DO_UNDELETE,
+		DO_UPDATE,
+		DO_UPSERT
+	}
+
 	public virtual class PlatformEventHistory extends History {
 		/**
 		 * This class tracks platform events that were mock published.
 		 * Necessary since platform events' unique identifier is the `EventUuid` field - not `Id`
 		 **/
 		private PlatformEventHistory() {
-			super(Dml.Operation.DO_PUBLISH);
+			super(MockDml.Operation.DO_PUBLISH);
 		}
 
 		protected override void addRecordToMap(SObject record, Map<String, Object> records) {
@@ -464,7 +475,7 @@ public class MockDml extends Dml {
 		/**
 		 * This class is responsible for tracking DML made against most SObject types
 		 **/
-		private RecordHistory(Dml.Operation operation) {
+		private RecordHistory(MockDml.Operation operation) {
 			super(operation);
 		}
 
@@ -508,7 +519,7 @@ public class MockDml extends Dml {
 		 * This one is simple -- it always returns an error to be thrown.
 		 * Callers can inject this error by calling the MockDml's `fail()` method.
 		 **/
-		public Exception checkFailure(Dml.Operation operation, SObject record) {
+		public Exception checkFailure(MockDml.Operation operation, SObject record) {
 			return new System.DmlException();
 		}
 	}

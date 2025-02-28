@@ -4,23 +4,27 @@ The `Soql` class is designed to facilitate the construction and execution of SOQ
 
 ## Constructing `Soql` Objects
 
-`Soql` objects cannot be directly constructed via the `new` keyword. Instead, use `DatabaseLayer.Dml`, and cast the result to the `Soql` type:
+`Soql` objects cannot be directly constructed via the `new` keyword. Instead, use the `DatabaseLayer.Soql.newQuery(SObjectType fromSObject)` method:
 
 ```java
-Soql soql = (Soql) DatabaseLayer.Soql.fromSObject(Account.SObjectType);
+Soql query = (Soql) DatabaseLayer.Soql
+  ?.fromSObject(Account.SObjectType)
+  ?.addSelect(Account.Name)
+  ?.setRowLimit(200);
 ```
 
 The `DatabaseLayer` class is responsible for instantiating database objects of the correct type at runtime. In `@IsTest` context, developers can call `DatabaseLayer.useMocks()`, and an instance of the `MockSoql` class will be returned instead:
 
 ```java
 DatabaseLayer.useMocks();
-Soql soql = (Soql) DatabaseLayer.Soql.fromSObject(Account.SObjectType);
-Assert.isInstanceOfType(soql, MockSoql.class, 'Not a mock');
+MockSoql query = (MockSoql) DatabaseLayer.Soql.fromSObject(Account.SObjectType);
+Assert.isInstanceOfType(query, MockSoql.class, 'Not a mock');
 ```
 
 ## Public Methods
 
-### Performing Queries
+<details>
+  <summary><h3>Performing Queries</h3></summary>
 
 #### `aggregateQuery`
 
@@ -53,7 +57,10 @@ Fetches the first result of the query or returns `null` if no results are found.
 
 -   `SObject queryFirst()`
 
-### Building Queries
+</details>
+
+<details>
+  <summary><h3>Building Queries</h3></summary>
 
 These methods are derived from the `Soql.Builder` inner class. The `Soql` class extends this base class, along with other inner types, like `Soql.InnerClass` and `Soql.Subquery`.
 
@@ -186,9 +193,12 @@ Enforces security in the query to ensure that the user has appropriate access to
 
 -   `Soql.Builder withSecurityEnforced()`
 
+</details>
+
 ## Public Inner Types
 
-### AggregateResult
+<details>
+  <summary><h3>AggregateResult</h3></summary>
 
 Wraps the `Schema.AggregateResult` class, which cannot be mocked otherwise. Objects of this type are returned by the `aggregateQuery` SOQL method, and can be mocked by the `MockSoql.AggregateResult` class
 
@@ -197,6 +207,8 @@ Wraps the `Schema.AggregateResult` class, which cannot be mocked otherwise. Obje
 Calls the underlying `Schema.AggregateResult` object's `get` method. The `key` parameter refers to the field alias if one is assigned, or the parameter's index in query preceded by the `expr` if one is not assigned (x, `expr0`).
 
 -   `get(String key)`
+
+</details>
 
 ### Aggregation
 
@@ -350,7 +362,8 @@ Soql.Condition isWon = new Soql.Condition(
   Soql.Operator.EQUALS,
   true
 );
-Soql soql = DatabaseLayer.Soql.fromSObject(Opportunity.SObjectType)
+Soql soql = (Soql) DatabaseLayer.Soql
+  ?.fromSObject(Opportunity.SObjectType)
   ?.setOuterWhereLogic(Soql.LogicType.ANY_CONDITIONS)
   ?.setWhere(isWon)
   ?.setWhere(nest3);
@@ -481,7 +494,7 @@ Decorates `Database.QueryLocator` objects that are returned by `Database.getQuer
 Use this object in conjunction with the `getQueryLocator` method:
 
 ```java
-Soql soql = DatabaseLayer.Soql.fromSObject(Account.SObjectType);
+Soql soql = DatabaseLayer.Soql?.fromSObject(Account.SObjectType);
 Soql.QueryLocator locator = soql?.getQueryLocator();
 ```
 
@@ -532,7 +545,8 @@ Indicates the direction of the _ORDER BY_ clause. Values include:
 Use this in conjunction with the `orderBy` SOQL method. For example:
 
 ```java
-Soql soql = (Soql) DatabaseLayer.Soql.fromSObject(Opportunity.SObjectType)
+Soql soql = (Soql) DatabaseLayer.Soql
+  ?.fromSObject(Opportunity.SObjectType)
   ?.orderBy(Opportunity.Amount, Soql.SortDirection.DESCENDING);
 ```
 
@@ -545,7 +559,9 @@ Soql.SortOrder firstCreated = new Soql.SortOrder(
   Account.CreatedDate,
   Soql.SortDirection.ASCENDING
 );
-Soql soql = new Soql(Account.SObjectType)?.orderBy(firstCreated);
+Soql query = (Soql) DatabaseLayer.Soql
+  ?.newQuery(Account.SObjectType)
+  ?.orderBy(firstCreated);
 ```
 
 #### Constructors

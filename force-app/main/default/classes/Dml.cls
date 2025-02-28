@@ -691,15 +691,4 @@ public with sharing virtual class Dml {
 			// Do nothing
 		}
 	}
-
-	public enum Operation {
-		DO_CONVERT,
-		DO_DELETE,
-		DO_INSERT,
-		DO_PUBLISH,
-		DO_PURGE,
-		DO_UNDELETE,
-		DO_UPDATE,
-		DO_UPSERT
-	}
 }
