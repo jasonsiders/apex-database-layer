@@ -12,7 +12,7 @@
 	"name": "apex-database-layer",
 	"namespace": "",
 	"sfdcLoginUrl": "https://login.salesforce.com",
-	"sourceApiVersion": "61.0",
+	"sourceApiVersion": "62.0",
 	"packageAliases": {
 		"apex-database-layer": "0HoDn000000kAONKA2",
 		"apex-database-layer@0.1.0-1": "04tDn0000006z4LIAQ",
