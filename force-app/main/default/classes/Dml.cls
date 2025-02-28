@@ -469,23 +469,23 @@ public with sharing virtual class Dml {
 	}
 
 	public Database.SaveResult doUpdate(SObject record, Boolean allOrNone, System.AccessLevel accessLevel) {
-		return this.doUpdate(record, this.initOptions(allOrNone), accessLevel);
+		return this.doUpdate(new List<SObject>{ record }, allOrNone, accessLevel)?.get(0);
 	}
 
 	public Database.SaveResult doUpdate(SObject record, Database.DmlOptions options) {
-		return this.doUpdate(record, options, DEFAULT_ACCESS_LEVEL);
+		return this.doUpdate(new List<SObject>{ record }, options)?.get(0);
 	}
 
 	public Database.SaveResult doUpdate(SObject record, Boolean allOrNone) {
-		return this.doUpdate(record, this.initOptions(allOrNone));
+		return this.doUpdate(new List<SObject>{ record }, allOrNone)?.get(0);
 	}
 
 	public Database.SaveResult doUpdate(SObject record, System.AccessLevel accessLevel) {
-		return this.doUpdate(record, true, accessLevel);
+		return this.doUpdate(new List<SObject>{ record }, accessLevel)?.get(0);
 	}
 
 	public Database.SaveResult doUpdate(SObject record) {
-		return this.doUpdate(record, DEFAULT_ACCESS_LEVEL);
+		return this.doUpdate(new List<SObject>{ record })?.get(0);
 	}
 
 	// ** UpdateAsync Methods
