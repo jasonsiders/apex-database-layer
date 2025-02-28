@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <ApexClass xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- 
+        * >v60.0 throws an error when performing async/immediate DML methods:
+        *       Database.insertImmediate(myAccount);
+        *       ! "System.TypeException: Invalid entity type in input for this operation"
+        * This package does not include any SObjects suitable for use in this method,
+        * So we are forced to restrict this class's API version to <= v59.0
+    -->
     <apiVersion>59.0</apiVersion>
     <status>Active</status>
 </ApexClass>
