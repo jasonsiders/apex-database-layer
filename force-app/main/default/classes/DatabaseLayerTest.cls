@@ -1,9 +1,10 @@
+@SuppressWarnings('PMD.ApexDoc')
 @IsTest
 private class DatabaseLayerTest {
 	@IsTest
 	static void shouldInitRealDmlObjectByDefault() {
 		Test.startTest();
-		Dml result = DatabaseLayer.newDml();
+		Dml result = DatabaseLayer.Dml;
 		Test.stopTest();
 
 		Assert.isInstanceOfType(result, Dml.class, 'Should be Dml');
@@ -15,7 +16,7 @@ private class DatabaseLayerTest {
 		DatabaseLayer.useMocks();
 
 		Test.startTest();
-		Dml result = DatabaseLayer.newDml();
+		Dml result = DatabaseLayer.Dml;
 		Test.stopTest();
 
 		Assert.isInstanceOfType(result, Dml.class, 'Should be Dml');
@@ -29,7 +30,7 @@ private class DatabaseLayerTest {
 		Test.startTest();
 		// Now switch back to using real database objects
 		DatabaseLayer.useRealData();
-		Dml result = DatabaseLayer.newDml();
+		Dml result = DatabaseLayer.Dml;
 		Test.stopTest();
 
 		Assert.isInstanceOfType(result, Dml.class, 'Should be Dml');
@@ -39,7 +40,7 @@ private class DatabaseLayerTest {
 	@IsTest
 	static void shouldInitRealSoqlObjectByDefault() {
 		Test.startTest();
-		Soql result = DatabaseLayer.newSoql(Account.SObjectType);
+		Soql result = DatabaseLayer.Soql?.newQuery(Account.SObjectType);
 		Test.stopTest();
 
 		Assert.isInstanceOfType(result, Soql.class, 'Should be Soql');
@@ -51,11 +52,11 @@ private class DatabaseLayerTest {
 		DatabaseLayer.useMocks();
 
 		Test.startTest();
-		Soql result = DatabaseLayer.newSoql(Account.SObjectType);
+		Soql result = DatabaseLayer.Soql?.newQuery(Account.SObjectType);
 		Test.stopTest();
 
 		Assert.isInstanceOfType(result, Soql.class, 'Should be Soql');
-		Assert.isInstanceOfType(result, MockSoql.class, 'Should be MockSoql');
+		Assert.isInstanceOfType(result, MockSoql.class, 'Should be MockSoql: ' + result);
 	}
 
 	@IsTest
@@ -65,7 +66,7 @@ private class DatabaseLayerTest {
 		Test.startTest();
 		// Now switch back to using real database objects
 		DatabaseLayer.useRealData();
-		Soql result = DatabaseLayer.newSoql(Account.SObjectType);
+		Soql result = DatabaseLayer.Soql?.newQuery(Account.SObjectType);
 		Test.stopTest();
 
 		Assert.isInstanceOfType(result, Soql.class, 'Should be Soql');
