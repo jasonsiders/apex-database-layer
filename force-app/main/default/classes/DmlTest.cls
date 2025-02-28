@@ -255,12 +255,62 @@ private class DmlTest {
 	}
 
 	@IsTest
+	static void shouldDoUpdateAsyncWithAccessLevel() {
+		Account account = DmlTest.initAccount();
+		insert account;
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doUpdateAsync(account, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoUpdateAsyncWithCallback() {
+		Account account = DmlTest.initAccount();
+		insert account;
+		DataSource.AsyncSaveCallback callback = new DmlTest.SaveCallback();
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doUpdateAsync(account, callback);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoUpdateAsyncWithCallbackAndAccessLevel() {
+		Account account = DmlTest.initAccount();
+		insert account;
+		DataSource.AsyncSaveCallback callback = new DmlTest.SaveCallback();
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doUpdateAsync(account, callback, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
 	static void shouldDoUpdateImmediate() {
 		Account account = DmlTest.initAccount();
 		insert account;
 
 		Test.startTest();
 		Database.SaveResult result = DatabaseLayer.Dml.doUpdateImmediate(account);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoUpdateImmediateWithAccessLevel() {
+		Account account = DmlTest.initAccount();
+		insert account;
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doUpdateImmediate(account, System.AccessLevel.SYSTEM_MODE);
 		Test.stopTest();
 
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());

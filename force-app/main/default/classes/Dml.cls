@@ -518,15 +518,15 @@ public with sharing virtual class Dml {
 	}
 
 	public Database.SaveResult doUpdateAsync(SObject record, DataSource.AsyncSaveCallback callback) {
-		return this.doUpdateAsync(record, callback, DEFAULT_ACCESS_LEVEL);
+		return this.doUpdateAsync(new List<SObject>{ record }, callback)?.get(0);
 	}
 
 	public Database.SaveResult doUpdateAsync(SObject record, System.AccessLevel accessLevel) {
-		return this.doUpdateAsync(record, DEFAULT_SAVE_CALLBACK, accessLevel);
+		return this.doUpdateAsync(new List<SObject>{ record }, accessLevel)?.get(0);
 	}
 
 	public Database.SaveResult doUpdateAsync(SObject record) {
-		return this.doUpdateAsync(record, DEFAULT_ACCESS_LEVEL);
+		return this.doUpdateAsync(new List<SObject>{ record })?.get(0);
 	}
 
 	// ** UpdateImmediate Methods
@@ -543,7 +543,7 @@ public with sharing virtual class Dml {
 	}
 
 	public Database.SaveResult doUpdateImmediate(SObject record) {
-		return this.doUpdateImmediate(record, DEFAULT_ACCESS_LEVEL);
+		return this.doUpdateImmediate(new List<SObject>{ record })?.get(0);
 	}
 
 	// ** Upsert Methods
