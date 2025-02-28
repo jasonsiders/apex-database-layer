@@ -672,6 +672,7 @@ public with sharing virtual class Dml {
 	}
 
 	// **** INNER **** //
+	@TestVisible
 	private class EmptyDeleteCallback extends DataSource.AsyncDeleteCallback {
 		/**
 		 *  If a callback isn't defined, doDeleteAsync() will use this class to gracefully handle callbacks
@@ -681,6 +682,7 @@ public with sharing virtual class Dml {
 		}
 	}
 
+	@TestVisible
 	private class EmptySaveCallback extends DataSource.AsyncSaveCallback {
 		/**
 		 * If a callback isn't defined, doInsertAsync() & doUpdateAsync will use this class to gracefully handle callbacks

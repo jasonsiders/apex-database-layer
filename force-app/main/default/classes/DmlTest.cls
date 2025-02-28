@@ -640,6 +640,19 @@ private class DmlTest {
 		Assert.areEqual(true, result?.isSuccess(), 'Did not succeed: ' + result?.getErrors());
 	}
 
+	@IsTest
+	static void shouldProcessEmptyDeleteCallback() {
+		// Purely for code coverage -- run the default Async DML Callbacks
+		try {
+			Test.startTest();
+			new Dml.EmptyDeleteCallback()?.processDelete(null);
+			new Dml.EmptySaveCallback()?.processSave(null);
+			Test.stopTest();
+		} catch (Exception error) {
+			Assert.fail('Failed to run Empty Callbacks');
+		}
+	}
+
 	// **** HELPER **** //
 	static List<Database.DeleteResult> deleteCallbacksMade = new List<Database.DeleteResult>();
 	static List<Database.SaveResult> saveCallbacksMade = new List<Database.SaveResult>();
