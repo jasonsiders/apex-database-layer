@@ -77,7 +77,11 @@ public class DatabaseLayer {
 		DatabaseLayer.useRealSoql();
 	}
 
+	// **** INNER **** //
 	public class SoqlProvider {
+		/**
+		 * This class is responsible for provisioning a Soql instance of the correct type
+		 **/
 		private Boolean useMocks;
 
 		private SoqlProvider(DatabaseLayer factory) {
