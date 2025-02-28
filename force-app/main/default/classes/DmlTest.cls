@@ -328,12 +328,86 @@ private class DmlTest {
 	}
 
 	@IsTest
+	static void shouldDoUpsertWithAccessLevel() {
+		Account account = DmlTest.initAccount();
+
+		Test.startTest();
+		Database.UpsertResult result = DatabaseLayer.Dml.doUpsert(account, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoUpsertWithAllOrNone() {
+		Account account = DmlTest.initAccount();
+
+		Test.startTest();
+		Database.UpsertResult result = DatabaseLayer.Dml.doUpsert(account, true);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
 	static void shouldDoUpsertWithExternalIdField() {
 		Account acc = DmlTest.initAccount();
 		SObjectField field = Account.Id;
 
 		Test.startTest();
 		Database.UpsertResult result = DatabaseLayer.Dml?.doUpsert(acc, field);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoUpsertWithAllOrNoneAndAccessLevel() {
+		Account account = DmlTest.initAccount();
+
+		Test.startTest();
+		Database.UpsertResult result = DatabaseLayer.Dml.doUpsert(account, true, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoUpsertWithExternalIdFieldAndAccessLevel() {
+		Account acc = DmlTest.initAccount();
+		SObjectField externalIdField = Account.Id;
+
+		Test.startTest();
+		Database.UpsertResult result = DatabaseLayer.Dml.doUpsert(acc, externalIdField, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoUpsertWithExternalIdFieldAndAllOrNone() {
+		Account acc = DmlTest.initAccount();
+		SObjectField externalIdField = Account.Id;
+
+		Test.startTest();
+		Database.UpsertResult result = DatabaseLayer.Dml.doUpsert(acc, externalIdField, true);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoUpsertWithExternalIdFieldAndAllOrNoneAndAccessLevel() {
+		Account acc = DmlTest.initAccount();
+		SObjectField externalIdField = Account.Id;
+
+		Test.startTest();
+		Database.UpsertResult result = DatabaseLayer.Dml.doUpsert(
+			acc,
+			externalIdField,
+			true,
+			System.AccessLevel.SYSTEM_MODE
+		);
 		Test.stopTest();
 
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());

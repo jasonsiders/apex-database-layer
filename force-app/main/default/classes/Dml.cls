@@ -610,7 +610,7 @@ public with sharing virtual class Dml {
 	}
 
 	public Database.UpsertResult doUpsert(SObject record, SObjectField externalIdField, Boolean allOrNone) {
-		return this.doUpsert(record, externalIdField, allOrNone, DEFAULT_ACCESS_LEVEL);
+		return this.doUpsert(new List<SObject>{ record }, externalIdField, allOrNone)?.get(0);
 	}
 
 	public Database.UpsertResult doUpsert(
@@ -618,27 +618,27 @@ public with sharing virtual class Dml {
 		SObjectField externalIdField,
 		System.AccessLevel accessLevel
 	) {
-		return this.doUpsert(record, externalIdField, true, accessLevel);
+		return this.doUpsert(new List<SObject>{ record }, externalIdField, accessLevel)?.get(0);
 	}
 
 	public Database.UpsertResult doUpsert(SObject record, Boolean allOrNone, System.AccessLevel accessLevel) {
-		return this.doUpsert(record, null, allOrNone, accessLevel);
+		return this.doUpsert(new List<SObject>{ record }, allOrNone, accessLevel)?.get(0);
 	}
 
 	public Database.UpsertResult doUpsert(SObject record, SObjectField externalIdField) {
-		return this.doUpsert(record, externalIdField, DEFAULT_ACCESS_LEVEL);
+		return this.doUpsert(new List<SObject>{ record }, externalIdField)?.get(0);
 	}
 
 	public Database.UpsertResult doUpsert(SObject record, Boolean allOrNone) {
-		return this.doUpsert(record, allOrNone, DEFAULT_ACCESS_LEVEL);
+		return this.doUpsert(new List<SObject>{ record }, allOrNone)?.get(0);
 	}
 
 	public Database.UpsertResult doUpsert(SObject record, System.AccessLevel accessLevel) {
-		return this.doUpsert(record, true, accessLevel);
+		return this.doUpsert(new List<SObject>{ record }, accessLevel)?.get(0);
 	}
 
 	public Database.UpsertResult doUpsert(SObject record) {
-		return this.doUpsert(record, DEFAULT_ACCESS_LEVEL);
+		return this.doUpsert(new List<SObject>{ record })?.get(0);
 	}
 
 	// ** EmptyRecycleBin Methods
