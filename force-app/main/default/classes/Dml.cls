@@ -1,5 +1,5 @@
 @SuppressWarnings(
-	'PMD.CognitiveComplexity, PMD.EmptyStatementBlock, PMD.ExcessiveParameterList, PMD.ExcessivePublicCount'
+	'PMD.ApexDoc, PMD.CognitiveComplexity, PMD.CyclomaticComplexity, PMD.EmptyStatementBlock, PMD.ExcessiveParameterList, PMD.ExcessivePublicCount'
 )
 public with sharing virtual class Dml {
 	/**

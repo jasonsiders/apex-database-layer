@@ -152,7 +152,7 @@ Test.stopTest();
 
 // Expecting 1 task x each inserted Contact
 Assert.areEqual(1, tasks?.size(), 'Wrong # of tasks');
-Task firstTask = tasks[0];
+Task firstTask = tasks?.get(0);
 Assert.areEqual(mockAccount?.Id, firstTask?.WhatId, 'Wrong WhatId');
 Assert.areEqual(mockContact?.Id, firstTask?.WhoId, 'Wrong WhoId');
 ```
@@ -256,7 +256,7 @@ MockSoql.AggregateResult agg = new MockSoql.AggregateResult()
 soql?.setMock(new List<MockSoql.AggregateResult>{ agg });
 List<Soql.AggregateResult> results = soql?.aggregateQuery();
 Assert.areEqual(1, results?.size(), 'Wrong # of results');
-Assert.areEqual(100, results[0]?.get(alias), 'Wrong count');
+Assert.areEqual(100, results?.get(0)?.get(alias), 'Wrong count');
 ```
 
 #### `addParameter`

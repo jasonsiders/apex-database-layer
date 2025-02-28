@@ -1,4 +1,4 @@
-@SuppressWarnings('PMD.CognitiveComplexity, PMD.ExcessivePublicCount')
+@SuppressWarnings('PMD.ApexDoc, PMD.CognitiveComplexity, PMD.CyclomaticComplexity, PMD.ExcessivePublicCount')
 public inherited sharing virtual class Soql extends Soql.Builder {
 	/**
 	 * This class is responsible for performing query operations with the Salesforce database.
@@ -107,7 +107,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		List<SObject> results = this.query();
 		// Now revert to the original row limit
 		this.setRowLimit(originalLimit);
-		return results?.isEmpty() == false ? results[0] : null;
+		return results?.isEmpty() == false ? results?.get(0) : null;
 	}
 
 	protected void handleQueryError(Exception error) {
@@ -318,9 +318,14 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		// * SELECT *
+		@SuppressWarnings('PMD.EagerlyLoadedDescribeSObjectResult')
 		public Soql.Builder selectAll() {
-			List<DescribeSObjectResult> describes = Schema.describeSObjects(new List<String>{ this.entity });
-			DescribeSObjectResult describe = describes?.isEmpty() == false ? describes[0] : null;
+			// Note: Not sure why this PMD rule is flagging; the describe is explicitly deferred
+			List<Schema.DescribeSObjectResult> describes = Schema.describeSObjects(
+				new List<String>{ this.entity },
+				Schema.SObjectDescribeOptions.DEFERRED
+			);
+			Schema.DescribeSObjectResult describe = describes?.isEmpty() == false ? describes?.get(0) : null;
 			List<SObjectField> allFields = describe?.fields?.getMap()?.values() ?? new List<SObjectField>();
 			for (SObjectField field : allFields) {
 				this.addSelect(field);

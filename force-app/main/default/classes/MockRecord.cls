@@ -1,3 +1,4 @@
+@SuppressWarnings('PMD.ApexDoc')
 @IsTest
 public class MockRecord {
 	/**
@@ -10,19 +11,9 @@ public class MockRecord {
 	 * - Generating mock Ids, to simulate inserted records
 	 * Once your MockRecord is ready to build, call `toSObject()` and cast the output to an SObject variable.
 	 **/
-	// **** STATIC **** //
 	private static final String ID_TOKEN = 'Id';
 	private static Integer numMockIds = 0;
 
-	public static Id initRecordId(SObjectType objectType) {
-		// Generate a unique record Id for the given SObjectType, for mock database operations
-		String prefix = objectType?.getDescribe()?.getKeyPrefix();
-		String suffix = String.valueOf(MockRecord.numMockIds++);
-		String mid = 0?.toString()?.repeat(15 - suffix?.length());
-		return prefix + mid + suffix;
-	}
-
-	// **** MEMBER **** //
 	private SObjectType objectType;
 	private Map<String, Object> recordValues;
 
@@ -37,6 +28,16 @@ public class MockRecord {
 		this(objectType?.newSObject());
 	}
 
+	// **** STATIC **** //
+	public static Id initRecordId(SObjectType objectType) {
+		// Generate a unique record Id for the given SObjectType, for mock database operations
+		String prefix = objectType?.getDescribe(Schema.SObjectDescribeOptions.DEFERRED)?.getKeyPrefix();
+		String suffix = String.valueOf(MockRecord.numMockIds++);
+		String mid = 0?.toString()?.repeat(15 - suffix?.length());
+		return prefix + mid + suffix;
+	}
+
+	// **** MEMBER **** //
 	public MockRecord setField(Map<String, Object> incomingValues) {
 		// Sets the provided field(s) to their specified values(s)
 		// If a field value is already set, it will be overwritten.

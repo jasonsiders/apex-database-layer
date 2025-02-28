@@ -1,3 +1,4 @@
+@SuppressWarnings('PMD.ApexDoc')
 public class DatabaseLayer {
 	/**
 	 * Handles interactions with the Salesforce Database, via DML and SOQL.

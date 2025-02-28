@@ -1,5 +1,5 @@
+@SuppressWarnings('PMD.ApexDoc, PMD.CyclomaticComplexity, PMD.EmptyCatchBlock')
 @IsTest
-@SuppressWarnings('PMD.EmptyCatchBlock')
 private class MockDmlTest {
 	// **** CONSTANTS **** //
 	private static final Integer TEST_SIZE = 20;
@@ -794,19 +794,7 @@ private class MockDmlTest {
 			Boolean shouldFail =
 				operation == this.failingOperation &&
 				record?.getSObjectType() == this.failingSObjectType;
-			System.debug(
-				'Check Failure: ' +
-					operation +
-					' == ' +
-					this.failingOperation +
-					'?\n' +
-					record?.getSObjectType() +
-					' == ' +
-					this.failingSObjectType +
-					'?\n' +
-					shouldFail
-			);
-			return shouldFail ? new System.DmlException() : null;
+			return (shouldFail) ? new System.DmlException() : null;
 		}
 	}
 }

@@ -1,5 +1,5 @@
+@SuppressWarnings('PMD.ApexDoc, PMD.ApexUnitTestClassShouldHaveAsserts, PMD.CyclomaticComplexity')
 @IsTest
-@SuppressWarnings('PMD.ApexUnitTestClassShouldHaveAsserts')
 private class SoqlTest {
 	@IsTest
 	static void shouldAggregateQuery() {

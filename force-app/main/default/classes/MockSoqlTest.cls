@@ -1,5 +1,5 @@
+@SuppressWarnings('PMD.ApexDoc, PMD.EmptyCatchBlock')
 @IsTest
-@SuppressWarnings('PMD.EmptyCatchBlock')
 private class MockSoqlTest {
 	// **** CONSTANTS **** //
 	private static final Integer NUM_ACCS = 10;
@@ -151,8 +151,8 @@ private class MockSoqlTest {
 		Integer numResults = results?.size();
 		Assert.areEqual(mockResults?.size(), numResults, 'Wrong # of AggregateResults');
 		for (Integer i = 0; i < numResults; i++) {
-			Soql.AggregateResult expectedResult = mockResults[i];
-			Soql.AggregateResult actualResult = results[i];
+			Soql.AggregateResult expectedResult = mockResults?.get(i);
+			Soql.AggregateResult actualResult = results?.get(i);
 			// Note: AggregateResults assigns unaliased fields with an expr_N_ key, where _N_ is the column index
 			for (String key : new Set<String>{ 'expr0', 'expr1' }) {
 				Assert.areEqual(expectedResult?.get(key), actualResult?.get(key), key + ': Wrong value');
@@ -206,8 +206,8 @@ private class MockSoqlTest {
 		Integer numResults = results?.size();
 		Assert.areEqual(mockResults?.size(), numResults, 'Wrong # of results returned');
 		for (Integer i = 0; i < numResults; i++) {
-			SampleWrapper expectedResult = mockResults[i];
-			SampleWrapper actualResult = results[i];
+			SampleWrapper expectedResult = mockResults?.get(i);
+			SampleWrapper actualResult = results?.get(i);
 			Assert.areEqual(expectedResult?.profileName, actualResult?.profileName, 'Wrong profileName');
 			Assert.areEqual(expectedResult?.numRecords, actualResult?.numRecords, 'Wrong numRecords');
 		}
@@ -259,7 +259,7 @@ private class MockSoqlTest {
 
 		// Expecting 1 task x each inserted Contact
 		Assert.areEqual(1, tasks?.size(), 'Wrong # of tasks');
-		Task firstTask = tasks[0];
+		Task firstTask = tasks?.get(0);
 		Assert.areEqual(mockAccount?.Id, firstTask?.WhatId, 'Wrong WhatId');
 		Assert.areEqual(mockContact?.Id, firstTask?.WhoId, 'Wrong WhoId');
 	}

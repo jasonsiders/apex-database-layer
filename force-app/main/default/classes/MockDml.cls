@@ -1,5 +1,7 @@
+@SuppressWarnings(
+	'PMD.ApexDoc, PMD.CognitiveComplexity, PMD.CyclomaticComplexity, PMD.ExcessiveParameterList, PMD.FieldNamingConventions'
+)
 @IsTest
-@SuppressWarnings('PMD.CognitiveComplexity, PMD.ExcessiveParameterList, PMD.FieldNamingConventions')
 public class MockDml extends Dml {
 	/**
 	 * This class mocks CRUD operations, with minimal setup required from end users.
@@ -7,7 +9,7 @@ public class MockDml extends Dml {
 	 * conditions in which operations should fail, via the `fail()` method,
 	 * or the `failIf()` method and the `ConditionalLogic` interface.
 	 **/
-	// **** STATIC **** //
+	// **** CONSTANTS **** //
 	public static final MockDml.RecordHistory CONVERTED = new MockDml.RecordHistory(MockDml.Operation.DO_CONVERT);
 	public static final MockDml.RecordHistory DELETED = new MockDml.RecordHistory(MockDml.Operation.DO_DELETE);
 	public static final MockDml.RecordHistory INSERTED = new MockDml.RecordHistory(MockDml.Operation.DO_INSERT);
@@ -19,6 +21,14 @@ public class MockDml extends Dml {
 	private static final String EVENT_UUID_FIELD = 'EventUuid';
 	private static final String MOCK_STATUS_CODE = 'MOCK_DML';
 
+	// **** MEMBER **** //
+	private List<MockDml.ConditionalFailure> failures = new List<MockDml.ConditionalFailure>();
+
+	public MockDml(DatabaseLayer factory) {
+		super(factory);
+	}
+
+	// **** STATIC **** //
 	public static void eraseAllHistories() {
 		// Reset all of the history objects to their original state
 		// Useful for isolating the actual changes being tested, ie., after test setup
@@ -38,12 +48,6 @@ public class MockDml extends Dml {
 	}
 
 	// **** MEMBER **** //
-	private List<MockDml.ConditionalFailure> failures = new List<MockDml.ConditionalFailure>();
-
-	public MockDml(DatabaseLayer factory) {
-		super(factory);
-	}
-
 	public MockDml clearFailures() {
 		// Clears the list of failures from the current instance.
 		// As a result, all mock DML operations should now succeed.
