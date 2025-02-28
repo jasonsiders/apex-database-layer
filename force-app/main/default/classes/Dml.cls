@@ -404,15 +404,15 @@ public with sharing virtual class Dml {
 	}
 
 	public Database.UndeleteResult doUndelete(Id recordId, Boolean allOrNone) {
-		return this.doUndelete(recordId, allOrNone, DEFAULT_ACCESS_LEVEL);
+		return this.doUndelete(new List<Id>{ recordId }, allOrNone)?.get(0);
 	}
 
 	public Database.UndeleteResult doUndelete(Id recordId, System.AccessLevel accessLevel) {
-		return this.doUndelete(recordId, true, accessLevel);
+		return this.doUndelete(new List<Id>{ recordId }, accessLevel)?.get(0);
 	}
 
 	public Database.UndeleteResult doUndelete(Id recordId) {
-		return this.doUndelete(recordId, DEFAULT_ACCESS_LEVEL);
+		return this.doUndelete(new List<Id>{ recordId })?.get(0);
 	}
 
 	public Database.UndeleteResult doUndelete(SObject record, Boolean allOrNone, System.AccessLevel accessLevel) {
@@ -420,15 +420,15 @@ public with sharing virtual class Dml {
 	}
 
 	public Database.UndeleteResult doUndelete(SObject record, Boolean allOrNone) {
-		return this.doUndelete(record, allOrNone, DEFAULT_ACCESS_LEVEL);
+		return this.doUndelete(new List<SObject>{ record }, allOrNone)?.get(0);
 	}
 
 	public Database.UndeleteResult doUndelete(SObject record, System.AccessLevel accessLevel) {
-		return this.doUndelete(record, true, accessLevel);
+		return this.doUndelete(new List<SObject>{ record }, accessLevel)?.get(0);
 	}
 
 	public Database.UndeleteResult doUndelete(SObject record) {
-		return this.doUndelete(record, DEFAULT_ACCESS_LEVEL);
+		return this.doUndelete(new List<SObject>{ record })?.get(0);
 	}
 
 	// ** Update Methods

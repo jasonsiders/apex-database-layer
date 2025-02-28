@@ -439,6 +439,101 @@ private class DmlTest {
 	}
 
 	@IsTest
+	static void shouldDoUndeleteWithAccessLevel() {
+		Account account = DmlTest.initAccount();
+		insert account;
+		delete account;
+
+		Test.startTest();
+		Database.UndeleteResult result = DatabaseLayer.Dml.doUndelete(account, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoUndeleteWithAllOrNone() {
+		Account account = DmlTest.initAccount();
+		insert account;
+		delete account;
+
+		Test.startTest();
+		Database.UndeleteResult result = DatabaseLayer.Dml.doUndelete(account, true);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoUndeleteWithAllOrNoneAndAccessLevel() {
+		Account account = DmlTest.initAccount();
+		insert account;
+		delete account;
+
+		Test.startTest();
+		Database.UndeleteResult result = DatabaseLayer.Dml.doUndelete(account, true, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoUndeleteWithId() {
+		Account account = DmlTest.initAccount();
+		insert account;
+		delete account;
+
+		Test.startTest();
+		Database.UndeleteResult result = DatabaseLayer.Dml.doUndelete(account?.Id);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoUndeleteWithIdAndAccessLevel() {
+		Account account = DmlTest.initAccount();
+		insert account;
+		delete account;
+
+		Test.startTest();
+		Database.UndeleteResult result = DatabaseLayer.Dml.doUndelete(account?.Id, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoUndeleteWithIdAndAllOrNone() {
+		Account account = DmlTest.initAccount();
+		insert account;
+		delete account;
+
+		Test.startTest();
+		Database.UndeleteResult result = DatabaseLayer.Dml.doUndelete(account?.Id, true);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldDoUndeleteWithIdAndAllOrNoneAndAccessLevel() {
+		Account account = DmlTest.initAccount();
+		insert account;
+		delete account;
+
+		Test.startTest();
+		Database.UndeleteResult result = DatabaseLayer.Dml.doUndelete(
+			account?.Id,
+			true,
+			System.AccessLevel.SYSTEM_MODE
+		);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
 	static void shouldDoPublish() {
 		BatchApexErrorEvent event = new BatchApexErrorEvent();
 
