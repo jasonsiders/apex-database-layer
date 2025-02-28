@@ -656,7 +656,7 @@ public with sharing virtual class Dml {
 	}
 
 	public Database.EmptyRecycleBinResult emptyRecycleBin(SObject record) {
-		return this.emptyRecycleBin(record?.Id);
+		return this.emptyRecycleBin(new List<SObject>{ record })?.get(0);
 	}
 
 	// **** PRIVATE **** //

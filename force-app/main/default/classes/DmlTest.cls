@@ -400,13 +400,26 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoHardDelete() {
+	static void shouldEmptyRecycleBin() {
 		Account account = DmlTest.initAccount();
 		insert account;
 		delete account;
 
 		Test.startTest();
 		Database.EmptyRecycleBinResult result = DatabaseLayer.Dml.emptyRecycleBin(account);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	static void shouldEmptyRecycleBinWithId() {
+		Account account = DmlTest.initAccount();
+		insert account;
+		delete account;
+
+		Test.startTest();
+		Database.EmptyRecycleBinResult result = DatabaseLayer.Dml.emptyRecycleBin(account?.Id);
 		Test.stopTest();
 
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
