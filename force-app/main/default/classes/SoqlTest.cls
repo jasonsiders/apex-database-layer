@@ -1030,6 +1030,18 @@ private class SoqlTest {
 		Assert.areEqual('CreatedDate DESC NULLS FIRST', value, 'Wrong value');
 	}
 
+	@IsTest
+	static void shouldSetQueryIdentifier() {
+		String identifier = 'My account query';
+		Soql theQuery = (Soql) DatabaseLayer.Soql.newQuery(Account.SObjectType);
+
+		Test.startTest();
+		theQuery?.setQueryIdentifier(identifier);
+		Test.stopTest();
+
+		Assert.areEqual(identifier, theQuery?.queryIdentifier, 'Wrong query identifier');
+	}
+
 	// **** HELPER **** //
 	static Object validateQuery(Soql soql, String expected) {
 		Assert.areEqual('"' + expected + '"', '"' + soql?.toString() + '"', 'Unexpected SOQL output');
