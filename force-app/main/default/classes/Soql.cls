@@ -30,7 +30,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 	private static final String ID_REFERENCE = 'Id';
 
 	// Member Properties:
-	public String queryIdentifier { get; private set; }
+	public String identifier { get; private set; }
 
 	public Soql(DatabaseLayer factory) {
 		this();
@@ -115,7 +115,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
 	public Soql setQueryIdentifier(String identifier) {
 		// Use this method to give a name/identifier value that can be referenced in mocks
-		this.queryIdentifier = identifier;
+		this.identifier = identifier;
 		return this;
 	}
 

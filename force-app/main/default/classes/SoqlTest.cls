@@ -1039,7 +1039,7 @@ private class SoqlTest {
 		theQuery?.setQueryIdentifier(identifier);
 		Test.stopTest();
 
-		Assert.areEqual(identifier, theQuery?.queryIdentifier, 'Wrong query identifier');
+		Assert.areEqual(identifier, theQuery?.identifier, 'Wrong query identifier');
 	}
 
 	// **** HELPER **** //
