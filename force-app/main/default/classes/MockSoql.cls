@@ -6,6 +6,8 @@ public class MockSoql extends Soql {
 	 * Users can use the `setMock()` method to inject an object which will simulate the query & return results
 	 **/
 	private static final String AGGREGATE_KEY_PREFIX = 'expr';
+	private static MockSoql.Simulator globalMock;
+
 	private MockSoql.Simulator simulator;
 
 	public MockSoql(DatabaseLayer factory) {
@@ -53,11 +55,23 @@ public class MockSoql extends Soql {
 		return this.simulate() ?? returnType?.newInstance();
 	}
 
+	// **** STATIC **** //
+	public static MockSoql.Simulator setGlobalMock(MockSoql.Simulator simulator) {
+		MockSoql.globalMock = simulator;
+		return simulator;
+	}
+
 	// **** PRIVATE **** //
+	private MockSoql.Simulator getSimulator() {
+		// If the current query has a specific simulator assigned to it, return that simulator
+		// Else return the globally assigned simulator
+		return this.simulator ?? MockSoql.globalMock;
+	}
+
 	private Object simulate() {
 		// Run the Simulator logic, and handle errors just like the super() class does
 		try {
-			return this.simulator?.simulateQuery();
+			return this.getSimulator()?.simulateQuery(this);
 		} catch (Exception error) {
 			this.handleQueryError(error);
 			throw error;
@@ -162,22 +176,22 @@ public class MockSoql extends Soql {
 		 * 	- Return a List<MockSoql.AggregateResult>
 		 *  - Throw an exception
 		 **/
-		List<Object> simulateQuery();
+		List<Object> simulateQuery(Soql queryToMock);
 	}
 
-	private class StaticResults implements MockSoql.Simulator {
+	public class StaticResults implements MockSoql.Simulator {
 		private Exception error;
 		private List<Object> results;
 
-		private StaticResults(Exception error) {
+		public StaticResults(Exception error) {
 			this.error = error;
 		}
 
-		private StaticResults(List<Object> results) {
+		public StaticResults(List<Object> results) {
 			this.results = results;
 		}
 
-		public List<Object> simulateQuery() {
+		public List<Object> simulateQuery(Soql queryToMock) {
 			if (this.error != null) {
 				throw this.error;
 			}
