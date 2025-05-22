@@ -12,7 +12,7 @@ private class MockSoqlTest {
 		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()?.newQuery(Account.SObjectType)?.addSelect(count);
 		// Inject the query w/mock results
 		List<Account> accounts = MockSoqlTest.initAccounts(NUM_ACCS);
-		soql?.setMock(accounts);
+		soql?.setMock()?.withResults(accounts);
 
 		Test.startTest();
 		Integer results = soql?.countQuery();
@@ -27,7 +27,7 @@ private class MockSoqlTest {
 		// Build a query
 		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()?.newQuery(Account.SObjectType)?.addSelect(Account.Name);
 		// Inject the query w/a mock error
-		soql?.setError();
+		soql?.setMock()?.withError();
 
 		Test.startTest();
 		try {
@@ -46,7 +46,7 @@ private class MockSoqlTest {
 		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()?.newQuery(Account.SObjectType)?.addSelect(Account.Name);
 		// Inject the query w/mock results
 		List<Account> accounts = MockSoqlTest.initAccounts(NUM_ACCS);
-		soql?.setMock(accounts);
+		soql?.setMock()?.withResults(accounts);
 
 		Test.startTest();
 		Soql.QueryLocator locator = soql?.getQueryLocator();
@@ -77,7 +77,7 @@ private class MockSoqlTest {
 		// Build a query
 		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()?.newQuery(Account.SObjectType)?.addSelect(Account.Name);
 		// Inject the query w/a mock error
-		soql?.setError();
+		soql?.setMock()?.withError();
 
 		Test.startTest();
 		try {
@@ -96,7 +96,7 @@ private class MockSoqlTest {
 		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()?.newQuery(Account.SObjectType)?.addSelect(Account.Name);
 		// Inject the query w/mock results
 		List<Account> accounts = MockSoqlTest.initAccounts(NUM_ACCS);
-		soql?.setMock(accounts);
+		soql?.setMock()?.withResults(accounts);
 
 		Test.startTest();
 		List<Account> results = soql?.query();
@@ -111,7 +111,7 @@ private class MockSoqlTest {
 		// Build a query
 		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()?.newQuery(Account.SObjectType)?.addSelect(Account.Name);
 		// Inject the query w/a mock error
-		soql?.setError();
+		soql?.setMock()?.withError();
 
 		Test.startTest();
 		try {
@@ -141,7 +141,7 @@ private class MockSoqlTest {
 			?.addParameter('Bar Profile')
 			?.addParameter(45);
 		List<Soql.AggregateResult> mockResults = new List<Soql.AggregateResult>{ mockResult1, mockResult2 };
-		soql?.setMock(mockResults);
+		soql?.setMock()?.withResults(mockResults);
 
 		Test.startTest();
 		List<Soql.AggregateResult> results = soql?.aggregateQuery();
@@ -170,7 +170,7 @@ private class MockSoqlTest {
 			?.addSelect(count)
 			?.groupBy('Profile.Name');
 		// Inject an error
-		soql?.setError();
+		soql?.setMock()?.withError();
 
 		Test.startTest();
 		try {
@@ -196,7 +196,7 @@ private class MockSoqlTest {
 		SampleWrapper mockResult1 = new SampleWrapper()?.wrap('Foo Profile', 123);
 		SampleWrapper mockResult2 = new SampleWrapper()?.wrap('Bar Profile', 45);
 		List<SampleWrapper> mockResults = new List<SampleWrapper>{ mockResult1, mockResult2 };
-		soql?.setMock(mockResults);
+		soql?.setMock()?.withResults(mockResults);
 
 		Test.startTest();
 		List<SampleWrapper> results = (List<SampleWrapper>) soql?.query(List<SampleWrapper>.class);
@@ -223,7 +223,7 @@ private class MockSoqlTest {
 			?.addSelect(count)
 			?.groupBy('Profile.Name');
 		// Inject an error
-		soql?.setError(new System.TypeException());
+		soql?.setMock()?.withError(new System.TypeException());
 
 		Test.startTest();
 		try {
@@ -244,7 +244,7 @@ private class MockSoqlTest {
 			?.addSelect(Task.WhatId)
 			?.addSelect(Task.WhoId);
 		// Mock with a custom class that leverages MockDml.INSERTED to generate results
-		soql?.setMock(new CustomTaskQueryLogic());
+		soql?.setMock(new MockSoqlTest.CustomTaskQueryLogic());
 		// Mock insert an account + related contact
 		Account mockAccount = (Account) new MockRecord(Account.SObjectType)?.toSObject();
 		DatabaseLayer.Dml.doInsert(mockAccount);
@@ -270,8 +270,7 @@ private class MockSoqlTest {
 		MockSoql theQuery = (MockSoql) DatabaseLayer.Soql.newQuery(Account.SObjectType);
 		// Set a global mock - all SOQL objects will return these results by default now:
 		Account mockAccount = (Account) new MockRecord(Account.SObjectType)?.withId()?.toSObject();
-		MockSoql.Simulator simulator = new MockSoql.StaticResults(new List<Account>{ mockAccount });
-		MockSoql.setGlobalMock(simulator);
+		MockSoql.setGlobalMock()?.withResults(new List<Account>{ mockAccount });
 
 		Test.startTest();
 		List<Account> accounts = theQuery?.query();
@@ -287,11 +286,10 @@ private class MockSoqlTest {
 		MockSoql theQuery = (MockSoql) DatabaseLayer.Soql.newQuery(Account.SObjectType);
 		// Set a global mock - all SOQL objects will return these results by default now:
 		Account mockAccount1 = (Account) new MockRecord(Account.SObjectType)?.withId()?.toSObject();
-		MockSoql.Simulator simulator = new MockSoql.StaticResults(new List<Account>{ mockAccount1 });
-		MockSoql.setGlobalMock(simulator);
+		MockSoql.setGlobalMock()?.withResults(new List<Account>{ mockAccount1 });
 		// Assign a different, specific mock to the query:
 		Account mockAccount2 = (Account) new MockRecord(Account.SObjectType)?.withId()?.toSObject();
-		theQuery?.setMock(new MockSoql.StaticResults(new List<Account>{ mockAccount2 }));
+		theQuery?.setMock()?.withResults(new List<Account>{ mockAccount2 });
 
 		Test.startTest();
 		List<Account> accounts = theQuery?.query();

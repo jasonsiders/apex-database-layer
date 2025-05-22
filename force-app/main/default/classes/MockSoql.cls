@@ -3,7 +3,7 @@
 public class MockSoql extends Soql {
 	/**
 	 * This class mocks SOQL queries. By default, each query will return empty results.
-	 * Users can use the `setGlobalMock()` static method, and `setMock()` member method(s)
+	 * Users can use the `setGlobalMock()` static method(s), and `setMock()` member method(s)
 	 * to inject a `MockSoql.Simulator` object which will simulate the query & return results
 	 **/
 	private static final String AGGREGATE_KEY_PREFIX = 'expr';
@@ -16,39 +16,31 @@ public class MockSoql extends Soql {
 
 	// **** STATIC **** //
 	public static MockSoql.Simulator setGlobalMock(MockSoql.Simulator simulator) {
-		// This method assigns a simulator object, which will be run for all queries by default,
+		// This method assigns the given simulator object to be run for all queries by default,
 		// unless a Soql object has a specific Simulator assigned to it
 		// Similar to using Test.setMock w/the System.HttpCalloutMock interface
 		MockSoql.globalMock = simulator;
 		return simulator;
 	}
 
+	public static MockSoql.StaticResults setGlobalMock() {
+		// This overload instantiates a new StaticResults object, and returns it as a concrete instance
+		// to allow for a more fluent interface + method chaining w/global mocks
+		return (MockSoql.StaticResults) MockSoql.setGlobalMock(new MockSoql.StaticResults());
+	}
+
 	// **** MEMBER **** //
-	public Soql setError(Exception error) {
-		// Call this method to inject the given Exception object
-		// to be thrown whenever the current query runs, instead of the global mock
-		MockSoql.Simulator simulator = new MockSoql.StaticResults(error);
-		return this.setMock(simulator);
-	}
-
-	public Soql setError() {
-		// Call this method to inject a generic System.QueryException
-		// to be thrown whenever the current query runs, instead of the global mock
-		return this.setError(new System.QueryException());
-	}
-
-	public Soql setMock(MockSoql.Simulator simulator) {
-		// Call this method to inject an Simulator object
+	public MockSoql.Simulator setMock(MockSoql.Simulator simulator) {
+		// Call this method to inject the given Simulator object
 		// to be run whenever the current query runs, instead of the global mock
 		this.currentMock = simulator;
-		return this;
+		return this.currentMock;
 	}
 
-	public Soql setMock(List<Object> results) {
-		// Call this method to inject static List<Object>
-		// to be returned whenever the current query runs, instead of the global mock
-		MockSoql.Simulator simulator = new MockSoql.StaticResults(results);
-		return this.setMock(simulator);
+	public MockSoql.StaticResults setMock() {
+		// Call this method to inject an return a concrete instance of a new StaticResults object
+		// to be run whenever the current query runs, instead of the global mock
+		return (MockSoql.StaticResults) this.setMock(new MockSoql.StaticResults());
 	}
 
 	// **** OVERRIDES **** //
@@ -194,12 +186,25 @@ public class MockSoql extends Soql {
 		private Exception error;
 		private List<Object> results;
 
-		public StaticResults(Exception error) {
-			this.error = error;
+		private StaticResults() {
+			// Callers have no need to ever reference the StaticResults object directly
+			// instead, use the StaticResults objects returned by the 0-arg setGlobalMock/setMock methods
 		}
 
-		public StaticResults(List<Object> results) {
+		public MockSoql.StaticResults withError(Exception error) {
+			// This method injects the given error to be thrown whenever the simulator is run
+			this.error = error;
+			return this;
+		}
+
+		public MockSoql.StaticResults withError() {
+			// This method injects a generic System.QueryException to be thrown whenever the simulator is run
+			return this.withError(new System.QueryException());
+		}
+
+		public MockSoql.StaticResults withResults(List<Object> results) {
 			this.results = results;
+			return this;
 		}
 
 		public List<Object> simulateQuery(Soql queryToMock) {
