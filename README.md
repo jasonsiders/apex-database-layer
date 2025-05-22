@@ -142,7 +142,7 @@ Mocking queries by passing the records to be returned (as shown above) should wo
 ```java
 public class MySimulator implements MockSoql.Simulator {
   // This implementation generates a List<Opportunity> with random values
-  public Object simulateQuery() {
+  public Object simulateQuery(Soql queryToMock) {
     Integer numOpps = Integer.valueOf(Math.random() * 200);
     List<Opportunity> opps = new List<Opportunity>();
     for (Integer i = 0; i < numOpps; i++) {

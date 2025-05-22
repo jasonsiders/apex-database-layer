@@ -110,7 +110,7 @@ The `MockSoql.Simulator` interface has one required method, which returns a `Lis
 
 ```java
 private class CustomTaskQueryLogic implements MockSoql.Simulator {
-  public List<Object> simulateQuery() {
+  public List<Object> simulateQuery(Soql queryToMock) {
     // For each inserted contact, return a Task
     List<Task> results = new List<Task>();
     List<Contact> contacts = (List<Contact>) MockDml.INSERTED.getRecords(
