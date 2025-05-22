@@ -60,6 +60,78 @@ List<Account> results = soql?.query();
 Assert.areEqual(0, results?.size(), 'Wrong # of resuls');
 ```
 
+Use the [`MockSoql.Simulator`](#the-mocksoqlsimulator-interface) interface in conjunction with the [`setGlobalMock`](#the-setglobalmock-static-method) static method, or the [`setMock`](#the-setmock-method) member method to enable your mock queries to return mock results, throw exceptions, and more.
+
+! TODO !
+
+### The `setGlobalMock` Static Method
+
+### The `setMock` Method
+
+### The `MockSoql.Simulator` Interface
+
+The `MockSoql.Simulator` interface defines logic for returning query results.
+
+The interface has one required method:
+
+-   `List<Object> simulateQuery(Soql queryToMock)`
+
+Use the `Soql queryToMock` parameter to conditionally return results based on the details of the query. For example, you if the query is `FROM Task`, return a list of Tasks:
+
+```java
+private class CustomQueryLogic implements MockSoql.Simulator {
+  public List<Object> simulateQuery(Soql queryToMock) {
+    String fromSObjectName = queryToMock?.entity;
+    if (fromSObjectName == Task.SObjectType.toString()) {
+      return this.simulateTaskQuery();
+    } else if (fromSObjectName == Account.SObjectType.toString()) {
+      // You could imagine methods to simulate account queries here:
+    } else {
+      return new List<Object>();
+    }
+  }
+
+  private List<Task> simulateTaskQuery() {
+    // For each inserted contact, return a Task
+    List<Task> results = new List<Task>();
+    List<Contact> contacts = (List<Contact>) MockDml.INSERTED.getRecords(
+      Contact.SObjectType
+    );
+    for (Contact contact : contacts) {
+      Task task = (Task) new MockRecord(Task.SObjectType)
+        ?.setField(Task.Subject, 'Introductory Call')
+        ?.setField(Task.WhatId, contact?.AccountId)
+        ?.setField(Task.WhoId, contact?.Id)
+        ?.withId()
+        ?.toSObject();
+      results?.add(task);
+    }
+    return results;
+  }
+}
+```
+
+### The `MockSoql.StaticResults` Class
+
+Not all testing scenarios require the creation of a custom `MockSoql.Simulator` object. Most simple use cases can be handled by using the included `MockSoql.StaticResults` object.
+
+This object implements `MockSoql.Simulator` interface, and includes methods which allow callers to inject a static list of results, or an exception to be thrown. Whenever the query runs, the injected results are returned.
+
+#### `withError`
+
+Injects an error to be thrown each time the query runs. Callers can provide a specific exception object, if desired. The 0-argument overload of this method will inject a generic `System.QueryException`.
+
+-   `MockSoql.StaticResults withError(System.Exception error)`
+-   `MockSoql.StaticResults withError()`
+
+#### `withResults`
+
+Injects a static list of results. This list will be returned each time the query runs.
+
+-   `MockSoql.StaticResults withResults(List<Object> results)`
+
+---
+
 Each `MockSoql` object can be injected with static query results, logic that determines the query results, or an Exception. When the query runs, those results will be returned instead of what is actually in the Salesforce database.
 
 For this reason, it's best practice to store each Soql object in a `@TestVisible` class variable, that can be easily accessed by your test code if needed.
