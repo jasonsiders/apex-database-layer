@@ -186,6 +186,7 @@ public class MockSoql extends Soql {
 		private Exception error;
 		private List<Object> results;
 
+		@SuppressWarnings('PMD.EmptyStatementBlock')
 		private StaticResults() {
 			// Callers have no need to ever reference the StaticResults object directly
 			// instead, use the StaticResults objects returned by the 0-arg setGlobalMock/setMock methods
