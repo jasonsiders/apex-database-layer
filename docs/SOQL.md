@@ -60,23 +60,61 @@ List<Account> results = soql?.query();
 Assert.areEqual(0, results?.size(), 'Wrong # of resuls');
 ```
 
-Use the [`MockSoql.Simulator`](#the-mocksoqlsimulator-interface) interface in conjunction with the [`setGlobalMock`](#the-setglobalmock-static-method) static method, or the [`setMock`](#the-setmock-method) member method to enable your mock queries to return mock results, throw exceptions, and more.
+For these queries to return actual results, developers must first inject logic via either the static [`setGlobalMock`](#the-setglobalmock-static-methods) method, or the member [`setMock`](#the-setmock-methods) method.
 
-! TODO !
+Both methods have two overloads - one which accepts and returns a [`MockSoql.Simulator`](#the-mocksoqlsimulator-interface) object, and a 0-argument overlaod which returns a [`MockSoql.StaticResults`](#the-mocksoqlstaticresults-class) object.
 
-### The `setGlobalMock` Static Method
+#### The `setGlobalMock` Static Methods
 
-### The `setMock` Method
+This method assigns "default" query logic to _all_ `Soql` objects. This allows developers to inject mocks for queries without the need to expose those queries as `@TestVisible`, class-level variables.
 
-### The `MockSoql.Simulator` Interface
+The 0-argument version of this method injects a [`MockSoql.StaticResults`](#the-mocksoqlstaticresults-class) object, and returns that same object. You can use that object's `withResults` to inject a static `List<Object>`, or its `withError` method to inject a static `Exception` to be thrown.
 
-The `MockSoql.Simulator` interface defines logic for returning query results.
+```java
+DatabaseLayer.useMocks();
+List<Account> mockAccounts = SomeTestFactory.initAccounts();
+MockSoql.setGlobalMock()?.withResults(mockAccounts);
+```
+
+For more complex query logic, use the 1-argument version of this method, which accepts a [`MockSoql.Simulator`](#the-mocksoqlsimulator-interface) object. You can create your own custom query logic by creating a class which implements this interface, and then pass it to all `Soql` objects through this method:
+
+```java
+DatabaseLayer.useMocks();
+MockSoql.Simulator simulator = new MyCustomQueryLogic();
+MockSoql.setGlobalMock(simulator);
+```
+
+#### The `setMock` Methods
+
+This method assigns query logic to a _specific_ `Soql` object, overriding any global defaults set via `MockSoql.setGlobalMock`. In a real-world scenario, queries in a production class **must** be exposed as public/`@TestVisible` variables to use this method.
+
+The 0-argument version of this method injects a [`MockSoql.StaticResults`](#the-mocksoqlstaticresults-class) object, and returns that same object. You can use that object's `withResults` to inject a static `List<Object>`, or its `withError` method to inject a static `Exception` to be thrown.
+
+```java
+DatabaseLayer.useMocks();
+List<Account> mockAccounts = SomeTestFactory.initAccounts();
+MockSoql queryToMock = (MockSoql) MyClass.SOME_QUERY;
+queryToMock?.setMock()?.withResults(mockAccounts);
+```
+
+For more complex query logic, use the 1-argument version of this method, which accepts a [`MockSoql.Simulator`](#the-mocksoqlsimulator-interface) object. You can create your own custom query logic by creating a class which implements this interface, and then pass it to a `Soql` object through this method:
+
+```java
+DatabaseLayer.useMocks();
+MockSoql.Simulator simulator = new MyCustomQueryLogic();
+MockSoql queryToMock = (MockSoql) MyClass.SOME_QUERY;
+queryToMock?.setMock(simulator);
+```
+
+#### The `MockSoql.Simulator` Interface
+
+The `MockSoql.Simulator` interface defines custom logic for returning query results. Use this interface when you need more complex logic than what the [`MockSoql.StaticResults`](#the-mocksoqlstaticresults-class) can provide.
 
 The interface has one required method:
 
 -   `List<Object> simulateQuery(Soql queryToMock)`
 
-Use the `Soql queryToMock` parameter to conditionally return results based on the details of the query. For example, you if the query is `FROM Task`, return a list of Tasks:
+Callers can conditionally return results based on the details of the provided `Soql` argument. For example, you if the query is `FROM Task`, return a list of Tasks:
 
 ```java
 private class CustomQueryLogic implements MockSoql.Simulator {
@@ -111,143 +149,41 @@ private class CustomQueryLogic implements MockSoql.Simulator {
 }
 ```
 
-### The `MockSoql.StaticResults` Class
+#### The `MockSoql.StaticResults` Class
 
 Not all testing scenarios require the creation of a custom `MockSoql.Simulator` object. Most simple use cases can be handled by using the included `MockSoql.StaticResults` object.
 
+This object cannot be directly constructed. Create an instance of this object by calling the 0-argument versions of the [`MockSoql.setGlobalMock`](#the-setglobalmock-static-methods) static method, or the [`setMock`](#the-setmock-methods) member method.
+
 This object implements `MockSoql.Simulator` interface, and includes methods which allow callers to inject a static list of results, or an exception to be thrown. Whenever the query runs, the injected results are returned.
 
-#### `withError`
+##### `withError`
 
 Injects an error to be thrown each time the query runs. Callers can provide a specific exception object, if desired. The 0-argument overload of this method will inject a generic `System.QueryException`.
 
 -   `MockSoql.StaticResults withError(System.Exception error)`
 -   `MockSoql.StaticResults withError()`
 
-#### `withResults`
+```java
+DatabaseLayer.useMocks();
+// Queries will always throw a System.QueryException:
+MockSoql.setGlobalMock()?.withError();
+// Queries will always throw some other exception type:
+System.Exception someOtherError = new System.CalloutException();
+MockSoql.setGlobalMock()?.withError(someOtherError);
+```
+
+##### `withResults`
 
 Injects a static list of results. This list will be returned each time the query runs.
 
 -   `MockSoql.StaticResults withResults(List<Object> results)`
 
----
-
-Each `MockSoql` object can be injected with static query results, logic that determines the query results, or an Exception. When the query runs, those results will be returned instead of what is actually in the Salesforce database.
-
-For this reason, it's best practice to store each Soql object in a `@TestVisible` class variable, that can be easily accessed by your test code if needed.
-
-#### Inject Static Results with the `setMock` Method
-
-The easiest way to simulate queries is to use the `setMock` method with a static `List<Object>`. The provided results will be returned each time the query runs:
-
 ```java
 DatabaseLayer.useMocks();
-Account mockAccount = new MockRecord(Account.SObjectType)?.withId()?.toSObject();
-MockSoql soql = (MockSoql) DatabaseLayer.Soql.newQuery(Account.SObjectType);
-soql.useMocks(new List<Account>{ mockAccount });
-List<Account> results = soql?.query();
-Assert.areEqual(1, results?.size(), 'Wrong # of results');
-```
-
-Most of the time, this will be a `List<SObject>`, but you can also pass a `List<MockSoql.AggregateResult>` or a custom list type for aggregate queries:
-
-```java
-public class MyCustomType {
-  public String state { get; set; }
-  public Integer numRecords { get; set; }
-}
-```
-
-```java
-DatabaseLayer.useMocks();
-MyCustomType mockResult = new MyCustomType();
-mockResult.state = 'CA';
-mockResult.numRecords = 123;
-Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, Account.Id)
-  ?.withAlias('numRecords');
-MockSoql soql = (MockSoql) DatabaseLayer.Soql.newQuery(Account.SObjectType)
-  ?.addSelect(Account.BillingState, 'state')
-  ?.addSelect(count);
-soql.useMocks(new List<MyCustomType>{ mockResult });
-List<MyCustomType> results = (List<MyCustomType>) soql?.query(
-  List<MyCustomType>.class
-);
-```
-
-#### Inject Dynamic Results with the `setMock` Method
-
-Certain testing scenarios may require custom logic to determine the results returned by a query. For these scenarios, developers can leverage the `MockSoql.Simulator` interface with the `setMock` method.
-
-The `MockSoql.Simulator` interface has one required method, which returns a `List<Object>`. This method will be run each time the query is run.
-
-```java
-private class CustomTaskQueryLogic implements MockSoql.Simulator {
-  public List<Object> simulateQuery(Soql queryToMock) {
-    // For each inserted contact, return a Task
-    List<Task> results = new List<Task>();
-    List<Contact> contacts = (List<Contact>) MockDml.INSERTED.getRecords(
-      Contact.SObjectType
-    );
-    for (Contact contact : contacts) {
-      Task task = (Task) new MockRecord(Task.SObjectType)
-        ?.setField(Task.Subject, 'Introductory Call')
-        ?.setField(Task.WhatId, contact?.AccountId)
-        ?.setField(Task.WhoId, contact?.Id)
-        ?.withId()
-        ?.toSObject();
-      results?.add(task);
-    }
-    return results;
-  }
-}
-```
-
-```java
-// Establish Dml & Soql objects to be used
-DatabaseLayer.useMocks();
-MockSoql soql = (MockSoql) DatabaseLayer.Soql.newQuery(Task.SObjectType)
-  ?.addSelect(Task.WhatId)
-  ?.addSelect(Task.WhoId);
-// Mock with a custom class that leverages MockDml.INSERTED to generate results
-soql?.setMock(new CustomTaskQueryLogic());
-// Mock insert an account + related contact
-Account mockAccount = (Account) new MockRecord(Account.SObjectType)?.toSObject();
-DatabaseLayer.Dml.doInsert(mockAccount);
-Contact mockContact = (Contact) new MockRecord(Contact.SObjectType)
-  ?.setField(Contact.AccountId, mockAccount?.Id)
-  ?.toSObject();
-DatabaseLayer.Dml.doInsert(mockContact);
-
-Test.startTest();
-List<Task> tasks = soql?.query();
-Test.stopTest();
-
-// Expecting 1 task x each inserted Contact
-Assert.areEqual(1, tasks?.size(), 'Wrong # of tasks');
-Task firstTask = tasks?.get(0);
-Assert.areEqual(mockAccount?.Id, firstTask?.WhatId, 'Wrong WhatId');
-Assert.areEqual(mockContact?.Id, firstTask?.WhoId, 'Wrong WhoId');
-```
-
-#### Inject Exceptions with the `setError` Method
-
-Developers can simulate `Database.QueryException`s and other errors that may occur when running queries, by using the `setError` method:
-
-```java
-DatabaseLayer.useMocks();
-MockSoql soql = (MockSoql) DatabaseLayer.Soql.newQuery(Account.SObjectType);
-soql?.setError();
-soql?.query(); // ! System.QueryException
-```
-
-Callers can specify the exact exception to be thrown, if desired:
-
-```java
-DatabaseLayer.useMocks();
-System.NullPointerException npe = new System.NullPointerException();
-MockSoql soql = (MockSoql) DatabaseLayer.Soql.newQuery(Account.SObjectType);
-soql?.setError(npe);
-soql?.query(); // ! System.NullPointerException
+Account mockAccount = (Account) new MockRecord(Account.SObjectType)?.withId()?.toSObject();
+// Queries will always return the provided List<Object>
+MockSoql.setGlobalMock()?.withResults(new List<Account>{ mockAccont });
 ```
 
 ### Mocking Query Locators
