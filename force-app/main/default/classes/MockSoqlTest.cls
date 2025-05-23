@@ -193,21 +193,22 @@ private class MockSoqlTest {
 			?.addSelect(count)
 			?.groupBy('Profile.Name');
 		// Inject results
-		SampleWrapper mockResult1 = new SampleWrapper()?.wrap('Foo Profile', 123);
-		SampleWrapper mockResult2 = new SampleWrapper()?.wrap('Bar Profile', 45);
-		List<SampleWrapper> mockResults = new List<SampleWrapper>{ mockResult1, mockResult2 };
+		MockSoqlTest.SampleWrapper mockResult1 = new MockSoqlTest.SampleWrapper()?.wrap('Foo Profile', 123);
+		MockSoqlTest.SampleWrapper mockResult2 = new MockSoqlTest.SampleWrapper()?.wrap('Bar Profile', 45);
+		List<MockSoqlTest.SampleWrapper> mockResults = new List<MockSoqlTest.SampleWrapper>{ mockResult1, mockResult2 };
 		soql?.setMock()?.withResults(mockResults);
 
 		Test.startTest();
-		List<SampleWrapper> results = (List<SampleWrapper>) soql?.query(List<SampleWrapper>.class);
+		List<MockSoqlTest.SampleWrapper> results = (List<MockSoqlTest.SampleWrapper>) soql
+			?.query(List<MockSoqlTest.SampleWrapper>.class);
 		Assert.areEqual(0, Limits.getQueries(), 'Actually executed SOQL');
 		Test.stopTest();
 
 		Integer numResults = results?.size();
 		Assert.areEqual(mockResults?.size(), numResults, 'Wrong # of results returned');
 		for (Integer i = 0; i < numResults; i++) {
-			SampleWrapper expectedResult = mockResults?.get(i);
-			SampleWrapper actualResult = results?.get(i);
+			MockSoqlTest.SampleWrapper expectedResult = mockResults?.get(i);
+			MockSoqlTest.SampleWrapper actualResult = results?.get(i);
 			Assert.areEqual(expectedResult?.profileName, actualResult?.profileName, 'Wrong profileName');
 			Assert.areEqual(expectedResult?.numRecords, actualResult?.numRecords, 'Wrong numRecords');
 		}
@@ -227,7 +228,7 @@ private class MockSoqlTest {
 
 		Test.startTest();
 		try {
-			soql?.query(List<SampleWrapper>.class);
+			soql?.query(List<MockSoqlTest.SampleWrapper>.class);
 			Assert.fail('The injected exception was not thrown');
 		} catch (System.TypeException error) {
 			Assert.areEqual(true, error?.getMessage()?.contains(soql?.toString()), 'Did not append query to error');
@@ -329,7 +330,8 @@ private class MockSoqlTest {
 		Iterator<SObject> locatorIterator = soql?.getQueryLocator()?.iterator();
 		List<SObject> queryResults = soql?.query();
 		SObject queryFirstResult = soql?.queryFirst();
-		List<SampleWrapper> queryCastResults = (List<SampleWrapper>) soql?.query(List<SampleWrapper>.class);
+		List<MockSoqlTest.SampleWrapper> queryCastResults = (List<MockSoqlTest.SampleWrapper>) soql
+			?.query(List<MockSoqlTest.SampleWrapper>.class);
 		Test.stopTest();
 
 		Assert.areEqual(true, aggregateResults?.isEmpty(), 'aggregateQuery() returned results');
