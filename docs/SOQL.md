@@ -60,15 +60,16 @@ List<Account> results = soql?.query();
 Assert.areEqual(0, results?.size(), 'Wrong # of resuls');
 ```
 
-For these queries to return actual results, developers must first inject logic via either the static [`setGlobalMock`](#the-setglobalmock-static-methods) method, or the member [`setMock`](#the-setmock-methods) method.
+For these queries to return actual results, developers must first inject logic via either the static [`setGlobalMock`](#the-setglobalmock-static-method) method, or the member [`setMock`](#the-setmock-method) method.
 
 Both methods have two overloads - one which accepts and returns a [`MockSoql.Simulator`](#the-mocksoqlsimulator-interface) object, and a 0-argument overlaod which returns a [`MockSoql.StaticResults`](#the-mocksoqlstaticresults-class) object.
 
-#### The `setGlobalMock` Static Methods
+<details>
+  <summary><h4>The <code>setGlobalMock</code> Static Method</h4></summary>
 
-This method assigns "default" query logic to _all_ `Soql` objects. This allows developers to inject mocks for queries without the need to expose those queries as `@TestVisible`, class-level variables.
+This method assigns "default" query logic to _all_ `Soql` objects. This allows developers to inject mocks for queries without the need to expose those objects as `@TestVisible`, class-level variables.
 
-The 0-argument version of this method injects a [`MockSoql.StaticResults`](#the-mocksoqlstaticresults-class) object, and returns that same object. You can use that object's `withResults` to inject a static `List<Object>`, or its `withError` method to inject a static `Exception` to be thrown.
+The 0-argument version of this method injects a [`MockSoql.StaticResults`](#the-mocksoqlstaticresults-class) object, and returns that same object. You can use that object's `withResults` to inject a static `List<Object>` to be returned, or its `withError` method to inject a static `Exception` to be thrown.
 
 ```java
 DatabaseLayer.useMocks();
@@ -84,11 +85,16 @@ MockSoql.Simulator simulator = new MyCustomQueryLogic();
 MockSoql.setGlobalMock(simulator);
 ```
 
-#### The `setMock` Methods
+-   `MockSoql.Simulator static setGlobalMock(MockSoql.Simulator simulator)`
+-   `MockSoql.StaticResults static setGlobalMock()`
+</details>
+
+<details>
+  <summary><h4>The <code>setMock</code> Method</h4></summary>
 
 This method assigns query logic to a _specific_ `Soql` object, overriding any global defaults set via `MockSoql.setGlobalMock`. In a real-world scenario, queries in a production class **must** be exposed as public/`@TestVisible` variables to use this method.
 
-The 0-argument version of this method injects a [`MockSoql.StaticResults`](#the-mocksoqlstaticresults-class) object, and returns that same object. You can use that object's `withResults` to inject a static `List<Object>`, or its `withError` method to inject a static `Exception` to be thrown.
+The 0-argument version of this method injects a [`MockSoql.StaticResults`](#the-mocksoqlstaticresults-class) object, and returns that same object. You can use that object's `withResults` to inject a static `List<Object>` to be returned, or its `withError` method to inject a static `Exception` to be thrown.
 
 ```java
 DatabaseLayer.useMocks();
@@ -106,9 +112,15 @@ MockSoql queryToMock = (MockSoql) MyClass.SOME_QUERY;
 queryToMock?.setMock(simulator);
 ```
 
-#### The `MockSoql.Simulator` Interface
+-   `MockSoql.Simulator setMock(MockSoql.Simulator simulator)`
+-   `MockSoql.StaticResults setMock()`
 
-The `MockSoql.Simulator` interface defines custom logic for returning query results. Use this interface when you need more complex logic than what the [`MockSoql.StaticResults`](#the-mocksoqlstaticresults-class) can provide.
+</details>
+
+<details> 
+  <summary><h4>The <code>MockSoql.Simulator</code> Interface</h4></summary>
+
+The `MockSoql.Simulator` interface defines custom logic for returning query results. Use this interface when you need more complex logic than what [`MockSoql.StaticResults`](#the-mocksoqlstaticresults-class) can provide.
 
 The interface has one required method:
 
@@ -149,15 +161,18 @@ private class CustomQueryLogic implements MockSoql.Simulator {
 }
 ```
 
-#### The `MockSoql.StaticResults` Class
+</details>
+
+<details>
+  <summary><h4>The <code>MockSoql.StaticResults</code> Class</h4></summary>
 
 Not all testing scenarios require the creation of a custom `MockSoql.Simulator` object. Most simple use cases can be handled by using the included `MockSoql.StaticResults` object.
 
-This object cannot be directly constructed. Create an instance of this object by calling the 0-argument versions of the [`MockSoql.setGlobalMock`](#the-setglobalmock-static-methods) static method, or the [`setMock`](#the-setmock-methods) member method.
+This object cannot be directly constructed. Create an instance of this object by calling the 0-argument versions of the [`MockSoql.setGlobalMock`](#the-setglobalmock-static-method) static method, or the [`setMock`](#the-setmock-method) member method.
 
 This object implements `MockSoql.Simulator` interface, and includes methods which allow callers to inject a static list of results, or an exception to be thrown. Whenever the query runs, the injected results are returned.
 
-##### `withError`
+<h5><code>withError</code></h5>
 
 Injects an error to be thrown each time the query runs. Callers can provide a specific exception object, if desired. The 0-argument overload of this method will inject a generic `System.QueryException`.
 
@@ -173,7 +188,7 @@ System.Exception someOtherError = new System.CalloutException();
 MockSoql.setGlobalMock()?.withError(someOtherError);
 ```
 
-##### `withResults`
+<h5><code>withResults</code></h5>
 
 Injects a static list of results. This list will be returned each time the query runs.
 
@@ -186,7 +201,35 @@ Account mockAccount = (Account) new MockRecord(Account.SObjectType)?.withId()?.t
 MockSoql.setGlobalMock()?.withResults(new List<Account>{ mockAccont });
 ```
 
-### Mocking Query Locators
+</details>
+
+### Special Considerations
+
+<details>
+  <summary><h4>Mocking Aggregate Queries</h4></summary>
+
+`MockSoql.AggregateResult` is a A constructable version of the `Soql.AggregateResult` class, which wraps the `Schema.AggregateResult` class and its methods. `Schema.AggregateResult` objects cannot be directly constructed, serialized, or otherwise mocked.
+
+You can use this object along in conjunction with existing mocking methods to inject these results in queries. For example:
+
+```java
+DatabaseLayer.useMocks();
+MockSoql.AggregateResult agg = new MockSoql.AggregateResult()?.addParameter('numRecords', 100);
+MockSoql?.setGlobalMock()?.withResults(new List<MockSoql.AggregateResult>{ agg });
+List<Soql.AggregateResult> results = soql?.aggregateQuery();
+```
+
+<h5>addParameter</h5>
+
+Adds a column to the current `AggregateResult`. These can be created with or without an _alias_. If an alias isn't provided, the column is assigned a default alias, ex. `expr0'`. This mirrors the behavior of the underlying `Schema.AggregateResult` object.
+
+-   `MockSoql.AggregateResult addParameter(String alias, Object value)`
+-   `MockSoql.AggregateResult addParameter(Object value)`
+
+</details>
+
+<details>
+  <summary><h4>Mocking Query Locators</h4></summary>
 
 The `Database.QueryLocator` object cannot be mocked in a traditional sense, since it manually constructed, or JSON-deserialized. The only way to create an object of this type is by directly interacting with the Salesforce database, via the `Database.getQueryLocator` method.
 
@@ -244,36 +287,6 @@ Developers can employ one of the following strategies to work around this:
 -   Have your unit tests call the batch's `start`, `execute`, and `finish` methods invidually.
 -   Amend the `start` method to return an [iterable object](https://developer.salesforce.com/docs/atlas.en-us.apexcode.meta/apexcode/apex_classes_iterable.htm) instead.
 -   Use `System.Queueable` jobs paired with a `System.Finalizer` instead of `Database.Batchable`.
-
-<details>
-  <summary><h4>The <code>MockSoql.AggregateResult</code> Class</h4></summary>
-
-A constructable version of the `Soql.AggregateResult` class, which wraps the `Schema.AggregateResult` class and its methods. `Schema.AggregateResult` objects cannot be directly constructed, serialized, or otherwise mocked.
-
-Use this object in conjunction with the `setMock` method, or the `MockSoql.Simulator` interface to inject results for aggregate queries. For example:
-
-```java
-DatabaseLayer.useMocks();
-String alias = 'numRecords';
-Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, Account.Id)
-  ?.withAlias(alias);
-MockSoql soql = (MockSoql) DatabaseLayer.Soql.newQuery(Account.SObjectType)
-  ?.addSelect(count);
-MockSoql.AggregateResult agg = new MockSoql.AggregateResult()
-  ?.addParameter(alias, 100);
-soql?.setMock(new List<MockSoql.AggregateResult>{ agg });
-List<Soql.AggregateResult> results = soql?.aggregateQuery();
-Assert.areEqual(1, results?.size(), 'Wrong # of results');
-Assert.areEqual(100, results?.get(0)?.get(alias), 'Wrong count');
-```
-
-#### `addParameter`
-
-Adds a column to the current `AggregateResult`. These can be created with or without an _alias_. If an alias isn't provided, the column is assigned a default alias, ex. `expr0'`. This mirrors the behavior of the underlying `Schema.AggregateResult` object.
-
--   `MockSoql.AggregateResult addParameter(String alias, Object value)`
--   `MockSoql.AggregateResult addParameter(Object value)`
-
 </details>
 
 ---
@@ -427,6 +440,33 @@ Selects all fields from the specified entity by querying the schema for all avai
 Sets the logical operator (AND/OR) for combining HAVING conditions.
 
 -   `Soql.Builder setOuterHavingLogic(Soql.LogicType newLogicType)`
+
+#### `setQueryIdentifier`
+
+Assigns an identifier to the query. Callers can use this identifier to distinguish queries from one another, for example in mocks.
+
+-   `Soql setQueryIdentifier(String identifier)`
+
+```java
+// In MyClass.cls:
+Soql myQuery = (Soql) DatabaseLayer.Soql
+  ?.newQuery(Account.SObjectType)
+  ?.setQueryIdentifier('My Account Query');
+
+// In MyClassTest.cls:
+MockSoql.Simulator queryMock = new MyQueryMock();
+DatabaseLayer.useMocks().setGlobalMock(queryMock);
+
+private class MyQueryMock implements MockSoql.Simulator {
+  public List<Object> simulateQuery(Soql queryToMock) {
+    if (queryToMock?.identifier == 'My Account Query') {
+      // Do some mocking logic specific to this query
+    } else {
+      // Do some other mocking logic for other queries...
+    }
+  }
+}
+```
 
 #### `setRowLimit`
 
