@@ -29,6 +29,9 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 	private static final Soql.LogicType DEFAULT_LOGIC_TYPE = Soql.LogicType.ALL_CONDITIONS;
 	private static final String ID_REFERENCE = 'Id';
 
+	// Member Properties:
+	public String identifier { get; private set; }
+
 	public Soql(DatabaseLayer factory) {
 		this();
 	}
@@ -108,6 +111,12 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		// Now revert to the original row limit
 		this.setRowLimit(originalLimit);
 		return results?.isEmpty() == false ? results?.get(0) : null;
+	}
+
+	public Soql setQueryIdentifier(String identifier) {
+		// Use this method to give a name/identifier value that can be referenced in mocks
+		this.identifier = identifier;
+		return this;
 	}
 
 	protected void handleQueryError(Exception error) {

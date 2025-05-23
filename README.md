@@ -126,23 +126,47 @@ List<User> users = soql?.query();
 ```
 
 In apex tests, you can mock all of your query operations by calling `DatabaseLayer.useMocks()`. This will automatically substitute real `Soql` objects with a `MockSoql` object.
-By default, `MockSoql` objects will return an empty list of results. You can inject mock results for each query set using the `setMock()` method:
+By default, `MockSoql` objects will return an empty list of results. You can inject mock results for each query set using the `setGlobalMock` and `setMock` methods:
 
 ```java
 DatabaseLayer.useMocks();
-Account account = new Account(Name = 'Test Account');
-MockSoql soql = DatabaseLayer.newQuery(Account.SObjectType);
-soql?.setMock(new List<Account>{ account });
-List<Account> results = (List<Account>) soql?.query();
+Account mockAccount = new Account(Name = 'Test Account');
+// Note: The setGlobalMock static method injects mock results for all queries
+// If you want to mock a specific query, use the setMock member method instead
+MockSoql.setGlobalMock()?.withResults(new List<Account>{ mockAccount });
+List<Account> results = (List<Account>) DatabaseLayer.newQuery(Account.SObjectType)?.query();
 Assert.areEqual(1, results?.size(), 'Wrong # of results');
 ```
 
-Mocking queries by passing the records to be returned (as shown above) should work for most use cases. If needed, you can implement your own custom logic by creating a class that implements the `MockSoql.Simulator` interface:
+You can also simulate query errors via the `withError()` method:
 
 ```java
+DatabaseLayer.useMocks();
+// Note: The setMock member method injects mock results for the specified queries
+// If you want to mock all queries w/out needing to assign a mock to each,
+// use the setGlobalMock static method instead
+MockSoql myQuery = DatabaseLayer.newQuery(Account.SObjectType);
+myQuery?.setMock()?.withError();
+
+try {
+  myQuery?.query();
+  Assert.fail('Did not throw an exception');
+} catch (System.QueryException error) {
+  // As expected
+}
+```
+
+Mocking queries by passing the records to be returned, or errors to be thrown (as shown above) should work for most use cases. If needed, you can implement your own custom logic via the `MockSoql.Simulator` interface:
+
+```java
+DatabaseLayer.useMocks();
+MockSoql.Simulator simulator = new MySimulator();
+MockSoql.setGlobalMock(simulator);
+List<Opportunity> opps = DatabaseLayer.Soql.newQuery(Opportunity.SObjectType)?.query();
+
 public class MySimulator implements MockSoql.Simulator {
-  // This implementation generates a List<Opportunity> with random values
-  public Object simulateQuery() {
+  // This implementation generates a List<Opportunity> w/random values
+  public Object simulateQuery(Soql queryToMock) {
     Integer numOpps = Integer.valueOf(Math.random() * 200);
     List<Opportunity> opps = new List<Opportunity>();
     for (Integer i = 0; i < numOpps; i++) {
@@ -152,30 +176,6 @@ public class MySimulator implements MockSoql.Simulator {
     }
     return opps;
   }
-}
-```
-
-You can pass that object to the `setMock()` method, as shown below:
-
-```java
-DatabaseLayer.useMocks();
-MockSoql.Simulator simulator = new MySimulator();
-MockSoql soql = (MockSoql) DatabaseLayer.Soql.newQuery(Opportunity.SObjectType);
-soql?.setMock(simulator);
-List<Opportunity> opps = soql?.query();
-```
-
-You can also simulate query errors via the `setError()` method:
-
-```java
-DatabaseLayer.useMocks();
-MockSoql soql = DatabaseLayer.newQuery(Account.SObjectType);
-soql?.setError();
-try {
-  soql?.query();
-  Assert.fail('Did not throw an exception');
-} catch (Exception error) {
-  // As expected
 }
 ```
 

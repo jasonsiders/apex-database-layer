@@ -12,7 +12,7 @@ private class MockSoqlTest {
 		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()?.newQuery(Account.SObjectType)?.addSelect(count);
 		// Inject the query w/mock results
 		List<Account> accounts = MockSoqlTest.initAccounts(NUM_ACCS);
-		soql?.setMock(accounts);
+		soql?.setMock()?.withResults(accounts);
 
 		Test.startTest();
 		Integer results = soql?.countQuery();
@@ -27,7 +27,7 @@ private class MockSoqlTest {
 		// Build a query
 		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()?.newQuery(Account.SObjectType)?.addSelect(Account.Name);
 		// Inject the query w/a mock error
-		soql?.setError();
+		soql?.setMock()?.withError();
 
 		Test.startTest();
 		try {
@@ -46,7 +46,7 @@ private class MockSoqlTest {
 		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()?.newQuery(Account.SObjectType)?.addSelect(Account.Name);
 		// Inject the query w/mock results
 		List<Account> accounts = MockSoqlTest.initAccounts(NUM_ACCS);
-		soql?.setMock(accounts);
+		soql?.setMock()?.withResults(accounts);
 
 		Test.startTest();
 		Soql.QueryLocator locator = soql?.getQueryLocator();
@@ -77,7 +77,7 @@ private class MockSoqlTest {
 		// Build a query
 		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()?.newQuery(Account.SObjectType)?.addSelect(Account.Name);
 		// Inject the query w/a mock error
-		soql?.setError();
+		soql?.setMock()?.withError();
 
 		Test.startTest();
 		try {
@@ -96,7 +96,7 @@ private class MockSoqlTest {
 		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()?.newQuery(Account.SObjectType)?.addSelect(Account.Name);
 		// Inject the query w/mock results
 		List<Account> accounts = MockSoqlTest.initAccounts(NUM_ACCS);
-		soql?.setMock(accounts);
+		soql?.setMock()?.withResults(accounts);
 
 		Test.startTest();
 		List<Account> results = soql?.query();
@@ -111,7 +111,7 @@ private class MockSoqlTest {
 		// Build a query
 		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()?.newQuery(Account.SObjectType)?.addSelect(Account.Name);
 		// Inject the query w/a mock error
-		soql?.setError();
+		soql?.setMock()?.withError();
 
 		Test.startTest();
 		try {
@@ -141,7 +141,7 @@ private class MockSoqlTest {
 			?.addParameter('Bar Profile')
 			?.addParameter(45);
 		List<Soql.AggregateResult> mockResults = new List<Soql.AggregateResult>{ mockResult1, mockResult2 };
-		soql?.setMock(mockResults);
+		soql?.setMock()?.withResults(mockResults);
 
 		Test.startTest();
 		List<Soql.AggregateResult> results = soql?.aggregateQuery();
@@ -170,7 +170,7 @@ private class MockSoqlTest {
 			?.addSelect(count)
 			?.groupBy('Profile.Name');
 		// Inject an error
-		soql?.setError();
+		soql?.setMock()?.withError();
 
 		Test.startTest();
 		try {
@@ -193,21 +193,22 @@ private class MockSoqlTest {
 			?.addSelect(count)
 			?.groupBy('Profile.Name');
 		// Inject results
-		SampleWrapper mockResult1 = new SampleWrapper()?.wrap('Foo Profile', 123);
-		SampleWrapper mockResult2 = new SampleWrapper()?.wrap('Bar Profile', 45);
-		List<SampleWrapper> mockResults = new List<SampleWrapper>{ mockResult1, mockResult2 };
-		soql?.setMock(mockResults);
+		MockSoqlTest.SampleWrapper mockResult1 = new MockSoqlTest.SampleWrapper()?.wrap('Foo Profile', 123);
+		MockSoqlTest.SampleWrapper mockResult2 = new MockSoqlTest.SampleWrapper()?.wrap('Bar Profile', 45);
+		List<MockSoqlTest.SampleWrapper> mockResults = new List<MockSoqlTest.SampleWrapper>{ mockResult1, mockResult2 };
+		soql?.setMock()?.withResults(mockResults);
 
 		Test.startTest();
-		List<SampleWrapper> results = (List<SampleWrapper>) soql?.query(List<SampleWrapper>.class);
+		List<MockSoqlTest.SampleWrapper> results = (List<MockSoqlTest.SampleWrapper>) soql
+			?.query(List<MockSoqlTest.SampleWrapper>.class);
 		Assert.areEqual(0, Limits.getQueries(), 'Actually executed SOQL');
 		Test.stopTest();
 
 		Integer numResults = results?.size();
 		Assert.areEqual(mockResults?.size(), numResults, 'Wrong # of results returned');
 		for (Integer i = 0; i < numResults; i++) {
-			SampleWrapper expectedResult = mockResults?.get(i);
-			SampleWrapper actualResult = results?.get(i);
+			MockSoqlTest.SampleWrapper expectedResult = mockResults?.get(i);
+			MockSoqlTest.SampleWrapper actualResult = results?.get(i);
 			Assert.areEqual(expectedResult?.profileName, actualResult?.profileName, 'Wrong profileName');
 			Assert.areEqual(expectedResult?.numRecords, actualResult?.numRecords, 'Wrong numRecords');
 		}
@@ -223,11 +224,11 @@ private class MockSoqlTest {
 			?.addSelect(count)
 			?.groupBy('Profile.Name');
 		// Inject an error
-		soql?.setError(new System.TypeException());
+		soql?.setMock()?.withError(new System.TypeException());
 
 		Test.startTest();
 		try {
-			soql?.query(List<SampleWrapper>.class);
+			soql?.query(List<MockSoqlTest.SampleWrapper>.class);
 			Assert.fail('The injected exception was not thrown');
 		} catch (System.TypeException error) {
 			Assert.areEqual(true, error?.getMessage()?.contains(soql?.toString()), 'Did not append query to error');
@@ -244,7 +245,7 @@ private class MockSoqlTest {
 			?.addSelect(Task.WhatId)
 			?.addSelect(Task.WhoId);
 		// Mock with a custom class that leverages MockDml.INSERTED to generate results
-		soql?.setMock(new CustomTaskQueryLogic());
+		soql?.setMock(new MockSoqlTest.CustomTaskQueryLogic());
 		// Mock insert an account + related contact
 		Account mockAccount = (Account) new MockRecord(Account.SObjectType)?.toSObject();
 		DatabaseLayer.Dml.doInsert(mockAccount);
@@ -265,6 +266,60 @@ private class MockSoqlTest {
 	}
 
 	@IsTest
+	static void shouldSetGlobalMock() {
+		DatabaseLayer.useMocks();
+		MockSoql theQuery = (MockSoql) DatabaseLayer.Soql.newQuery(Account.SObjectType);
+		// Set a global mock - all SOQL objects will return these results by default now:
+		Account mockAccount = (Account) new MockRecord(Account.SObjectType)?.withId()?.toSObject();
+		MockSoql.setGlobalMock()?.withResults(new List<Account>{ mockAccount });
+
+		Test.startTest();
+		List<Account> accounts = theQuery?.query();
+		Test.stopTest();
+
+		Assert.areEqual(1, accounts?.size(), 'Wrong # of Accounts returned');
+		Assert.areEqual(mockAccount?.Id, accounts?.get(0)?.Id, 'Wrong Account returned');
+	}
+
+	@IsTest
+	static void shouldIgnoreGlobalMockIfSpecificSimulatorAssignedToQuery() {
+		DatabaseLayer.useMocks();
+		MockSoql theQuery = (MockSoql) DatabaseLayer.Soql.newQuery(Account.SObjectType);
+		// Set a global mock - all SOQL objects will return these results by default now:
+		Account mockAccount1 = (Account) new MockRecord(Account.SObjectType)?.withId()?.toSObject();
+		MockSoql.setGlobalMock()?.withResults(new List<Account>{ mockAccount1 });
+		// Assign a different, specific mock to the query:
+		Account mockAccount2 = (Account) new MockRecord(Account.SObjectType)?.withId()?.toSObject();
+		theQuery?.setMock()?.withResults(new List<Account>{ mockAccount2 });
+
+		Test.startTest();
+		List<Account> accounts = theQuery?.query();
+		Test.stopTest();
+
+		Assert.areEqual(1, accounts?.size(), 'Wrong # of Accounts returned');
+		Assert.areEqual(mockAccount2?.Id, accounts?.get(0)?.Id, 'Wrong Account returned');
+	}
+
+	@IsTest
+	static void shouldIntelligentlyReturnCorrectQueryResults() {
+		DatabaseLayer.useMocks();
+		MockSoql accountQuery = (MockSoql) DatabaseLayer.Soql.newQuery(Account.SObjectType);
+		MockSoql caseQuery = (MockSoql) DatabaseLayer.Soql.newQuery(Case.SObjectType);
+		MockSoql.Simulator simulator = new MockSoqlTest.DynamicSimulator();
+		MockSoql.setGlobalMock(simulator);
+
+		Test.startTest();
+		List<Account> accounts = (List<Account>) accountQuery?.query();
+		List<Case> cases = (List<Case>) caseQuery?.query();
+		Test.stopTest();
+
+		Assert.areEqual(1, accounts?.size(), 'Wrong # of Accounts returned');
+		Assert.areEqual('Foo', accounts?.get(0)?.Name, 'Wrong Account details');
+		Assert.areEqual(1, cases?.size(), 'Wrong # of Cases returned');
+		Assert.areEqual('12345678', cases?.get(0)?.CaseNumber, 'Wrong Case details');
+	}
+
+	@IsTest
 	static void shouldReturnEmptyListIfNoMocks() {
 		// If a MockSoql is ran, and no Simulator is injected, the methods will automatically return an empty List
 		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()?.newQuery(Account.SObjectType);
@@ -275,7 +330,8 @@ private class MockSoqlTest {
 		Iterator<SObject> locatorIterator = soql?.getQueryLocator()?.iterator();
 		List<SObject> queryResults = soql?.query();
 		SObject queryFirstResult = soql?.queryFirst();
-		List<SampleWrapper> queryCastResults = (List<SampleWrapper>) soql?.query(List<SampleWrapper>.class);
+		List<MockSoqlTest.SampleWrapper> queryCastResults = (List<MockSoqlTest.SampleWrapper>) soql
+			?.query(List<MockSoqlTest.SampleWrapper>.class);
 		Test.stopTest();
 
 		Assert.areEqual(true, aggregateResults?.isEmpty(), 'aggregateQuery() returned results');
@@ -299,7 +355,7 @@ private class MockSoqlTest {
 
 	// **** INNER **** //
 	private class CustomTaskQueryLogic implements MockSoql.Simulator {
-		public List<Object> simulateQuery() {
+		public List<Object> simulateQuery(Soql queryToMock) {
 			// For each inserted contact, return a Task
 			List<Task> results = new List<Task>();
 			List<Contact> contacts = (List<Contact>) MockDml.INSERTED.getRecords(Contact.SObjectType);
@@ -313,6 +369,30 @@ private class MockSoqlTest {
 				results?.add(task);
 			}
 			return results;
+		}
+	}
+
+	private class DynamicSimulator implements MockSoql.Simulator {
+		// This example returns a different list of records, depending on the from entity
+		// You can use this in conjunction with MockSoql.setGlobalMock to dynamically inject query results into multiple soql objects,
+		// without needing to directly asssign each their own unique simulator object
+		public List<Object> simulateQuery(Soql queryToMock) {
+			String entity = queryToMock?.entity;
+			if (entity == Account.SObjectType.toString()) {
+				Account mockAccount = (Account) new MockRecord(Account.SObjectType)
+					?.setField(Account.Name, 'Foo')
+					?.withId()
+					?.toSObject();
+				return new List<Account>{ mockAccount };
+			} else if (entity == Case.SObjectType.toString()) {
+				Case mockCase = (Case) new MockRecord(Case.SObjectType)
+					?.setField(Case.CaseNumber, '12345678')
+					?.withId()
+					?.toSObject();
+				return new List<Case>{ mockCase };
+			} else {
+				return new List<SObject>();
+			}
 		}
 	}
 
