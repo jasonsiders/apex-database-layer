@@ -41,6 +41,97 @@ private class MockSoqlTest {
 	}
 
 	@IsTest
+	static void shouldMockCursor() {
+		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()?.newQuery(Account.SObjectType)?.addSelect(Account.Name);
+		// Inject the query w/mock results
+		List<Account> accounts = MockSoqlTest.initAccounts(NUM_ACCS);
+		soql?.setMock()?.withResults(accounts);
+		Integer numToFetch = 3;
+
+		Test.startTest();
+		Soql.Cursor cursor = soql?.getCursor();
+		List<SObject> records = cursor?.fetch(0, numToFetch);
+		Assert.areEqual(0, Limits.getQueries(), 'Actually executed SOQL');
+		Test.stopTest();
+
+		Assert.areNotEqual(null, cursor?.getCursor(), 'Underlying cursor is null');
+		Assert.areEqual(numToFetch, records?.size(), 'Wrong # of records returned by the cursor');
+		Assert.areEqual(NUM_ACCS, cursor?.getNumRecords(), 'Wrong # of records stored in cursor');
+	}
+
+	@IsTest
+	static void shouldHandleCursorFetchCallWithNegativePositionParameter() {
+		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()?.newQuery(Account.SObjectType)?.addSelect(Account.Name);
+		// Inject the query w/mock results
+		List<Account> accounts = MockSoqlTest.initAccounts(NUM_ACCS);
+		soql?.setMock()?.withResults(accounts);
+		Soql.Cursor cursor = soql?.getCursor();
+
+		Test.startTest();
+		try {
+			cursor?.fetch(-1, 1);
+			Assert.fail('Did not throw a Soql.InvalidParameterValueException for invalid position param');
+		} catch (Soql.InvalidParameterValueException error) {
+			// As expected...
+		}
+		Test.stopTest();
+	}
+
+	@IsTest
+	static void shouldHandleCursorFetchCallWithNegativeCountParameter() {
+		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()?.newQuery(Account.SObjectType)?.addSelect(Account.Name);
+		// Inject the query w/mock results
+		List<Account> accounts = MockSoqlTest.initAccounts(NUM_ACCS);
+		soql?.setMock()?.withResults(accounts);
+		Soql.Cursor cursor = soql?.getCursor();
+
+		Test.startTest();
+		try {
+			cursor?.fetch(0, -1);
+			Assert.fail('Did not throw a Soql.InvalidParameterValueException for invalid count param');
+		} catch (Soql.InvalidParameterValueException error) {
+			// As expected...
+		}
+		Test.stopTest();
+	}
+
+	@IsTest
+	static void shouldHandleCursorFetchCallThatExceedsNumberOfRecords() {
+		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()?.newQuery(Account.SObjectType)?.addSelect(Account.Name);
+		// Inject the query w/mock results
+		List<Account> accounts = MockSoqlTest.initAccounts(NUM_ACCS);
+		soql?.setMock()?.withResults(accounts);
+		Soql.Cursor cursor = soql?.getCursor();
+
+		Test.startTest();
+		try {
+			cursor?.fetch(0, (NUM_ACCS + 1));
+			Assert.fail('Did not throw a Soql.InvalidParameterValueException for fetch that exceeds upper bound');
+		} catch (Soql.InvalidParameterValueException error) {
+			// As expected...
+		}
+		Test.stopTest();
+	}
+
+	@IsTest
+	static void shouldHandleCursorFetchCallWithNullParameters() {
+		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()?.newQuery(Account.SObjectType)?.addSelect(Account.Name);
+		// Inject the query w/mock results
+		List<Account> accounts = MockSoqlTest.initAccounts(NUM_ACCS);
+		soql?.setMock()?.withResults(accounts);
+		Soql.Cursor cursor = soql?.getCursor();
+
+		Test.startTest();
+		try {
+			cursor?.fetch(0, null);
+			Assert.fail('Did not throw a System.NullPointerException for null fetch param');
+		} catch (System.NullPointerException error) {
+			// As expected...
+		}
+		Test.stopTest();
+	}
+
+	@IsTest
 	static void shouldMockQueryLocator() {
 		// Build a query
 		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()?.newQuery(Account.SObjectType)?.addSelect(Account.Name);

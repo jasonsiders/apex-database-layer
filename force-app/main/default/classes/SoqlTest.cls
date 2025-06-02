@@ -64,6 +64,52 @@ private class SoqlTest {
 	}
 
 	@IsTest
+	static void shouldGetCursor() {
+		Soql soql = (Soql) DatabaseLayer.Soql.newQuery(User.SObjectType);
+
+		Test.startTest();
+		Soql.Cursor cursor = soql?.getCursor();
+		Test.stopTest();
+
+		Assert.areNotEqual(null, cursor?.getCursor(), 'Did not return Database.Cursor object');
+		Assert.areNotEqual(null, cursor?.getNumRecords(), 'Did not return the number of records');
+		List<User> users = cursor?.fetch(0, 1);
+		Assert.areEqual(1, users?.size(), 'Wrong # of records fetched from the cursor');
+	}
+
+	@IsTest
+	static void shouldHandleCursorQueryErrors() {
+		String illegalFieldName = 'abcd'; // Will cause a System.QueryException when run
+		Soql soql = (Soql) DatabaseLayer.Soql.newQuery(Account.SObjectType)?.addSelect(illegalFieldName);
+
+		Test.startTest();
+		try {
+			soql?.getCursor();
+			Assert.fail('Illegal query did not throw an error');
+		} catch (System.QueryException error) {
+			String msg = error?.getMessage();
+			Assert.areEqual(true, msg?.contains(illegalFieldName), 'Did not append query to the error');
+		}
+		Test.stopTest();
+	}
+
+	@SuppressWarnings('PMD.EmptyCatchBlock')
+	@IsTest
+	static void shouldWrapInvalidCursorFetchErrors() {
+		Soql soql = (Soql) DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowLimit(1);
+
+		Test.startTest();
+		try {
+			// Negative parameters are not allowed!
+			soql?.getCursor()?.fetch(0, -1);
+			Assert.fail('Did not throw a Soql.InvalidParameterValueException for batch fetch params');
+		} catch (Soql.InvalidParameterValueException error) {
+			// As expected...
+		}
+		Test.stopTest();
+	}
+
+	@IsTest
 	static void shouldGetQueryLocator() {
 		Soql soql = (Soql) DatabaseLayer.Soql.newQuery(User.SObjectType);
 
@@ -71,7 +117,7 @@ private class SoqlTest {
 		Soql.QueryLocator locator = soql?.getQueryLocator();
 		Test.stopTest();
 
-		Assert.areNotEqual(null, locator?.getCursor(), 'Did not return Database.QueryLocator cursor');
+		Assert.areNotEqual(null, locator?.getLocator(), 'Did not return Database.QueryLocator object');
 		Assert.areEqual(soql?.toString(), locator?.getQuery(), 'Unexpected Query');
 		Assert.areNotEqual(null, locator?.iterator(), 'Did not return iterator');
 	}

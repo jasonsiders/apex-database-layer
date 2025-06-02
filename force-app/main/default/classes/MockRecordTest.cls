@@ -39,4 +39,43 @@ private class MockRecordTest {
 		Assert.areEqual('UK', mockedAccount?.BillingCountry, 'Did not overwrite existing value');
 		Assert.areNotEqual(null, mockedAccount?.Id, 'Did not set Id');
 	}
+
+	@IsTest
+	static void shouldGetValuesFromMockRecord() {
+		String accountName = 'John Doe Enterprises';
+		DateTime now = DateTime.now();
+		Contact contact = (Contact) new MockRecord(Contact.SObjectType)?.withId()?.toSObject();
+		MockRecord accountMock = new MockRecord(Account.SObjectType)
+			?.setField(Account.Name, accountName)
+			?.setField(Account.CreatedDate, now)
+			?.setLookup(Account.OwnerId, new User(Id = UserInfo.getUserId()))
+			?.setRelatedList(Schema.Contact.AccountId, new List<Contact>{ contact })
+			?.withId();
+
+		Test.startTest();
+		Assert.areEqual(accountName, accountMock?.get(Account.Name), 'Wrong Name value');
+		User owner = (User) accountMock?.getLookup(Account.OwnerId);
+		Assert.areEqual(UserInfo.getUserId(), owner?.Id, 'Wrong OwnerId value');
+		List<Contact> contacts = accountMock?.getRelatedList(Schema.Contact.AccountId);
+		Assert.areEqual(1, contacts?.size(), 'Wrong # of Contacts');
+		Assert.areEqual(contact?.Id, contacts?.get(0)?.Id, 'Wrong Contact Id');
+	}
+
+	@IsTest
+	static void shouldAddToExistingRelatedList() {
+		Contact contact1 = (Contact) new MockRecord(Contact.SObjectType)?.withId()?.toSObject();
+		Contact contact2 = (Contact) new MockRecord(Contact.SObjectType)?.withId()?.toSObject();
+		MockRecord accountMock = new MockRecord(Account.SObjectType)
+			?.setRelatedList(Contact.AccountId, new List<Contact>{ contact1 })
+			?.withId();
+
+		Test.startTest();
+		accountMock?.getRelatedList(Contact.AccountId)?.add(contact2);
+		Test.stopTest();
+
+		List<Contact> contacts = accountMock?.getRelatedList(Contact.AccountId);
+		Map<Id, Contact> contactMap = new Map<Id, Contact>(contacts);
+		Assert.areEqual(2, contactMap?.size(), 'Wrong # of Contacts');
+		Assert.areEqual(true, contactMap?.containsKey(contact2?.Id), 'Did not add Contact to related list');
+	}
 }
