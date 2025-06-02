@@ -4,9 +4,9 @@
 			"path": "force-app",
 			"default": true,
 			"package": "apex-database-layer",
-			"versionName": "ver 2.0.0",
-			"versionNumber": "2.0.0.NEXT",
-			"versionDescription": "Revamped MockSoql API; added support for globalized mocks"
+			"versionName": "ver 2.1.0",
+			"versionNumber": "2.1.0.NEXT",
+			"versionDescription": "New MockRecord methods to get existing values"
 		}
 	],
 	"name": "apex-database-layer",
@@ -17,6 +17,7 @@
 		"apex-database-layer": "0HoDn000000kAONKA2",
 		"apex-database-layer@0.1.0-1": "04tDn0000006z4LIAQ",
 		"apex-database-layer@1.0.0-2": "04tDn0000011O0pIAE",
-		"apex-database-layer@2.0.0-1": "04tDn0000011OKyIAM"
+		"apex-database-layer@2.0.0-1": "04tDn0000011OKyIAM",
+		"apex-database-layer@2.1.0-1": "04tDn0000011OPVIA2"
 	}
 }
