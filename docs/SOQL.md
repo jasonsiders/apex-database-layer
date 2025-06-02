@@ -87,7 +87,7 @@ MockSoql.setGlobalMock(simulator);
 
 -   `MockSoql.Simulator static setGlobalMock(MockSoql.Simulator simulator)`
 -   `MockSoql.StaticResults static setGlobalMock()`
-</details>
+      </details>
 
 <details>
   <summary><h4>The <code>setMock</code> Method</h4></summary>
@@ -287,7 +287,7 @@ Developers can employ one of the following strategies to work around this:
 -   Have your unit tests call the batch's `start`, `execute`, and `finish` methods invidually.
 -   Amend the `start` method to return an [iterable object](https://developer.salesforce.com/docs/atlas.en-us.apexcode.meta/apexcode/apex_classes_iterable.htm) instead.
 -   Use `System.Queueable` jobs paired with a `System.Finalizer` instead of `Database.Batchable`.
-</details>
+      </details>
 
 ---
 
@@ -729,6 +729,39 @@ Determines the enclosing `Soql.LogicType` object. This affects the delimiter tha
 </details>
 
 <details>
+  <summary><h3>Cursor</h3></summary>
+
+Decorates `Database.Cursor` objects that are returned by `Database.getCursor`. These objects cannot be serialized or mocked by other means.
+
+Use this object in conjunction with the `getCursor` method:
+
+```java
+Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType);
+Soql.Cursor cursor = soql?.getCursor();
+List<SObject> records = cursor?.fetch(0, 10);
+```
+
+#### `fetch`
+
+Fetches cursor rows that correspond to the offset position and the specified record count.
+
+-   `List<SObject> fetch(Integer position, Integer count)`
+
+#### `getCursor`
+
+Returns the underlying `Database.QueryLocator` object used to construct this object.
+
+-   `Database.QueryLocator getLocator()`
+
+#### `getNumRecords`
+
+Gets the number of rows returned in an Apex cursor from a `Cursor.fetch` operation.
+
+-   `Integer getNumRecords()`
+
+</details>
+
+<details>
   <summary><h3>Function</h3></summary>
 
 Enumerates the different [Aggregate Functions](https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_select_agg_functions.htm) that can be used in SOQL queries. Valid options include:
@@ -759,6 +792,13 @@ Soql soql = (Soql) Database.Soql.newQuery(Account.SObjectType)
 This class extends `Soql.Builder`, and therefore has all of the same query-building [methods](#building-queries).
 
 -   `InnerQuery(SObjectType objectType)`
+
+</details>
+
+<details>
+  <summary><h3>InvalidParameterValueException</h3></summary>
+
+This custom exception type wraps the standard `System.InvalidParameterValueException` thrown by the Database.Cursor class in certain circumstances, ex., when using a negative Integer in a `fetch()` call. These exceptions can only be manually constructed in VF or Aura contexts, so they cannot be mocked in apex tests. Both `Soql` and `MockSoql` classes will throw this custom exception type instead.
 
 </details>
 
@@ -834,11 +874,11 @@ Soql soql = DatabaseLayer.Soql?.newQuery(Account.SObjectType);
 Soql.QueryLocator locator = soql?.getQueryLocator();
 ```
 
-#### `getCursor`
+#### `getLocator`
 
 Returns the underlying `Database.QueryLocator` object used to construct this object.
 
--   `Database.QueryLocator getCursor()`
+-   `Database.QueryLocator getLocator()`
 
 #### `getQuery`
 

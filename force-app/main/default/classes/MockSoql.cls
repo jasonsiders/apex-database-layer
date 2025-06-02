@@ -52,6 +52,10 @@ public class MockSoql extends Soql {
 		return this.query()?.size();
 	}
 
+	public override Soql.Cursor getCursor() {
+		return new MockSoql.Cursor(this);
+	}
+
 	public override Soql.QueryLocator getQueryLocator() {
 		return new MockSoql.QueryLocator(this);
 	}
@@ -115,12 +119,84 @@ public class MockSoql extends Soql {
 		}
 	}
 
+	public class Cursor extends Soql.Cursor {
+		/**
+		 * Mocks the Database.Cursor object, using an underlying List<SObject> to drive its behavior
+		 **/
+		private List<SObject> records;
+
+		private Cursor(MockSoql mockQuery) {
+			super(null);
+			this.cursor = this.initMockCursor();
+			this.records = mockQuery?.query();
+		}
+
+		public override List<SObject> fetch(Integer position, Integer count) {
+			// Mocks native functionality by retrieving SObjects between the specified params from the underlying list
+			this.validateFetch(position, count);
+			// Strangely, there isn't a native List.slice method in Apex:
+			return (List<SObject>) this.slice(this.records, position, count);
+		}
+
+		public override Integer getNumRecords() {
+			return this.records?.size() ?? 0;
+		}
+
+		private Database.Cursor initMockCursor() {
+			// Mocks a fake Database.Cursor object, so that Soql.Cursor.getCursor() will return a non-null object
+			// Note: Cursors have a 15-character queryId property that always starts with the same key prefix
+			// Hijacking the existing mock record Id to generate this:
+			String queryId = '0r8' + String.valueOf(MockRecord.initRecordId(User.SObjectType))?.right(12);
+			return (Database.Cursor) JSON.deserialize(
+				JSON.serialize(new Map<String, Object>{ 'queryId' => queryId }),
+				Database.Cursor.class
+			);
+		}
+
+		private List<Object> slice(List<Object> input, Integer first, Integer numElements) {
+			// Retrieves a portion of the provided objects, starting at the "first" index, until the list size matches the numElements
+			// Similar to slice() in JS, except the second parameter specifies the number of elements to return, not the ending index
+			List<Object> results = input?.clone();
+			// Remove any elements that precede the starting index:
+			for (Integer i = 0; i < first; i++) {
+				results?.remove(0);
+			}
+			// Remove any elements after the ending index:
+			while (results?.size() > numElements) {
+				results?.remove(numElements);
+			}
+			return results;
+		}
+
+		private void validateFetch(Integer position, Integer count) {
+			// Throws an exception if the provided arguments are invalid
+			// 1. Neither parameter should be null:
+			if (position == null || count == null) {
+				System.Exception npe = new System.NullPointerException();
+				npe?.setMessage('Attempt to de-reference a null object');
+				throw npe;
+			}
+			// 2. Neither parameter should be negative:
+			if (position < 0) {
+				throw new Soql.InvalidParameterValueException('Start position cannot be a negative value: ' + position);
+			} else if (count < 0) {
+				throw new Soql.InvalidParameterValueException('Fetch size cannot be a negative value: ' + count);
+			}
+			// 3. Should not attempt to fetch an index that doesn't exist:
+			Integer maxIndexToFetch = (position + count);
+			Integer upperBound = (this.records?.size() - 1);
+			if (maxIndexToFetch > upperBound) {
+				throw new Soql.InvalidParameterValueException('Fetch beyond bound detected: ' + maxIndexToFetch);
+			}
+		}
+	}
+
 	public class QueryLocator extends Soql.QueryLocator {
 		/**
 		 * Mocks the Database.QueryLocator object, used in batch jobs.
 		 * Note: This mock implementation has one big shortcoming.
 		 * Because the underlying Database.QueryLocator object cannot be mocked,
-		 * getCursor() will always return null in mock scenarios.
+		 * getLocator() will always return null in mock scenarios.
 		 * Most custom implementations will call getQuery() or iterator() directly,
 		 * but standard mechanisms (ie., Database.Batchable classes) won't work with this.
 		 * One workaround is to individually test the start(), execute(), and finish() methods,
