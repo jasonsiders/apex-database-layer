@@ -38,6 +38,30 @@ public class MockRecord {
 	}
 
 	// **** MEMBER **** //
+	public Object get(String parameterName) {
+		return this.recordValues?.get(parameterName);
+	}
+
+	public Object get(SObjectField field) {
+		return this.get(field?.toString());
+	}
+
+	public SObject getLookup(SObjectField lookupField) {
+		String relationshipName = lookupField?.getDescribe()?.getRelationshipName();
+		return (SObject) this.get(relationshipName);
+	}
+
+	public List<SObject> getRelatedList(Schema.ChildRelationship relationship) {
+		String relationshipName = relationship?.getRelationshipName();
+		MockRecord.RelatedList relatedList = (MockRecord.RelatedList) this.get(relationshipName);
+		return relatedList?.getRecords();
+	}
+
+	public List<SObject> getRelatedList(SObjectField lookupField) {
+		Schema.ChildRelationship relationship = ChildRelationshipService.getChildRelationshipFrom(lookupField);
+		return this.getRelatedList(relationship);
+	}
+
 	public MockRecord setField(Map<String, Object> incomingValues) {
 		// Sets the provided field(s) to their specified values(s)
 		// If a field value is already set, it will be overwritten.
@@ -93,14 +117,18 @@ public class MockRecord {
 	private class RelatedList {
 		// Represents a child object relationship retrieved by SOQL.
 		// This structure is required when mocking related lists on an SObject
-		Boolean done;
-		List<SObject> records;
-		Integer totalSize;
+		private Boolean done;
+		private List<SObject> records;
+		private Integer totalSize;
 
 		private RelatedList(List<SObject> records) {
 			this.done = true;
 			this.records = records ?? new List<SObject>();
 			this.totalSize = records?.size() ?? 0;
+		}
+
+		private List<SObject> getRecords() {
+			return this.records;
 		}
 	}
 }
