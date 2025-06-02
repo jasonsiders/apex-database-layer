@@ -71,14 +71,24 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		}
 	}
 
+	public virtual Soql.Cursor getCursor() {
+		try {
+			Database.Cursor cursor = Database.getCursorWithBinds(this.toString(), this.binds, this.accessLevel);
+			return new Soql.Cursor(cursor);
+		} catch (Exception error) {
+			this.handleQueryError(error);
+			throw error;
+		}
+	}
+
 	public virtual Soql.QueryLocator getQueryLocator() {
 		try {
-			Database.QueryLocator cursor = Database.getQueryLocatorWithBinds(
+			Database.QueryLocator locator = Database.getQueryLocatorWithBinds(
 				this.toString(),
 				this.binds,
 				this.accessLevel
 			);
-			return new Soql.QueryLocator(cursor);
+			return new Soql.QueryLocator(locator);
 		} catch (Exception error) {
 			this.handleQueryError(error);
 			throw error;
@@ -647,6 +657,37 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		}
 	}
 
+	public virtual class Cursor {
+		// Decorates a Database.Cursor so that it can be mocked
+		// These objects can't be manually constructed;
+		// they *can* be serialized, but their query details can't be this way
+		protected Database.Cursor cursor;
+
+		protected Cursor(Database.Cursor cursor) {
+			this.cursor = cursor;
+		}
+
+		public virtual List<SObject> fetch(Integer position, Integer count) {
+			try {
+				return this.cursor?.fetch(position, count);
+			} catch (System.InvalidParameterValueException error) {
+				// This type of system exception cannot be manually constructed, except in VF/Aura contexts (??)
+				// It is thrown whenever invalid parameters are supplied to the fetch() method
+				// Wrap these exceptions so that both real and fake queries throw the same type of Exception for consistency
+				String msg = error?.getMessage();
+				throw new Soql.InvalidParameterValueException(msg);
+			}
+		}
+
+		public Database.Cursor getCursor() {
+			return this.cursor;
+		}
+
+		public virtual Integer getNumRecords() {
+			return this.cursor?.getNumRecords();
+		}
+	}
+
 	public class EndsWithOperator extends Soql.Operator {
 		private EndsWithOperator(String token) {
 			super(token);
@@ -672,6 +713,10 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		public override String toString() {
 			return '(' + super.toString() + ')';
 		}
+	}
+
+	public class InvalidParameterValueException extends Exception {
+		// This class wraps System.InvalidParameterValueExceptions thrown by invalid fetch calls in Database.Cursors
 	}
 
 	public virtual class Operator {
@@ -702,7 +747,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			this.locator = locator;
 		}
 
-		public virtual Database.QueryLocator getCursor() {
+		public virtual Database.QueryLocator getLocator() {
 			return this.locator;
 		}
 
