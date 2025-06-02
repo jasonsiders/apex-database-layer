@@ -87,7 +87,7 @@ MockSoql.setGlobalMock(simulator);
 
 -   `MockSoql.Simulator static setGlobalMock(MockSoql.Simulator simulator)`
 -   `MockSoql.StaticResults static setGlobalMock()`
-      </details>
+    </details>
 
 <details>
   <summary><h4>The <code>setMock</code> Method</h4></summary>
@@ -287,7 +287,7 @@ Developers can employ one of the following strategies to work around this:
 -   Have your unit tests call the batch's `start`, `execute`, and `finish` methods invidually.
 -   Amend the `start` method to return an [iterable object](https://developer.salesforce.com/docs/atlas.en-us.apexcode.meta/apexcode/apex_classes_iterable.htm) instead.
 -   Use `System.Queueable` jobs paired with a `System.Finalizer` instead of `Database.Batchable`.
-      </details>
+    </details>
 
 ---
 
