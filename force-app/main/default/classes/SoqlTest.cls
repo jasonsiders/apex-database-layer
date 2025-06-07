@@ -1088,6 +1088,55 @@ private class SoqlTest {
 		Assert.areEqual(identifier, theQuery?.identifier, 'Wrong query identifier');
 	}
 
+	@IsTest
+	static void shouldCastToInnerQuery() {
+		Soql.Builder builder = new Soql.InnerQuery(Case.SObjectType)?.addSelect(Case.AccountId);
+
+		Test.startTest();
+		Soql.InnerQuery result = builder?.toInnerQuery();
+		Test.stopTest();
+
+		Assert.areEqual(builder?.toString(), result?.toString(), 'Wrong query string');
+	}
+
+	@IsTest
+	static void shouldCastToSoql() {
+		Soql.Builder builder = DatabaseLayer.Soql.newQuery(Case.SObjectType)?.addSelect(Case.AccountId);
+
+		Test.startTest();
+		Soql result = builder?.toSoql();
+		Test.stopTest();
+
+		Assert.areEqual(builder?.toString(), result?.toString(), 'Wrong query string');
+	}
+
+	@IsTest
+	static void shouldCastToSubquery() {
+		Soql.Builder builder = new Soql.Subquery(Case.AccountId)?.addSelect(Case.Status);
+
+		Test.startTest();
+		Soql.Subquery result = builder?.toSubquery();
+		Test.stopTest();
+
+		Assert.areEqual(builder?.toString(), result?.toString(), 'Wrong query string');
+	}
+
+	@SuppressWarnings('PMD.EmptyCatchBlock')
+	@IsTest
+	static void shouldThrowExceptionIfInvalidCasting() {
+		Soql.Builder builder = new Soql.Subquery(Case.AccountId)?.addSelect(Case.Status);
+
+		Test.startTest();
+		// Subquery is never an instance of Soql!
+		try {
+			Soql result = builder?.toSoql();
+			Assert.fail('Did not throw a System.TypeException');
+		} catch (System.TypeException error) {
+			// As expected...
+		}
+		Test.stopTest();
+	}
+
 	// **** HELPER **** //
 	static Object validateQuery(Soql soql, String expected) {
 		Assert.areEqual('"' + expected + '"', '"' + soql?.toString() + '"', 'Unexpected SOQL output');

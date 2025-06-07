@@ -363,7 +363,7 @@ Adds fields or aggregations to the SELECT clause of the query.
 -   `Soql.Builder addSelect(String fieldName)`
 -   `Soql.Builder addSelect(SObjectField field)`
 -   `Soql.Builder addSelect(Soql.Aggregation aggregation)`
--   `Soql.Builder addSelect(Soql.SubQuery subQuery)`
+-   `Soql.Builder addSelect(Soql.Subquery subQuery)`
 
 #### `addWhere`
 
@@ -491,6 +491,24 @@ Sets the usage context for the query.
 Sets the logical operator (AND/OR) for combining WHERE conditions.
 
 -   `Soql.Builder setOuterWhereLogic(Soql.LogicType newLogicType)`
+
+#### `toInnerQuery`
+
+Explicitly casts the current `Soql.Builder` to a `Soql.InnerQuery` instance. Useful for chaining complex queries.
+
+-   `Soql.InnerQuery toInnerQuery()`
+
+#### `toSoql`
+
+Explicitly casts the current `Soql.Builder` to a `Soql` instance. Useful for chaining complex queries.
+
+-   `Soql toSoql()`
+
+#### `toSubquery`
+
+Explicitly casts the current `Soql.Builder` to a `Soql.Subquery` instance. Useful for chaining complex queries.
+
+-   `Soql.Subquery toSubquery()`
 
 #### `usingScope`
 
@@ -973,7 +991,7 @@ Use this in conjunction with the `addSelect` SOQL method. For example:
 
 ```java
 // SELECT Id, (SELECT Id FROM Contacts) FROM Account
-Soql.SubQuery sub = new Soql.SubQuery(Contact.AccountId);
+Soql.Subquery sub = new Soql.Subquery(Contact.AccountId);
 Soql soql = (Soql) Database.Soql.newQuery(Account.SObjectType).addSelect(sub);
 ```
 
@@ -981,8 +999,8 @@ This class extends `Soql.Builder`, and therefore has all of the same query-build
 
 Constructors:
 
--   `Soql.SubQuery(Schema.ChildRelationship relationship)`
--   `Soql.SubQuery(SObjectField lookupFieldOnChildObject)`
+-   `Soql.Subquery(Schema.ChildRelationship relationship)`
+-   `Soql.Subquery(SObjectField lookupFieldOnChildObject)`
 
 </details>
 

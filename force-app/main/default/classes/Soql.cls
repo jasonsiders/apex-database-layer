@@ -336,6 +336,18 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			return this;
 		}
 
+		public Soql.InnerQuery toInnerQuery() {
+			return (Soql.InnerQuery) this;
+		}
+
+		public Soql toSoql() {
+			return (Soql) this;
+		}
+
+		public Soql.Subquery toSubquery() {
+			return (Soql.Subquery) this;
+		}
+
 		// * SELECT *
 		@SuppressWarnings('PMD.EagerlyLoadedDescribeSObjectResult')
 		public Soql.Builder selectAll() {
@@ -375,8 +387,8 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			return this.deselect(ID_REFERENCE)?.addSelect(aggregation?.toString());
 		}
 
-		public Soql.Builder addSelect(Soql.SubQuery subQuery) {
-			return this.addSelect(subQuery.toString());
+		public Soql.Builder addSelect(Soql.Subquery Subquery) {
+			return this.addSelect(Subquery.toString());
 		}
 
 		// * FROM *
@@ -817,12 +829,12 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 	public class Subquery extends Soql.InnerQuery {
 		private String relationshipName;
 
-		public SubQuery(Schema.ChildRelationship relationship) {
+		public Subquery(Schema.ChildRelationship relationship) {
 			this.addSelect(ID_REFERENCE);
 			this.relationshipName = relationship?.getRelationshipName();
 		}
 
-		public SubQuery(SObjectField lookupFieldOnChildObject) {
+		public Subquery(SObjectField lookupFieldOnChildObject) {
 			this(ChildRelationshipService.getChildRelationshipFrom(lookupFieldOnChildObject));
 		}
 
