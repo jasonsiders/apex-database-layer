@@ -783,10 +783,10 @@ Represents inner query logic, used for filtering results in a `WHERE` clause. Us
 
 ```java
 // SELECT Id FROM Account WHERE Id IN (SELECT AccountId FROM Opportunity WHERE IsWon = true)
-Soql.InnerQuery inner = new Soql.InnerQuery(Opportunity.SObjectType)
+Soql.InnerQuery innerQuery = new Soql.InnerQuery(Opportunity.SObjectType)
   ?.addSelect(Opportunity.AccountId);
 Soql soql = (Soql) Database.Soql.newQuery(Account.SObjectType)
-  ?.addSelect(inner);
+  ?.addWhere(Account.Id, Soql.IN_COLLECTION, innerQuery);
 ```
 
 This class extends `Soql.Builder`, and therefore has all of the same query-building [methods](#building-queries).
