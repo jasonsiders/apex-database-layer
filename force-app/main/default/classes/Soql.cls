@@ -138,12 +138,25 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 	// **** ENUMS *** //
 	public enum Function {
 		AVG,
+		CALENDAR_MONTH,
+		CALENDAR_QUARTER,
+		CALENDAR_YEAR,
 		COUNT,
 		COUNT_DISTINCT,
+		DAY_IN_MONTH,
+		DAY_IN_WEEK,
+		DAY_IN_YEAR,
+		DAY_ONLY,
+		FISCAL_MONTH,
+		FISCAL_QUARTER,
+		FISCAL_YEAR,
 		FORMAT,
+		HOUR_IN_DAY,
 		MIN,
 		MAX,
-		SUM
+		SUM,
+		WEEK_IN_MONTH,
+		WEEK_IN_YEAR
 	}
 
 	public enum LogicType {
@@ -378,18 +391,121 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			return this.addSelect(fieldName, '');
 		}
 
+		public Soql.Builder addSelect(List<SObjectField> fields) {
+			for (SObjectField field : fields) {
+				this.addSelect(field?.toString());
+			}
+			return this;
+		}
+
+		@SuppressWarnings('PMD.ExcessiveParameterList')
+		public Soql.Builder addSelect(
+			SObjectField field1,
+			SObjectField field2,
+			SObjectField field3,
+			SObjectField field4,
+			SObjectField field5
+		) {
+			// The Soql class supports up to 5 SObjectFields per addSelect call:
+			return this.addSelect(new List<SObjectField>{ field1, field2, field3, field4, field5 });
+		}
+
+		@SuppressWarnings('PMD.ExcessiveParameterList')
+		public Soql.Builder addSelect(
+			SObjectField field1,
+			SObjectField field2,
+			SObjectField field3,
+			SObjectField field4
+		) {
+			return this.addSelect(new List<SObjectField>{ field1, field2, field3, field4 });
+		}
+
+		public Soql.Builder addSelect(SObjectField field1, SObjectField field2, SObjectField field3) {
+			return this.addSelect(new List<SObjectField>{ field1, field2, field3 });
+		}
+
+		public Soql.Builder addSelect(SObjectField field1, SObjectField field2) {
+			return this.addSelect(new List<SObjectField>{ field1, field2 });
+		}
+
 		public Soql.Builder addSelect(SObjectField field) {
-			return this.addSelect(field?.toString());
+			return this.addSelect(new List<SObjectField>{ field });
+		}
+
+		public Soql.Builder addSelect(List<Soql.Aggregation> aggregations) {
+			// Note: Id should never be included in the SELECT clause for Aggregate queries
+			this.deselect(ID_REFERENCE);
+			for (Soql.Aggregation aggregation : aggregations) {
+				this.addSelect(aggregation?.toString());
+			}
+			return this;
+		}
+
+		public Soql.Builder addSelect(
+			Soql.Aggregation agg1,
+			Soql.Aggregation agg2,
+			Soql.Aggregation agg3,
+			Soql.Aggregation agg4,
+			Soql.Aggregation agg5
+		) {
+			// The Soql class supports up to 5 Soql.Aggregates per addSelect call:
+			return this.addSelect(new List<Soql.Aggregation>{ agg1, agg2, agg3, agg4, agg5 });
+		}
+
+		public Soql.Builder addSelect(
+			Soql.Aggregation agg1,
+			Soql.Aggregation agg2,
+			Soql.Aggregation agg3,
+			Soql.Aggregation agg4
+		) {
+			return this.addSelect(new List<Soql.Aggregation>{ agg1, agg2, agg3, agg4 });
+		}
+
+		public Soql.Builder addSelect(Soql.Aggregation agg1, Soql.Aggregation agg2, Soql.Aggregation agg3) {
+			return this.addSelect(new List<Soql.Aggregation>{ agg1, agg2, agg3 });
+		}
+
+		public Soql.Builder addSelect(Soql.Aggregation agg1, Soql.Aggregation agg2) {
+			return this.addSelect(new List<Soql.Aggregation>{ agg1, agg2 });
 		}
 
 		public Soql.Builder addSelect(Soql.Aggregation aggregation) {
-			// Note: Id should never be included in the SELECT clause for Aggregate queries
-			return this.deselect(ID_REFERENCE)?.addSelect(aggregation?.toString());
+			return this.addSelect(new List<Soql.Aggregation>{ aggregation });
+		}
+
+		public Soql.Builder addSelect(List<Soql.Subquery> subqueries) {
+			for (Soql.Subquery subquery : subqueries) {
+				this.addBindsFromChildQuery(subquery);
+				this.addSelect(subquery?.toString());
+			}
+			return this;
+		}
+
+		public Soql.Builder addSelect(
+			Soql.Subquery sub1,
+			Soql.Subquery sub2,
+			Soql.Subquery sub3,
+			Soql.Subquery sub4,
+			Soql.Subquery sub5
+		) {
+			// The Soql class supports up to 5 Soql.Subqueries per addSelect call:
+			return this.addSelect(new List<Soql.Subquery>{ sub1, sub2, sub3, sub4, sub5 });
+		}
+
+		public Soql.Builder addSelect(Soql.Subquery sub1, Soql.Subquery sub2, Soql.Subquery sub3, Soql.Subquery sub4) {
+			return this.addSelect(new List<Soql.Subquery>{ sub1, sub2, sub3, sub4 });
+		}
+
+		public Soql.Builder addSelect(Soql.Subquery sub1, Soql.Subquery sub2, Soql.Subquery sub3) {
+			return this.addSelect(new List<Soql.Subquery>{ sub1, sub2, sub3 });
+		}
+
+		public Soql.Builder addSelect(Soql.Subquery sub1, Soql.Subquery sub2) {
+			return this.addSelect(new List<Soql.Subquery>{ sub1, sub2 });
 		}
 
 		public Soql.Builder addSelect(Soql.Subquery subquery) {
-			this.addBindsFromChildQuery(subquery);
-			return this.addSelect(Subquery.toString());
+			return this.addSelect(new List<Soql.Subquery>{ subquery });
 		}
 
 		// * FROM *
