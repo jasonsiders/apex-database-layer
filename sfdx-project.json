@@ -4,8 +4,8 @@
 			"path": "force-app",
 			"default": true,
 			"package": "apex-database-layer",
-			"versionName": "ver 2.2.0",
-			"versionNumber": "2.2.0.NEXT",
+			"versionName": "ver 2.2.1",
+			"versionNumber": "2.2.1.NEXT",
 			"versionDescription": "New MockRecord methods to get existing values"
 		}
 	],
@@ -19,6 +19,7 @@
 		"apex-database-layer@1.0.0-2": "04tDn0000011O0pIAE",
 		"apex-database-layer@2.0.0-1": "04tDn0000011OKyIAM",
 		"apex-database-layer@2.1.0-1": "04tDn0000011OPVIA2",
-		"apex-database-layer@2.2.0-1": "04tDn0000011OQJIA2"
+		"apex-database-layer@2.2.0-1": "04tDn0000011OQJIA2",
+		"apex-database-layer@2.2.1-1": "04tDn0000011OQYIA2"
 	}
 }
