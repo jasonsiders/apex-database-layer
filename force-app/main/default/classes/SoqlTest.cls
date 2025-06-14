@@ -1,4 +1,6 @@
-@SuppressWarnings('PMD.ApexDoc, PMD.ApexUnitTestClassShouldHaveAsserts, PMD.CyclomaticComplexity')
+@SuppressWarnings(
+	'PMD.ApexDoc, PMD.ApexUnitTestClassShouldHaveAsserts, PMD.CyclomaticComplexity, PMD.ApexUnitTestClassShouldHaveRunAs'
+)
 @IsTest
 private class SoqlTest {
 	@IsTest
@@ -1063,6 +1065,56 @@ private class SoqlTest {
 	}
 
 	@IsTest
+	static void shouldAddInnerQueryBindsToParent() {
+		Soql.Binder owner = new Soql.Binder('ownerId', UserInfo.getUserId());
+		Soql.InnerQuery innerQuery = new Soql.InnerQuery(Case.SObjectType)
+			?.addSelect(Case.AccountId)
+			?.addWhere(Case.OwnerId, Soql.EQUALS, owner)
+			?.toInnerQuery();
+		// Add the inner query to a Soql object, without explicitly adding the bind to the parent query:
+		Soql testQuery = DatabaseLayer.Soql.newQuery(Account.SObjectType)
+			?.addWhere(Account.OwnerId, Soql.EQUALS, innerQuery)
+			?.toSoql();
+
+		Test.startTest();
+		Exception thrownError;
+		try {
+			testQuery?.query();
+		} catch (System.QueryException queryError) {
+			thrownError = queryError;
+		}
+		Test.stopTest();
+
+		String key = owner?.getKey();
+		Assert.isTrue(testQuery?.binds?.containsKey(key), 'Did not add InnerQuery binds to Soql');
+		Assert.areEqual(owner?.getValue(), testQuery?.binds?.get(key), 'Wrong `owner` bind value');
+		Assert.isNull(thrownError, 'Threw error: ' + thrownError);
+	}
+
+	@IsTest
+	static void shouldAddSubqueryBindsToParent() {
+		Soql.Binder owner = new Soql.Binder('ownerId', UserInfo.getUserId());
+		Soql.Subquery subquery = new Soql.Subquery(Opportunity.AccountId)
+			?.addWhere(Opportunity.OwnerId, Soql.EQUALS, owner)
+			?.toSubquery();
+		Soql testQuery = DatabaseLayer.Soql.newQuery(Account.SObjectType)?.addSelect(subquery)?.toSoql();
+
+		Test.startTest();
+		Exception thrownError;
+		try {
+			testQuery?.query();
+		} catch (System.QueryException queryError) {
+			thrownError = queryError;
+		}
+		Test.stopTest();
+
+		String key = owner?.getKey();
+		Assert.isTrue(testQuery?.binds?.containsKey(owner?.getKey()), 'Did not add Subquery binds to Soql');
+		Assert.areEqual(owner?.getValue(), testQuery?.binds?.get(key), 'Wrong `owner` bind value');
+		Assert.isNull(thrownError, 'Threw error: ' + thrownError);
+	}
+
+	@IsTest
 	static void shouldOrderByField() {
 		String value = new Soql.SortOrder(Account.CreatedDate, Soql.SortDirection.ASCENDING)?.toString();
 		Assert.areEqual('CreatedDate ASC NULLS LAST', value, 'Wrong value');
@@ -1129,7 +1181,7 @@ private class SoqlTest {
 		Test.startTest();
 		// Subquery is never an instance of Soql!
 		try {
-			Soql result = builder?.toSoql();
+			builder?.toSoql();
 			Assert.fail('Did not throw a System.TypeException');
 		} catch (System.TypeException error) {
 			// As expected...
