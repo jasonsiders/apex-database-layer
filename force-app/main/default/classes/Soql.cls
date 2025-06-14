@@ -387,7 +387,8 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			return this.deselect(ID_REFERENCE)?.addSelect(aggregation?.toString());
 		}
 
-		public Soql.Builder addSelect(Soql.Subquery Subquery) {
+		public Soql.Builder addSelect(Soql.Subquery subquery) {
+			this.addBindsFromChildQuery(subquery);
 			return this.addSelect(Subquery.toString());
 		}
 
@@ -415,12 +416,21 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		public Soql.Builder addWhere(SObjectField field, Soql.Operator operator, Object value) {
-			// Shorthand overload constructs a Condition object for the caller
 			return this.addWhere(field?.toString(), operator, value);
 		}
 
+		public Soql.Builder addWhere(String fieldName, Soql.Operator operator, Soql.InnerQuery innerQuery) {
+			// If the current `value` object is an InnerQuery, add its binds to the parent query:
+			this.addBindsFromChildQuery(innerQuery);
+			return this.addWhere(fieldName, operator, innerQuery?.toString());
+		}
+
+		public Soql.Builder addWhere(SObjectField field, Soql.Operator operator, Soql.InnerQuery innerQuery) {
+			return this.addWhere(field?.toString(), operator, innerQuery);
+		}
+
 		public Soql.Builder addWhere(String fieldName, Soql.Operator operator, Soql.Binder binder) {
-			// If the current object is a Binder, bind the values so that callers don't need to do so manually
+			// If the current `value` object is a Binder, bind the values so that callers don't need to do so manually
 			return this.addWhere(fieldName, operator, binder?.toString())?.bind(binder);
 		}
 
@@ -500,6 +510,12 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		// **** PRIVATE **** //
+		protected void addBindsFromChildQuery(Soql.Builder childQuery) {
+			// Add all binds from a child query to the current query
+			Map<String, Object> childBinds = childQuery?.binds ?? new Map<String, Object>();
+			this.binds?.putAll(childBinds);
+		}
+
 		protected String constructClause(String prefix, Object value) {
 			// Returns a specific SOQL clause (ex., "WHERE {value}"), provided that `value` is not null
 			String output = value?.toString();
@@ -608,9 +624,14 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		private String processString(String value) {
-			// Allow special modifiers (bind variables & relative date operators) to pass through unmodified
-			Boolean specialModifier = value?.startsWithIgnoreCase('LAST_N_DAYS') || value?.startsWith(':');
-			return (specialModifier) ? value : this.operator?.processStringValue(value);
+			// Allow special modifiers (bind variables, inner queries, & relative date operators) to pass through unmodified
+			for (String excludedModifier : new Set<String>{ 'LAST_N_DAYS', ':', '(' }) {
+				if (value?.startsWithIgnoreCase(excludedModifier)) {
+					return value;
+				}
+			}
+			// Else, treat the value as a normal String:
+			return this.operator?.processStringValue(value);
 		}
 	}
 
