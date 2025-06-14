@@ -87,7 +87,7 @@ MockSoql.setGlobalMock(simulator);
 
 - `MockSoql.Simulator static setGlobalMock(MockSoql.Simulator simulator)`
 - `MockSoql.StaticResults static setGlobalMock()`
-    </details>
+      </details>
 
 <details>
   <summary><h4>The <code>setMock</code> Method</h4></summary>
@@ -287,7 +287,7 @@ Developers can employ one of the following strategies to work around this:
 - Have your unit tests call the batch's `start`, `execute`, and `finish` methods invidually.
 - Amend the `start` method to return an [iterable object](https://developer.salesforce.com/docs/atlas.en-us.apexcode.meta/apexcode/apex_classes_iterable.htm) instead.
 - Use `System.Queueable` jobs paired with a `System.Finalizer` instead of `Database.Batchable`.
-    </details>
+      </details>
 
 ---
 
@@ -799,13 +799,26 @@ Gets the number of rows returned in an Apex cursor from a `Cursor.fetch` operati
 
 Enumerates the different [Aggregate Functions](https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_select_agg_functions.htm) that can be used in SOQL queries. Valid options include:
 
-- `AVG`
-- `COUNT`
-- `COUNT_DISTINCT`
-- `FORMAT`
-- `MIN`
-- `MAX`
-- `SUM`
+- `AVG`,
+- `CALENDAR_MONTH`,
+- `CALENDAR_QUARTER`,
+- `CALENDAR_YEAR`,
+- `COUNT`,
+- `COUNT_DISTINCT`,
+- `DAY_IN_MONTH`,
+- `DAY_IN_WEEK`,
+- `DAY_IN_YEAR`,
+- `DAY_ONLY`,
+- `FISCAL_MONTH`,
+- `FISCAL_QUARTER`,
+- `FISCAL_YEAR`,
+- `FORMAT`,
+- `HOUR_IN_DAY`,
+- `MIN`,
+- `MAX`,
+- `SUM`,
+- `WEEK_IN_MONTH`,
+- `WEEK_IN_YEAR`
 
 </details>
 
