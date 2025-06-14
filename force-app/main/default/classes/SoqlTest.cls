@@ -1073,22 +1073,20 @@ private class SoqlTest {
 			?.toInnerQuery();
 		// Add the inner query to a Soql object, without explicitly adding the bind to the parent query:
 		Soql testQuery = DatabaseLayer.Soql.newQuery(Account.SObjectType)
-			?.addWhere(Account.OwnerId, Soql.EQUALS, innerQuery)
+			?.addWhere(Account.Id, Soql.IN_COLLECTION, innerQuery)
 			?.toSoql();
 
 		Test.startTest();
-		Exception thrownError;
 		try {
 			testQuery?.query();
 		} catch (System.QueryException queryError) {
-			thrownError = queryError;
+			Assert.fail(queryError?.toString());
 		}
 		Test.stopTest();
 
 		String key = owner?.getKey();
 		Assert.isTrue(testQuery?.binds?.containsKey(key), 'Did not add InnerQuery binds to Soql');
 		Assert.areEqual(owner?.getValue(), testQuery?.binds?.get(key), 'Wrong `owner` bind value');
-		Assert.isNull(thrownError, 'Threw error: ' + thrownError);
 	}
 
 	@IsTest
@@ -1100,18 +1098,16 @@ private class SoqlTest {
 		Soql testQuery = DatabaseLayer.Soql.newQuery(Account.SObjectType)?.addSelect(subquery)?.toSoql();
 
 		Test.startTest();
-		Exception thrownError;
 		try {
 			testQuery?.query();
 		} catch (System.QueryException queryError) {
-			thrownError = queryError;
+			Assert.fail(queryError?.toString());
 		}
 		Test.stopTest();
 
 		String key = owner?.getKey();
 		Assert.isTrue(testQuery?.binds?.containsKey(owner?.getKey()), 'Did not add Subquery binds to Soql');
 		Assert.areEqual(owner?.getValue(), testQuery?.binds?.get(key), 'Wrong `owner` bind value');
-		Assert.isNull(thrownError, 'Threw error: ' + thrownError);
 	}
 
 	@IsTest
