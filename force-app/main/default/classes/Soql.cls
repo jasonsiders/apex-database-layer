@@ -418,7 +418,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			SObjectField field4,
 			SObjectField field5
 		) {
-			// The Soql class supports up to 5 SObjectFields per addSelect call:
+			// Currently supporting up to 5 SObjectFields per addSelect call:
 			return this.addSelect(new List<SObjectField>{ field1, field2, field3, field4, field5 });
 		}
 
@@ -463,7 +463,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			Soql.Selectable field4,
 			Soql.Selectable field5
 		) {
-			// The Soql class supports up to 5 Soql.Aggregates per addSelect call:
+			// Currently supporting up to 5 selectables per addSelect call:
 			return this.addSelect(new List<Soql.Selectable>{ field1, field2, field3, field4, field5 });
 		}
 
