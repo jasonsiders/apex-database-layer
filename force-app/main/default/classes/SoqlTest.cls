@@ -307,7 +307,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldSelect5Fields() {
+	static void shouldSelectUpTo5Fields() {
 		Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)
 			?.addSelect(
 				Account.Name,
@@ -325,35 +325,83 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldSelect4Fields() {
-		Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)
-			?.addSelect(Account.Name, Account.NumberOfEmployees, Account.OwnerId, Account.CreatedDate)
-			?.toSoql();
-		String expected = 'SELECT Id, Name, NumberOfEmployees, OwnerId, CreatedDate FROM Account';
-
-		Test.startTest();
-		SoqlTest.validateQuery(soql, expected);
-		Test.stopTest();
-	}
-
-	@IsTest
-	static void shouldSelect3Fields() {
-		Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)
-			?.addSelect(Account.Name, Account.NumberOfEmployees, Account.OwnerId)
-			?.toSoql();
-		String expected = 'SELECT Id, Name, NumberOfEmployees, OwnerId FROM Account';
-
-		Test.startTest();
-		SoqlTest.validateQuery(soql, expected);
-		Test.stopTest();
-	}
-
-	@IsTest
-	static void shouldSelect2Fields() {
+	static void shouldSelectMultipleFields() {
 		Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)
 			?.addSelect(Account.Name, Account.NumberOfEmployees)
 			?.toSoql();
 		String expected = 'SELECT Id, Name, NumberOfEmployees FROM Account';
+
+		Test.startTest();
+		SoqlTest.validateQuery(soql, expected);
+		Test.stopTest();
+	}
+
+	@IsTest
+	static void shouldSelectParentField() {
+		// SOQL supports up to 5 relationships deep!
+		Soql.ParentField field = new Soql.ParentField(
+			OpportunityContactRole.OpportunityId,
+			Opportunity.AccountId,
+			Account.OwnerId,
+			User.ProfileId,
+			Profile.UserLicenseId,
+			UserLicense.Name
+		);
+		Soql soql = DatabaseLayer.Soql.newQuery(OpportunityContactRole.SObjectType)?.addSelect(field)?.toSoql();
+		String expected = 'SELECT Id, Opportunity.Account.Owner.Profile.UserLicense.Name FROM OpportunityContactRole';
+
+		Test.startTest();
+		SoqlTest.validateQuery(soql, expected);
+		Test.stopTest();
+	}
+
+	@IsTest
+	static void shouldSelectListOfParentFields() {
+		List<Soql.ParentField> fields = new List<Soql.ParentField>{
+			new Soql.ParentField(Opportunity.AccountId, Account.Name),
+			new Soql.ParentField(Opportunity.AccountId, Account.OwnerId)
+		};
+
+		Soql soql = DatabaseLayer.Soql.newQuery(Opportunity.SObjectType)?.addSelect(fields)?.toSoql();
+		String expected = 'SELECT Id, Account.Name, Account.OwnerId FROM Opportunity';
+
+		Test.startTest();
+		SoqlTest.validateQuery(soql, expected);
+		Test.stopTest();
+	}
+
+	@IsTest
+	static void shouldSelectUpTo5ParentFields() {
+		Soql.ParentField accName = new Soql.ParentField(Opportunity.AccountId, Account.Name);
+		Soql.ParentField accOwner = new Soql.ParentField(Opportunity.AccountId, Account.OwnerId);
+		Soql.ParentField ownerProfile = new Soql.ParentField(
+			Opportunity.AccountId,
+			Account.OwnerId,
+			User.ProfileId,
+			Profile.Name
+		);
+		Soql.ParentField accCreated = new Soql.ParentField(Opportunity.AccountId, Account.CreatedDate);
+		Soql.ParentField accModified = new Soql.ParentField(Opportunity.AccountId, Account.LastModifiedDate);
+
+		Soql soql = DatabaseLayer.Soql.newQuery(Opportunity.SObjectType)
+			?.addSelect(accName, accOwner, ownerProfile, accCreated, accModified)
+			?.toSoql();
+		String expected = 'SELECT Id, Account.Name, Account.OwnerId, Account.Owner.Profile.Name, Account.CreatedDate, Account.LastModifiedDate FROM Opportunity';
+
+		Test.startTest();
+		SoqlTest.validateQuery(soql, expected);
+		Test.stopTest();
+	}
+
+	@IsTest
+	static void shouldSelectMultipleParentFields() {
+		Soql.ParentField accountName = new Soql.ParentField(Opportunity.AccountId, Account.Name);
+		Soql.ParentField accountOwner = new Soql.ParentField(Opportunity.AccountId, Account.OwnerId);
+
+		Soql soql = DatabaseLayer.Soql.newQuery(Opportunity.SObjectType)
+			?.addSelect(accountName, accountOwner)
+			?.toSoql();
+		String expected = 'SELECT Id, Account.Name, Account.OwnerId FROM Opportunity';
 
 		Test.startTest();
 		SoqlTest.validateQuery(soql, expected);
@@ -389,7 +437,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldSelect5Aggregations() {
+	static void shouldSelectUpTo5Aggregations() {
 		Soql soql = (Soql) DatabaseLayer.Soql.newQuery(Account.SObjectType)
 			?.addSelect(
 				new Soql.Aggregation(Soql.Function.COUNT, Account.Id),
@@ -406,38 +454,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldSelect4Aggregations() {
-		Soql soql = (Soql) DatabaseLayer.Soql.newQuery(Account.SObjectType)
-			?.addSelect(
-				new Soql.Aggregation(Soql.Function.COUNT, Account.Id),
-				new Soql.Aggregation(Soql.Function.SUM, Account.NumberOfEmployees),
-				new Soql.Aggregation(Soql.Function.MIN, Account.NumberOfEmployees),
-				new Soql.Aggregation(Soql.Function.MAX, Account.NumberOfEmployees)
-			);
-		String expected = 'SELECT COUNT(Id), SUM(NumberOfEmployees), MIN(NumberOfEmployees), MAX(NumberOfEmployees) FROM Account';
-
-		Test.startTest();
-		SoqlTest.validateQuery(soql, expected);
-		Test.stopTest();
-	}
-
-	@IsTest
-	static void shouldSelect3Aggregations() {
-		Soql soql = (Soql) DatabaseLayer.Soql.newQuery(Account.SObjectType)
-			?.addSelect(
-				new Soql.Aggregation(Soql.Function.COUNT, Account.Id),
-				new Soql.Aggregation(Soql.Function.SUM, Account.NumberOfEmployees),
-				new Soql.Aggregation(Soql.Function.MIN, Account.NumberOfEmployees)
-			);
-		String expected = 'SELECT COUNT(Id), SUM(NumberOfEmployees), MIN(NumberOfEmployees) FROM Account';
-
-		Test.startTest();
-		SoqlTest.validateQuery(soql, expected);
-		Test.stopTest();
-	}
-
-	@IsTest
-	static void shouldSelect2Aggregations() {
+	static void shouldSelectMultipleAggregations() {
 		Soql soql = (Soql) DatabaseLayer.Soql.newQuery(Account.SObjectType)
 			?.addSelect(
 				new Soql.Aggregation(Soql.Function.COUNT, Account.Id),
@@ -479,7 +496,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldSelect5Subqueries() {
+	static void shouldSelectUpTo5Subqueries() {
 		Soql soql = (Soql) DatabaseLayer.Soql.newQuery(Account.SObjectType)
 			?.addSelect(
 				new Soql.Subquery(Account.ParentId),
@@ -496,38 +513,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldSelect4Subqueries() {
-		Soql soql = (Soql) DatabaseLayer.Soql.newQuery(Account.SObjectType)
-			?.addSelect(
-				new Soql.Subquery(Account.ParentId),
-				new Soql.Subquery(Case.AccountId),
-				new Soql.Subquery(Contact.AccountId),
-				new Soql.Subquery(Opportunity.AccountId)
-			);
-		String expected = 'SELECT Id, (SELECT Id FROM ChildAccounts), (SELECT Id FROM Cases), (SELECT Id FROM Contacts), (SELECT Id FROM Opportunities) FROM Account';
-
-		Test.startTest();
-		SoqlTest.validateQuery(soql, expected);
-		Test.stopTest();
-	}
-
-	@IsTest
-	static void shouldSelect3Subqueries() {
-		Soql soql = (Soql) DatabaseLayer.Soql.newQuery(Account.SObjectType)
-			?.addSelect(
-				new Soql.Subquery(Account.ParentId),
-				new Soql.Subquery(Case.AccountId),
-				new Soql.Subquery(Contact.AccountId)
-			);
-		String expected = 'SELECT Id, (SELECT Id FROM ChildAccounts), (SELECT Id FROM Cases), (SELECT Id FROM Contacts) FROM Account';
-
-		Test.startTest();
-		SoqlTest.validateQuery(soql, expected);
-		Test.stopTest();
-	}
-
-	@IsTest
-	static void shouldSelect2Subqueries() {
+	static void shouldSelectMultipleSubqueries() {
 		Soql soql = (Soql) DatabaseLayer.Soql.newQuery(Account.SObjectType)
 			?.addSelect(new Soql.Subquery(Account.ParentId), new Soql.Subquery(Case.AccountId));
 		String expected = 'SELECT Id, (SELECT Id FROM ChildAccounts), (SELECT Id FROM Cases) FROM Account';

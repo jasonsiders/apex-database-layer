@@ -1,4 +1,6 @@
-@SuppressWarnings('PMD.ApexDoc, PMD.CognitiveComplexity, PMD.CyclomaticComplexity, PMD.ExcessivePublicCount')
+@SuppressWarnings(
+	'PMD.ApexDoc, PMD.CognitiveComplexity, PMD.CyclomaticComplexity, PMD.ExcessiveClassLength, PMD.ExcessivePublicCount'
+)
 public inherited sharing virtual class Soql extends Soql.Builder {
 	/**
 	 * This class is responsible for performing query operations with the Salesforce database.
@@ -198,6 +200,13 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 	// **** INTERFACE **** //
 	public interface Criteria {
 		// Mostly a marker interface, but also used to coerce toString()
+		// Use this to denote classes that can be used in WHERE/HAVING clauses
+		String toString();
+	}
+
+	public interface Selectable {
+		// Mostly a marker interface, but also used to coerce toString()
+		// Use this to denote classes that can be used in SELECT clauses
 		String toString();
 	}
 
@@ -214,7 +223,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		}
 	}
 
-	public class Aggregation {
+	public class Aggregation implements Soql.Selectable {
 		private String alias;
 		private String innerFieldName;
 		private Function function;
@@ -393,7 +402,9 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
 		public Soql.Builder addSelect(List<SObjectField> fields) {
 			for (SObjectField field : fields) {
-				this.addSelect(field?.toString());
+				if (field != null) {
+					this.addSelect(field?.toString());
+				}
 			}
 			return this;
 		}
@@ -417,95 +428,64 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			SObjectField field3,
 			SObjectField field4
 		) {
-			return this.addSelect(new List<SObjectField>{ field1, field2, field3, field4 });
+			return this.addSelect(field1, field2, field3, field4, null);
 		}
 
 		public Soql.Builder addSelect(SObjectField field1, SObjectField field2, SObjectField field3) {
-			return this.addSelect(new List<SObjectField>{ field1, field2, field3 });
+			return this.addSelect(field1, field2, field3, null);
 		}
 
 		public Soql.Builder addSelect(SObjectField field1, SObjectField field2) {
-			return this.addSelect(new List<SObjectField>{ field1, field2 });
+			return this.addSelect(field1, field2, null);
 		}
 
 		public Soql.Builder addSelect(SObjectField field) {
-			return this.addSelect(new List<SObjectField>{ field });
+			SObjectField nullField;
+			return this.addSelect(field, nullField);
 		}
 
-		public Soql.Builder addSelect(List<Soql.Aggregation> aggregations) {
-			// Note: Id should never be included in the SELECT clause for Aggregate queries
-			this.deselect(ID_REFERENCE);
-			for (Soql.Aggregation aggregation : aggregations) {
-				this.addSelect(aggregation?.toString());
+		public Soql.Builder addSelect(List<Soql.Selectable> fields) {
+			for (Soql.Selectable field : fields) {
+				if (field != null) {
+					this.handleSelectableLogic(field);
+					this.addSelect(field?.toString());
+				}
 			}
 			return this;
 		}
 
+		@SuppressWarnings('PMD.ExcessiveParameterList')
 		public Soql.Builder addSelect(
-			Soql.Aggregation agg1,
-			Soql.Aggregation agg2,
-			Soql.Aggregation agg3,
-			Soql.Aggregation agg4,
-			Soql.Aggregation agg5
+			Soql.Selectable field1,
+			Soql.Selectable field2,
+			Soql.Selectable field3,
+			Soql.Selectable field4,
+			Soql.Selectable field5
 		) {
 			// The Soql class supports up to 5 Soql.Aggregates per addSelect call:
-			return this.addSelect(new List<Soql.Aggregation>{ agg1, agg2, agg3, agg4, agg5 });
+			return this.addSelect(new List<Soql.Selectable>{ field1, field2, field3, field4, field5 });
 		}
 
+		@SuppressWarnings('PMD.ExcessiveParameterList')
 		public Soql.Builder addSelect(
-			Soql.Aggregation agg1,
-			Soql.Aggregation agg2,
-			Soql.Aggregation agg3,
-			Soql.Aggregation agg4
+			Soql.Selectable field1,
+			Soql.Selectable field2,
+			Soql.Selectable field3,
+			Soql.Selectable field4
 		) {
-			return this.addSelect(new List<Soql.Aggregation>{ agg1, agg2, agg3, agg4 });
+			return this.addSelect(field1, field2, field3, field4, null);
 		}
 
-		public Soql.Builder addSelect(Soql.Aggregation agg1, Soql.Aggregation agg2, Soql.Aggregation agg3) {
-			return this.addSelect(new List<Soql.Aggregation>{ agg1, agg2, agg3 });
+		public Soql.Builder addSelect(Soql.Selectable field1, Soql.Selectable field2, Soql.Selectable field3) {
+			return this.addSelect(field1, field2, field3, null);
 		}
 
-		public Soql.Builder addSelect(Soql.Aggregation agg1, Soql.Aggregation agg2) {
-			return this.addSelect(new List<Soql.Aggregation>{ agg1, agg2 });
+		public Soql.Builder addSelect(Soql.Selectable field1, Soql.Selectable field2) {
+			return this.addSelect(field1, field2, null);
 		}
 
-		public Soql.Builder addSelect(Soql.Aggregation aggregation) {
-			return this.addSelect(new List<Soql.Aggregation>{ aggregation });
-		}
-
-		public Soql.Builder addSelect(List<Soql.Subquery> subqueries) {
-			for (Soql.Subquery subquery : subqueries) {
-				this.addBindsFromChildQuery(subquery);
-				this.addSelect(subquery?.toString());
-			}
-			return this;
-		}
-
-		public Soql.Builder addSelect(
-			Soql.Subquery sub1,
-			Soql.Subquery sub2,
-			Soql.Subquery sub3,
-			Soql.Subquery sub4,
-			Soql.Subquery sub5
-		) {
-			// The Soql class supports up to 5 Soql.Subqueries per addSelect call:
-			return this.addSelect(new List<Soql.Subquery>{ sub1, sub2, sub3, sub4, sub5 });
-		}
-
-		public Soql.Builder addSelect(Soql.Subquery sub1, Soql.Subquery sub2, Soql.Subquery sub3, Soql.Subquery sub4) {
-			return this.addSelect(new List<Soql.Subquery>{ sub1, sub2, sub3, sub4 });
-		}
-
-		public Soql.Builder addSelect(Soql.Subquery sub1, Soql.Subquery sub2, Soql.Subquery sub3) {
-			return this.addSelect(new List<Soql.Subquery>{ sub1, sub2, sub3 });
-		}
-
-		public Soql.Builder addSelect(Soql.Subquery sub1, Soql.Subquery sub2) {
-			return this.addSelect(new List<Soql.Subquery>{ sub1, sub2 });
-		}
-
-		public Soql.Builder addSelect(Soql.Subquery subquery) {
-			return this.addSelect(new List<Soql.Subquery>{ subquery });
+		public Soql.Builder addSelect(Soql.Selectable field) {
+			return this.addSelect(field, null);
 		}
 
 		// * FROM *
@@ -537,7 +517,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
 		public Soql.Builder addWhere(String fieldName, Soql.Operator operator, Soql.InnerQuery innerQuery) {
 			// If the current `value` object is an InnerQuery, add its binds to the parent query:
-			this.addBindsFromChildQuery(innerQuery);
+			this.addBindsFromChildQuery((Soql.Builder) innerQuery);
 			return this.addWhere(fieldName, operator, innerQuery?.toString());
 		}
 
@@ -676,6 +656,18 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
 		protected virtual String getUsage() {
 			return this.usage?.toString()?.replace('_', ' ');
+		}
+
+		protected void handleSelectableLogic(Soql.Selectable selectable) {
+			// Handles special "rules" for certain Selectable types:
+			if (selectable instanceof Soql.Aggregation) {
+				// Aggregate queries should never include the Id reference by itself
+				this.deselect(ID_REFERENCE);
+			} else if (selectable instanceof Soql.Subquery) {
+				// Subqueries should have binds propogate up to parent
+				Soql.Subquery subquery = (Soql.Subquery) selectable;
+				this.addBindsFromChildQuery(subquery);
+			}
 		}
 	}
 
@@ -847,7 +839,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		}
 	}
 
-	public virtual class InnerQuery extends Soql.Builder {
+	public virtual class InnerQuery extends Soql.Builder implements Soql.Selectable {
 		// Inner queries must contain a single key field, and this is typically not the Id
 		// ex., `SELECT AccountId FROM Case WHERE X`
 		protected InnerQuery() {
@@ -883,6 +875,67 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
 		public override String toString() {
 			return this.token;
+		}
+	}
+
+	@SuppressWarnings('PMD.ExcessiveParameterCount')
+	public class ParentField implements Soql.Selectable {
+		// Represents a reference to a SObjectField on a parent (or multi-grandparent) object, ex., "Account.Owner.Profile.Name"
+		// SOQL supports querying fields objects up to 5 relationships away from the FROM object
+
+		public ParentField(List<SObjectField> chainOfRelationshipFields) {
+			// TODO!
+		}
+
+		public ParentField(
+			SObjectField relationship1,
+			SObjectField relationship2,
+			SObjectField relationship3,
+			SObjectField relationship4,
+			SObjectField relationship5,
+			SObjectField field
+		) {
+			this(
+				new List<SObjectField>{
+					relationship1,
+					relationship2,
+					relationship3,
+					relationship4,
+					relationship5,
+					field
+				}
+			);
+		}
+
+		public ParentField(
+			SObjectField relationship1,
+			SObjectField relationship2,
+			SObjectField relationship3,
+			SObjectField relationship4,
+			SObjectField field
+		) {
+			this(relationship1, relationship2, relationship3, relationship4, field, null);
+		}
+
+		public ParentField(
+			SObjectField relationship1,
+			SObjectField relationship2,
+			SObjectField relationship3,
+			SObjectField field
+		) {
+			this(relationship1, relationship2, relationship3, field, null);
+		}
+
+		public ParentField(SObjectField relationship1, SObjectField relationship2, SObjectField field) {
+			this(relationship1, relationship2, field, null);
+		}
+
+		public ParentField(SObjectField relationship1, SObjectField field) {
+			this(relationship1, field, null);
+		}
+
+		public override String toString() {
+			return 'Foo!';
 		}
 	}
 
