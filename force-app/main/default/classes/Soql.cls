@@ -238,6 +238,10 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			this(function, field?.toString());
 		}
 
+		public Aggregation(Soql.Function function, Soql.ParentField field) {
+			this(function, field?.toString());
+		}
+
 		public Aggregation(Soql.Function function) {
 			this(function, '');
 		}
@@ -342,6 +346,10 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			return this.deselect(field?.toString());
 		}
 
+		public Soql.Builder deselect(Soql.Selectable selectable) {
+			return this.deselect(selectable?.toString());
+		}
+
 		public Soql.Builder defineAccess(System.AccessLevel accessLevel) {
 			this.accessLevel = accessLevel;
 			return this;
@@ -394,6 +402,10 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		public Soql.Builder addSelect(SObjectField field, String alias) {
+			return this.addSelect(field?.toString(), alias);
+		}
+
+		public Soql.Builder addSelect(Soql.ParentField field, String alias) {
 			return this.addSelect(field?.toString(), alias);
 		}
 
@@ -516,6 +528,10 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			return this.addWhere(field?.toString(), operator, value);
 		}
 
+		public Soql.Builder addWhere(Soql.ParentField field, Soql.Operator operator, Object value) {
+			return this.addWhere(field?.toString(), operator, value);
+		}
+
 		public Soql.Builder addWhere(String fieldName, Soql.Operator operator, Soql.InnerQuery innerQuery) {
 			// If the current `value` object is an InnerQuery, add its binds to the parent query:
 			this.addBindsFromChildQuery(innerQuery);
@@ -526,12 +542,20 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			return this.addWhere(field?.toString(), operator, innerQuery);
 		}
 
+		public Soql.Builder addWhere(Soql.ParentField field, Soql.Operator operator, Soql.InnerQuery innerQuery) {
+			return this.addWhere(field?.toString(), operator, innerQuery);
+		}
+
 		public Soql.Builder addWhere(String fieldName, Soql.Operator operator, Soql.Binder binder) {
 			// If the current `value` object is a Binder, bind the values so that callers don't need to do so manually
 			return this.addWhere(fieldName, operator, binder?.toString())?.bind(binder);
 		}
 
 		public Soql.Builder addWhere(SObjectField field, Soql.Operator operator, Soql.Binder binder) {
+			return this.addWhere(field?.toString(), operator, binder);
+		}
+
+		public Soql.Builder addWhere(Soql.ParentField field, Soql.Operator operator, Soql.Binder binder) {
 			return this.addWhere(field?.toString(), operator, binder);
 		}
 
@@ -560,6 +584,10 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			return this.groupBy(field?.toString());
 		}
 
+		public Soql.Builder groupBy(Soql.ParentField field) {
+			return this.groupBy(field?.toString());
+		}
+
 		// * HAVING *
 		public Soql.Builder addHaving(Soql.Aggregation agg, Soql.Operator operator, Object value) {
 			// Shorthand overload constructs the AggregateCondition for the caller
@@ -585,6 +613,10 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		public Soql.Builder orderBy(SObjectField field, Soql.SortDirection direction) {
+			return this.orderBy(field?.toString(), direction);
+		}
+
+		public Soql.Builder orderBy(Soql.ParentField field, Soql.SortDirection direction) {
 			return this.orderBy(field?.toString(), direction);
 		}
 
@@ -687,6 +719,10 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			this(field?.toString(), operator, value);
 		}
 
+		public Condition(Soql.ParentField field, Soql.Operator operator, Object value) {
+			this(field?.toString(), operator, value);
+		}
+
 		public override String toString() {
 			List<String> parts = new List<String>{
 				this.property,
@@ -763,6 +799,10 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		public ConditionalLogic addCondition(SObjectField field, Soql.Operator operator, Object value) {
+			return this.addCondition(field?.toString(), operator, value);
+		}
+
+		public ConditionalLogic addCondition(Soql.ParentField field, Soql.Operator operator, Object value) {
 			return this.addCondition(field?.toString(), operator, value);
 		}
 
@@ -1007,6 +1047,17 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
 		public SortOrder(SObjectField field, Soql.SortDirection direction) {
 			this(new List<SObjectField>{ field }, direction);
+		}
+
+		public SortOrder(List<Soql.ParentField> fields, Soql.SortDirection direction) {
+			for (Soql.ParentField field : fields) {
+				this.fieldNames?.add(field?.toString());
+			}
+			this.direction = direction;
+		}
+
+		public SortOrder(Soql.ParentField field, Soql.SortDirection direction) {
+			this(new List<Soql.ParentField>{ field }, direction);
 		}
 
 		public SortOrder setNullOrder(Soql.NullOrder nullOrder) {

@@ -36,8 +36,10 @@ private class SoqlTest {
 
 	@IsTest
 	static void shouldCountQuery() {
-		Soql soql = (Soql) DatabaseLayer.Soql.newQuery(User.SObjectType)
-			?.addWhere('Profile.Name', Soql.EQUALS, 'System Administrator');
+		Soql.ParentField field = new Soql.ParentField(User.ProfileId, Profile.Name);
+		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
+			?.addWhere(field, Soql.EQUALS, 'System Administrator')
+			?.toSoql();
 
 		Test.startTest();
 		Integer results = soql?.countQuery();
@@ -52,7 +54,7 @@ private class SoqlTest {
 	@IsTest
 	static void shouldHandleCountQueryErrors() {
 		SObjectType illegalEntity = null; // Will cause a System.QueryException when run
-		Soql soql = (Soql) DatabaseLayer.Soql.newQuery(illegalEntity);
+		Soql soql = DatabaseLayer.Soql.newQuery(illegalEntity)?.toSoql();
 
 		Test.startTest();
 		try {
@@ -67,7 +69,7 @@ private class SoqlTest {
 
 	@IsTest
 	static void shouldGetCursor() {
-		Soql soql = (Soql) DatabaseLayer.Soql.newQuery(User.SObjectType);
+		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowLimit(1)?.toSoql();
 
 		Test.startTest();
 		Soql.Cursor cursor = soql?.getCursor();
@@ -82,7 +84,7 @@ private class SoqlTest {
 	@IsTest
 	static void shouldHandleCursorQueryErrors() {
 		String illegalFieldName = 'abcd'; // Will cause a System.QueryException when run
-		Soql soql = (Soql) DatabaseLayer.Soql.newQuery(Account.SObjectType)?.addSelect(illegalFieldName);
+		Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)?.addSelect(illegalFieldName)?.toSoql();
 
 		Test.startTest();
 		try {
@@ -98,7 +100,7 @@ private class SoqlTest {
 	@SuppressWarnings('PMD.EmptyCatchBlock')
 	@IsTest
 	static void shouldWrapInvalidCursorFetchErrors() {
-		Soql soql = (Soql) DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowLimit(1);
+		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowLimit(1)?.toSoql();
 
 		Test.startTest();
 		try {
@@ -113,7 +115,7 @@ private class SoqlTest {
 
 	@IsTest
 	static void shouldGetQueryLocator() {
-		Soql soql = (Soql) DatabaseLayer.Soql.newQuery(User.SObjectType);
+		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowLimit(1)?.toSoql();
 
 		Test.startTest();
 		Soql.QueryLocator locator = soql?.getQueryLocator();
@@ -127,7 +129,7 @@ private class SoqlTest {
 	@IsTest
 	static void shouldHandleQueryLocatorErrors() {
 		String illegalFieldName = 'abcd'; // Will cause a System.QueryException when run
-		Soql soql = (Soql) DatabaseLayer.Soql.newQuery(Account.SObjectType)?.addSelect(illegalFieldName);
+		Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)?.addSelect(illegalFieldName)?.toSoql();
 
 		Test.startTest();
 		try {
@@ -142,19 +144,18 @@ private class SoqlTest {
 
 	@IsTest
 	static void shouldQueryRecords() {
-		Soql soql = (Soql) DatabaseLayer.Soql.newQuery(User.SObjectType);
+		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowLimit(1)?.toSoql();
 
 		Test.startTest();
 		List<User> users = soql?.query();
 		Test.stopTest();
 
-		Integer expected = Database.countQuery('SELECT COUNT() FROM User');
-		Assert.areEqual(expected, users?.size(), 'Wrong # of Users returned');
+		Assert.areEqual(1, users?.size(), 'Wrong # of Users returned');
 	}
 
 	@IsTest
 	static void shouldQuerySingleRecord() {
-		Soql soql = (Soql) DatabaseLayer.Soql.newQuery(User.SObjectType);
+		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType);
 
 		Test.startTest();
 		User user = (User) soql?.queryFirst();
@@ -165,7 +166,7 @@ private class SoqlTest {
 
 	@IsTest
 	static void shouldReturnNullIfNoResults() {
-		Soql soql = (Soql) DatabaseLayer.Soql.newQuery(Account.SObjectType);
+		Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType);
 		// No accounts have been inserted yet, so this shouldn't return anything
 
 		Test.startTest();
@@ -178,7 +179,7 @@ private class SoqlTest {
 	@IsTest
 	static void shouldHandleQueryErrors() {
 		String illegalFieldName = 'abcd'; // Will cause a System.QueryException when run
-		Soql soql = (Soql) DatabaseLayer.Soql.newQuery(Account.SObjectType)?.addSelect(illegalFieldName);
+		Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)?.addSelect(illegalFieldName)?.toSoql();
 
 		Test.startTest();
 		try {
@@ -193,11 +194,13 @@ private class SoqlTest {
 
 	@IsTest
 	static void shouldQueryRecordsAndCastToType() {
+		Soql.ParentField profile = new Soql.ParentField(User.ProfileId, Profile.Name);
 		Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id)?.withAlias('numRecords');
-		Soql soql = (Soql) DatabaseLayer.Soql.newQuery(User.SObjectType)
-			?.addSelect('Profile.Name', 'profileName')
+		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
+			?.addSelect(profile, 'profileName')
 			?.addSelect(count)
-			?.groupBy('Profile.Name');
+			?.groupBy(profile)
+			?.toSoql();
 
 		Test.startTest();
 		List<SampleWrapper> results = (List<SampleWrapper>) soql?.query(List<SampleWrapper>.class);
@@ -283,6 +286,19 @@ private class SoqlTest {
 			?.addSelect(User.ProfileId, 'profile')
 			?.groupBy(User.ProfileId);
 		String expected = 'SELECT ProfileId profile FROM User GROUP BY ProfileId';
+
+		Test.startTest();
+		SoqlTest.validateQuery(soql, expected);
+		Test.stopTest();
+	}
+
+	@IsTest
+	static void shouldSelectParentFieldWithAlias() {
+		Soql.ParentField field = new Soql.ParentField(Account.OwnerId, User.ProfileId);
+		Soql soql = (Soql) DatabaseLayer.Soql.newQuery(Account.SObjectType)
+			?.addSelect(field, 'profile')
+			?.groupBy(field);
+		String expected = 'SELECT Owner.ProfileId profile FROM Account GROUP BY Owner.ProfileId';
 
 		Test.startTest();
 		SoqlTest.validateQuery(soql, expected);
@@ -667,6 +683,20 @@ private class SoqlTest {
 			?.orderBy(User.CreatedDate, Soql.SortDirection.DESCENDING)
 			?.setRowLimit(1);
 		String expected = 'SELECT Id FROM User ORDER BY CreatedDate DESC NULLS LAST LIMIT 1';
+
+		Test.startTest();
+		SoqlTest.validateQuery(soql, expected);
+		Test.stopTest();
+	}
+
+	@IsTest
+	static void shouldSetOrderByClauseWithParentField() {
+		Soql.ParentField field = new Soql.ParentField(Account.OwnerId, User.CreatedDate);
+		Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)
+			?.orderBy(field, Soql.SortDirection.DESCENDING)
+			?.setRowLimit(1)
+			?.toSoql();
+		String expected = 'SELECT Id FROM Account ORDER BY Owner.CreatedDate DESC NULLS LAST LIMIT 1';
 
 		Test.startTest();
 		SoqlTest.validateQuery(soql, expected);
@@ -1363,6 +1393,13 @@ private class SoqlTest {
 	static void shouldOrderByField() {
 		String value = new Soql.SortOrder(Account.CreatedDate, Soql.SortDirection.ASCENDING)?.toString();
 		Assert.areEqual('CreatedDate ASC NULLS LAST', value, 'Wrong value');
+	}
+
+	@IsTest
+	static void shouldOrderByParentField() {
+		Soql.ParentField field = new Soql.ParentField(Opportunity.AccountId, Account.CreatedDate);
+		String value = new Soql.SortOrder(field, Soql.SortDirection.ASCENDING)?.toString();
+		Assert.areEqual('Account.CreatedDate ASC NULLS LAST', value, 'Wrong value');
 	}
 
 	@IsTest
