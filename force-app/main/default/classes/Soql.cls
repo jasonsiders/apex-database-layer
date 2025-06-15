@@ -882,9 +882,26 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 	public class ParentField implements Soql.Selectable {
 		// Represents a reference to a SObjectField on a parent (or multi-grandparent) object, ex., "Account.Owner.Profile.Name"
 		// SOQL supports querying fields objects up to 5 relationships away from the FROM object
+		private List<SObjectField> fields;
+		private String value;
 
-		public ParentField(List<SObjectField> chainOfRelationshipFields) {
-			// TODO!
+		public ParentField(List<SObjectField> relationshipFieldChain) {
+			List<String> components = new List<String>();
+			List<SObjectField> fields = relationshipFieldChain ?? new List<SObjectField>();
+			Integer size = relationshipFieldChain?.size() ?? 0;
+			Integer lastIteration = size - 1;
+			for (Integer i = 0; i < size; i++) {
+				SObjectField field = fields?.get(i);
+				if (i < lastIteration) {
+					String relationshipName = field?.getDescribe()?.getRelationshipName();
+					components?.add(relationshipName);
+				} else {
+					// Final field in the chain - Get the API name of the field
+					String fieldName = field?.toString();
+					components?.add(fieldName);
+				}
+			}
+			this.value = String.join(components, '.');
 		}
 
 		public ParentField(
@@ -914,7 +931,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			SObjectField relationship4,
 			SObjectField field
 		) {
-			this(relationship1, relationship2, relationship3, relationship4, field, null);
+			this(new List<SObjectField>{ relationship1, relationship2, relationship3, relationship4, field });
 		}
 
 		public ParentField(
@@ -923,19 +940,19 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			SObjectField relationship3,
 			SObjectField field
 		) {
-			this(relationship1, relationship2, relationship3, field, null);
+			this(new List<SObjectField>{ relationship1, relationship2, relationship3, field });
 		}
 
 		public ParentField(SObjectField relationship1, SObjectField relationship2, SObjectField field) {
-			this(relationship1, relationship2, field, null);
+			this(new List<SObjectField>{ relationship1, relationship2, field });
 		}
 
 		public ParentField(SObjectField relationship1, SObjectField field) {
-			this(relationship1, field, null);
+			this(new List<SObjectField>{ relationship1, field });
 		}
 
 		public override String toString() {
-			return 'Foo!';
+			return this.value;
 		}
 	}
 

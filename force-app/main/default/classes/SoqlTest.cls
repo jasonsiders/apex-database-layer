@@ -338,17 +338,9 @@ private class SoqlTest {
 
 	@IsTest
 	static void shouldSelectParentField() {
-		// SOQL supports up to 5 relationships deep!
-		Soql.ParentField field = new Soql.ParentField(
-			OpportunityContactRole.OpportunityId,
-			Opportunity.AccountId,
-			Account.OwnerId,
-			User.ProfileId,
-			Profile.UserLicenseId,
-			UserLicense.Name
-		);
-		Soql soql = DatabaseLayer.Soql.newQuery(OpportunityContactRole.SObjectType)?.addSelect(field)?.toSoql();
-		String expected = 'SELECT Id, Opportunity.Account.Owner.Profile.UserLicense.Name FROM OpportunityContactRole';
+		Soql.ParentField field = new Soql.ParentField(Opportunity.AccountId, Account.Name);
+		Soql soql = DatabaseLayer.Soql.newQuery(Opportunity.SObjectType)?.addSelect(field)?.toSoql();
+		String expected = 'SELECT Id, Account.Name FROM Opportunity';
 
 		Test.startTest();
 		SoqlTest.validateQuery(soql, expected);
@@ -1227,6 +1219,51 @@ private class SoqlTest {
 		Test.stopTest();
 
 		Assert.areEqual('\'%' + value + '%\'', result, 'Wrong string value');
+	}
+
+	@IsTest
+	static void shouldOutputReferenceToParentFields() {
+		// SOQL supports querying objects up to 5 relationships away from the FROM object
+		Soql.Selectable field1 = new Soql.ParentField(OpportunityContactRole.OpportunityId, Opportunity.AccountId);
+		Assert.areEqual('Opportunity.AccountId', field1?.toString(), 'Wrong ParentField value');
+		Soql.Selectable field2 = new Soql.ParentField(
+			OpportunityContactRole.OpportunityId,
+			Opportunity.AccountId,
+			Account.OwnerId
+		);
+		Assert.areEqual('Opportunity.Account.OwnerId', field2?.toString(), 'Wrong ParentField value');
+		Soql.Selectable field3 = new Soql.ParentField(
+			OpportunityContactRole.OpportunityId,
+			Opportunity.AccountId,
+			Account.OwnerId,
+			User.ProfileId
+		);
+		Assert.areEqual('Opportunity.Account.Owner.ProfileId', field3?.toString(), 'Wrong ParentField value');
+		Soql.Selectable field4 = new Soql.ParentField(
+			OpportunityContactRole.OpportunityId,
+			Opportunity.AccountId,
+			Account.OwnerId,
+			User.ProfileId,
+			Profile.UserLicenseId
+		);
+		Assert.areEqual(
+			'Opportunity.Account.Owner.Profile.UserLicenseId',
+			field4?.toString(),
+			'Wrong ParentField value'
+		);
+		Soql.Selectable field5 = new Soql.ParentField(
+			OpportunityContactRole.OpportunityId,
+			Opportunity.AccountId,
+			Account.OwnerId,
+			User.ProfileId,
+			Profile.UserLicenseId,
+			UserLicense.Name
+		);
+		Assert.areEqual(
+			'Opportunity.Account.Owner.Profile.UserLicense.Name',
+			field5?.toString(),
+			'Wrong ParentField value'
+		);
 	}
 
 	@IsTest
