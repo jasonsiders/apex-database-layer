@@ -386,6 +386,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			return this;
 		}
 
+		// NOTE: With the advent of PR #49, we should consider making the string-based SELECT methods protected
 		public Soql.Builder addSelect(String fieldName, String alias) {
 			String clause = String.join(new List<String>{ fieldName, alias }, ' ')?.trim();
 			this.selectClauses?.add(clause);
