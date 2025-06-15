@@ -518,7 +518,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
 		public Soql.Builder addWhere(String fieldName, Soql.Operator operator, Soql.InnerQuery innerQuery) {
 			// If the current `value` object is an InnerQuery, add its binds to the parent query:
-			this.addBindsFromChildQuery((Soql.Builder) innerQuery);
+			this.addBindsFromChildQuery(innerQuery);
 			return this.addWhere(fieldName, operator, innerQuery?.toString());
 		}
 
