@@ -883,26 +883,11 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 	public class ParentField implements Soql.Selectable {
 		// Represents a reference to a SObjectField on a parent (or multi-grandparent) object, ex., "Account.Owner.Profile.Name"
 		// SOQL supports querying fields objects up to 5 relationships away from the FROM object
-		private List<SObjectField> fields;
 		private String value;
 
 		public ParentField(List<SObjectField> relationshipFieldChain) {
-			List<String> components = new List<String>();
-			List<SObjectField> fields = relationshipFieldChain ?? new List<SObjectField>();
-			Integer size = relationshipFieldChain?.size() ?? 0;
-			Integer lastIteration = size - 1;
-			for (Integer i = 0; i < size; i++) {
-				SObjectField field = fields?.get(i);
-				if (i < lastIteration) {
-					String relationshipName = field?.getDescribe()?.getRelationshipName();
-					components?.add(relationshipName);
-				} else {
-					// Final field in the chain - Get the API name of the field
-					String fieldName = field?.toString();
-					components?.add(fieldName);
-				}
-			}
-			this.value = String.join(components, '.');
+			relationshipFieldChain = relationshipFieldChain ?? new List<SObjectField>();
+			this.value = this.computeValue(relationshipFieldChain);
 		}
 
 		public ParentField(
@@ -954,6 +939,25 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
 		public override String toString() {
 			return this.value;
+		}
+
+		private String computeValue(List<SObjectField> fields) {
+			// Generate the String reference to the parent field:
+			List<String> components = new List<String>();
+			Integer size = fields?.size();
+			Integer lastIteration = size - 1;
+			for (Integer i = 0; i < size; i++) {
+				SObjectField field = fields?.get(i);
+				if (i < lastIteration) {
+					String relationshipName = field?.getDescribe()?.getRelationshipName();
+					components?.add(relationshipName);
+				} else {
+					// Final field in the chain - Get the API name of the field
+					String fieldName = field?.toString();
+					components?.add(fieldName);
+				}
+			}
+			return String.join(components, '.');
 		}
 	}
 
