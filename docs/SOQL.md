@@ -64,8 +64,7 @@ For these queries to return actual results, developers must first inject logic v
 
 Both methods have two overloads - one which accepts and returns a [`MockSoql.Simulator`](#the-mocksoqlsimulator-interface) object, and a 0-argument overlaod which returns a [`MockSoql.StaticResults`](#the-mocksoqlstaticresults-class) object.
 
-<details>
-  <summary><h4>The <code>setGlobalMock</code> Static Method</h4></summary>
+#### The `setGlobalMock` Static Method
 
 This method assigns "default" query logic to _all_ `Soql` objects. This allows developers to inject mocks for queries without the need to expose those objects as `@TestVisible`, class-level variables.
 
@@ -87,10 +86,8 @@ MockSoql.setGlobalMock(simulator);
 
 - `MockSoql.Simulator static setGlobalMock(MockSoql.Simulator simulator)`
 - `MockSoql.StaticResults static setGlobalMock()`
-      </details>
 
-<details>
-  <summary><h4>The <code>setMock</code> Method</h4></summary>
+#### The `setMock` Method
 
 This method assigns query logic to a _specific_ `Soql` object, overriding any global defaults set via `MockSoql.setGlobalMock`. In a real-world scenario, queries in a production class **must** be exposed as public/`@TestVisible` variables to use this method.
 
@@ -115,10 +112,7 @@ queryToMock?.setMock(simulator);
 - `MockSoql.Simulator setMock(MockSoql.Simulator simulator)`
 - `MockSoql.StaticResults setMock()`
 
-</details>
-
-<details> 
-  <summary><h4>The <code>MockSoql.Simulator</code> Interface</h4></summary>
+#### The `MockSoql.Simulator` Interface
 
 The `MockSoql.Simulator` interface defines custom logic for returning query results. Use this interface when you need more complex logic than what [`MockSoql.StaticResults`](#the-mocksoqlstaticresults-class) can provide.
 
@@ -161,10 +155,7 @@ private class CustomQueryLogic implements MockSoql.Simulator {
 }
 ```
 
-</details>
-
-<details>
-  <summary><h4>The <code>MockSoql.StaticResults</code> Class</h4></summary>
+#### The `MockSoql.StaticResults` Class
 
 Not all testing scenarios require the creation of a custom `MockSoql.Simulator` object. Most simple use cases can be handled by using the included `MockSoql.StaticResults` object.
 
@@ -172,7 +163,7 @@ This object cannot be directly constructed. Create an instance of this object by
 
 This object implements `MockSoql.Simulator` interface, and includes methods which allow callers to inject a static list of results, or an exception to be thrown. Whenever the query runs, the injected results are returned.
 
-<h5><code>withError</code></h5>
+<h5>`withError`</h5>
 
 Injects an error to be thrown each time the query runs. Callers can provide a specific exception object, if desired. The 0-argument overload of this method will inject a generic `System.QueryException`.
 
@@ -188,7 +179,7 @@ System.Exception someOtherError = new System.CalloutException();
 MockSoql.setGlobalMock()?.withError(someOtherError);
 ```
 
-<h5><code>withResults</code></h5>
+<h5>`withResults`</h5>
 
 Injects a static list of results. This list will be returned each time the query runs.
 
@@ -201,12 +192,9 @@ Account mockAccount = (Account) new MockRecord(Account.SObjectType)?.withId()?.t
 MockSoql.setGlobalMock()?.withResults(new List<Account>{ mockAccont });
 ```
 
-</details>
-
 ### Special Considerations
 
-<details>
-  <summary><h4>Mocking Aggregate Queries</h4></summary>
+#### Mocking Aggregate Queries
 
 `MockSoql.AggregateResult` is a A constructable version of the `Soql.AggregateResult` class, which wraps the `Schema.AggregateResult` class and its methods. `Schema.AggregateResult` objects cannot be directly constructed, serialized, or otherwise mocked.
 
@@ -226,10 +214,7 @@ Adds a column to the current `AggregateResult`. These can be created with or wit
 - `MockSoql.AggregateResult addParameter(String alias, Object value)`
 - `MockSoql.AggregateResult addParameter(Object value)`
 
-</details>
-
-<details>
-  <summary><h4>Mocking Query Locators</h4></summary>
+#### Mocking Query Locators
 
 The `Database.QueryLocator` object cannot be mocked in a traditional sense, since it manually constructed, or JSON-deserialized. The only way to create an object of this type is by directly interacting with the Salesforce database, via the `Database.getQueryLocator` method.
 
@@ -287,14 +272,12 @@ Developers can employ one of the following strategies to work around this:
 - Have your unit tests call the batch's `start`, `execute`, and `finish` methods invidually.
 - Amend the `start` method to return an [iterable object](https://developer.salesforce.com/docs/atlas.en-us.apexcode.meta/apexcode/apex_classes_iterable.htm) instead.
 - Use `System.Queueable` jobs paired with a `System.Finalizer` instead of `Database.Batchable`.
-      </details>
 
 ---
 
 ## Public Methods
 
-<details>
-  <summary><h3>Performing Queries</h3></summary>
+### Performing Queries
 
 The `Soql` class contains several methods which provide parity with the query methods found in the standard [`Database`](https://developer.salesforce.com/docs/atlas.en-us.apexref.meta/apexref/apex_methods_system_database.htm) class:
 
@@ -329,10 +312,7 @@ Fetches the first result of the query or returns `null` if no results are found.
 
 - `SObject queryFirst()`
 
-</details>
-
-<details>
-  <summary><h3>Building Queries</h3></summary>
+### Building Queries
 
 These methods are derived from the `Soql.Builder` inner class. The `Soql` class extends this base class, along with other inner types, like `Soql.InnerClass` and `Soql.Subquery`. For this reason, you may have to cast new queries to the `Soql` type, especially when chaining builder methods together:
 
@@ -356,29 +336,15 @@ Adds conditions to the HAVING clause of the query.
 
 #### `addSelect`
 
-Adds fields or aggregations to the SELECT clause of the query.
+Adds fields or `Soql.Selectable` objects to the SELECT clause of the query. `Soql.Selectable` types include `Soql.Aggregation`, `Soql.ParentField`, and `Soql.Subquery` objects.
 
 - `Soql.Builder addSelect(String fieldName, String alias)`
 - `Soql.Builder addSelect(SObjectField field, String alias)`
 - `Soql.Builder addSelect(String fieldName)`
 - `Soql.Builder addSelect(List<SObjectField> fields)`
-- `Soql.Builder addSelect(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4, SObjectField field5)`
-- `Soql.Builder addSelect(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4)`
-- `Soql.Builder addSelect(SObjectField field1, SObjectField field2, SObjectField field3)`
-- `Soql.Builder addSelect(SObjectField field1, SObjectField field2)`
-- `Soql.Builder addSelect(SObjectField field)`
-- `Soql.Builder addSelect(List<Soql.Aggregation> aggregations)`
-- `Soql.Builder addSelect(Soql.Aggregation agg1, Soql.Aggregation agg2, Soql.Aggregation agg3, Soql.Aggregation agg4, Soql.Aggregation agg5)`
-- `Soql.Builder addSelect(Soql.Aggregation agg1, Soql.Aggregation agg2, Soql.Aggregation agg3, Soql.Aggregation agg4)`
-- `Soql.Builder addSelect(Soql.Aggregation agg1, Soql.Aggregation agg2, Soql.Aggregation agg3)`
-- `Soql.Builder addSelect(Soql.Aggregation agg1, Soql.Aggregation agg2`
-- `Soql.Builder addSelect(Soql.Aggregation aggregation)`
-- `Soql.Builder addSelect(List<Soql.Subquery> subqueries)`
-- `Soql.Builder addSelect(Soql.Subquery sub1, Soql.Subquery sub2, Soql.Subquery sub3, Soql.Subquery sub4, Soql.Subquery sub5)`
-- `Soql.Builder addSelect(Soql.Subquery sub1, Soql.Subquery sub2, Soql.Subquery sub3, Soql.Subquery sub4)`
-- `Soql.Builder addSelect(Soql.Subquery sub1, Soql.Subquery sub2, Soql.Subquery sub3)`
-- `Soql.Builder addSelect(Soql.Subquery sub1, Soql.Subquery sub2)`
-- `Soql.Builder addSelect(Soql.Subquery subQuery)`
+- `Soql.Builder addSelect(SObjectField field1, [field2, field3, field4, field5])`
+- `Soql.Builder addSelect(List<Soql.Selectable> selectables)`
+- `Soql.Builder addSelect(Soql.Selectable selectable1, [selectable2, selectable3, selectable4, selectable5])`
 
 #### `addWhere`
 
@@ -537,12 +503,9 @@ Enforces security in the query to ensure that the user has appropriate access to
 
 - `Soql.Builder withSecurityEnforced()`
 
-</details>
-
 ## Public Inner Types
 
-<details>
-  <summary><h3>AggregateResult</h3></summary>
+### Soql.AggregateResult
 
 Wraps the `Schema.AggregateResult` class, which cannot be mocked otherwise. Objects of this type are returned by the `aggregateQuery` SOQL method, and can be mocked by the `MockSoql.AggregateResult` class
 
@@ -552,12 +515,9 @@ Calls the underlying `Schema.AggregateResult` object's `get` method. The `key` p
 
 - `get(String key)`
 
-</details>
+### Soql.Aggregation
 
-<details>
-  <summary><h3>Aggregation</h3></summary>
-
-Represents an aggregate expression in a SOQL query. For example, `COUNT(Id) numRecords`. Use these objects with the the `addSelect` or `addHaving` methods when making an aggregate query.
+Represents an aggregate expression in a SOQL query. For example, `COUNT(Id) numRecords`. This class implements `Soql.Selectable`, and can be used in `addSelect` methods. This can also be with `addHaving` methods when making an aggregate query.
 
 Each `Soql.Aggregation` is comprised of the following:
 
@@ -577,10 +537,7 @@ Adds an alias to the aggregation. Ex., `numRecords`.
 
 - `Soql.Aggregation withAlias(String alias)`
 
-</details>
-
-<details>
-  <summary><h3>Binder</h3></summary>
+### Soql.Binder
 
 Registers a bind variable to be used in the query. Ex, `SELECT Id FROM Account WHERE Name = :foo`.
 
@@ -609,10 +566,7 @@ Set the underlying value to be substituted for the bind variable. This is done a
 
 - `Soql.Binder setValue(Object value)`
 
-</details>
-
-<details>
-  <summary><h3>Condition</h3></summary>
+### Soql.Condition
 
 Represents a single `WHERE` clause element. For example, `WHERE StageName = 'Closed Won'`.
 
@@ -652,10 +606,7 @@ Like `Soql.ConditionalLogic`, the `Soql.Conditional` class implements a base `So
 - `Soql.Condition(String property, Soql.Operator operator, Object value)`
 - `Soql.Condition(SObjectField field, Soql.Operator operator, Object value)`
 
-</details>
-
-<details>
-  <summary><h3>ConditionalLogic</h3></summary>
+### Soql.ConditionalLogic
 
 Represents a set of criterion to be added to a query. These criterion can be `Soql.Condition` objects, or other (nested) `Soql.ConditionalLogic` objects. Depending on the specified `Soql.LogicType`, these conditions are be delimited by `AND` or `OR` keywords.
 
@@ -759,10 +710,7 @@ Determines the enclosing `Soql.LogicType` object. This affects the delimiter tha
 
 - `Soql.ConditionalLogic setLogicType(Soql.LogicType logicType)`
 
-</details>
-
-<details>
-  <summary><h3>Cursor</h3></summary>
+### Soql.Cursor
 
 Decorates `Database.Cursor` objects that are returned by `Database.getCursor`. These objects cannot be serialized or mocked by other means.
 
@@ -792,10 +740,7 @@ Gets the number of rows returned in an Apex cursor from a `Cursor.fetch` operati
 
 - `Integer getNumRecords()`
 
-</details>
-
-<details>
-  <summary><h3>Function</h3></summary>
+### Soql.Function
 
 Enumerates the different [Aggregate Functions](https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_select_agg_functions.htm) that can be used in SOQL queries. Valid options include:
 
@@ -820,10 +765,7 @@ Enumerates the different [Aggregate Functions](https://developer.salesforce.com/
 - `WEEK_IN_MONTH`,
 - `WEEK_IN_YEAR`
 
-</details>
-
-<details>
-  <summary><h3>InnerQuery</h3></summary>
+### Soql.InnerQuery
 
 Represents inner query logic, used for filtering results in a `WHERE` clause. Use this in conjunction with the `addWhere` SOQL method. For example:
 
@@ -839,17 +781,11 @@ This class extends `Soql.Builder`, and therefore has all of the same query-build
 
 - `InnerQuery(SObjectType objectType)`
 
-</details>
-
-<details>
-  <summary><h3>InvalidParameterValueException</h3></summary>
+### Soql.InvalidParameterValueException
 
 This custom exception type wraps the standard `System.InvalidParameterValueException` thrown by the Database.Cursor class in certain circumstances, ex., when using a negative Integer in a `fetch()` call. These exceptions can only be manually constructed in VF or Aura contexts, so they cannot be mocked in apex tests. Both `Soql` and `MockSoql` classes will throw this custom exception type instead.
 
-</details>
-
-<details>
-  <summary><h3>LogicType</h3></summary>
+### Soql.LogicType
 
 Indicates the enclosing logic for the `Soql.ConditionalLogic` objects used in _WHERE_ or _HAVING_ clauses. Values include:
 
@@ -885,10 +821,7 @@ Soql soql = (Soql) DatabaseLayer.Soql.newQuery(Opportunity.SObjectType)
   ?.setWhere(worthAMil);
 ```
 
-</details>
-
-<details>
-  <summary><h3>NullOrder</h3></summary>
+### Soql.NullOrder
 
 Indicates how null values should be processed in _ORDER BY_ clauses. Values include:
 
@@ -906,10 +839,26 @@ sortOrder?.setNullOrder(Soql.NullOrder.NULLS_FIRST);
 Soql soql = (Soql) DatabaseLayer.Soql.newQuery(Opportunity.SObject)?.orderBy(sortOrder);
 ```
 
-</details>
+### Soql.ParentField
 
-<details>
-  <summary><h3>QueryLocator</h3></summary>
+Use this class to add parent (or multiple-grandparent) object fields to your query without using Strings, ex., `Account.Owner.Profile.Name`. This approach enforces referential integrity, and helps avoid runtime failures (if for example, the field doesn't exist or is misspelled).
+
+The constructor accepts a `List<SObjectField>`, or up to six separate `SObjectField` arguments (up to five relationship fields, plus the actual field to be returned in the query). Each argument represents a field in the sequential "chain" of relationships leading from the `FROM` object to the ultimate field to be queried.
+
+This class implements `Soql.Selectable`, and therefore can be used in conjunction with the `addSelect` method:
+
+```java
+Soql.ParentField field = new Soql.ParentField(Opportunity.AccountId, Account.OwnerId, User.Name);
+// "SELECT Id, Account.Owner.Name FROM Opportunity"
+Soql query = DatabaseLayer.Soql.newQuery(Opportunity.SObjectType)?.addSelect(field)?.toSoql();
+```
+
+#### Constructors
+
+- `ParentField(List<SObjectField> relationshipFieldChain)`
+- `ParentField(SObjectField field1, [field2, field3, field4, field5, field6])`
+
+### Soql.QueryLocator
 
 Decorates `Database.QueryLocator` objects that are returned by `Database.getQueryLocator`. These objects cannot be serialized or mocked by other means.
 
@@ -938,10 +887,7 @@ Returns a `System.Iterator<SObject>` from the underlying `Database.QueryLocator`
 
 - `System.Iterator<SObject> iterator()`
 
-</details>
-
-<details>
-  <summary><h3>Scope</h3></summary>
+### Soql.Scope
 
 Enumerates possible values to be used with the optional [_USING SCOPE_](https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_select_using_scope.htm) SOQL clause. Values include:
 
@@ -960,10 +906,7 @@ Soql soql = (Soql) DatabaseLayer.Soql.newQuery(User.SObjectType)
   ?.usingScope(Soql.Scope.EVERYTHING);
 ```
 
-</details>
-
-<details>
-  <summary><h3>SortDirection</h3></summary>
+### Soql.SortDirection
 
 Indicates the direction of the _ORDER BY_ clause. Values include:
 
@@ -978,10 +921,7 @@ Soql soql = (Soql) DatabaseLayer.Soql
   ?.orderBy(Opportunity.Amount, Soql.SortDirection.DESCENDING);
 ```
 
-</details>
-
-<details>
-  <summary><h3>SortOrder</h3></summary>
+### Soql.SortOrder
 
 Represents the `ORDER BY` clause in a SOQL query. Use this object in conjunction with the `orderBy` SOQL method. For example:
 
@@ -1008,14 +948,11 @@ Adds an optional "null order" clause to the `ORDER BY` condition. For example, "
 
 - `Soql.SortOrder setNullOrder(Soql.NullOrder nullOrder)`
 
-</details>
-
-<details>
-  <summary><h3>Subquery</h3></summary>
+### Soql.Subquery
 
 Represents child relationship queries within the broader query structure, used to return child objects related to the primary object.
 
-Use this in conjunction with the `addSelect` SOQL method. For example:
+This class implements `Soql.Selectable`, and can be used in conjunction with the `addSelect` SOQL method. For example:
 
 ```java
 // SELECT Id, (SELECT Id FROM Contacts) FROM Account
@@ -1025,15 +962,12 @@ Soql soql = (Soql) Database.Soql.newQuery(Account.SObjectType).addSelect(sub);
 
 This class extends `Soql.Builder`, and therefore has all of the same query-building [methods](#building-queries).
 
-Constructors:
+#### Constructors:
 
 - `Soql.Subquery(Schema.ChildRelationship relationship)`
 - `Soql.Subquery(SObjectField lookupFieldOnChildObject)`
 
-</details>
-
-<details>
-  <summary><h3>Usage</h3></summary>
+### Soql.Usage
 
 Enumerates possible values to be used with the optional query suffixes. Values include:
 
@@ -1049,5 +983,3 @@ Use this in conjunction with the SOQL `setUsage` method. For example:
 Soql soql = (Soql) DatabaseLayer.Soql.newQuery(Account.SObjectType)
   ?.setUsage(Soql.Usage.FOR_UPDATE);
 ```
-
-</details>
