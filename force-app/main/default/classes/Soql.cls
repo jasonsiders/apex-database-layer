@@ -65,7 +65,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			// Note: A count query must not contain any fields, other than COUNT() aggregation
 			// Avoid errors and simplify query construction by handling this in a temporary copy of the current query
 			Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT);
-			Soql tempCopy = (Soql) this.clone()?.deselectAll()?.addSelect(count);
+			Soql tempCopy = this.clone()?.deselectAll()?.addSelect(count)?.toSoql();
 			return Database.countQueryWithBinds(tempCopy?.toString(), this.binds, this.accessLevel);
 		} catch (Exception error) {
 			this.handleQueryError(error);

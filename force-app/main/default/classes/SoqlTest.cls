@@ -227,8 +227,9 @@ private class SoqlTest {
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
 			?.addSelect(User.Username)
 			?.addWhere(User.Id, Soql.EQUALS, binder)
+			?.setRowLimit(1)
 			?.toSoql();
-		String expected = 'SELECT Id, Username FROM User WHERE Id = :userId';
+		String expected = 'SELECT Id, Username FROM User WHERE Id = :userId LIMIT 1';
 
 		Test.startTest();
 		SoqlTest.validateQuery(soql, expected);
@@ -723,7 +724,7 @@ private class SoqlTest {
 	@IsTest
 	static void shouldSupportMultipleOrderByClauses() {
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
-			?.orderBy('Profile.Name', Soql.SortDirection.ASCENDING)
+			?.orderBy(new Soql.ParentField(User.ProfileId, Profile.Name), Soql.SortDirection.ASCENDING)
 			?.orderBy(User.CreatedDate, Soql.SortDirection.DESCENDING)
 			?.setRowLimit(1)
 			?.toSoql();

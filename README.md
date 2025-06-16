@@ -18,10 +18,10 @@ sf package install -p {{package_version_id}}
 
 This package can be thought of in four categories, each with its own distinct set of responsibilities:
 
--   `Dml` & `MockDml`: Performing DML operations
--   `Soql` & `MockSoql`: Performing SOQL operations
--   `DatabaseLayer`: Constructing `Dml` and `Soql` objects
--   `MockRecord`: Mocking SObject records for test purposes
+- `Dml` & `MockDml`: Performing DML operations
+- `Soql` & `MockSoql`: Performing SOQL operations
+- `DatabaseLayer`: Constructing `Dml` and `Soql` objects
+- `MockRecord`: Mocking SObject records for test purposes
 
 <details>
   <summary><h3>Performing DML Operations</h3></summary>
@@ -114,14 +114,15 @@ View the [docs](docs/DML.md) to learn more about the `Dml` and `MockDml` classes
 The `Soql` class is responsible for querying records from the database. It wraps the standard `Database.query` and related methods. You can use its flexible builder pattern to compose a wide range of queries.
 
 ```java
-Soql soql = (Soql) DatabaseLayer.Soql.newQuery(User.SObjectType)
+Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
   ?.addSelect(User.FirstName)
   ?.addSelect(User.LastName)
   ?.addSelect(User.Email)
   ?.addWhere(User.IsActive, Soql.EQUALS, true)
   ?.addWhere('Profile.Name', Soql.EQUALS, 'System Administrator')
   ?.orderBy(User.CreatedDate, Soql.SortDirection.ASCENDING)
-  ?.setRowLimit(1);
+  ?.setRowLimit(1)
+  ?.toSoql();
 List<User> users = soql?.query();
 ```
 
@@ -190,7 +191,7 @@ The `DatabaseLayer` class is responsible for constructing new `Dml` and `Soql` o
 
 ```java
 Dml myDml = DatabaseLayer.Dml;
-Soql mySoql = (Soql) DatabaseLayer.Soql.newQuery(Account.SObjectType);
+Soql mySoql = DatabaseLayer.Soql.newQuery(Account.SObjectType)?.toSoql();
 ```
 
 This approach allows for mocks to be automatically substituted at runtime during tests, if desired. By default, each of these methods will return base implementations of the `Dml` and `Soql` classes, which directly interact with the Salesforce database. In `@IsTest` context, you can use the `DatabaseLayer.useMocks()` method. Once this is done, the `Dml` and `Soql` static properties will reflect mock instances of their respective objects:
@@ -230,9 +231,9 @@ While mocking database operations can provide many benefits, mocking SObject rec
 
 The `MockRecord` class addresses many of the pains associated with this process, including:
 
--   Set read-only fields (including system-level fields)
--   Simulate record inserts
--   Simulate parent and child relationship retrievals through SOQL
+- Set read-only fields (including system-level fields)
+- Simulate record inserts
+- Simulate parent and child relationship retrievals through SOQL
 
 Use the class's fluent builder pattern to generate a record to your specifications, and then cast it back to a concrete SObject. Example:
 

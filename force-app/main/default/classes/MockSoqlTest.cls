@@ -221,7 +221,7 @@ private class MockSoqlTest {
 		Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id);
 		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()
 			?.newQuery(User.SObjectType)
-			?.addSelect('Profile.Name')
+			?.addSelect(new Soql.ParentField(User.ProfileId, Profile.Name))
 			?.addSelect(count)
 			?.groupBy('Profile.Name');
 		// Inject results into the query
@@ -257,7 +257,7 @@ private class MockSoqlTest {
 		Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id);
 		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()
 			?.newQuery(User.SObjectType)
-			?.addSelect('Profile.Name')
+			?.addSelect(new Soql.ParentField(User.ProfileId, Profile.Name))
 			?.addSelect(count)
 			?.groupBy('Profile.Name');
 		// Inject an error
@@ -280,7 +280,7 @@ private class MockSoqlTest {
 		Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id);
 		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()
 			?.newQuery(User.SObjectType)
-			?.addSelect('Profile.Name')
+			?.addSelect(new Soql.ParentField(User.ProfileId, Profile.Name))
 			?.addSelect(count)
 			?.groupBy('Profile.Name');
 		// Inject results
@@ -311,7 +311,7 @@ private class MockSoqlTest {
 		Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id);
 		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()
 			?.newQuery(User.SObjectType)
-			?.addSelect('Profile.Name')
+			?.addSelect(new Soql.ParentField(User.ProfileId, Profile.Name))
 			?.addSelect(count)
 			?.groupBy('Profile.Name');
 		// Inject an error

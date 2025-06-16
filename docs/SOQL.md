@@ -11,10 +11,11 @@ Use this class in place of inline SOQL to pave the way for faster, more scalable
 `Soql` objects cannot be directly constructed via the `new` keyword. Instead, use the `DatabaseLayer.Soql.newQuery(SObjectType fromSObject)` method:
 
 ```java
-Soql query = (Soql) DatabaseLayer.Soql
+Soql query = DatabaseLayer.Soql
   ?.newQuery(Account.SObjectType)
   ?.addSelect(Account.Name)
-  ?.setRowLimit(200);
+  ?.setRowLimit(200)
+  ?.toSoql();
 ```
 
 The `DatabaseLayer` class is responsible for instantiating database objects of the correct type at runtime. In `@IsTest` context, developers can call `DatabaseLayer.useMocks()`, and an instance of the `MockSoql` class will be returned instead:
@@ -30,12 +31,13 @@ Assert.isInstanceOfType(query, MockSoql.class, 'Not a mock');
 Use `Soql` class's various builder methods to construct a SOQL query. Each of these methods returns a `Soql.Builder` instance, which can be used to support fluent query constrution:
 
 ```java
-Soql accountQuery = (Soql) DatabaseLayer.Soql.newQuery(Account.SObjectType)
+Soql accountQuery = DatabaseLayer.Soql.newQuery(Account.SObjectType)
   ?.addSelect(Account.Name)
   ?.addWhere(Account.Type, Soql.NOT_EQUALS, 'Internal')
   ?.withSecurityEnforced()
   ?.orderBy(Account.CreatedDate, Soql.SortDirection.DESCENDING)
-  ?.setRowLimit(200);
+  ?.setRowLimit(200)
+  ?.toSoql();
 List<Account> accounts = accountQuery?.query();
 ```
 
@@ -221,7 +223,7 @@ The `Database.QueryLocator` object cannot be mocked in a traditional sense, sinc
 For this reason, the `Soql` class uses a decorator class, `Soql.QueryLocator`. For the most part, developers can interact with this object the same way they would with a `Database.QueryLocator`:
 
 ```java
-Soql soql = (Soql) DatabaseLayer.Soql.newQuery(Account.SObjectType);
+Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)?.toSoql();
 Soql.QueryLocator locator = query?.getQueryLocator();
 String query = locator?.getQuery();
 System.Iterator<SObject> iterator = locator?.iterator();
@@ -234,7 +236,7 @@ There is one limitation to this approach, and that is that frameworks that rely 
 ```java
 public class MyBatch implements Database.Batchable<SObject> {
   @TestVisible
-  private Soql soql = (Soql) DatabaseLayer.Soql.newQuery(Account.SObjectType);
+  private Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)?.toSoql();
 
   public Database.QueryLocator start(Database.BatchableContext ctx) {
     // The getCursor() method returns the underlying
@@ -323,9 +325,10 @@ Soql query = DatabaseLayer.Soql
   ?.addSelect(Account.Name);
 
 // Valid:
-Soql query = (Soql) DatabaseLayer.Soql
+Soql query = DatabaseLayer.Soql
   ?.newQuery(Account.SObjectType)
-  ?.addSelect(Account.Name);
+  ?.addSelect(Account.Name)
+  ?.toSoql();
 ```
 
 #### `addHaving`
@@ -430,9 +433,10 @@ Assigns an identifier to the query. Callers can use this identifier to distingui
 
 ```java
 // In MyClass.cls:
-Soql myQuery = (Soql) DatabaseLayer.Soql
+Soql myQuery = DatabaseLayer.Soql
   ?.newQuery(Account.SObjectType)
-  ?.setQueryIdentifier('My Account Query');
+  ?.setQueryIdentifier('My Account Query')
+  ?.toSoql();
 
 // In MyClassTest.cls:
 MockSoql.Simulator queryMock = new MyQueryMock();
@@ -592,9 +596,10 @@ Soql.Condition worthAMil = new Soql.Condition(
   Soql.Operator.GREATER_THAN,
   1000000
 );
-Soql soql = (Soql) DatabaseLayer.Soql.newQuery(Opportunity.SObjectType)
+Soql soql = DatabaseLayer.Soql.newQuery(Opportunity.SObjectType)
   ?.addWhere(isClosedWon)
-  ?.addWhere(worthAMil);
+  ?.addWhere(worthAMil)
+  ?.toSoql();
 ```
 
 To use `OR` logic instead, use the [`setOuterWhereLogic`](#setouterwherelogic) SOQL method. To use complex or nested logic, use the [Soql.ConditionalLogic](#conditionallogic) class.
@@ -667,11 +672,12 @@ Soql.Condition isWon = new Soql.Condition(
   Soql.Operator.EQUALS,
   true
 );
-Soql soql = (Soql) DatabaseLayer.Soql
+Soql soql = DatabaseLayer.Soql
   ?.newQuery(Opportunity.SObjectType)
   ?.setOuterWhereLogic(Soql.LogicType.ANY_CONDITIONS)
   ?.setWhere(isWon)
-  ?.setWhere(nest3);
+  ?.setWhere(nest3)
+  ?.toSoql();
 ```
 
 By default, the `Soql` class uses an internal `Soql.ConditionalLogic` object as the "enclosing" logic for `WHERE` and `HAVING` clauses. Calls to the `addWhere` or `addHaving` Soql methods add the criterion to the appropriate `Soql.ConditionalLogic` object under the hood. Calling the `setOuterWhereLogic` and `setOuterHavingLogic` Soql methods change the appropriate object's `Soql.LogicType`.
@@ -688,9 +694,10 @@ Soql.Condition worthAMil = new Soql.Condition(
   Soql.Operator.GREATER_THAN,
   1000000
 );
-Soql soql = (Soql) DatabaseLayer.Soql.newQuery(Opportunity.SObjectType)
+Soql soql = DatabaseLayer.Soql.newQuery(Opportunity.SObjectType)
   ?.addWhere(isClosedWon)
-  ?.addWhere(worthAMil);
+  ?.addWhere(worthAMil)
+  ?.toSoql();
 ```
 
 Like `Soql.Condition`, the `Soql.ConditionalLogic` class implements a base `Soql.Criteria` interface, which the framework uses internally to keep things tidy.
@@ -773,8 +780,9 @@ Represents inner query logic, used for filtering results in a `WHERE` clause. Us
 // SELECT Id FROM Account WHERE Id IN (SELECT AccountId FROM Opportunity WHERE IsWon = true)
 Soql.InnerQuery innerQuery = new Soql.InnerQuery(Opportunity.SObjectType)
   ?.addSelect(Opportunity.AccountId);
-Soql soql = (Soql) Database.Soql.newQuery(Account.SObjectType)
-  ?.addWhere(Account.Id, Soql.IN_COLLECTION, innerQuery);
+Soql soql = Database.Soql.newQuery(Account.SObjectType)
+  ?.addWhere(Account.Id, Soql.IN_COLLECTION, innerQuery)
+  ?.toSoql();
 ```
 
 This class extends `Soql.Builder`, and therefore has all of the same query-building [methods](#building-queries).
@@ -795,10 +803,11 @@ Indicates the enclosing logic for the `Soql.ConditionalLogic` objects used in _W
 Use in the `setOuterWhereLogic` or `setOuterHavingLogic` SOQL methods. Example:
 
 ```java
-Soql soql = (Soql) DatabaseLayer.Soql.newQuery(User.SObjectType)
+Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
   ?.addWhere(User.IsActive, Soql.EQUALS, true)
   ?.addWhere('Profile.Name', Soql.EQUALS, 'System Administrator')
-  ?.setOuterWhereLogic(Soql.LogicType.ANY_CONDITIONS);
+  ?.setOuterWhereLogic(Soql.LogicType.ANY_CONDITIONS)
+  ?.toSoql();
 ```
 
 When `setOuterWhereLogic(Soql.LogicType.ANY_CONDITIONS)` is used, any new criterion added to the query via the `addWhere` method will be added with an `OR` keyword. For example:
@@ -815,10 +824,11 @@ Soql.Condition worthAMil = new Soql.Condition(
   Soql.Operator.GREATER_THAN,
   1000000
 );
-Soql soql = (Soql) DatabaseLayer.Soql.newQuery(Opportunity.SObjectType)
+Soql soql = DatabaseLayer.Soql.newQuery(Opportunity.SObjectType)
   ?.setOuterWhereLogic(Soql.LogicType.ANY_CONDITIONS)
   ?.setWhere(isClosedWon)
-  ?.setWhere(worthAMil);
+  ?.setWhere(worthAMil)
+  ?.toSoql();
 ```
 
 ### Soql.NullOrder
@@ -836,7 +846,7 @@ Soql.SortOrder sortOrder = new Soql.SortOrder(
   Soql.SortDirection.DESCENDING
 );
 sortOrder?.setNullOrder(Soql.NullOrder.NULLS_FIRST);
-Soql soql = (Soql) DatabaseLayer.Soql.newQuery(Opportunity.SObject)?.orderBy(sortOrder);
+Soql soql = DatabaseLayer.Soql.newQuery(Opportunity.SObject)?.orderBy(sortOrder)?.toSoql();
 ```
 
 ### Soql.ParentField
@@ -902,8 +912,9 @@ Enumerates possible values to be used with the optional [_USING SCOPE_](https://
 Use this in conjunction with the `usingScope` SOQL method. For example:
 
 ```java
-Soql soql = (Soql) DatabaseLayer.Soql.newQuery(User.SObjectType)
-  ?.usingScope(Soql.Scope.EVERYTHING);
+Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
+  ?.usingScope(Soql.Scope.EVERYTHING)
+  ?.toSoql();
 ```
 
 ### Soql.SortDirection
@@ -916,9 +927,10 @@ Indicates the direction of the _ORDER BY_ clause. Values include:
 Use this in conjunction with the `orderBy` SOQL method. For example:
 
 ```java
-Soql soql = (Soql) DatabaseLayer.Soql
+Soql soql = DatabaseLayer.Soql
   ?.newQuery(Opportunity.SObjectType)
-  ?.orderBy(Opportunity.Amount, Soql.SortDirection.DESCENDING);
+  ?.orderBy(Opportunity.Amount, Soql.SortDirection.DESCENDING)
+  ?.toSoql();
 ```
 
 ### Soql.SortOrder
@@ -930,9 +942,10 @@ Soql.SortOrder firstCreated = new Soql.SortOrder(
   Account.CreatedDate,
   Soql.SortDirection.ASCENDING
 );
-Soql query = (Soql) DatabaseLayer.Soql
+Soql query = DatabaseLayer.Soql
   ?.newQuery(Account.SObjectType)
-  ?.orderBy(firstCreated);
+  ?.orderBy(firstCreated)
+  ?.toSoql();
 ```
 
 #### Constructors
@@ -957,7 +970,7 @@ This class implements `Soql.Selectable`, and can be used in conjunction with the
 ```java
 // SELECT Id, (SELECT Id FROM Contacts) FROM Account
 Soql.Subquery sub = new Soql.Subquery(Contact.AccountId);
-Soql soql = (Soql) Database.Soql.newQuery(Account.SObjectType).addSelect(sub);
+Soql soql = Database.Soql.newQuery(Account.SObjectType).addSelect(sub)?.toSoql();
 ```
 
 This class extends `Soql.Builder`, and therefore has all of the same query-building [methods](#building-queries).
@@ -980,6 +993,7 @@ Use this in conjunction with the SOQL `setUsage` method. For example:
 
 ```java
 // SELECT Id FROM Account FOR UPDATE
-Soql soql = (Soql) DatabaseLayer.Soql.newQuery(Account.SObjectType)
-  ?.setUsage(Soql.Usage.FOR_UPDATE);
+Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)
+  ?.setUsage(Soql.Usage.FOR_UPDATE)
+  ?.toSoql();
 ```
