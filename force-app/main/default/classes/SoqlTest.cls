@@ -29,7 +29,7 @@ private class SoqlTest {
 			soql?.aggregateQuery();
 			Assert.fail('Illegal query did not throw an error');
 		} catch (System.TypeException error) {
-			Assert.areEqual(true, error?.getMessage()?.contains(soql?.toString()), 'Did not append query to error');
+			Assert.isTrue(error?.getMessage()?.contains(soql?.toString()), 'Did not append query to error');
 		}
 		Test.stopTest();
 	}
@@ -62,7 +62,7 @@ private class SoqlTest {
 			Assert.fail('Illegal query did not throw an error');
 		} catch (System.QueryException error) {
 			String msg = error?.getMessage();
-			Assert.areEqual(true, msg?.contains(soql?.toString()), 'Did not append query to the error');
+			Assert.isTrue(msg?.contains(soql?.toString()), 'Did not append query to the error');
 		}
 		Test.stopTest();
 	}
@@ -92,7 +92,7 @@ private class SoqlTest {
 			Assert.fail('Illegal query did not throw an error');
 		} catch (System.QueryException error) {
 			String msg = error?.getMessage();
-			Assert.areEqual(true, msg?.contains(illegalFieldName), 'Did not append query to the error');
+			Assert.isTrue(msg?.contains(illegalFieldName), 'Did not append query to the error');
 		}
 		Test.stopTest();
 	}
@@ -137,7 +137,7 @@ private class SoqlTest {
 			Assert.fail('Illegal query did not throw an error');
 		} catch (System.QueryException error) {
 			String msg = error?.getMessage();
-			Assert.areEqual(true, msg?.contains(illegalFieldName), 'Did not append query to the error');
+			Assert.isTrue(msg?.contains(illegalFieldName), 'Did not append query to the error');
 		}
 		Test.stopTest();
 	}
@@ -187,7 +187,7 @@ private class SoqlTest {
 			Assert.fail('Illegal query did not throw an error');
 		} catch (System.QueryException error) {
 			String msg = error?.getMessage();
-			Assert.areEqual(true, msg?.contains(soql?.toString()), 'Did not append query to the error');
+			Assert.isTrue(msg?.contains(soql?.toString()), 'Did not append query to the error');
 		}
 		Test.stopTest();
 	}
@@ -239,26 +239,29 @@ private class SoqlTest {
 	@IsTest
 	static void shouldDeselectAllFields() {
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)?.selectAll()?.toSoql();
-		Assert.areEqual(true, soql?.selectClauses?.size() > 1, 'Wrong # of SELECT clauses');
+		Assert.isTrue(soql?.selectClauses?.size() > 1, 'Wrong # of SELECT clauses');
 
 		Test.startTest();
 		soql.deselectAll();
 		Test.stopTest();
 
-		Assert.areEqual(true, soql?.selectClauses?.isEmpty(), 'Did not clear SELECT clauses');
+		Assert.isTrue(soql?.selectClauses?.isEmpty(), 'Did not clear SELECT clauses');
 	}
 
 	@IsTest
-	static void shouldDeselectSpecificField() {
-		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)?.selectAll()?.toSoql();
-		Assert.areEqual(true, soql?.selectClauses?.size() > 1, 'Wrong # of SELECT clauses');
+	static void shouldDeselectSpecificClauses() {
+		Soql.ParentField profile = new Soql.ParentField(User.ProfileId, Profile.Name);
+		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)?.addSelect(profile)?.selectAll()?.toSoql();
+		Assert.isTrue(soql?.selectClauses?.size() > 1, 'Wrong # of SELECT clauses');
 
 		Test.startTest();
 		soql?.deselect(User.Username);
+		soql?.deselect(profile);
 		Test.stopTest();
 
 		Set<String> fields = new Set<String>(soql?.selectClauses);
-		Assert.areEqual(false, fields?.contains(User.Username?.toString()), 'Did not deselect Username');
+		Assert.isFalse(fields?.contains(User.Username?.toString()), 'Did not deselect Username');
+		Assert.isFalse(fields?.contains(profile?.toString()), 'Did not deselect Profile.Name');
 	}
 
 	@IsTest
@@ -435,13 +438,13 @@ private class SoqlTest {
 	static void shouldSelectListOfAggregations() {
 		List<Soql.Aggregation> aggs = new List<Soql.Aggregation>{
 			new Soql.Aggregation(Soql.Function.COUNT, Account.Id),
+			new Soql.Aggregation(Soql.Function.AVG, Account.NumberOfEmployees),
 			new Soql.Aggregation(Soql.Function.SUM, Account.NumberOfEmployees),
-			new Soql.Aggregation(Soql.Function.MIN, Account.NumberOfEmployees),
-			new Soql.Aggregation(Soql.Function.MAX, Account.NumberOfEmployees),
-			new Soql.Aggregation(Soql.Function.AVG, Account.NumberOfEmployees)
+			new Soql.Aggregation(Soql.Function.MIN, new Soql.ParentField(Account.OwnerId, User.CreatedDate)),
+			new Soql.Aggregation(Soql.Function.MAX, new Soql.ParentField(Account.OwnerId, User.CreatedDate))
 		};
 		Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)?.addSelect(aggs)?.toSoql();
-		String expected = 'SELECT COUNT(Id), SUM(NumberOfEmployees), MIN(NumberOfEmployees), MAX(NumberOfEmployees), AVG(NumberOfEmployees) FROM Account';
+		String expected = 'SELECT COUNT(Id), AVG(NumberOfEmployees), SUM(NumberOfEmployees), MIN(Owner.CreatedDate), MAX(Owner.CreatedDate) FROM Account';
 
 		Test.startTest();
 		SoqlTest.validateQuery(soql, expected);
@@ -566,10 +569,14 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldAddCriteriaWithBindToWhereClause() {
-		Soql.Binder binder = new Soql.Binder('userId', UserInfo.getUserId());
-		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)?.addWhere(User.Id, Soql.EQUALS, binder)?.toSoql();
-		String expected = 'SELECT Id FROM User WHERE Id = :userId';
+	static void shouldAddCriteriaWithBindsToWhereClause() {
+		Soql.Binder profileName = new Soql.Binder('profileName', 'System Administrator');
+		Soql.Binder userId = new Soql.Binder('userId', UserInfo.getUserId());
+		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
+			?.addWhere(User.Id, Soql.NOT_EQUALS, userId)
+			?.addWhere(new Soql.ParentField(User.ProfileId, Profile.Name), Soql.EQUALS, profileName)
+			?.toSoql();
+		String expected = 'SELECT Id FROM User WHERE Id != :userId AND Profile.Name = :profileName';
 
 		Test.startTest();
 		SoqlTest.validateQuery(soql, expected);
@@ -580,7 +587,7 @@ private class SoqlTest {
 	static void shouldHandleMultipleWhereClauses() {
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
 			?.addWhere(User.IsActive, Soql.EQUALS, true)
-			?.addWhere('Profile.Name', Soql.EQUALS, 'System Administrator')
+			?.addWhere(new Soql.ParentField(User.ProfileId, Profile.Name), Soql.EQUALS, 'System Administrator')
 			?.setRowLimit(1)
 			?.toSoql();
 		String expected = 'SELECT Id FROM User WHERE IsActive = true AND Profile.Name = \'System Administrator\' LIMIT 1';
@@ -594,7 +601,7 @@ private class SoqlTest {
 	static void shouldSetWhereClauseOuterLogic() {
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
 			?.addWhere(User.IsActive, Soql.EQUALS, true)
-			?.addWhere('Profile.Name', Soql.EQUALS, 'System Administrator')
+			?.addWhere(new Soql.ParentField(User.ProfileId, Profile.Name), Soql.EQUALS, 'System Administrator')
 			?.setOuterWhereLogic(Soql.LogicType.ANY_CONDITIONS)
 			?.setRowLimit(1)
 			?.toSoql();
@@ -609,14 +616,14 @@ private class SoqlTest {
 	static void shouldSetNestedWhereClause() {
 		Soql.ConditionalLogic innerCondition = new Soql.ConditionalLogic()
 			?.addCondition(User.FirstName, Soql.EQUALS, 'Jason')
-			?.addCondition(User.LastName, Soql.EQUALS, 'Siders')
+			?.addCondition(new Soql.ParentField(User.ProfileId, Profile.Name), Soql.EQUALS, 'System Administrator')
 			?.setLogicType(Soql.LogicType.ANY_CONDITIONS);
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
 			?.addWhere(User.IsActive, Soql.EQUALS, true)
 			?.addWhere(innerCondition)
 			?.setRowLimit(1)
 			?.toSoql();
-		String expected = 'SELECT Id FROM User WHERE IsActive = true AND (FirstName = \'Jason\' OR LastName = \'Siders\') LIMIT 1';
+		String expected = 'SELECT Id FROM User WHERE IsActive = true AND (FirstName = \'Jason\' OR Profile.Name = \'System Administrator\') LIMIT 1';
 
 		Test.startTest();
 		SoqlTest.validateQuery(soql, expected);
@@ -798,7 +805,7 @@ private class SoqlTest {
 			?.addSelect(User.LastName)
 			?.addSelect(User.Email)
 			?.addWhere(User.IsActive, Soql.EQUALS, true)
-			?.addWhere('Profile.Name', Soql.EQUALS, 'System Administrator')
+			?.addWhere(new Soql.ParentField(User.ProfileId, Profile.Name), Soql.EQUALS, 'System Administrator')
 			?.orderBy(User.CreatedDate, Soql.SortDirection.ASCENDING)
 			?.setRowLimit(1)
 			?.toSoql();
@@ -845,27 +852,29 @@ private class SoqlTest {
 
 	@IsTest
 	static void shouldOutputLogicWithSingleCondition() {
-		Soql.Condition condition1 = new Soql.Condition(Account.Id, Soql.EQUALS, null);
+		Soql.ParentField field = new Soql.ParentField(Account.OwnerId, User.ProfileId, Profile.Name);
+		Soql.Condition condition = new Soql.Condition(field, Soql.EQUALS, 'System Administrator');
 
 		Test.startTest();
-		String result = new Soql.ConditionalLogic().addCondition(condition1)?.toString();
+		String result = new Soql.ConditionalLogic().addCondition(condition)?.toString();
 		Test.stopTest();
 
 		// If only one condition, should just display the inner condition
-		String expected = condition1?.toString();
+		String expected = condition?.toString();
 		Assert.areEqual(expected, result, 'Unexpected logic output');
 	}
 
 	@IsTest
 	static void shouldOutputLogicWithMultipleConditions() {
+		Soql.ParentField ownerProfileName = new Soql.ParentField(Account.OwnerId, User.ProfileId, Profile.Name);
 		Soql.Condition condition1 = new Soql.Condition(Account.Id, Soql.EQUALS, null);
-		Soql.Condition condition2 = new Soql.Condition(Account.OwnerId, Soql.NOT_EQUALS, null);
+		Soql.Condition condition2 = new Soql.Condition(ownerProfileName, Soql.NOT_EQUALS, 'System Administrator');
 
 		Test.startTest();
 		String result = new Soql.ConditionalLogic()?.addCondition(condition1)?.addCondition(condition2)?.toString();
 		Test.stopTest();
 
-		String expected = 'Id = null AND OwnerId != null';
+		String expected = 'Id = null AND Owner.Profile.Name != \'System Administrator\'';
 		Assert.areEqual(expected, result, 'Unexpected logic output');
 	}
 
@@ -1349,7 +1358,7 @@ private class SoqlTest {
 
 		Assert.areEqual(key, binder?.getKey(), 'Wrong key');
 		Assert.areEqual(':' + key, binder?.toString(), 'Wrong toString() value');
-		Assert.areEqual(true, binder?.getValue() instanceof List<Id>, 'Wrong bind value type');
+		Assert.isTrue(binder?.getValue() instanceof List<Id>, 'Wrong bind value type');
 		List<Id> bindValues = (List<Id>) binder?.getValue();
 		Assert.areEqual(1, bindValues?.size(), 'Wrong # of values');
 	}

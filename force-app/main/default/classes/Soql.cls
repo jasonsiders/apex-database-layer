@@ -542,10 +542,6 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			return this.addWhere(field?.toString(), operator, innerQuery);
 		}
 
-		public Soql.Builder addWhere(Soql.ParentField field, Soql.Operator operator, Soql.InnerQuery innerQuery) {
-			return this.addWhere(field?.toString(), operator, innerQuery);
-		}
-
 		public Soql.Builder addWhere(String fieldName, Soql.Operator operator, Soql.Binder binder) {
 			// If the current `value` object is a Binder, bind the values so that callers don't need to do so manually
 			return this.addWhere(fieldName, operator, binder?.toString())?.bind(binder);

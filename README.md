@@ -119,7 +119,7 @@ Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
   ?.addSelect(User.LastName)
   ?.addSelect(User.Email)
   ?.addWhere(User.IsActive, Soql.EQUALS, true)
-  ?.addWhere('Profile.Name', Soql.EQUALS, 'System Administrator')
+  ?.addWhere(new Soql.ParentField(User.ProfileId, Profile.Name), Soql.EQUALS, 'System Administrator')
   ?.orderBy(User.CreatedDate, Soql.SortDirection.ASCENDING)
   ?.setRowLimit(1)
   ?.toSoql();

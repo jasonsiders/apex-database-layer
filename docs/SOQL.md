@@ -805,7 +805,11 @@ Use in the `setOuterWhereLogic` or `setOuterHavingLogic` SOQL methods. Example:
 ```java
 Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
   ?.addWhere(User.IsActive, Soql.EQUALS, true)
-  ?.addWhere('Profile.Name', Soql.EQUALS, 'System Administrator')
+  ?.addWhere(
+    new Soql.ParentField(User.ProfileId, Profile.Name),
+    Soql.EQUALS,
+    'System Administrator'
+  )
   ?.setOuterWhereLogic(Soql.LogicType.ANY_CONDITIONS)
   ?.toSoql();
 ```
