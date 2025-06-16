@@ -4,9 +4,9 @@
 			"path": "force-app",
 			"default": true,
 			"package": "apex-database-layer",
-			"versionName": "ver 2.2.1",
-			"versionNumber": "2.2.1.NEXT",
-			"versionDescription": "New MockRecord methods to get existing values"
+			"versionName": "ver 2.2.2",
+			"versionNumber": "2.2.2.NEXT",
+			"versionDescription": "Soql improvements: New Soql.ParentField class, addSelect overloads, and missing 'date' Soql.Functions"
 		}
 	],
 	"name": "apex-database-layer",
@@ -20,6 +20,7 @@
 		"apex-database-layer@2.0.0-1": "04tDn0000011OKyIAM",
 		"apex-database-layer@2.1.0-1": "04tDn0000011OPVIA2",
 		"apex-database-layer@2.2.0-1": "04tDn0000011OQJIA2",
-		"apex-database-layer@2.2.1-1": "04tDn0000011OQYIA2"
+		"apex-database-layer@2.2.1-1": "04tDn0000011OQYIA2",
+		"apex-database-layer@2.2.2-1": "04tDn0000011OQdIAM"
 	}
 }
