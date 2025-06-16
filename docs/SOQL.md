@@ -343,6 +343,7 @@ Adds fields or `Soql.Selectable` objects to the SELECT clause of the query. `Soq
 
 - `Soql.Builder addSelect(String fieldName, String alias)`
 - `Soql.Builder addSelect(SObjectField field, String alias)`
+- `Soql.Builder addSelect(Soql.ParentField field, String alias)`
 - `Soql.Builder addSelect(String fieldName)`
 - `Soql.Builder addSelect(List<SObjectField> fields)`
 - `Soql.Builder addSelect(SObjectField field1, [field2, field3, field4, field5])`
@@ -356,8 +357,10 @@ Adds conditions to the WHERE clause of the query.
 - `Soql.Builder addWhere(Soql.Criteria criteria)`
 - `Soql.Builder addWhere(String fieldName, Soql.Operator operator, Object value)`
 - `Soql.Builder addWhere(SObjectField field, Soql.Operator operator, Object value)`
+- `Soql.Builder addWhere(Soql.ParentField field, Soql.Operator operator, Object value)`
 - `Soql.Builder addWhere(String fieldName, Soql.Operator operator, Soql.Binder binder)`
 - `Soql.Builder addWhere(SObjectField field, Soql.Operator operator, Soql.Binder binder)`
+- `Soql.Builder addWhere(Soql.ParentField field, Soql.Operator operator, Soql.Binder binder)`
 
 #### `bind`
 
@@ -379,6 +382,7 @@ Removes specific fields from the SELECT clause of the query.
 
 - `Soql.Builder deselect(String fieldName)`
 - `Soql.Builder deselect(SObjectField field)`
+- `Soql.Builder deselect(Soql.ParentField field)`
 
 #### `deselectAll`
 
@@ -398,6 +402,7 @@ Adds fields to the GROUP BY clause of the query.
 
 - `Soql.Builder groupBy(String fieldName)`
 - `Soql.Builder groupBy(SObjectField field)`
+- `Soql.Builder groupBy(Soql.ParentField field)`
 
 #### `orderBy`
 
@@ -406,6 +411,7 @@ Adds fields to the ORDER BY clause of the query.
 - `Soql.Builder orderBy(Soql.SortOrder sortOrder)`
 - `Soql.Builder orderBy(String fieldName, Soql.SortDirection direction)`
 - `Soql.Builder orderBy(SObjectField field, Soql.SortDirection direction)`
+- `Soql.Builder orderBy(Soql.ParentField field, Soql.SortDirection direction)`
 
 #### `reset`
 
@@ -533,6 +539,7 @@ Each `Soql.Aggregation` is comprised of the following:
 
 - `Soql.Aggregation(Soql.Function, String innerFieldName)`
 - `Soql.Aggregation(Soql.Function, SObjectField field)`
+- `Soql.Aggregation(Soql.Function, Soql.ParentField field)`
 - `Soql.Aggregation(Soql.Function)`
 
 #### `withAlias`
@@ -610,6 +617,7 @@ Like `Soql.ConditionalLogic`, the `Soql.Conditional` class implements a base `So
 
 - `Soql.Condition(String property, Soql.Operator operator, Object value)`
 - `Soql.Condition(SObjectField field, Soql.Operator operator, Object value)`
+- `Soql.Condition(Soql.ParentField field, Soql.Operator operator, Object value)`
 
 ### Soql.ConditionalLogic
 
@@ -710,6 +718,7 @@ Adds a `Soql.Criteria` object (`Soql.Condition` or another `Soql.ConditionalLogi
 - `Soql.ConditionalLogic addCondition(Soql.Criteria criteria)`
 - `Soql.ConditionalLogic addCondition(String fieldName, Soql.Operator operator, Object value)`
 - `Soql.ConditionalLogic addCondition(SObjectField field, Soql.Operator operator, Object value)`
+- `Soql.ConditionalLogic addCondition(Soql.ParentField field, Soql.Operator operator, Object value)`
 
 #### `setLogicType`
 
@@ -869,8 +878,8 @@ Soql query = DatabaseLayer.Soql.newQuery(Opportunity.SObjectType)?.addSelect(fie
 
 #### Constructors
 
-- `ParentField(List<SObjectField> relationshipFieldChain)`
-- `ParentField(SObjectField field1, [field2, field3, field4, field5, field6])`
+- `Soql.ParentField(List<SObjectField> relationshipFieldChain)`
+- `Soql.ParentField(SObjectField field1, [field2, field3, field4, field5, field6])`
 
 ### Soql.QueryLocator
 
@@ -954,10 +963,12 @@ Soql query = DatabaseLayer.Soql
 
 #### Constructors
 
-- `SortOrder(List<String> fieldNames, Soql.SortDirection direction)`
-- `SortOrder(String fieldName, Soql.SortDirection)`
-- `SortOrder(List<SObjectField> fields, Soql.SortDirection direction)`
-- `SortOrder(SObjectField field, Soql.SortDirection direction)`
+- `Soql.SortOrder(List<String> fieldNames, Soql.SortDirection direction)`
+- `Soql.SortOrder(String fieldName, Soql.SortDirection)`
+- `Soql.SortOrder(List<SObjectField> fields, Soql.SortDirection direction)`
+- `Soql.SortOrder(SObjectField field, Soql.SortDirection direction)`
+- `Soql.SortOrder(List<Soql.ParentField> fields, Soql.SortDirection direction)`
+- `Soql.SortOrder(Soql.ParentField field, Soql.SortDirection direction)`
 
 #### `setNullOrder`
 
