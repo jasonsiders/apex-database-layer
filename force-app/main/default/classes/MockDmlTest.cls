@@ -797,10 +797,10 @@ private class MockDmlTest {
 	@IsTest
 	static void shouldHandleRolledBackSavepoints() {
 		DatabaseLayer.useMockDml();
-		DatabaseLayer.Dml.doInsert(new Account());
 
 		Test.startTest();
 		System.Savepoint savepoint = DatabaseLayer.Dml.setSavepoint();
+		DatabaseLayer.Dml.doInsert(new Account());
 		DatabaseLayer.Dml.rollback(savepoint);
 		Test.stopTest();
 

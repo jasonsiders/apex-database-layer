@@ -609,14 +609,25 @@ public class MockDml extends Dml {
 		public String name { get; private set; }
 		public Boolean wasReleased { get; private set; }
 		public Boolean wasRolledBack { get; private set; }
-		private transient TransactionHistory savepointState;
+		private transient MockDml.TransactionHistory savepointState;
 
 		private SavepointInfo(System.Savepoint savepoint, Integer index) {
 			this.index = index;
 			this.name = 'SavepointValue' + index;
 			this.wasReleased = false;
 			this.wasRolledBack = false;
-			this.savepointState = MockDml.currentTransaction?.clone();
+			this.captureCurrentState();
+		}
+
+		private void captureCurrentState() {
+			// Captures the state of the transaction at the time the savepoint was initialized
+			// Note: Object.clone produces a shallow copy, not a true copy
+			// JSON deserialization seems to be the only known way to do this:
+			// https://salesforce.stackexchange.com/questions/162765/object-clone-does-not-work-as-expected
+			this.savepointState = (MockDml.TransactionHistory) JSON.deserialize(
+				JSON.serialize(MockDml.currentTransaction),
+				MockDml.TransactionHistory.class
+			);
 		}
 
 		private void release() {
