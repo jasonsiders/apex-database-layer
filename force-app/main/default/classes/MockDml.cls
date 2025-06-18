@@ -557,27 +557,27 @@ public class MockDml extends Dml {
 
 	public class SavepointHistory {
 		/**
-		 * This class maintains a map of MockDml.SavepointInfos,
+		 * This class maintains a map of MockDml.Savepoints,
 		 * and provides methods to easily get a particular savepoint by their index or by the object itself
 		 */
-		private Map<Integer, MockDml.SavepointInfo> savepointMap;
+		private Map<Integer, MockDml.Savepoint> savepointMap;
 
 		private SavepointHistory() {
-			this.savepointMap = new Map<Integer, MockDml.SavepointInfo>();
+			this.savepointMap = new Map<Integer, MockDml.Savepoint>();
 		}
 
-		public List<MockDml.SavepointInfo> getAll() {
-			// Returns all registered MockDml.SavepointInfos:
+		public List<MockDml.Savepoint> getAll() {
+			// Returns all registered MockDml.Savepoints:
 			return this.savepointMap?.values();
 		}
 
-		public MockDml.SavepointInfo get(Integer index) {
-			// Retrieves a MockDml.SavepointInfo by its index:
+		public MockDml.Savepoint get(Integer index) {
+			// Retrieves a MockDml.Savepoint by its index:
 			return this.savepointMap?.get(index);
 		}
 
-		public MockDml.SavepointInfo get(System.Savepoint savepoint) {
-			// Retrieves a System.Savepoint's MockDml.SavepointInfo wrapper:
+		public MockDml.Savepoint get(System.Savepoint savepoint) {
+			// Retrieves a System.Savepoint's MockDml.Savepoint wrapper:
 			Integer index = this.getIndexFrom(savepoint);
 			return this.savepointMap?.get(index);
 		}
@@ -585,7 +585,7 @@ public class MockDml extends Dml {
 		private void add(System.Savepoint savepoint) {
 			// Generate a MockDml.SystemSavepoint for the System.Savepoint, and map it by its index:
 			Integer index = this.getIndexFrom(savepoint);
-			MockDml.SavepointInfo info = new MockDml.SavepointInfo(savepoint, index);
+			MockDml.Savepoint info = new MockDml.Savepoint(savepoint, index);
 			this.savepointMap?.put(index, info);
 		}
 
@@ -598,7 +598,7 @@ public class MockDml extends Dml {
 		}
 	}
 
-	public class SavepointInfo {
+	public class Savepoint {
 		/**
 		 * This class decorates a System.Savepoint object
 		 * Test callers can use the class's methods to determine if the savepoint was saved, released, or rolled back
@@ -611,7 +611,7 @@ public class MockDml extends Dml {
 		public Boolean wasRolledBack { get; private set; }
 		private transient MockDml.TransactionHistory savepointState;
 
-		private SavepointInfo(System.Savepoint savepoint, Integer index) {
+		private Savepoint(System.Savepoint savepoint, Integer index) {
 			this.index = index;
 			this.name = 'SavepointValue' + index;
 			this.wasReleased = false;
