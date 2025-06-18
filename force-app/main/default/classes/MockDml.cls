@@ -1,5 +1,5 @@
 @SuppressWarnings(
-	'PMD.ApexDoc, PMD.CognitiveComplexity, PMD.CyclomaticComplexity, PMD.ExcessiveParameterList, PMD.FieldNamingConventions'
+	'PMD.ApexDoc, PMD.CognitiveComplexity, PMD.CyclomaticComplexity, PMD.ExcessiveParameterList, PMD.FieldNamingConventions, PMD.PropertyNamingConventions'
 )
 @IsTest
 public class MockDml extends Dml {
@@ -9,17 +9,51 @@ public class MockDml extends Dml {
 	 * conditions in which operations should fail, via the `fail()` method,
 	 * or the `failIf()` method and the `ConditionalLogic` interface.
 	 **/
-	// **** CONSTANTS **** //
-	public static final MockDml.RecordHistory CONVERTED = new MockDml.RecordHistory(MockDml.Operation.DO_CONVERT);
-	public static final MockDml.RecordHistory DELETED = new MockDml.RecordHistory(MockDml.Operation.DO_DELETE);
-	public static final MockDml.RecordHistory INSERTED = new MockDml.RecordHistory(MockDml.Operation.DO_INSERT);
-	public static final MockDml.PlatformEventHistory PUBLISHED = new MockDml.PlatformEventHistory();
-	public static final MockDml.RecordHistory PURGED = new MockDml.RecordHistory(MockDml.Operation.DO_PURGE);
-	public static final MockDml.RecordHistory UNDELETED = new MockDml.RecordHistory(MockDml.Operation.DO_UNDELETE);
-	public static final MockDml.RecordHistory UPDATED = new MockDml.RecordHistory(MockDml.Operation.DO_UPDATE);
-	public static final MockDml.RecordHistory UPSERTED = new MockDml.RecordHistory(MockDml.Operation.DO_UPSERT);
+	public static final MockDml.SavepointHistory SAVEPOINTS = new MockDml.SavepointHistory();
 	private static final String EVENT_UUID_FIELD = 'EventUuid';
 	private static final String MOCK_STATUS_CODE = 'MOCK_DML';
+	private static MockDml.TransactionHistory currentTransaction = new MockDml.TransactionHistory();
+
+	public static MockDml.RecordHistory CONVERTED {
+		get {
+			return MockDml.currentTransaction?.converted;
+		}
+	}
+	public static MockDml.RecordHistory DELETED {
+		get {
+			return MockDml.currentTransaction?.deleted;
+		}
+	}
+	public static MockDml.RecordHistory INSERTED {
+		get {
+			return MockDml.currentTransaction?.inserted;
+		}
+	}
+	public static MockDml.PlatformEventHistory PUBLISHED {
+		get {
+			return MockDml.currentTransaction?.published;
+		}
+	}
+	public static MockDml.RecordHistory PURGED {
+		get {
+			return MockDml.currentTransaction?.purged;
+		}
+	}
+	public static MockDml.RecordHistory UNDELETED {
+		get {
+			return MockDml.currentTransaction?.undeleted;
+		}
+	}
+	public static MockDml.RecordHistory UPDATED {
+		get {
+			return MockDml.currentTransaction?.updated;
+		}
+	}
+	public static MockDml.RecordHistory UPSERTED {
+		get {
+			return MockDml.currentTransaction?.upserted;
+		}
+	}
 
 	// **** MEMBER **** //
 	private List<MockDml.ConditionalFailure> failures = new List<MockDml.ConditionalFailure>();
@@ -32,19 +66,7 @@ public class MockDml extends Dml {
 	public static void eraseAllHistories() {
 		// Reset all of the history objects to their original state
 		// Useful for isolating the actual changes being tested, ie., after test setup
-		for (
-			MockDml.History history : new List<MockDml.History>{
-				MockDml.CONVERTED,
-				MockDml.DELETED,
-				MockDml.INSERTED,
-				MockDml.PUBLISHED,
-				MockDml.UNDELETED,
-				MockDml.UPDATED,
-				MockDml.UPSERTED
-			}
-		) {
-			history?.eraseHistory();
-		}
+		MockDml.currentTransaction = new MockDml.TransactionHistory();
 	}
 
 	// **** MEMBER **** //
@@ -227,6 +249,23 @@ public class MockDml extends Dml {
 			results?.add(result);
 		}
 		return this.toUpsertResults(results);
+	}
+
+	public override void releaseSavepoint(System.Savepoint savepoint) {
+		MockDml.SAVEPOINTS.get(savepoint)?.release();
+		super.releaseSavepoint(savepoint);
+	}
+
+	public override void rollback(System.Savepoint savepoint) {
+		MockDml.SAVEPOINTS.get(savepoint)?.rollback();
+		super.rollback(savepoint);
+	}
+
+	public override System.Savepoint setSavepoint() {
+		System.Savepoint savepoint = super.setSavepoint();
+		// Now register the savepoint in the mock database:
+		MockDml.SAVEPOINTS?.add(savepoint);
+		return savepoint;
 	}
 
 	// **** PRIVATE **** //
@@ -513,6 +552,109 @@ public class MockDml extends Dml {
 				record.Id = MockRecord.initRecordId(objectType);
 			}
 			return record;
+		}
+	}
+
+	public class SavepointHistory {
+		/**
+		 * This class maintains a map of MockDml.SavepointInfos,
+		 * and provides methods to easily get a particular savepoint by their index or by the object itself
+		 */
+		private Map<Integer, MockDml.SavepointInfo> savepointMap;
+
+		private SavepointHistory() {
+			this.savepointMap = new Map<Integer, MockDml.SavepointInfo>();
+		}
+
+		public List<MockDml.SavepointInfo> getAll() {
+			// Returns all registered MockDml.SavepointInfos:
+			return this.savepointMap?.values();
+		}
+
+		public MockDml.SavepointInfo get(Integer index) {
+			// Retrieves a MockDml.SavepointInfo by its index:
+			return this.savepointMap?.get(index);
+		}
+
+		public MockDml.SavepointInfo get(System.Savepoint savepoint) {
+			// Retrieves a System.Savepoint's MockDml.SavepointInfo wrapper:
+			Integer index = this.getIndexFrom(savepoint);
+			return this.savepointMap?.get(index);
+		}
+
+		private void add(System.Savepoint savepoint) {
+			// Generate a MockDml.SystemSavepoint for the System.Savepoint, and map it by its index:
+			Integer index = this.getIndexFrom(savepoint);
+			MockDml.SavepointInfo info = new MockDml.SavepointInfo(savepoint, index);
+			this.savepointMap?.put(index, info);
+		}
+
+		private Integer getIndexFrom(System.Savepoint savepoint) {
+			// Note: System.Savepoints don't have any known properties or methods,
+			// but printing them toString() reveals a hidden name: "SavepointValueX"
+			// where X is the ordered index of created savepoints in the transaction
+			// This method extracts that index, so that test callers can identify a particular savepoint if desired:
+			return Integer.valueOf(savepoint?.toString()?.replaceAll('[^0-9]', ''));
+		}
+	}
+
+	public class SavepointInfo {
+		/**
+		 * This class decorates a System.Savepoint object
+		 * Test callers can use the class's methods to determine if the savepoint was saved, released, or rolled back
+		 * This also stores a shallow copy of the TransactionHistory at the time the savepoint was generated,
+		 * in the event of a rollback, the TransactionHistory will be reverted back to this point
+		 */
+		public Integer index { get; private set; }
+		public String name { get; private set; }
+		public Boolean wasReleased { get; private set; }
+		public Boolean wasRolledBack { get; private set; }
+		private transient TransactionHistory savepointState;
+
+		private SavepointInfo(System.Savepoint savepoint, Integer index) {
+			this.index = index;
+			this.name = 'SavepointValue' + index;
+			this.wasReleased = false;
+			this.wasRolledBack = false;
+			this.savepointState = MockDml.currentTransaction?.clone();
+		}
+
+		private void release() {
+			// Release the current savepoint's state
+			// Subsuquent calls to rollback should not affect the TransactionHistory
+			this.wasReleased = true;
+			this.savepointState = null;
+		}
+
+		private void rollback() {
+			// Revert the MockDml's TransactionHistory to what it was when the Savepoint was generated
+			MockDml.currentTransaction = this.savepointState ?? MockDml.currentTransaction;
+			this.wasRolledBack = true;
+		}
+	}
+
+	public class TransactionHistory {
+		/**
+		 * This class represents the mock database at a particular point in time
+		 */
+		public MockDml.RecordHistory converted { get; private set; }
+		public MockDml.RecordHistory deleted { get; private set; }
+		public MockDml.RecordHistory inserted { get; private set; }
+		public MockDml.PlatformEventHistory published { get; private set; }
+		public MockDml.RecordHistory purged { get; private set; }
+		public MockDml.RecordHistory undeleted { get; private set; }
+		public MockDml.RecordHistory updated { get; private set; }
+		public MockDml.RecordHistory upserted { get; private set; }
+
+		private TransactionHistory() {
+			this.converted = new MockDml.RecordHistory(MockDml.Operation.DO_CONVERT);
+			this.deleted = new MockDml.RecordHistory(MockDml.Operation.DO_DELETE);
+			this.inserted = new MockDml.RecordHistory(MockDml.Operation.DO_INSERT);
+			this.published = new MockDml.PlatformEventHistory();
+			this.purged = new MockDml.RecordHistory(MockDml.Operation.DO_PURGE);
+			this.undeleted = new MockDml.RecordHistory(MockDml.Operation.DO_UNDELETE);
+			this.updated = new MockDml.RecordHistory(MockDml.Operation.DO_UPDATE);
+			this.upserted = new MockDml.RecordHistory(MockDml.Operation.DO_UPSERT);
 		}
 	}
 
