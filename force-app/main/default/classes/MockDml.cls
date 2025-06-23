@@ -9,67 +9,74 @@ public class MockDml extends Dml {
 	 * conditions in which operations should fail, via the `fail()` method,
 	 * or the `failIf()` method and the `ConditionalLogic` interface.
 	 **/
+
+	// **** CONSTANT **** //
 	public static final MockDml.SavepointHistory SAVEPOINTS = new MockDml.SavepointHistory();
 	private static final String EVENT_UUID_FIELD = 'EventUuid';
 	private static final String MOCK_STATUS_CODE = 'MOCK_DML';
-	private static MockDml.TransactionHistory currentTransaction = new MockDml.TransactionHistory();
 
-	public static MockDml.RecordHistory CONVERTED {
+	// **** STATIC **** //
+	public static MockDml.MockDatabase mockDatabase { get; private set; }
+
+	public static final MockDml.RecordHistory CONVERTED {
 		get {
-			return MockDml.currentTransaction?.converted;
+			return MockDml.MockDatabase?.converted;
 		}
 	}
-	public static MockDml.RecordHistory DELETED {
+	public static final MockDml.RecordHistory DELETED {
 		get {
-			return MockDml.currentTransaction?.deleted;
+			return MockDml.MockDatabase?.deleted;
 		}
 	}
-	public static MockDml.RecordHistory INSERTED {
+	public static final MockDml.RecordHistory INSERTED {
 		get {
-			return MockDml.currentTransaction?.inserted;
+			return MockDml.MockDatabase?.inserted;
 		}
 	}
 	public static MockDml.PlatformEventHistory PUBLISHED {
 		get {
-			return MockDml.currentTransaction?.published;
+			return MockDml.MockDatabase?.published;
 		}
 	}
-	public static MockDml.RecordHistory PURGED {
+	public static final MockDml.RecordHistory PURGED {
 		get {
-			return MockDml.currentTransaction?.purged;
+			return MockDml.MockDatabase?.purged;
 		}
 	}
-	public static MockDml.RecordHistory UNDELETED {
+	public static final MockDml.RecordHistory UNDELETED {
 		get {
-			return MockDml.currentTransaction?.undeleted;
+			return MockDml.MockDatabase?.undeleted;
 		}
 	}
-	public static MockDml.RecordHistory UPDATED {
+	public static final MockDml.RecordHistory UPDATED {
 		get {
-			return MockDml.currentTransaction?.updated;
+			return MockDml.MockDatabase?.updated;
 		}
 	}
-	public static MockDml.RecordHistory UPSERTED {
+	public static final MockDml.RecordHistory UPSERTED {
 		get {
-			return MockDml.currentTransaction?.upserted;
+			return MockDml.MockDatabase?.upserted;
 		}
 	}
 
-	// **** MEMBER **** //
-	private List<MockDml.ConditionalFailure> failures = new List<MockDml.ConditionalFailure>();
-
-	public MockDml(DatabaseLayer factory) {
-		super(factory);
+	static {
+		mockDatabase = new MockDml.MockDatabase();
 	}
 
-	// **** STATIC **** //
 	public static void eraseAllHistories() {
 		// Reset all of the history objects to their original state
 		// Useful for isolating the actual changes being tested, ie., after test setup
-		MockDml.currentTransaction = new MockDml.TransactionHistory();
+		MockDml.mockDatabase = new MockDml.MockDatabase();
 	}
 
 	// **** MEMBER **** //
+	private List<MockDml.ConditionalFailure> failures;
+
+	public MockDml(DatabaseLayer factory) {
+		super(factory);
+		this.failures = new List<MockDml.ConditionalFailure>();
+	}
+
 	public MockDml clearFailures() {
 		// Clears the list of failures from the current instance.
 		// As a result, all mock DML operations should now succeed.
@@ -263,7 +270,7 @@ public class MockDml extends Dml {
 
 	public override System.Savepoint setSavepoint() {
 		System.Savepoint savepoint = super.setSavepoint();
-		// Now register the savepoint in the mock database:
+		// Now register the savepoint in the mock MockDatabase:
 		MockDml.SAVEPOINTS?.add(savepoint);
 		return savepoint;
 	}
@@ -401,11 +408,11 @@ public class MockDml extends Dml {
 		 * It provides several methods that callers can use to assert if DML actually occurred.
 		 **/
 		protected MockDml.Operation operation;
-		protected Map<SObjectType, Map<String, SObject>> recordMap;
+		protected Map<String, Map<String, SObject>> recordMap;
 
 		protected History(MockDml.Operation operation) {
 			this.operation = operation;
-			this.recordMap = new Map<SObjectType, Map<String, SObject>>();
+			this.recordMap = new Map<String, Map<String, SObject>>();
 		}
 
 		// **** ABSTRACT **** //
@@ -418,12 +425,12 @@ public class MockDml extends Dml {
 			return this;
 		}
 
-		public Map<SObjectType, List<SObject>> getAll() {
+		public Map<String, List<SObject>> getAll() {
 			// Retrieve all records processed by the current operation, grouped by SObjectType
-			Map<SObjectType, List<SObject>> allRecords = new Map<SObjectType, List<SObject>>();
-			for (SObjectType objectType : this.recordMap?.keySet()) {
-				List<SObject> recordList = this.recordMap?.get(objectType)?.values();
-				allRecords?.put(objectType, recordList);
+			Map<String, List<SObject>> allRecords = new Map<String, List<SObject>>();
+			for (String objectName : this.recordMap?.keySet()) {
+				List<SObject> recordList = this.recordMap?.get(objectName)?.values();
+				allRecords?.put(objectName, recordList);
 			}
 			return allRecords;
 		}
@@ -446,7 +453,7 @@ public class MockDml extends Dml {
 		}
 
 		protected Map<String, SObject> getRecordMap(SObjectType objectType) {
-			return this.recordMap?.get(objectType) ?? new Map<String, SObject>();
+			return this.recordMap?.get(objectType?.toString()) ?? new Map<String, SObject>();
 		}
 
 		protected MockDml.Result handleDmlError(SObject record, Exception error, Boolean allOrNone) {
@@ -472,8 +479,46 @@ public class MockDml extends Dml {
 			SObjectType objectType = record?.getSObjectType();
 			Map<String, SObject> records = this.getRecordMap(objectType);
 			this.addRecordToMap(record, records);
-			this.recordMap?.put(objectType, records);
+			this.recordMap?.put(objectType?.toString(), records);
 			return new MockDml.RecordResult(record);
+		}
+	}
+
+	public class MockDatabase {
+		/**
+		 * This class represents a mock Salesforce Database. It stores all DML Methods' corresponding History objects
+		 */
+		public MockDml.RecordHistory converted { get; private set; }
+		public MockDml.RecordHistory deleted { get; private set; }
+		public MockDml.RecordHistory inserted { get; private set; }
+		public MockDml.PlatformEventHistory published { get; private set; }
+		public MockDml.RecordHistory purged { get; private set; }
+		public MockDml.RecordHistory undeleted { get; private set; }
+		public MockDml.RecordHistory updated { get; private set; }
+		public MockDml.RecordHistory upserted { get; private set; }
+		/**
+		 * When this configuration flag is "true", MockDml will mimic a real Database when a rollback occurs
+		 * This is "false" by default, for performance reasons (heap, cpu time, etc).
+		 * Only override this if your testing use case truly warrants it!
+		 **/
+		public Boolean resetOnRollback { get; set; }
+
+		private MockDatabase() {
+			this.converted = new MockDml.RecordHistory(MockDml.Operation.DO_CONVERT);
+			this.deleted = new MockDml.RecordHistory(MockDml.Operation.DO_DELETE);
+			this.inserted = new MockDml.RecordHistory(MockDml.Operation.DO_INSERT);
+			this.published = new MockDml.PlatformEventHistory();
+			this.purged = new MockDml.RecordHistory(MockDml.Operation.DO_PURGE);
+			this.undeleted = new MockDml.RecordHistory(MockDml.Operation.DO_UNDELETE);
+			this.updated = new MockDml.RecordHistory(MockDml.Operation.DO_UPDATE);
+			this.upserted = new MockDml.RecordHistory(MockDml.Operation.DO_UPSERT);
+			this.resetOnRollback = true;
+		}
+
+		public MockDatabase snapshot() {
+			// Captures the state of the MockDatabase at the current point in time:
+			// https://salesforce.stackexchange.com/questions/162765/object-clone-does-not-work-as-expected
+			return (MockDml.MockDatabase) JSON.deserialize(JSON.serialize(this), MockDml.MockDatabase.class);
 		}
 	}
 
@@ -585,8 +630,8 @@ public class MockDml extends Dml {
 		private void add(System.Savepoint savepoint) {
 			// Generate a MockDml.SystemSavepoint for the System.Savepoint, and map it by its index:
 			Integer index = this.getIndexFrom(savepoint);
-			MockDml.Savepoint info = new MockDml.Savepoint(savepoint, index);
-			this.savepointMap?.put(index, info);
+			MockDml.Savepoint savepointInfo = new MockDml.Savepoint(savepoint, index);
+			this.savepointMap?.put(index, savepointInfo);
 		}
 
 		private Integer getIndexFrom(System.Savepoint savepoint) {
@@ -602,14 +647,14 @@ public class MockDml extends Dml {
 		/**
 		 * This class decorates a System.Savepoint object
 		 * Test callers can use the class's methods to determine if the savepoint was saved, released, or rolled back
-		 * This also stores a shallow copy of the TransactionHistory at the time the savepoint was generated,
-		 * in the event of a rollback, the TransactionHistory will be reverted back to this point
+		 * This also stores a shallow copy of the MockDatabase at the time the savepoint was generated,
+		 * in the event of a rollback, the MockDatabase will be reverted back to this point
 		 */
 		public Integer index { get; private set; }
 		public String name { get; private set; }
 		public Boolean wasReleased { get; private set; }
 		public Boolean wasRolledBack { get; private set; }
-		private transient MockDml.TransactionHistory savepointState;
+		private transient MockDml.MockDatabase savepointState;
 
 		private Savepoint(System.Savepoint savepoint, Integer index) {
 			this.index = index;
@@ -620,52 +665,25 @@ public class MockDml extends Dml {
 		}
 
 		private void captureCurrentState() {
-			// Captures the state of the transaction at the time the savepoint was initialized
-			// Note: Object.clone produces a shallow copy, not a true copy
-			// JSON deserialization seems to be the only known way to do this:
-			// https://salesforce.stackexchange.com/questions/162765/object-clone-does-not-work-as-expected
-			this.savepointState = (MockDml.TransactionHistory) JSON.deserialize(
-				JSON.serialize(MockDml.currentTransaction),
-				MockDml.TransactionHistory.class
-			);
+			// Stores a copy of the mock database at the time the savepoint was initialized, if configured to do so
+			// If not configured to do so, returns null,
+			// which means that subsuquent rollbacks will not affect the current MockDml.MockDatabase
+			if (MockDml.MockDatabase.resetOnRollback == true) {
+				this.savepointState = MockDml.MockDatabase.snapshot();
+			}
 		}
 
 		private void release() {
 			// Release the current savepoint's state
-			// Subsuquent calls to rollback should not affect the TransactionHistory
+			// Subsuquent calls to rollback should not affect the MockDatabase
 			this.wasReleased = true;
 			this.savepointState = null;
 		}
 
 		private void rollback() {
-			// Revert the MockDml's TransactionHistory to what it was when the Savepoint was generated
-			MockDml.currentTransaction = this.savepointState ?? MockDml.currentTransaction;
+			// Revert the MockDml's MockDatabase to what it was when the Savepoint was generated
+			MockDml.mockDatabase = this.savepointState ?? MockDml.MockDatabase;
 			this.wasRolledBack = true;
-		}
-	}
-
-	public class TransactionHistory {
-		/**
-		 * This class represents the mock database at a particular point in time
-		 */
-		public MockDml.RecordHistory converted { get; private set; }
-		public MockDml.RecordHistory deleted { get; private set; }
-		public MockDml.RecordHistory inserted { get; private set; }
-		public MockDml.PlatformEventHistory published { get; private set; }
-		public MockDml.RecordHistory purged { get; private set; }
-		public MockDml.RecordHistory undeleted { get; private set; }
-		public MockDml.RecordHistory updated { get; private set; }
-		public MockDml.RecordHistory upserted { get; private set; }
-
-		private TransactionHistory() {
-			this.converted = new MockDml.RecordHistory(MockDml.Operation.DO_CONVERT);
-			this.deleted = new MockDml.RecordHistory(MockDml.Operation.DO_DELETE);
-			this.inserted = new MockDml.RecordHistory(MockDml.Operation.DO_INSERT);
-			this.published = new MockDml.PlatformEventHistory();
-			this.purged = new MockDml.RecordHistory(MockDml.Operation.DO_PURGE);
-			this.undeleted = new MockDml.RecordHistory(MockDml.Operation.DO_UNDELETE);
-			this.updated = new MockDml.RecordHistory(MockDml.Operation.DO_UPDATE);
-			this.upserted = new MockDml.RecordHistory(MockDml.Operation.DO_UPSERT);
 		}
 	}
 

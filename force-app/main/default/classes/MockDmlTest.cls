@@ -754,11 +754,33 @@ private class MockDmlTest {
 		DatabaseLayer.Dml.doInsert(accounts);
 
 		Test.startTest();
-		Map<SObjectType, List<SObject>> results = MockDml.INSERTED.getAll();
+		Map<String, List<SObject>> results = MockDml.INSERTED.getAll();
 		Test.stopTest();
 
-		Assert.isTrue(results?.containsKey(Account.SObjectType), 'No Accounts inserted');
-		Assert.areEqual(accounts?.size(), results?.get(Account.SObjectType)?.size(), 'Wrong # of Accounts inserted');
+		String objectName = Account.SObjectType.toString();
+		Assert.isTrue(results?.containsKey(objectName), 'No Accounts inserted');
+		Assert.areEqual(accounts?.size(), results?.get(objectName)?.size(), 'Wrong # of Accounts inserted');
+	}
+
+	@IsTest
+	static void shouldCreateSnapshotOfMockDatabase() {
+		DatabaseLayer.useMockDml();
+		List<Account> accounts = MockDmlTest.initRecords(Account.SObjectType, false);
+		DatabaseLayer.Dml.doInsert(accounts);
+
+		Test.startTest();
+		// Take a snapshot
+		MockDml.MockDatabase snapshot = MockDml.mockDatabase?.snapshot();
+		Test.stopTest();
+
+		// Now simulate deleting the records:
+		DatabaseLayer.Dml.doDelete(accounts);
+		// Both the current MockDatabase & the snapshot should be aware Inserted records:
+		Assert.isFalse(MockDml.INSERTED?.getAll()?.isEmpty(), 'MockDatabase: Should have inserted records');
+		Assert.isFalse(snapshot?.inserted?.getAll()?.isEmpty(), 'Snapshot: Should have inserted records');
+		// Only the MockDatabase is aware of the deleted records:
+		Assert.isFalse(MockDml.DELETED?.getAll()?.isEmpty(), 'MockDatabase: Should have deleted records');
+		Assert.isTrue(snapshot?.deleted?.getAll()?.isEmpty(), 'Snapshot: Should not have deleted records');
 	}
 
 	@IsTest
@@ -797,6 +819,7 @@ private class MockDmlTest {
 	@IsTest
 	static void shouldHandleRolledBackSavepoints() {
 		DatabaseLayer.useMockDml();
+		MockDml.MockDatabase.resetOnRollback = true;
 
 		Test.startTest();
 		System.Savepoint savepoint = DatabaseLayer.Dml.setSavepoint();
@@ -805,6 +828,26 @@ private class MockDmlTest {
 		Test.stopTest();
 
 		Assert.isTrue(MockDml.INSERTED.getAll()?.isEmpty(), 'Did not roll back DML operation');
+		Assert.isNotNull(savepoint, 'Did not return a System.Savepoint');
+		List<MockDml.Savepoint> savepointInfos = MockDml.SAVEPOINTS.getAll();
+		Assert.areEqual(1, savepointInfos?.size(), 'Wrong # of Savepoints');
+		MockDml.Savepoint savepointInfo = savepointInfos?.get(0);
+		Assert.isFalse(savepointInfo?.wasReleased, 'Should not have been released');
+		Assert.isTrue(savepointInfo?.wasRolledBack, 'Was not rolled back');
+	}
+
+	@IsTest
+	static void shouldHandleRolledBackSavepointsWithoutResettingMockDatabase() {
+		DatabaseLayer.useMockDml();
+		MockDml.MockDatabase.resetOnRollback = false;
+
+		Test.startTest();
+		System.Savepoint savepoint = DatabaseLayer.Dml.setSavepoint();
+		DatabaseLayer.Dml.doInsert(new Account());
+		DatabaseLayer.Dml.rollback(savepoint);
+		Test.stopTest();
+
+		Assert.isFalse(MockDml.INSERTED.getAll()?.isEmpty(), 'Savepoint should not have reset DML history');
 		Assert.isNotNull(savepoint, 'Did not return a System.Savepoint');
 		List<MockDml.Savepoint> savepointInfos = MockDml.SAVEPOINTS.getAll();
 		Assert.areEqual(1, savepointInfos?.size(), 'Wrong # of Savepoints');
