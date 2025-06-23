@@ -46,7 +46,24 @@ The `MockDml` class can be used in placed of a normal `Dml` class in the `@IsTes
 
 ### Instantiating Mocks
 
-In `@IsTest` context, mock DML operations by calling the `DatabaseLayer.useMocks()` method. Once this is done, the `DatabaseLayer.Dml` method will return `MockDml` objects. If the `Dml` methood is called _before_ `useMocks()`, then those objects will continue to be instances of `Dml`. To prevent issues, call the `useMocks()` method as the first line in your test.
+In `@IsTest` context, mock DML operations by calling the `DatabaseLayer.useMocks()` method. Once this is done, the `DatabaseLayer.Dml` method will return `MockDml` objects. If the `Dml` methood is called _before_ `useMocks()`, then those objects will continue to be instances of `Dml`. To prevent issues, call the `useMocks()` method as the first line in your test:
+
+```java
+@IsTest
+static void example() {
+	DatabaseLayer.useMocks();
+	Case testCase = new Case();
+
+	Test.startTest();
+	DatabaseLayer.Dml.doInsert(testCase);
+	Assert.areEqual(0, Limits.getDmlStatements(), 'DML was processed?');
+	Test.stopTest();
+
+	Integer numInserted = MockDml.INSERTED?.getRecords(Case.SObjectType)?.size();
+	Assert.areEqual(1, numInserted, 'Wrong # of cases inserted');
+	Assert.isNotNull(testCase?.Id, 'Test Case was not inserted');
+}
+```
 
 ### Simulating DML Failures
 
@@ -86,42 +103,56 @@ Assert.isFalse(result?.isSuccess, 'DML Operation did not fail');
 Assert.isNull(account?.Id, 'Account was inserted');
 ```
 
-#### The `MockDml.ConditionalFailure` Interface
+Read more about the `MockDml.ConditionalFailure` interface [here](#the-mockdmlconditionalfailure-interface).
 
-Evaluates a given SObject record and DML operation, and returns an Exception object if the operation should fail for that record. If `null` is returned, the operation will succeed. If an Exception is returned, the operation will fail in accordance with the current `Dml` object's defined `allOrNone` behavior. This behavior mirrors standard DML `allOrNone` logic:
+### Simulating Savepoints & Rollbacks
 
--   If `allOrNone == true`, the Exception returned by the `checkFailure()` method is thrown, and the entire operation fails.
--   If `allOrNone == false`, only the current SObject fails. The matching Database Result object returned by the DML operation will indicate that the record failed. The resulting error message for the result is derived from the Exception returned by the `checkFailure()` method.
-
--   `checkFailure(MockDml.Operation operation, SObject record)`
+Out of the box, salesforce doesn't give you many tools to check how savepoints were used over the course of a test. When used in conjunction with the `Dml` class's savepoint methods, `MockDml` gives you the ability to inspect each savepoint generated in a transaction, along with details about how they were used, ie., whether they were rolled back or released:
 
 ```java
-public class ExampleFailure implements MockDml.ConditionalFailure {
-	public Exception checkFailure(MockDml.Operation operation, SObject record) {
-		// Fail any operations that manipulate Account records
-		if (record?.getSObjectType() == Account.SObjectType) {
-			return new System.DmlException();
-		} else {
-			// Success!
-			return null;
-		}
-	}
-}
+DatabaseLayer.useMocks();
+
+Test.startTest();
+System.Savepoint sp1 = Dml.setSavepoint();
+System.Savepoint sp2 = Dml.setSavepoint();
+System.Savepoint sp3 = Dml.setSavepoint();
+Dml.rollback(sp2);
+Dml.releaseSavepoint(sp3);
+Test.stopTest();
+
+Assert.areEqual(3, MockDml.SAVEPOINTS?.getAll()?.size(), 'Wrong # of savepoints');
+// sp1 should not be rolled back *or* released:
+MockDml.Savepoint mockSp1 = MockDml.SAVEPOINTS.get(0);
+Assert.areEqual(false, mockSp1?.wasReleased);
+Assert.areEqual(false, mockSp1?.wasRolledBack);
+// sp2 was rolled back:
+MockDml.Savepoint mockSp2 = MockDml.SAVEPOINTS.get(1);
+Assert.areEqual(false, mockSp2?.wasReleased);
+Assert.areEqual(true, mockSp2?.wasRolledBack);
+// sp3 was released:
+MockDml.Savepoint mockSp3 = MockDml.SAVEPOINTS.get(2);
+Assert.areEqual(true, mockSp3?.wasReleased);
+Assert.areEqual(false, mockSp3?.wasRolledBack);
 ```
+
+Read more about the `MockDml.Savepoint` class [here](#the-mockdmlsavepoint-class).
+
+Read more about the `MockDml.SavepointHistory` class [here](#the-mockdmlsavepointhistory-class).
 
 ### Validating DML Operations
 
-Since the `MockDml` class does not actually manipulate records in the database, you cannot use SOQL to retrieve changes. Instead, use the MockDml `History` objects to retrieve records that were manipulated by a `MockDml` instance.
+The `MockDml` class does not _actually_ manipulate records in the Salesforce database, so you cannot use SOQL to retrieve changes. Instead, use the MockDml's `MockDatabase` to reference records that were manipulated by `MockDml`.
 
-A `History` object exists for each major DML operation, and are enumerated as static properties on the `MockDml` class:
+This class consists of several `History` objects, one for each major DML operation. You can reference these through static getter properties:
 
--   `MockDml.CONVERTED`
--   `MockDml.DELETED`
--   `MockDml.INSERTED`
--   `MockDml.PUBLISHED`
--   `MockDml.UNDELETED`
--   `MockDml.UPDATED`
--   `MockDml.UPSERTED`
+- `MockDml.CONVERTED`
+- `MockDml.DELETED`
+- `MockDml.INSERTED`
+- `MockDml.PUBLISHED`
+- `MockDml.PURGED`
+- `MockDml.UNDELETED`
+- `MockDml.UPDATED`
+- `MockDml.UPSERTED`
 
 ```java
 @IsTest
@@ -138,22 +169,116 @@ static void someTest() {
 }
 ```
 
-Each of the above `History` object includes three public methods:
+Read more about the `MockDml.MockDatabase` class [here](#the-mockdmlmockdatabase-class).
 
-#### `eraseHistory`
+Read more about the `MockDml.History` class [here](#the-mockdmlhistory-class).
+
+### Public Inner Types
+
+#### The `MockDml.ConditionalFailure` Interface
+
+Evaluates a given SObject record and DML operation, and returns an Exception object if the operation should fail for that record.
+
+If `null` is returned, the operation will succeed. If an Exception is returned, the operation will fail in accordance with the current `Dml` object's defined `allOrNone` behavior. This behavior mirrors standard DML `allOrNone` logic:
+
+- If `allOrNone == true`, the Exception returned by the `checkFailure()` method is thrown, and the entire operation fails.
+- If `allOrNone == false`, only the current SObject fails. The matching Database Result object returned by the DML operation will indicate that the record failed. The resulting error message for the result is derived from the Exception returned by the `checkFailure()` method.
+
+The interface contains just one required method.
+
+##### `checkFailure`
+
+The only required method to be implemented by the interface. This method is called once per DML operation, per record submitted for processing.
+
+- `checkFailure(MockDml.Operation operation, SObject record)`
+
+Example:
+
+```java
+public class ExampleFailure implements MockDml.ConditionalFailure {
+	public Exception checkFailure(MockDml.Operation operation, SObject record) {
+		// Fail any operations that manipulate Account records
+		if (record?.getSObjectType() == Account.SObjectType) {
+			return new System.DmlException();
+		} else {
+			// Success!
+			return null;
+		}
+	}
+}
+```
+
+#### The `MockDml.History` Class
+
+The `MockDml.History` class stores records that were submitted for a particular DML operation while using mocks. It contains methods that allow callers to inspect what changes were made during the course of a test.
+
+The `MockDml.History` class includes three public methods:
+
+##### `eraseHistory`
 
 Clears the current History object; once called, the `getAll()` and `getRecords()` methods will return empty structures. Returns self.
 
--   `MockDml.History eraseHistory()`
+- `MockDml.History eraseHistory()`
 
-#### `getAll`
+##### `getAll`
 
-Retrieves a map of records that were processed by the current DML operation, grouped by their `SObjectType`.
+Retrieves a map of records that were processed by the current DML operation, grouped by their `SObjectType`'s API Name.
 
--   `Map<SObjectType, List<SObject>> getAll()`
+- `Map<String, List<SObject>> getAll()`
 
-#### `getRecords`
+##### `getRecords`
 
 Retrieves a list of all records of the provided `SObjectType` that were processed by the current DML operation.
 
--   `List<SObject> getRecords(SObjectType objectType)`
+- `List<SObject> getRecords(SObjectType objectType)`
+
+Example:
+
+```java
+@IsTest
+static void someTest() {
+	DatabaseLayer.useMocks();
+	Account acc = new Account(Name = 'John Doe');
+
+	Test.startTest();
+	DatabaseLayer.Dml.doInsert(acc);
+	Test.stopTest();
+
+	List<Account> insertedAccs = MockDml.INSERTED.getRecords(Account.SObjectType);
+	Assert.areEqual(1, insertedAccs?.size(), 'Account was not inserted');
+}
+```
+
+#### The `MockDml.MockDatabase` Class
+
+Simulates a Salesforce database when mocks are used. The class stores a `MockDml.History` object for each DML method, along with logic to handle savepoint/rollback behavior.
+
+This object is available as a public static property, `MockDml.mockDatabase`. A blank `MockDatabase` is initialized by default. As records are submitted for mock DML over time, the records are then added to the appropriate history object.
+
+This class has the following public properties:
+
+- `MockDml.RecordHistory converted`: A read-only property containing a history object that stores all upserted records during a transaction. The `MockDml.CONVERTED` getter property returns this value from the current mock database.
+- `MockDml.RecordHistory deleted`: A read-only property containing a history object that stores all upserted records during a transaction. The `MockDml.DELETED` getter property returns this value from the current mock database.
+- `MockDml.RecordHistory inserted`: A read-only property containing a history object that stores all upserted records during a transaction. The `MockDml.INSERTED` getter property returns this value from the current mock database.
+- `MockDml.PlatformEventHistory published`: A read-only property containing a history object that stores all upserted records during a transaction. The `MockDml.PUBLISHED` getter property returns this value from the current mock database.
+- `MockDml.RecordHistory purged`: A read-only property containing a history object that stores all upserted records during a transaction. The `MockDml.PURGED` getter property returns this value from the current mock database.
+- `MockDml.RecordHistory undeleted`: A read-only property containing a history object that stores all upserted records during a transaction. The `MockDml.UNDELETED` getter property returns this value from the current mock database.
+- `MockDml.RecordHistory updated`: A read-only property containing a history object that stores all upserted records during a transaction. The `MockDml.UPDATED` getter property returns this value from the current mock database.
+- `MockDml.RecordHistory upserted`: A read-only property containing a history object that stores all upserted records during a transaction. The `MockDml.UPSERTED` getter property returns this value from the current mock database.
+- `Boolean resetOnRollback`: This property determines how the database will behave when a rollback occurs.
+    - By default (`true`), savepoints will store a "snapshot" of the `MockDatabase` at the time that they were initialized. Rolling back the savepoint will then cause the `mockDatabase` to be replaced with that snapshot.
+    - If set to `false`, the database will "ignore" rollbacks. You'll be still be able to reference any records that were processed in the corresponding history object, even if they were rolled back. This may be desireable if you want to see what happened before the rollback occurred, or to improve performance in cases where this isn't needed.
+
+##### `snapshot`
+
+This method returns a shallow copy of the current `MockDatabase` object, using JSON-serialization. Changes to this snapshot object will not mutate the `MockDatabase` that generated it, and vice-versa.
+
+- `MockDatabase snapshot()`
+
+#### The `MockDml.Savepoint` Class
+
+TODO!
+
+#### The `MockDml.SavepointHistory` Class
+
+TODO!
