@@ -873,25 +873,7 @@ private class MockDmlTest {
 	}
 
 	@IsTest
-	static void shouldGetASpecificSavepointByIndex() {
-		DatabaseLayer.useMockDml();
-		System.Savepoint sp1 = DatabaseLayer.Dml.setSavepoint();
-		System.Savepoint sp2 = DatabaseLayer.Dml.setSavepoint();
-		// Roll back the second savepoint, to distinguish the two:
-		DatabaseLayer.Dml.rollback(sp2);
-
-		Test.startTest();
-		MockDml.Savepoint spInfo1 = MockDml.SAVEPOINTS.get(0);
-		Assert.isNotNull(spInfo1, 'Did not return a Savepoint');
-		Assert.isFalse(spInfo1?.wasRolledBack, 'Should not have been rolled back');
-		MockDml.Savepoint spInfo2 = MockDml.SAVEPOINTS.get(1);
-		Assert.isNotNull(spInfo2, 'Did not return a Savepoint');
-		Assert.isTrue(spInfo2?.wasRolledBack, 'Was not rolled back');
-		Test.stopTest();
-	}
-
-	@IsTest
-	static void shouldGetASpecificSavepointBySavepoint() {
+	static void shouldGetASpecificSavepoint() {
 		DatabaseLayer.useMockDml();
 		System.Savepoint sp1 = DatabaseLayer.Dml.setSavepoint();
 		System.Savepoint sp2 = DatabaseLayer.Dml.setSavepoint();
@@ -900,12 +882,17 @@ private class MockDmlTest {
 
 		Test.startTest();
 		MockDml.Savepoint spInfo1 = MockDml.SAVEPOINTS.get(sp1);
+		MockDml.Savepoint spInfo2 = MockDml.SAVEPOINTS.get(sp2);
+		Test.stopTest();
+
+		// The first savepoint should not be rolled back:
 		Assert.isNotNull(spInfo1, 'Did not return a Savepoint');
 		Assert.isFalse(spInfo1?.wasRolledBack, 'Should not have been rolled back');
-		MockDml.Savepoint spInfo2 = MockDml.SAVEPOINTS.get(sp2);
+		Assert.isNotNull(MockDml.Savepoints.get(spInfo1?.index), 'No Savepoint matching ' + spInfo1?.index);
+		// The second savepoint should be rolled back:
 		Assert.isNotNull(spInfo2, 'Did not return a Savepoint');
 		Assert.isTrue(spInfo2?.wasRolledBack, 'Was not rolled back');
-		Test.stopTest();
+		Assert.isNotNull(MockDml.Savepoints.get(spInfo2?.index), 'No Savepoint matching ' + spInfo2?.index);
 	}
 
 	// **** HELPER **** //

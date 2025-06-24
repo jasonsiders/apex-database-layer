@@ -659,7 +659,7 @@ public class MockDml extends Dml {
 		public MockDml.Savepoint get(System.Savepoint savepoint) {
 			// Retrieves a System.Savepoint's MockDml.Savepoint wrapper:
 			Integer index = this.getIndexFrom(savepoint);
-			return this.savepointMap?.get(index);
+			return this.get(index);
 		}
 
 		private void add(System.Savepoint savepoint) {
