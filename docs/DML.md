@@ -277,8 +277,58 @@ static void someTest() {
 
 #### The `MockDml.Savepoint` Class
 
-TODO!
+This class decorates a `System.Savepoint` object, and keeps track of its usage throughout a transaction. Refer to this object's properties when you need to assert if a savepoint was rolled back or released.
+
+You can access `MockDml.Savepoint`s via the `MockDml.SavepointHistory` class, which is acccessible via the `MockDml.SAVEPOINTS` static property. Read more about the `MockDml.SavepointHistory` class [here](#the-mockdmlsavepointhistory-class).
+
+The object has the following properties:
+
+- `Integer index`: (Read-only) The Savepoint's index, corresponding with the number of savepoints generated in the transaction, starting with 0.
+- `String name`: (Read-only) The `System.Savepoint`'s name, which is discoverable via the savepoint's `toString()` implementation.
+- `Boolean wasReleased`: (Read-only) Indicates whether `DatabaseLayer.Dml.releaseSavepoint()` was called for the current savepoint.
+- `Booelan wasRolledBack`: (Read-only) Indicates whether `DatabaseLayer.Dml.rollback()` was called for the current savepoint.
+
+Example:
+
+```java
+DatabaseLayer.useMocks();
+System.Savepoint savepoint = DatabaseLayer.Dml.setSavepoint();
+
+Test.startTest();
+DatabaseLayer.Dml.rollback(savepoint);
+Test.stopTest();
+
+MockDml.Savepoint sp = MockDml.SAVEPOINTS.get(0);
+Assert.areEqual(true, sp?.wasRolledBack);
+Assert.areEqual(false, sp?.wasReleased);
+```
 
 #### The `MockDml.SavepointHistory` Class
 
-TODO!
+This class stores all `MockDml.Savepoint` objects generated throughout a transction. You can interact with this class's methods to retrieve a specific savepoint, or all savepoints.
+
+Example:
+
+```java
+DatabaseLayer.useMocks();
+System.Savepoint sp1 = DatabaseLayer.Dml.setSavepoint();
+System.Savepoint sp2 = DatabaseLayer.Dml.setSavepoint();
+// Get all savepoints:
+List<MockDml.Savepoint> all = MockDml.SAVEPOINTS?.getAll();
+// Get a specific savepoint:
+MockDml.Savepoint first = MockDml.SAVEPOINTS?.get(0);
+MockDml.Savepoint second = MockDml.SAVEPOINTS?.get(sp2);
+```
+
+##### `getAll`
+
+Returns all `MockDml.Savepoint` objects generated in a transaction, via `DatabaseLayer.Dml.setSavepoint()`.
+
+- `List<MockDml.Savepoint> getAll()`
+
+##### `get`
+
+Returns a specific `MockDml.Savepoint` object, by the specified index or `System.Savepoint` object.
+
+- `MockDml.Savepoint get(Integer index)`
+- `MockDml.Savepoint get(System.Savepoint)`
