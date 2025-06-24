@@ -113,11 +113,11 @@ Out of the box, salesforce doesn't give you many tools to check how savepoints w
 DatabaseLayer.useMocks();
 
 Test.startTest();
-System.Savepoint sp1 = Dml.setSavepoint();
-System.Savepoint sp2 = Dml.setSavepoint();
-System.Savepoint sp3 = Dml.setSavepoint();
-Dml.rollback(sp2);
-Dml.releaseSavepoint(sp3);
+System.Savepoint sp1 = DatabaseLayer.Dml.setSavepoint();
+System.Savepoint sp2 = DatabaseLayer.Dml.setSavepoint();
+System.Savepoint sp3 = DatabaseLayer.Dml.setSavepoint();
+DatabaseLayer.Dml.rollback(sp2);
+DatabaseLayer.Dml.releaseSavepoint(sp3);
 Test.stopTest();
 
 Assert.areEqual(3, MockDml.SAVEPOINTS?.getAll()?.size(), 'Wrong # of savepoints');
@@ -141,9 +141,9 @@ Read more about the `MockDml.SavepointHistory` class [here](#the-mockdmlsavepoin
 
 ### Validating DML Operations
 
-The `MockDml` class does not _actually_ manipulate records in the Salesforce database, so you cannot use SOQL to retrieve changes. Instead, use the MockDml's `MockDatabase` to reference records that were manipulated by `MockDml`.
+The `MockDml` class does not _actually_ manipulate records in the Salesforce database, so you cannot use SOQL to retrieve changes. Instead, use the MockDml's mock `Database` object to reference records that were manipulated by `MockDml`.
 
-This class consists of several `History` objects, one for each major DML operation. You can reference these through static getter properties:
+The mock database (`MockDml.Database`) consists of several `History` objects, one for each major DML operation. You can reference the database these through static getter properties:
 
 - `MockDml.CONVERTED`
 - `MockDml.DELETED`
@@ -169,7 +169,7 @@ static void someTest() {
 }
 ```
 
-Read more about the `MockDml.MockDatabase` class [here](#the-mockdmlmockdatabase-class).
+Read more about the `MockDml.Database` class [here](#the-mockdmldatabase-class).
 
 Read more about the `MockDml.History` class [here](#the-mockdmlhistory-class).
 
@@ -207,6 +207,32 @@ public class ExampleFailure implements MockDml.ConditionalFailure {
 	}
 }
 ```
+
+#### The `MockDml.Database` Class
+
+Simulates a Salesforce database when mocks are used. The class stores a `MockDml.History` object for each DML method, along with logic to handle savepoint/rollback behavior.
+
+This object is available as a public static property, `MockDml.MockDatabase`. A blank database object is initialized by default. As records are submitted for mock DML over time, the records are then added to the appropriate history object.
+
+This class has the following public properties:
+
+- `MockDml.RecordHistory converted`: A read-only property containing a history object that stores all upserted records during a transaction. The `MockDml.CONVERTED` getter property returns this value from the current mock database.
+- `MockDml.RecordHistory deleted`: A read-only property containing a history object that stores all upserted records during a transaction. The `MockDml.DELETED` getter property returns this value from the current mock database.
+- `MockDml.RecordHistory inserted`: A read-only property containing a history object that stores all upserted records during a transaction. The `MockDml.INSERTED` getter property returns this value from the current mock database.
+- `MockDml.PlatformEventHistory published`: A read-only property containing a history object that stores all upserted records during a transaction. The `MockDml.PUBLISHED` getter property returns this value from the current mock database.
+- `MockDml.RecordHistory purged`: A read-only property containing a history object that stores all upserted records during a transaction. The `MockDml.PURGED` getter property returns this value from the current mock database.
+- `MockDml.RecordHistory undeleted`: A read-only property containing a history object that stores all upserted records during a transaction. The `MockDml.UNDELETED` getter property returns this value from the current mock database.
+- `MockDml.RecordHistory updated`: A read-only property containing a history object that stores all upserted records during a transaction. The `MockDml.UPDATED` getter property returns this value from the current mock database.
+- `MockDml.RecordHistory upserted`: A read-only property containing a history object that stores all upserted records during a transaction. The `MockDml.UPSERTED` getter property returns this value from the current mock database.
+- `Boolean resetOnRollback`: This property determines how the database will behave when a rollback occurs.
+    - By default (`true`), savepoints will store a "snapshot" of the mock database at the time that they were initialized. Rolling back the savepoint will then cause the current `MockDatabase` to be replaced with that snapshot.
+    - If set to `false`, the database will "ignore" rollbacks. You'll be still be able to reference any records that were processed in the corresponding history object, even if they were rolled back. This may be desireable if you want to see what happened before the rollback occurred, or to improve performance in cases where this isn't needed.
+
+##### `snapshot`
+
+This method returns a shallow copy of the current `MockDatabase`, using JSON-serialization. Changes to this snapshot object will not mutate the database object that generated it, and vice-versa.
+
+- `MockDml.Database snapshot()`
 
 #### The `MockDml.History` Class
 
@@ -248,32 +274,6 @@ static void someTest() {
 	Assert.areEqual(1, insertedAccs?.size(), 'Account was not inserted');
 }
 ```
-
-#### The `MockDml.MockDatabase` Class
-
-Simulates a Salesforce database when mocks are used. The class stores a `MockDml.History` object for each DML method, along with logic to handle savepoint/rollback behavior.
-
-This object is available as a public static property, `MockDml.mockDatabase`. A blank `MockDatabase` is initialized by default. As records are submitted for mock DML over time, the records are then added to the appropriate history object.
-
-This class has the following public properties:
-
-- `MockDml.RecordHistory converted`: A read-only property containing a history object that stores all upserted records during a transaction. The `MockDml.CONVERTED` getter property returns this value from the current mock database.
-- `MockDml.RecordHistory deleted`: A read-only property containing a history object that stores all upserted records during a transaction. The `MockDml.DELETED` getter property returns this value from the current mock database.
-- `MockDml.RecordHistory inserted`: A read-only property containing a history object that stores all upserted records during a transaction. The `MockDml.INSERTED` getter property returns this value from the current mock database.
-- `MockDml.PlatformEventHistory published`: A read-only property containing a history object that stores all upserted records during a transaction. The `MockDml.PUBLISHED` getter property returns this value from the current mock database.
-- `MockDml.RecordHistory purged`: A read-only property containing a history object that stores all upserted records during a transaction. The `MockDml.PURGED` getter property returns this value from the current mock database.
-- `MockDml.RecordHistory undeleted`: A read-only property containing a history object that stores all upserted records during a transaction. The `MockDml.UNDELETED` getter property returns this value from the current mock database.
-- `MockDml.RecordHistory updated`: A read-only property containing a history object that stores all upserted records during a transaction. The `MockDml.UPDATED` getter property returns this value from the current mock database.
-- `MockDml.RecordHistory upserted`: A read-only property containing a history object that stores all upserted records during a transaction. The `MockDml.UPSERTED` getter property returns this value from the current mock database.
-- `Boolean resetOnRollback`: This property determines how the database will behave when a rollback occurs.
-    - By default (`true`), savepoints will store a "snapshot" of the `MockDatabase` at the time that they were initialized. Rolling back the savepoint will then cause the `mockDatabase` to be replaced with that snapshot.
-    - If set to `false`, the database will "ignore" rollbacks. You'll be still be able to reference any records that were processed in the corresponding history object, even if they were rolled back. This may be desireable if you want to see what happened before the rollback occurred, or to improve performance in cases where this isn't needed.
-
-##### `snapshot`
-
-This method returns a shallow copy of the current `MockDatabase` object, using JSON-serialization. Changes to this snapshot object will not mutate the `MockDatabase` that generated it, and vice-versa.
-
-- `MockDatabase snapshot()`
 
 #### The `MockDml.Savepoint` Class
 

@@ -770,7 +770,7 @@ private class MockDmlTest {
 
 		Test.startTest();
 		// Take a snapshot
-		MockDml.MockDatabase snapshot = MockDml.mockDatabase?.snapshot();
+		MockDml.Database snapshot = MockDml.MockDatabase?.snapshot();
 		Test.stopTest();
 
 		// Now simulate deleting the records:
