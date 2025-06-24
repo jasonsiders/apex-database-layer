@@ -20,6 +20,7 @@ public with sharing virtual class Dml {
 	private static final DataSource.AsyncDeleteCallback DEFAULT_DELETE_CALLBACK = new Dml.EmptyDeleteCallback();
 	private static final DataSource.AsyncSaveCallback DEFAULT_SAVE_CALLBACK = new Dml.EmptySaveCallback();
 
+	@SuppressWarnings('PMD.EmptyStatementBlock')
 	public Dml(DatabaseLayer factory) {
 		// Dml classes can't be constructed manually
 		// Instead, use the DatabaseLayer.Dml static property

@@ -866,6 +866,26 @@ private class DmlTest {
 		Assert.areEqual(0, [SELECT COUNT() FROM Account], 'DML operation was not rolled back');
 	}
 
+	@IsTest
+	static void shouldHandleNoDefinedSettings() {
+		Assert.fail('You still need to build this test');
+	}
+
+	@IsTest
+	static void shouldHandleNoDefinedPlugin() {
+		Assert.fail('You still need to build this test');
+	}
+
+	@IsTest
+	static void shouldUseDmlPluginIfDefined() {
+		Assert.fail('You still need to build this test');
+	}
+
+	@IsTest
+	static void shouldHandleInvalidDmlPlugin() {
+		Assert.fail('You still need to build this test');
+	}
+
 	// **** HELPER **** //
 	static LeadStatus getConvertedStatus() {
 		return [SELECT ApiName FROM LeadStatus WHERE IsConverted = TRUE LIMIT 1] ?? null;
@@ -891,6 +911,7 @@ private class DmlTest {
 		return leadToConvert;
 	}
 
+	// **** INNER **** //
 	private class DeleteCallback extends DataSource.AsyncDeleteCallback {
 		public override void processDelete(Database.DeleteResult result) {
 			DmlTest.deleteCallbacksMade?.add(result);
@@ -902,4 +923,19 @@ private class DmlTest {
 			DmlTest.saveCallbacksMade?.add(result);
 		}
 	}
+
+	/* private class SamplePlugin implements Dml.PreProcessor, Dml.PostProcessor {
+		private Integer numPreProcessCalls = 0;
+		private Integer numPostProcessCalls = 0;
+
+		public void preProcess(Dml.Operation operation, List<SObject> records) {
+			System.debug('SamplePlugin: preProcess ' + operation + '\nRecords: ' + records);
+			this.numPreProcessCalls++; 
+		}
+
+		public void postProcess(Dml.Operation operation, List<SObject> records, List<Object> results) {
+			System.debug('SamplePlugin: postProcess ' + operation + '\nRecords: ' + records + '\nResults: ' + results);
+			this.numPostProcessCalls++; 
+		} 
+	} */
 }

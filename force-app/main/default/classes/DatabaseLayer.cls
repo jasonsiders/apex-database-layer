@@ -7,6 +7,7 @@ public class DatabaseLayer {
 	 **/
 	// **** CONSTANTS **** //
 	private static final DatabaseLayer INSTANCE = new DatabaseLayer();
+	public static final DatabaseLayerUtils UTILS = new DatabaseLayerUtils(INSTANCE);
 
 	// **** MEMBER **** //
 	private Dml currentDml;
