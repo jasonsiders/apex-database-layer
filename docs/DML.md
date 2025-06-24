@@ -19,9 +19,7 @@ DatabaseLayer.useMocks();
 Assert.isInstanceOfType(DatabaseLayer.Dml, MockDml.class, 'Not a mock');
 ```
 
-## Public Methods
-
-### Performing DML
+## Performing DML
 
 The `Dml` class contains methods which mirror the functionality of DML methods in the standard [`Database` class](https://developer.salesforce.com/docs/atlas.en-us.apexref.meta/apexref/apex_methods_system_database.htm), including its numerous method overloads:
 
@@ -34,11 +32,33 @@ DatabaseLayer.Dml.doUpdate(account);
 
 Since DML keywords (like `insert`, `update`, and `delete`) are reserved, the `Dml` class's methods are prefixed with the "do" predicate. For example, `doInsert`, `doUpdate`, and `doDelete`.
 
-> **Note:** The `emptyRecycleBin` method name is not a reserved keyword, so the "do" predicate is not used:
->
-> ```java
-> DatabaseLayer.Dml.emptyRecycleBin(account);
-> ```
+You can also control `System.Savepoint`s via the Dml class. This allows you to reference `MockDml.Savepoint`s in tests, which can be used to assert how a savepoint behaved during a given transaction (ie., if a savepoint(s) were set, rolled back and/or released). Read more about this [here](#simulating-savepoints--rollbacks).
+
+```java
+System.Savepoint savepoint = DatabaseLayer.Dml.setSavepoint();
+DatabaseLayer.Dml.rollback(savepoint);
+Assert.isTrue(MockDml.SAVEPOINTS.get(0).wasRolledBack);
+```
+
+### Public Methods
+
+- `doConvert`
+- `doDelete`
+- `doDeleteAsync`
+- `doDeleteImmediate`
+- `doInsert`
+- `doInsertAsync`
+- `doInsertImmediate`
+- `doPublish`
+- `doUndelete`
+- `doUpdate`
+- `doUpdateAsync`
+- `doUpdateImmediate`
+- `doUpsert`
+- `emptyRecycleBin`
+- `releaseSavepoint`
+- `rollback`
+- `setSavepoint`
 
 ## Mocking DML Operations
 
@@ -231,6 +251,8 @@ This class has the following public properties:
 - `Boolean resetOnRollback`: This property determines how the database will behave when a rollback occurs.
     - By default (`true`), savepoints will store a "snapshot" of the mock database at the time that they were initialized. Rolling back the savepoint will then cause the current `MockDatabase` to be replaced with that snapshot.
     - If set to `false`, the database will "ignore" rollbacks. You'll be still be able to reference any records that were processed in the corresponding history object, even if they were rolled back. This may be desireable if you want to see what happened before the rollback occurred, or to improve performance in cases where this isn't needed.
+
+The class has just one public method:
 
 ##### `snapshot`
 
