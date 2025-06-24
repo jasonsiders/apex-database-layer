@@ -659,6 +659,24 @@ public with sharing virtual class Dml {
 		return this.emptyRecycleBin(new List<SObject>{ record })?.get(0);
 	}
 
+	// ** Savepoint Methods
+	/**
+	 * These System.Savepoint methods mirror the Database class's static methods
+	 * The benefit of calling these methods is largely to gain access to MockDml methods
+	 * to assert if/which savepoints were set, rolled back, released, etc.
+	 */
+	public virtual void releaseSavepoint(System.Savepoint savepoint) {
+		Database.releaseSavepoint(savepoint);
+	}
+
+	public virtual void rollback(System.Savepoint savepoint) {
+		Database.rollback(savepoint);
+	}
+
+	public virtual System.Savepoint setSavepoint() {
+		return Database.setSavepoint();
+	}
+
 	// **** PRIVATE **** //
 	private List<Id> getListOfIds(List<SObject> records) {
 		// Converts a List<SObject> into a List<Id>
