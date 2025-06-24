@@ -844,6 +844,28 @@ private class DmlTest {
 		}
 	}
 
+	@IsTest
+	static void shouldHandleSavepoints() {
+		Account account = DmlTest.initAccount();
+
+		Test.startTest();
+		try {
+			// Set a savepoint:
+			System.Savepoint savepoint = DatabaseLayer.Dml.setSavepoint();
+			Assert.isNotNull(savepoint, 'Did not set a savepoint');
+			// Perform some DML:
+			insert account;
+			// Roll back that DML & release the savepoint:
+			DatabaseLayer.Dml.rollback(savepoint);
+			DatabaseLayer.Dml.releaseSavepoint(savepoint);
+		} catch (Exception error) {
+			Assert.fail(error?.toString());
+		}
+		Test.stopTest();
+
+		Assert.areEqual(0, [SELECT COUNT() FROM Account], 'DML operation was not rolled back');
+	}
+
 	// **** HELPER **** //
 	static LeadStatus getConvertedStatus() {
 		return [SELECT ApiName FROM LeadStatus WHERE IsConverted = TRUE LIMIT 1] ?? null;
