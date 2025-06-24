@@ -754,12 +754,28 @@ private class MockDmlTest {
 		DatabaseLayer.Dml.doInsert(accounts);
 
 		Test.startTest();
-		Map<String, List<SObject>> results = MockDml.INSERTED.getAll();
+		Map<SObjectType, List<SObject>> results = MockDml.INSERTED.getAll();
 		Test.stopTest();
 
-		String objectName = Account.SObjectType.toString();
-		Assert.isTrue(results?.containsKey(objectName), 'No Accounts inserted');
-		Assert.areEqual(accounts?.size(), results?.get(objectName)?.size(), 'Wrong # of Accounts inserted');
+		List<Account> insertedAccounts = results?.get(Account.SObjectType);
+		Assert.areEqual(accounts?.size(), insertedAccounts?.size(), 'Wrong # of Accounts inserted');
+	}
+
+	@IsTest
+	static void shouldGetSpecificRecordFromHistory() {
+		DatabaseLayer.useMockDml();
+		List<Account> accounts = MockDmlTest.initRecords(Account.SObjectType, false);
+		Account firstAccount = accounts?.get(0);
+		DatabaseLayer.Dml.doInsert(accounts);
+
+		Test.startTest();
+		DatabaseLayer.Dml.doInsert(accounts);
+		Test.stopTest();
+
+		Assert.isTrue(MockDml.INSERTED?.wasProcessed(firstAccount), 'Account was not inserted');
+		Assert.isFalse(MockDml.UPDATED?.wasProcessed(firstAccount), 'Account should not have updated');
+		Account insertedAccount = (Account) MockDml.INSERTED?.get(firstAccount);
+		Assert.areEqual(firstAccount?.Id, insertedAccount?.Id, 'Wrong Account retrieved');
 	}
 
 	@IsTest

@@ -107,7 +107,9 @@ Read more about the `MockDml.ConditionalFailure` interface [here](#the-mockdmlco
 
 ### Simulating Savepoints & Rollbacks
 
-Out of the box, salesforce doesn't give you many tools to check how savepoints were used over the course of a test. When used in conjunction with the `Dml` class's savepoint methods, `MockDml` gives you the ability to inspect each savepoint generated in a transaction, along with details about how they were used, ie., whether they were rolled back or released:
+Out of the box, salesforce doesn't give you many tools to check how savepoints were used over the course of a test. When used in conjunction with the `Dml` class's savepoint methods, `MockDml` gives you the ability to inspect each savepoint generated in a transaction, along with details about how they were used, ie., whether they were rolled back or released.
+
+Example:
 
 ```java
 DatabaseLayer.useMocks();
@@ -153,6 +155,8 @@ The mock database (`MockDml.Database`) consists of several `History` objects, on
 - `MockDml.UNDELETED`
 - `MockDml.UPDATED`
 - `MockDml.UPSERTED`
+
+Example:
 
 ```java
 @IsTest
@@ -238,25 +242,43 @@ This method returns a shallow copy of the current `MockDatabase`, using JSON-ser
 
 The `MockDml.History` class stores records that were submitted for a particular DML operation while using mocks. It contains methods that allow callers to inspect what changes were made during the course of a test.
 
-The `MockDml.History` class includes three public methods:
+The `MockDml.History` class includes these public methods:
 
 ##### `eraseHistory`
 
-Clears the current History object; once called, the `getAll()` and `getRecords()` methods will return empty structures. Returns self.
+:warning: **Important**: This method is deprecated, and will soon be removed in a future release. Replace all instances of this method with `MockDml.eraseAllHistories()`.
+
+Clears the current History object.
 
 - `MockDml.History eraseHistory()`
 
+##### `get`
+
+Returns a specific record that was processed by the current DML operation. Returns `null` if no such record was processed.
+
+- `get(SObjectType objectType, String idOrUuid)`
+- `get(Id recordId)`
+- `get(SObject record)`
+
 ##### `getAll`
 
-Retrieves a map of records that were processed by the current DML operation, grouped by their `SObjectType`'s API Name.
+Retrieves a map of records that were processed by the current DML operation, grouped by their `SObjectType`:
 
-- `Map<String, List<SObject>> getAll()`
+- `Map<SObject, List<SObject>> getAll()`
 
 ##### `getRecords`
 
 Retrieves a list of all records of the provided `SObjectType` that were processed by the current DML operation.
 
 - `List<SObject> getRecords(SObjectType objectType)`
+
+##### `wasProcessed`
+
+Determines if a specific record was processed by the current DML operation.
+
+- `wasProcessed(SObjectType objectType, String idOrUuid)`
+- `wasProcessed(Id recordId)`
+- `wasProcessed(SObject record)`
 
 Example:
 
@@ -307,19 +329,6 @@ Assert.areEqual(false, sp?.wasReleased);
 
 This class stores all `MockDml.Savepoint` objects generated throughout a transction. You can interact with this class's methods to retrieve a specific savepoint, or all savepoints.
 
-Example:
-
-```java
-DatabaseLayer.useMocks();
-System.Savepoint sp1 = DatabaseLayer.Dml.setSavepoint();
-System.Savepoint sp2 = DatabaseLayer.Dml.setSavepoint();
-// Get all savepoints:
-List<MockDml.Savepoint> all = MockDml.SAVEPOINTS?.getAll();
-// Get a specific savepoint:
-MockDml.Savepoint first = MockDml.SAVEPOINTS?.get(0);
-MockDml.Savepoint second = MockDml.SAVEPOINTS?.get(sp2);
-```
-
 ##### `getAll`
 
 Returns all `MockDml.Savepoint` objects generated in a transaction, via `DatabaseLayer.Dml.setSavepoint()`.
@@ -332,3 +341,16 @@ Returns a specific `MockDml.Savepoint` object, by the specified index or `System
 
 - `MockDml.Savepoint get(Integer index)`
 - `MockDml.Savepoint get(System.Savepoint)`
+
+Example:
+
+```java
+DatabaseLayer.useMocks();
+System.Savepoint sp1 = DatabaseLayer.Dml.setSavepoint();
+System.Savepoint sp2 = DatabaseLayer.Dml.setSavepoint();
+// Get all savepoints:
+List<MockDml.Savepoint> all = MockDml.SAVEPOINTS?.getAll();
+// Get a specific savepoint:
+MockDml.Savepoint first = MockDml.SAVEPOINTS?.get(0);
+MockDml.Savepoint second = MockDml.SAVEPOINTS?.get(sp2);
+```

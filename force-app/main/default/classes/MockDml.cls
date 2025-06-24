@@ -462,16 +462,20 @@ public class MockDml extends Dml {
 
 		// **** PUBLIC **** //
 		public History eraseHistory() {
+			// ! Deprecated! Will be removed in a future release
+			// ! This functionality will not be supported 1:1 going forward;
+			// ! Replace usage of this method with MockDml.clearAllHistories()
 			this.recordMap?.clear();
 			return this;
 		}
 
-		public Map<String, List<SObject>> getAll() {
+		public Map<SObjectType, List<SObject>> getAll() {
 			// Retrieve all records processed by the current operation, grouped by SObjectType
-			Map<String, List<SObject>> allRecords = new Map<String, List<SObject>>();
+			Map<SObjectType, List<SObject>> allRecords = new Map<SObjectType, List<SObject>>();
 			for (String objectName : this.recordMap?.keySet()) {
-				List<SObject> recordList = this.recordMap?.get(objectName)?.values();
-				allRecords?.put(objectName, recordList);
+				SObjectType objectType = ((SObject) Type.forName(objectName)?.newInstance())?.getSObjectType();
+				List<SObject> recordList = this.getRecordMap(objectType)?.values();
+				allRecords?.put(objectType, recordList);
 			}
 			return allRecords;
 		}
@@ -479,6 +483,37 @@ public class MockDml extends Dml {
 		public List<SObject> getRecords(SObjectType objectType) {
 			// Retrieves all records of the specified SObjectType
 			return this.getRecordMap(objectType)?.values();
+		}
+
+		public SObject get(SObjectType objectType, String idOrUuuid) {
+			// Retrieves a specific record that was processed
+			// Use this method with platform events, who have a UUID but not a traditional Record ID with a reference to the SObjectType
+			return this.getRecordMap(objectType)?.get(idOrUuuid);
+		}
+
+		public SObject get(Id recordId) {
+			// Retrieves a specific record that was processed
+			SObjectType objectType = recordId?.getSObjectType();
+			return this.get(objectType, recordId);
+		}
+
+		public SObject get(SObject record) {
+			return this.get(record?.Id);
+		}
+
+		public Boolean wasProcessed(SObjectType objectType, String idOrUuid) {
+			// Returns true if the record was processed for DML, else returns false
+			return this.get(objectType, idOrUuid) != null;
+		}
+
+		public Boolean wasProcessed(Id recordId) {
+			// Returns true if the record was processed for DML, else returns false
+			SObjectType objectType = recordId?.getSObjectType();
+			return this.wasProcessed(objectType, recordId);
+		}
+
+		public Boolean wasProcessed(SObject record) {
+			return this.wasProcessed(record?.Id);
 		}
 
 		// **** PRIVATE **** //
@@ -536,7 +571,7 @@ public class MockDml extends Dml {
 		DO_UPSERT
 	}
 
-	public virtual class PlatformEventHistory extends History {
+	public virtual class PlatformEventHistory extends MockDml.History {
 		/**
 		 * This class tracks platform events that were mock published.
 		 * Necessary since platform events' unique identifier is the `EventUuid` field - not `Id`
@@ -562,7 +597,7 @@ public class MockDml extends Dml {
 		}
 	}
 
-	public virtual class RecordHistory extends History {
+	public virtual class RecordHistory extends MockDml.History {
 		/**
 		 * This class is responsible for tracking DML made against most SObject types
 		 **/
@@ -571,22 +606,16 @@ public class MockDml extends Dml {
 		}
 
 		public SObject getRecord(Id recordId) {
+			// ! Deprecated! Will be removed in a future release
+			// ! Replace usage of this method with the MockDml.History's get(Id recordId) method
 			// Retrieve a specific SObject from the History tracking
-			SObjectType objectType = recordId?.getSObjectType();
-			return this.getRecordMap(objectType)?.get(recordId);
+			return super.get(recordId);
 		}
 
 		public SObject getRecord(SObject record) {
-			return this.getRecord(record?.Id);
-		}
-
-		public Boolean wasProcessed(Id recordId) {
-			// Returns true if the provided recordId was processed by the DML operation
-			return this.getRecord(recordId) != null;
-		}
-
-		public Boolean wasProcessed(SObject record) {
-			return this.wasProcessed(record?.Id);
+			// ! Deprecated! Will be removed in a future release
+			// ! Replace usage of this method with the MockDml.History's get(SObject record) method
+			return super.get(record);
 		}
 
 		protected override void addRecordToMap(SObject record, Map<String, Object> records) {
@@ -691,7 +720,7 @@ public class MockDml extends Dml {
 	}
 
 	// **** INNER: PRIVATE **** //
-	private class BaseFailure implements ConditionalFailure {
+	private class BaseFailure implements MockDml.ConditionalFailure {
 		/**
 		 * The `MockDml` class ships with one concrete implementation of the `ConditionalFailure` interface.
 		 * This one is simple -- it always returns an error to be thrown.
@@ -732,7 +761,7 @@ public class MockDml extends Dml {
 		}
 	}
 
-	private virtual class LeadConvertResult extends Result {
+	private virtual class LeadConvertResult extends MockDml.Result {
 		/**
 		 * Mocks `Database.LeadConvertResult` objects
 		 * Unlike most Database result objects, `Database.LeadConvertResult` does not have a singular id field.
@@ -763,7 +792,7 @@ public class MockDml extends Dml {
 		}
 	}
 
-	private virtual class RecordResult extends Result {
+	private virtual class RecordResult extends MockDml.Result {
 		/**
 		 * Mocks most Database result types; ex., `Database.SaveResult`, `Database.DeleteResult`, etc.
 		 * Only `Database.LeadConvertResult` deviates from this type's structure.
