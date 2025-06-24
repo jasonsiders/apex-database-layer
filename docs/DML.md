@@ -21,26 +21,11 @@ Assert.isInstanceOfType(DatabaseLayer.Dml, MockDml.class, 'Not a mock');
 
 ## Performing DML
 
-The `Dml` class contains methods which mirror the functionality of DML methods in the standard [`Database` class](https://developer.salesforce.com/docs/atlas.en-us.apexref.meta/apexref/apex_methods_system_database.htm), including its numerous method overloads:
-
-```java
-// Specify allOrNone and access level
-DatabaseLayer.Dml.doUpdate(account, false, System.AccessLevel.USER_MODE);
-// Use the default implementation
-DatabaseLayer.Dml.doUpdate(account);
-```
+The `Dml` class contains methods which mirror the functionality of DML methods in the standard [`Database` class](https://developer.salesforce.com/docs/atlas.en-us.apexref.meta/apexref/apex_methods_system_database.htm), including its numerous method overloads.
 
 Since DML keywords (like `insert`, `update`, and `delete`) are reserved, the `Dml` class's methods are prefixed with the "do" predicate. For example, `doInsert`, `doUpdate`, and `doDelete`.
 
-You can also control `System.Savepoint`s via the Dml class. This allows you to reference `MockDml.Savepoint`s in tests, which can be used to assert how a savepoint behaved during a given transaction (ie., if a savepoint(s) were set, rolled back and/or released). Read more about this [here](#simulating-savepoints--rollbacks).
-
-```java
-System.Savepoint savepoint = DatabaseLayer.Dml.setSavepoint();
-DatabaseLayer.Dml.rollback(savepoint);
-Assert.isTrue(MockDml.SAVEPOINTS.get(0).wasRolledBack);
-```
-
-### Public Methods
+All public methods:
 
 - `doConvert`
 - `doDelete`
@@ -59,6 +44,23 @@ Assert.isTrue(MockDml.SAVEPOINTS.get(0).wasRolledBack);
 - `releaseSavepoint`
 - `rollback`
 - `setSavepoint`
+
+Example:
+
+```java
+// Specify allOrNone and access level
+DatabaseLayer.Dml.doUpdate(account, false, System.AccessLevel.USER_MODE);
+// Use the default implementation
+DatabaseLayer.Dml.doUpdate(account);
+```
+
+You can also control `System.Savepoint`s via the Dml class. This allows you to reference `MockDml.Savepoint`s in tests, which can be used to assert how a savepoint behaved during a given transaction (ie., if a savepoint(s) were set, rolled back and/or released). Read more about this [here](#simulating-savepoints--rollbacks).
+
+```java
+System.Savepoint savepoint = DatabaseLayer.Dml.setSavepoint();
+DatabaseLayer.Dml.rollback(savepoint);
+Assert.isTrue(MockDml.SAVEPOINTS.get(0).wasRolledBack);
+```
 
 ## Mocking DML Operations
 

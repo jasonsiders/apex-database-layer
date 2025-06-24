@@ -39,7 +39,7 @@ public with sharing virtual class Dml {
 		Boolean allOrNone,
 		System.AccessLevel accessLevel
 	) {
-		return this.doConvert(leadsToConvert, this.initOptions(allOrNone), accessLevel);
+		return this.doConvert(leadsToConvert, this.initDmlOptions(allOrNone), accessLevel);
 	}
 
 	public List<Database.LeadConvertResult> doConvert(
@@ -57,7 +57,7 @@ public with sharing virtual class Dml {
 	}
 
 	public List<Database.LeadConvertResult> doConvert(List<Database.LeadConvert> leadsToConvert, Boolean allOrNone) {
-		return this.doConvert(leadsToConvert, this.initOptions(allOrNone));
+		return this.doConvert(leadsToConvert, this.initDmlOptions(allOrNone));
 	}
 
 	public List<Database.LeadConvertResult> doConvert(List<Database.LeadConvert> leadsToConvert) {
@@ -98,32 +98,11 @@ public with sharing virtual class Dml {
 
 	// ** Delete Methods
 	public virtual List<Database.DeleteResult> doDelete(
-		List<Id> recordIds,
-		Boolean allOrNone,
-		System.AccessLevel accessLevel
-	) {
-		return Database.delete(recordIds, allOrNone, accessLevel);
-	}
-
-	public List<Database.DeleteResult> doDelete(List<Id> recordIds, Boolean allOrNone) {
-		return this.doDelete(recordIds, allOrNone, DEFAULT_ACCESS_LEVEL);
-	}
-
-	public List<Database.DeleteResult> doDelete(List<Id> recordIds, System.AccessLevel accessLevel) {
-		return this.doDelete(recordIds, true, accessLevel);
-	}
-
-	public List<Database.DeleteResult> doDelete(List<Id> recordIds) {
-		return this.doDelete(recordIds, DEFAULT_ACCESS_LEVEL);
-	}
-
-	public List<Database.DeleteResult> doDelete(
 		List<SObject> records,
 		Boolean allOrNone,
 		System.AccessLevel accessLevel
 	) {
-		List<Id> recordIds = this.getListOfIds(records);
-		return this.doDelete(recordIds, allOrNone, accessLevel);
+		return Database.delete(records, allOrNone, accessLevel);
 	}
 
 	public List<Database.DeleteResult> doDelete(List<SObject> records, Boolean allOrNone) {
@@ -138,20 +117,21 @@ public with sharing virtual class Dml {
 		return this.doDelete(records, DEFAULT_ACCESS_LEVEL);
 	}
 
-	public Database.DeleteResult doDelete(Id recordId, Boolean allOrNone, System.AccessLevel accessLevel) {
-		return this.doDelete(new List<Id>{ recordId }, allOrNone, accessLevel)?.get(0);
+	public List<Database.DeleteResult> doDelete(List<Id> recordIds, Boolean allOrNone, System.AccessLevel accessLevel) {
+		List<SObject> records = this.initRecordsFromIds(recordIds);
+		return this.doDelete(records, allOrNone, accessLevel);
 	}
 
-	public Database.DeleteResult doDelete(Id recordId, Boolean allOrNone) {
-		return this.doDelete(new List<Id>{ recordId }, allOrNone)?.get(0);
+	public List<Database.DeleteResult> doDelete(List<Id> recordIds, Boolean allOrNone) {
+		return this.doDelete(recordIds, allOrNone, DEFAULT_ACCESS_LEVEL);
 	}
 
-	public Database.DeleteResult doDelete(Id recordId, System.AccessLevel accessLevel) {
-		return this.doDelete(new List<Id>{ recordId }, accessLevel)?.get(0);
+	public List<Database.DeleteResult> doDelete(List<Id> recordIds, System.AccessLevel accessLevel) {
+		return this.doDelete(recordIds, true, accessLevel);
 	}
 
-	public Database.DeleteResult doDelete(Id recordId) {
-		return this.doDelete(new List<Id>{ recordId })?.get(0);
+	public List<Database.DeleteResult> doDelete(List<Id> recordIds) {
+		return this.doDelete(recordIds, DEFAULT_ACCESS_LEVEL);
 	}
 
 	public Database.DeleteResult doDelete(SObject record, Boolean allOrNone, System.AccessLevel accessLevel) {
@@ -168,6 +148,22 @@ public with sharing virtual class Dml {
 
 	public Database.DeleteResult doDelete(SObject record) {
 		return this.doDelete(new List<SObject>{ record })?.get(0);
+	}
+
+	public Database.DeleteResult doDelete(Id recordId, Boolean allOrNone, System.AccessLevel accessLevel) {
+		return this.doDelete(new List<Id>{ recordId }, allOrNone, accessLevel)?.get(0);
+	}
+
+	public Database.DeleteResult doDelete(Id recordId, Boolean allOrNone) {
+		return this.doDelete(new List<Id>{ recordId }, allOrNone)?.get(0);
+	}
+
+	public Database.DeleteResult doDelete(Id recordId, System.AccessLevel accessLevel) {
+		return this.doDelete(new List<Id>{ recordId }, accessLevel)?.get(0);
+	}
+
+	public Database.DeleteResult doDelete(Id recordId) {
+		return this.doDelete(new List<Id>{ recordId })?.get(0);
 	}
 
 	// ** DeleteAsync Methods
@@ -245,7 +241,7 @@ public with sharing virtual class Dml {
 		Boolean allOrNone,
 		System.AccessLevel accessLevel
 	) {
-		return this.doInsert(records, this.initOptions(allOrNone), accessLevel);
+		return this.doInsert(records, this.initDmlOptions(allOrNone), accessLevel);
 	}
 
 	public List<Database.SaveResult> doInsert(List<SObject> records, Database.DmlOptions options) {
@@ -359,32 +355,11 @@ public with sharing virtual class Dml {
 
 	// ** Undelete Methods
 	public virtual List<Database.UndeleteResult> doUndelete(
-		List<Id> recordIds,
-		Boolean allOrNone,
-		System.AccessLevel accessLevel
-	) {
-		return Database.undelete(recordIds, allOrNone, accessLevel);
-	}
-
-	public List<Database.UndeleteResult> doUndelete(List<Id> recordIds, Boolean allOrNone) {
-		return this.doUndelete(recordIds, allOrNone, DEFAULT_ACCESS_LEVEL);
-	}
-
-	public List<Database.UndeleteResult> doUndelete(List<Id> recordIds, System.AccessLevel accessLevel) {
-		return this.doUndelete(recordIds, true, accessLevel);
-	}
-
-	public List<Database.UndeleteResult> doUndelete(List<Id> recordIds) {
-		return this.doUndelete(recordIds, DEFAULT_ACCESS_LEVEL);
-	}
-
-	public List<Database.UndeleteResult> doUndelete(
 		List<SObject> records,
 		Boolean allOrNone,
 		System.AccessLevel accessLevel
 	) {
-		List<Id> recordIds = this.getListOfIds(records);
-		return this.doUndelete(recordIds, allOrNone, accessLevel);
+		return Database.undelete(records, allOrNone, accessLevel);
 	}
 
 	public List<Database.UndeleteResult> doUndelete(List<SObject> records, Boolean allOrNone) {
@@ -399,20 +374,25 @@ public with sharing virtual class Dml {
 		return this.doUndelete(records, DEFAULT_ACCESS_LEVEL);
 	}
 
-	public Database.UndeleteResult doUndelete(Id recordId, Boolean allOrNone, System.AccessLevel accessLevel) {
-		return this.doUndelete(new List<Id>{ recordId }, allOrNone, accessLevel)?.get(0);
+	public List<Database.UndeleteResult> doUndelete(
+		List<Id> recordIds,
+		Boolean allOrNone,
+		System.AccessLevel accessLevel
+	) {
+		List<SObject> records = this.initRecordsFromIds(recordIds);
+		return this.doUndelete(records, allOrNone, accessLevel);
 	}
 
-	public Database.UndeleteResult doUndelete(Id recordId, Boolean allOrNone) {
-		return this.doUndelete(new List<Id>{ recordId }, allOrNone)?.get(0);
+	public List<Database.UndeleteResult> doUndelete(List<Id> recordIds, Boolean allOrNone) {
+		return this.doUndelete(recordIds, allOrNone, DEFAULT_ACCESS_LEVEL);
 	}
 
-	public Database.UndeleteResult doUndelete(Id recordId, System.AccessLevel accessLevel) {
-		return this.doUndelete(new List<Id>{ recordId }, accessLevel)?.get(0);
+	public List<Database.UndeleteResult> doUndelete(List<Id> recordIds, System.AccessLevel accessLevel) {
+		return this.doUndelete(recordIds, true, accessLevel);
 	}
 
-	public Database.UndeleteResult doUndelete(Id recordId) {
-		return this.doUndelete(new List<Id>{ recordId })?.get(0);
+	public List<Database.UndeleteResult> doUndelete(List<Id> recordIds) {
+		return this.doUndelete(recordIds, DEFAULT_ACCESS_LEVEL);
 	}
 
 	public Database.UndeleteResult doUndelete(SObject record, Boolean allOrNone, System.AccessLevel accessLevel) {
@@ -431,6 +411,22 @@ public with sharing virtual class Dml {
 		return this.doUndelete(new List<SObject>{ record })?.get(0);
 	}
 
+	public Database.UndeleteResult doUndelete(Id recordId, Boolean allOrNone, System.AccessLevel accessLevel) {
+		return this.doUndelete(new List<Id>{ recordId }, allOrNone, accessLevel)?.get(0);
+	}
+
+	public Database.UndeleteResult doUndelete(Id recordId, Boolean allOrNone) {
+		return this.doUndelete(new List<Id>{ recordId }, allOrNone)?.get(0);
+	}
+
+	public Database.UndeleteResult doUndelete(Id recordId, System.AccessLevel accessLevel) {
+		return this.doUndelete(new List<Id>{ recordId }, accessLevel)?.get(0);
+	}
+
+	public Database.UndeleteResult doUndelete(Id recordId) {
+		return this.doUndelete(new List<Id>{ recordId })?.get(0);
+	}
+
 	// ** Update Methods
 	public virtual List<Database.SaveResult> doUpdate(
 		List<SObject> records,
@@ -445,7 +441,7 @@ public with sharing virtual class Dml {
 		Boolean allOrNone,
 		System.AccessLevel accessLevel
 	) {
-		return this.doUpdate(records, this.initOptions(allOrNone), accessLevel);
+		return this.doUpdate(records, this.initDmlOptions(allOrNone), accessLevel);
 	}
 
 	public List<Database.SaveResult> doUpdate(List<SObject> records, Database.DmlOptions options) {
@@ -642,21 +638,21 @@ public with sharing virtual class Dml {
 	}
 
 	// ** EmptyRecycleBin Methods
-	public virtual List<Database.EmptyRecycleBinResult> emptyRecycleBin(List<Id> recordIds) {
-		return Database.emptyRecycleBin(recordIds);
+	public virtual List<Database.EmptyRecycleBinResult> emptyRecycleBin(List<SObject> records) {
+		return Database.emptyRecycleBin(records);
 	}
 
-	public List<Database.EmptyRecycleBinResult> emptyRecycleBin(List<SObject> records) {
-		List<Id> recordIds = this.getListOfIds(records);
-		return this.emptyRecycleBin(recordIds);
-	}
-
-	public Database.EmptyRecycleBinResult emptyRecycleBin(Id recordId) {
-		return this.emptyRecycleBin(new List<Id>{ recordId })?.get(0);
+	public List<Database.EmptyRecycleBinResult> emptyRecycleBin(List<Id> recordIds) {
+		List<SObject> records = this.initRecordsFromIds(recordIds);
+		return this.emptyRecycleBin(records);
 	}
 
 	public Database.EmptyRecycleBinResult emptyRecycleBin(SObject record) {
 		return this.emptyRecycleBin(new List<SObject>{ record })?.get(0);
+	}
+
+	public Database.EmptyRecycleBinResult emptyRecycleBin(Id recordId) {
+		return this.emptyRecycleBin(new List<Id>{ recordId })?.get(0);
 	}
 
 	// ** Savepoint Methods
@@ -678,15 +674,20 @@ public with sharing virtual class Dml {
 	}
 
 	// **** PRIVATE **** //
-	private List<Id> getListOfIds(List<SObject> records) {
-		// Converts a List<SObject> into a List<Id>
-		return new List<Id>(new Map<Id, SObject>(records)?.keySet());
-	}
-
-	private Database.DmlOptions initOptions(Boolean allOrNone) {
+	private Database.DmlOptions initDmlOptions(Boolean allOrNone) {
 		Database.DmlOptions options = new Database.DmlOptions();
 		options.OptAllOrNone = allOrNone;
 		return options;
+	}
+
+	private List<SObject> initRecordsFromIds(List<Id> recordIds) {
+		// Converts a List<Id> into a List<SObject> with those Ids:
+		List<SObject> records = new List<SObject>();
+		for (Id recordId : recordIds) {
+			SObject record = recordId?.getSObjectType()?.newSObject(recordId);
+			records?.add(record);
+		}
+		return records;
 	}
 
 	// **** INNER **** //
