@@ -437,7 +437,8 @@ public class MockDml extends Dml {
 		}
 
 		public Database snapshot() {
-			// Captures the state of the mock database at the current point in time:
+			// Captures the state of the mock database at the current point in time
+			// Note: Object.clone() retains the original reference, must use serialization to keep the snapshot separate:
 			// https://salesforce.stackexchange.com/questions/162765/object-clone-does-not-work-as-expected
 			return (MockDml.Database) JSON.deserialize(JSON.serialize(this), MockDml.Database.class);
 		}
@@ -472,8 +473,8 @@ public class MockDml extends Dml {
 		public Map<SObjectType, List<SObject>> getAll() {
 			// Retrieve all records processed by the current operation, grouped by SObjectType
 			Map<SObjectType, List<SObject>> allRecords = new Map<SObjectType, List<SObject>>();
-			for (String objectName : this.recordMap?.keySet()) {
-				SObjectType objectType = ((SObject) Type.forName(objectName)?.newInstance())?.getSObjectType();
+			for (String objectApiName : this.recordMap?.keySet()) {
+				SObjectType objectType = ((SObject) Type.forName(objectApiName)?.newInstance())?.getSObjectType();
 				List<SObject> recordList = this.getRecordMap(objectType)?.values();
 				allRecords?.put(objectType, recordList);
 			}
@@ -529,7 +530,8 @@ public class MockDml extends Dml {
 		}
 
 		protected Map<String, SObject> getRecordMap(SObjectType objectType) {
-			return this.recordMap?.get(objectType?.toString()) ?? new Map<String, SObject>();
+			String objectApiName = objectType?.toString();
+			return this.recordMap?.get(objectApiName) ?? new Map<String, SObject>();
 		}
 
 		protected MockDml.Result handleDmlError(SObject record, Exception error, Boolean allOrNone) {
@@ -553,9 +555,10 @@ public class MockDml extends Dml {
 			// and store them in a way that's easy for callers to get & perform asserts
 			record = this.setRecordId(record);
 			SObjectType objectType = record?.getSObjectType();
+			String objectApiName = objectType?.toString();
 			Map<String, SObject> records = this.getRecordMap(objectType);
 			this.addRecordToMap(record, records);
-			this.recordMap?.put(objectType?.toString(), records);
+			this.recordMap?.put(objectApiName, records);
 			return new MockDml.RecordResult(record);
 		}
 	}
