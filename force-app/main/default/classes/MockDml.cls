@@ -116,13 +116,12 @@ public class MockDml extends Dml {
 	}
 
 	public override List<Database.DeleteResult> doDelete(
-		List<Id> recordIds,
+		List<SObject> records,
 		Boolean allOrNone,
 		System.AccessLevel accessLevel
 	) {
 		List<MockDml.Result> results = new List<MockDml.Result>();
-		for (Id recordId : recordIds) {
-			SObject record = recordId?.getSObjectType()?.newSObject(recordId);
+		for (SObject record : records) {
 			MockDml.Result result = this.generateMockResult(MockDml.DELETED, record, allOrNone);
 			results?.add(result);
 		}
@@ -150,10 +149,9 @@ public class MockDml extends Dml {
 		return this.doDelete(records, accessLevel);
 	}
 
-	public override List<Database.EmptyRecycleBinResult> emptyRecycleBin(List<Id> recordIds) {
+	public override List<Database.EmptyRecycleBinResult> emptyRecycleBin(List<SObject> records) {
 		List<MockDml.Result> results = new List<MockDml.Result>();
-		for (Id recordId : recordIds) {
-			SObject record = recordId?.getSObjectType()?.newSObject(recordId);
+		for (SObject record : records) {
 			MockDml.Result result = this.generateMockResult(MockDml.PURGED, record, true);
 			results?.add(result);
 		}
@@ -203,13 +201,12 @@ public class MockDml extends Dml {
 	}
 
 	public override List<Database.UndeleteResult> doUndelete(
-		List<Id> recordIds,
+		List<SObject> records,
 		Boolean allOrNone,
 		System.AccessLevel accessLevel
 	) {
 		List<MockDml.Result> results = new List<MockDml.Result>();
-		for (Id recordId : recordIds) {
-			SObject record = recordId?.getSObjectType()?.newSObject(recordId);
+		for (SObject record : records) {
 			MockDml.Result result = this.generateMockResult(MockDml.UNDELETED, record, allOrNone);
 			results?.add(result);
 		}
