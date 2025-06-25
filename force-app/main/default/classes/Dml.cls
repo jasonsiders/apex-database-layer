@@ -32,7 +32,10 @@ public with sharing virtual class Dml {
 		Database.DmlOptions options,
 		System.AccessLevel accessLevel
 	) {
-		return Database.convertLead(leadsToConvert, options, accessLevel);
+		Dml.Request request = new Dml.Request(leadsToConvert);
+		request.options = options;
+		request.accessLevel = accessLevel;
+		return (List<Database.LeadConvertResult>) request?.process();
 	}
 
 	public List<Database.LeadConvertResult> doConvert(
@@ -103,7 +106,10 @@ public with sharing virtual class Dml {
 		Boolean allOrNone,
 		System.AccessLevel accessLevel
 	) {
-		return Database.delete(records, allOrNone, accessLevel);
+		Dml.Request request = new Dml.Request(Dml.Operation.DO_DELETE, records);
+		request.allOrNone = allOrNone;
+		request.accessLevel = accessLevel;
+		return (List<Database.DeleteResult>) request?.process();
 	}
 
 	public List<Database.DeleteResult> doDelete(List<SObject> records, Boolean allOrNone) {
@@ -173,7 +179,11 @@ public with sharing virtual class Dml {
 		DataSource.AsyncDeleteCallback callback,
 		System.AccessLevel accessLevel
 	) {
-		return Database.deleteAsync(records, callback, accessLevel);
+		Dml.Request request = new Dml.Request(Dml.Operation.DO_DELETE, records);
+		request.accessLevel = accessLevel;
+		request.deleteCallback = callback;
+		request.isAsync = true;
+		return (List<Database.DeleteResult>) request?.process();
 	}
 
 	public List<Database.DeleteResult> doDeleteAsync(List<SObject> records, DataSource.AsyncDeleteCallback callback) {
@@ -213,7 +223,10 @@ public with sharing virtual class Dml {
 		List<SObject> records,
 		System.AccessLevel accessLevel
 	) {
-		return Database.deleteImmediate(records, accessLevel);
+		Dml.Request request = new Dml.Request(Dml.Operation.DO_DELETE, records);
+		request.accessLevel = accessLevel;
+		request.isImmediate = true;
+		return (List<Database.DeleteResult>) request?.process();
 	}
 
 	public List<Database.DeleteResult> doDeleteImmediate(List<SObject> records) {
@@ -234,7 +247,10 @@ public with sharing virtual class Dml {
 		Database.DmlOptions options,
 		System.AccessLevel accessLevel
 	) {
-		return Database.insert(records, options, accessLevel);
+		Dml.Request request = new Dml.Request(Dml.Operation.DO_INSERT, records);
+		request.accessLevel = accessLevel;
+		request.options = options;
+		return (List<Database.SaveResult>) request?.process();
 	}
 
 	public List<Database.SaveResult> doInsert(
@@ -291,7 +307,11 @@ public with sharing virtual class Dml {
 		DataSource.AsyncSaveCallback callback,
 		System.AccessLevel accessLevel
 	) {
-		return Database.insertAsync(records, callback, accessLevel);
+		Dml.Request request = new Dml.Request(Dml.Operation.DO_INSERT, records);
+		request.accessLevel = accessLevel;
+		request.isAsync = true;
+		request.saveCallback = callback;
+		return (List<Database.SaveResult>) request?.process();
 	}
 
 	public List<Database.SaveResult> doInsertAsync(List<SObject> records, DataSource.AsyncSaveCallback callback) {
@@ -328,7 +348,10 @@ public with sharing virtual class Dml {
 
 	// ** InsertImmediate Methods
 	public virtual List<Database.SaveResult> doInsertImmediate(List<SObject> records, System.AccessLevel accessLevel) {
-		return Database.insertImmediate(records, accessLevel);
+		Dml.Request request = new Dml.Request(Dml.Operation.DO_INSERT, records);
+		request.accessLevel = accessLevel;
+		request.isImmediate = true;
+		return (List<Database.SaveResult>) request?.process();
 	}
 
 	public List<Database.SaveResult> doInsertImmediate(List<SObject> records) {
@@ -347,7 +370,7 @@ public with sharing virtual class Dml {
 	public virtual List<Database.SaveResult> doPublish(List<SObject> events) {
 		// Callback: "An Apex class that implements the EventPublishFailureCallback Interface or EventPublishSuccessCallback Interface."
 		// https://developer.salesforce.com/docs/atlas.en-us.apexref.meta/apexref/apex_class_System_eventbus.htm#apex_System_eventbus_publish_4
-		return EventBus.publish(events);
+		return (List<Database.SaveResult>) new Dml.Request(Dml.Operation.DO_PUBLISH, events)?.process();
 	}
 
 	public Database.SaveResult doPublish(SObject event) {
@@ -360,7 +383,10 @@ public with sharing virtual class Dml {
 		Boolean allOrNone,
 		System.AccessLevel accessLevel
 	) {
-		return Database.undelete(records, allOrNone, accessLevel);
+		Dml.Request request = new Dml.Request(Dml.Operation.DO_UNDELETE, records);
+		request.accessLevel = accessLevel;
+		request.allOrNone = allOrNone;
+		return (List<Database.UndeleteResult>) request?.process();
 	}
 
 	public List<Database.UndeleteResult> doUndelete(List<SObject> records, Boolean allOrNone) {
@@ -434,7 +460,10 @@ public with sharing virtual class Dml {
 		Database.DmlOptions options,
 		System.AccessLevel accessLevel
 	) {
-		return Database.update(records, options, accessLevel);
+		Dml.Request request = new Dml.Request(Dml.Operation.DO_UPDATE, records);
+		request.accessLevel = accessLevel;
+		request.options = options;
+		return (List<Database.SaveResult>) request?.process();
 	}
 
 	public List<Database.SaveResult> doUpdate(
@@ -491,7 +520,11 @@ public with sharing virtual class Dml {
 		DataSource.AsyncSaveCallback callback,
 		System.AccessLevel accessLevel
 	) {
-		return Database.updateAsync(records, callback, accessLevel);
+		Dml.Request request = new Dml.Request(Dml.Operation.DO_UPDATE, records);
+		request.accessLevel = accessLevel;
+		request.isAsync = true;
+		request.saveCallback = callback;
+		return (List<Database.SaveResult>) request?.process();
 	}
 
 	public List<Database.SaveResult> doUpdateAsync(List<SObject> records, DataSource.AsyncSaveCallback callback) {
@@ -528,7 +561,10 @@ public with sharing virtual class Dml {
 
 	// ** UpdateImmediate Methods
 	public virtual List<Database.SaveResult> doUpdateImmediate(List<SObject> records, System.AccessLevel accessLevel) {
-		return Database.updateImmediate(records, accessLevel);
+		Dml.Request request = new Dml.Request(Dml.Operation.DO_UPDATE, records);
+		request.accessLevel = accessLevel;
+		request.isImmediate = true;
+		return (List<Database.SaveResult>) request?.process();
 	}
 
 	public List<Database.SaveResult> doUpdateImmediate(List<SObject> records) {
@@ -550,11 +586,11 @@ public with sharing virtual class Dml {
 		Boolean allOrNone,
 		System.AccessLevel accessLevel
 	) {
-		// Note: Supplying a null ExternalIdField value to Database.upsert will result in an Exception
-		// To avoid this, call the correct overload depending on the supplied field value
-		return (externalIdField != null)
-			? Database.upsert(records, externalIdField, allOrNone, accessLevel)
-			: Database.upsert(records, allOrNone, accessLevel);
+		Dml.Request request = new Dml.Request(Dml.Operation.DO_UPSERT, records);
+		request.accessLevel = accessLevel;
+		request.allOrNone = allOrNone;
+		request.externalIdField = externalIdField;
+		return (List<Database.UpsertResult>) request?.process();
 	}
 
 	public List<Database.UpsertResult> doUpsert(
@@ -640,7 +676,8 @@ public with sharing virtual class Dml {
 
 	// ** EmptyRecycleBin Methods
 	public virtual List<Database.EmptyRecycleBinResult> emptyRecycleBin(List<SObject> records) {
-		return Database.emptyRecycleBin(records);
+		Dml.Request request = new Dml.Request(Dml.Operation.EMPTY_RECYCLE_BIN, records);
+		return (List<Database.EmptyRecycleBinResult>) request?.process();
 	}
 
 	public List<Database.EmptyRecycleBinResult> emptyRecycleBin(List<Id> recordIds) {
@@ -782,19 +819,21 @@ public with sharing virtual class Dml {
 			// Perform the correct DML method based on the Dml.Operation
 			List<Object> results;
 			if (this.operation == Dml.Operation.DO_CONVERT) {
-				this.doConvert();
+				results = this.doConvert();
 			} else if (this.operation == Dml.Operation.DO_DELETE) {
-				this.doDelete();
+				results = this.doDelete();
 			} else if (this.operation == Dml.Operation.DO_INSERT) {
-				this.doInsert();
+				results = this.doInsert();
 			} else if (this.operation == Dml.Operation.DO_PUBLISH) {
-				this.doPublish();
+				results = this.doPublish();
+			} else if (this.operation == Dml.Operation.DO_UNDELETE) {
+				results = this.doUndelete();
 			} else if (this.operation == Dml.Operation.DO_UPDATE) {
-				this.doUpdate();
+				results = this.doUpdate();
 			} else if (this.operation == Dml.Operation.DO_UPSERT) {
-				this.doUpsert();
+				results = this.doUpsert();
 			} else if (this.operation == Dml.Operation.EMPTY_RECYCLE_BIN) {
-				this.emptyRecycleBin();
+				results = this.emptyRecycleBin();
 			}
 			return results;
 		}
