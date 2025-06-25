@@ -59,4 +59,46 @@ private class DatabaseLayerUtilsTest {
 
 		Assert.areEqual(null, relationship, 'Non-lookup field returned a relationship anyways');
 	}
+
+	@IsTest
+	static void shouldReturnWhateverMetadataIsDefinedInOrg() {
+		// A validation rule enforces that at most, 1 settings record will exist in an org
+		// This ensures the get() method will return the 1st (and only) record, if one is defined:
+		Map<String, DatabaseLayerSetting__mdt> all = DatabaseLayerSetting__mdt.getAll();
+		DatabaseLayerSetting__mdt firstSetting = (all?.isEmpty() == false) ? all?.values()?.get(0) : null;
+
+		Test.startTest();
+		DatabaseLayerSetting__mdt results = DatabaseLayer.Utils.MetadataSelector.get();
+		Assert.areEqual(0, Limits.getQueries(), 'Should not retrieve CMDT via SOQL');
+		Test.stopTest();
+
+		Assert.areEqual(firstSetting?.DeveloperName, results?.DeveloperName, 'Wrong DatabaseLayerSetting__mdt value');
+	}
+
+	@IsTest
+	static void shouldReturnMockedMetadata() {
+		// To force your test to use a specific DatabaseLayerSetting__mdt record, add ito the `settings` list:
+		DatabaseLayerSetting__mdt mockSetting = new DatabaseLayerSetting__mdt(DeveloperName = 'Test_123');
+		DatabaseLayer.Utils.MetadataSelector.settings = new List<DatabaseLayerSetting__mdt>{ mockSetting };
+
+		Test.startTest();
+		DatabaseLayerSetting__mdt results = DatabaseLayer.Utils.MetadataSelector.get();
+		Assert.areEqual(0, Limits.getQueries(), 'Should not retrieve CMDT via SOQL');
+		Test.stopTest();
+
+		Assert.areEqual(mockSetting?.DeveloperName, results?.DeveloperName, 'Wrong DatabaseLayerSetting__mdt value');
+	}
+
+	@IsTest
+	static void shouldReturnNullIfMockedEmtpyList() {
+		// Define `settings` as an empty list to ignore any defined DatabaseLayerSetting__mdt records in an org:
+		DatabaseLayer.Utils.MetadataSelector.settings = new List<DatabaseLayerSetting__mdt>{};
+
+		Test.startTest();
+		DatabaseLayerSetting__mdt results = DatabaseLayer.Utils.MetadataSelector.get();
+		Assert.areEqual(0, Limits.getQueries(), 'Should not retrieve CMDT via SOQL');
+		Test.stopTest();
+
+		Assert.isNull(results, 'Should not have returned a CMDT value');
+	}
 }
