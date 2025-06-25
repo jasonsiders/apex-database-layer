@@ -58,8 +58,8 @@ public class DatabaseLayerUtils {
 		private List<DatabaseLayerSetting__mdt> settings;
 
 		public DatabaseLayerSetting__mdt get() {
-			// TODO!
-			return null;
+			this.settings = this.settings ?? DatabaseLayerSetting__mdt.getAll()?.values();
+			return this.settings?.isEmpty() == false ? this.settings?.get(0) : null;
 		}
 	}
 
