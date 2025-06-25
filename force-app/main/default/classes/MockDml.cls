@@ -561,6 +561,8 @@ public class MockDml extends Dml {
 	}
 
 	public enum Operation {
+		// ! Deprecated: This will be removed in a future release
+		// ! Replace all uses of this enum with the Dml.Operation enum
 		DO_CONVERT,
 		DO_DELETE,
 		DO_INSERT,

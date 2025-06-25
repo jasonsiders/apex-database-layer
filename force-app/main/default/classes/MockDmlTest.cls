@@ -2,7 +2,14 @@
 @IsTest
 private class MockDmlTest {
 	// **** CONSTANTS **** //
-	private static final Integer TEST_SIZE = 20;
+	private static final Integer TEST_SIZE;
+
+	static {
+		TEST_SIZE = 20;
+		// Custom metadata actually defined in the org should not interfere with this test:
+		// TODO!
+		// DatabaseLayer.Utils.MetadataSelector.settings = new List<DatabaseLayerSetting__mdt>{};
+	}
 
 	// **** TESTS **** //
 	@IsTest

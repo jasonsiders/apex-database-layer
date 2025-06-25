@@ -2,9 +2,22 @@
 @IsTest
 private class DmlTest {
 	// **** VARIABLES **** //
-	private static final LeadStatus CONVERTED_STATUS = DmlTest.getConvertedStatus();
-	private static List<Database.DeleteResult> deleteCallbacksMade = new List<Database.DeleteResult>();
-	private static List<Database.SaveResult> saveCallbacksMade = new List<Database.SaveResult>();
+	private static final LeadStatus CONVERTED_STATUS;
+	private static List<Database.DeleteResult> deleteCallbacksMade;
+	private static Integer numPostDmlPluginCalls;
+	private static Integer numPreDmlPluginCalls;
+	private static List<Database.SaveResult> saveCallbacksMade;
+
+	static {
+		CONVERTED_STATUS = DmlTest.getConvertedStatus();
+		deleteCallbacksMade = new List<Database.DeleteResult>();
+		saveCallbacksMade = new List<Database.SaveResult>();
+		numPostDmlPluginCalls = 0;
+		numPreDmlPluginCalls = 0;
+		// Custom metadata actually defined in the org should not interfere with this test:
+		// TODO!
+		// DatabaseLayer.Utils.MetadataSelector.settings = new List<DatabaseLayerSetting__mdt>{};
+	}
 
 	// **** TESTS **** //
 	@IsTest
@@ -866,31 +879,98 @@ private class DmlTest {
 		Assert.areEqual(0, [SELECT COUNT() FROM Account], 'DML operation was not rolled back');
 	}
 
+	@IsTest
+	static void shouldRunPreAndPostProcessorPluginLogic() {
+		DatabaseLayerSetting__mdt settings = DmlTest.initSettings();
+		settings.DmlPreAndPostProcessor__c = DmlTest.TestPlugin.class.getName();
+		Account account = DmlTest.initAccount();
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doInsert(account);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+		Assert.areEqual(1, DmlTest.numPreDmlPluginCalls, 'Wrong number of pre-dml plugin calls');
+		Assert.areEqual(1, DmlTest.numPostDmlPluginCalls, 'Wrong number of post-dml plugin calls');
+	}
+
+	@IsTest
+	static void shouldNotRunProcessorLogicIfInvalidApexClassDefined() {
+		DatabaseLayerSetting__mdt settings = DmlTest.initSettings();
+		settings.DmlPreAndPostProcessor__c = 'an obviously invalid apex class name';
+		Account account = DmlTest.initAccount();
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doInsert(account);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+		Assert.areEqual(0, DmlTest.numPreDmlPluginCalls, 'Wrong number of pre-dml plugin calls');
+		Assert.areEqual(0, DmlTest.numPostDmlPluginCalls, 'Wrong number of post-dml plugin calls');
+	}
+
+	@IsTest
+	static void shouldNotRunProcessorLogicIfNoValueDefined() {
+		DatabaseLayerSetting__mdt settings = DmlTest.initSettings();
+		settings.DmlPreAndPostProcessor__c = null;
+		Account account = DmlTest.initAccount();
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doInsert(account);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+		Assert.areEqual(0, DmlTest.numPreDmlPluginCalls, 'Wrong number of pre-dml plugin calls');
+		Assert.areEqual(0, DmlTest.numPostDmlPluginCalls, 'Wrong number of post-dml plugin calls');
+	}
+
+	@IsTest
+	static void shouldNotRunProcessorLogicIfNoSettingsDefined() {
+		// Without calling DmlTest.initSettings(), no settings are defined:
+		Account account = DmlTest.initAccount();
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doInsert(account);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+		Assert.areEqual(0, DmlTest.numPreDmlPluginCalls, 'Wrong number of pre-dml plugin calls');
+		Assert.areEqual(0, DmlTest.numPostDmlPluginCalls, 'Wrong number of post-dml plugin calls');
+	}
+
 	// **** HELPER **** //
-	static LeadStatus getConvertedStatus() {
+	private static LeadStatus getConvertedStatus() {
 		return [SELECT ApiName FROM LeadStatus WHERE IsConverted = TRUE LIMIT 1] ?? null;
 	}
 
-	static Account initAccount() {
+	private static Account initAccount() {
 		return new Account(Name = 'Robinson Industries');
 	}
 
-	static List<Account> initAccountList() {
+	private static List<Account> initAccountList() {
 		Account account = DmlTest.initAccount();
 		return new List<Account>{ account };
 	}
 
-	static Lead initLead() {
+	private static Lead initLead() {
 		return new Lead(Company = 'Tharsis Inc.', FirstName = 'John', LastName = 'Doe');
 	}
 
-	static Database.LeadConvert initLeadConvert(Lead lead) {
+	private static Database.LeadConvert initLeadConvert(Lead lead) {
 		Database.LeadConvert leadToConvert = new Database.LeadConvert();
 		leadToConvert?.setLeadId(lead?.Id);
 		leadToConvert?.setConvertedStatus(CONVERTED_STATUS?.ApiName);
 		return leadToConvert;
 	}
 
+	private static DatabaseLayerSetting__mdt initSettings() {
+		DatabaseLayerSetting__mdt settings = new DatabaseLayerSetting__mdt();
+		// TODO!
+		// DatabaseLayer.Utils.MetadataSelector.settings?.add(settings);
+		return settings;
+	}
+
+	// **** INNER **** //
 	private class DeleteCallback extends DataSource.AsyncDeleteCallback {
 		public override void processDelete(Database.DeleteResult result) {
 			DmlTest.deleteCallbacksMade?.add(result);
@@ -900,6 +980,16 @@ private class DmlTest {
 	private class SaveCallback extends DataSource.AsyncSaveCallback {
 		public override void processSave(Database.SaveResult result) {
 			DmlTest.saveCallbacksMade?.add(result);
+		}
+	}
+
+	private class TestPlugin implements Dml.PreAndPostProcessor {
+		public void processPreDml(Dml.Operation operation, List<SObject> records) {
+			DmlTest.numPreDmlPluginCalls++;
+		}
+
+		public void processPostDml(Dml.Operation operation, List<SObject> records, List<Object> databaseResult) {
+			DmlTest.numPostDmlPluginCalls++;
 		}
 	}
 }
