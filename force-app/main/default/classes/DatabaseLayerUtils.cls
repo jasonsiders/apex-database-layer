@@ -1,3 +1,4 @@
+@SuppressWarnings('PMD.PropertyNamingConventions')
 public class DatabaseLayerUtils {
 	/**
 	 * This class contains utilities used by the framework internally
@@ -6,15 +7,17 @@ public class DatabaseLayerUtils {
 	 * This helps communicate the intent that these utils are really only designed to be used by the framework itself
 	 * Necessary since there isn't a way to *actually* enforce this, like @NamespaceAccessible for managed packages
 	 */
-	public final DatabaseLayerUtils.ChildRelationships childRelationships { get; private set; }
-	public final DatabaseLayerUtils.MetadataSelector metadataSelector { get; private set; }
+	public final DatabaseLayerUtils.ChildRelationships ChildRelationships { get; private set; }
+	public final DatabaseLayerUtils.MetadataSelector MetadataSelector { get; private set; }
+	public final DatabaseLayerUtils.Plugins Plugins { get; private set; }
 
 	@SuppressWarnings('PMD.EmptyStatementBlock')
 	public DatabaseLayerUtils(DatabaseLayer factory) {
 		// The utility class can't be manually constructed outside of this package
 		// Necessary in the absence of @NamespaceAccessible-like annotation for unlocked packages
-		this.childRelationships = new DatabaseLayerUtils.ChildRelationships();
-		this.metadataSelector = new DatabaseLayerUtils.MetadataSelector();
+		this.ChildRelationships = new DatabaseLayerUtils.ChildRelationships();
+		this.MetadataSelector = new DatabaseLayerUtils.MetadataSelector();
+		this.Plugins = new DatabaseLayerUtils.Plugins();
 	}
 
 	// **** INNER **** //
@@ -75,6 +78,12 @@ public class DatabaseLayerUtils {
 			this.settings = this.settings ?? DatabaseLayerSetting__mdt.getAll()?.values();
 			return this.settings?.isEmpty() == false ? this.settings?.get(0) : null;
 		}
+	}
+
+	public class Plugins {
+		public Dml.PreAndPostProcessor DmlPreAndPostProcessor { get; private set; }
+
+		// ! TODO: Code to generate the plugins from CMDT
 	}
 
 	private class CachedDescribe {

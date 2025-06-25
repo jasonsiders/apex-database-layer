@@ -32,7 +32,11 @@ public with sharing virtual class Dml {
 		Database.DmlOptions options,
 		System.AccessLevel accessLevel
 	) {
-		return Database.convertLead(leadsToConvert, options, accessLevel);
+		DatabaseLayer.Utils.Plugins.DmlPreAndPostProcessor?.processPreDml(Dml.Operation.DO_CONVERT, leadsToConvert);
+		List<Database.LeadConvertResult> results = Database.convertLead(leadsToConvert, options, accessLevel);
+		DatabaseLayer.Utils.Plugins.DmlPreAndPostProcessor
+			?.processPostDml(Dml.Operation.DO_CONVERT, leadsToConvert, results);
+		return results;
 	}
 
 	public List<Database.LeadConvertResult> doConvert(
@@ -103,7 +107,10 @@ public with sharing virtual class Dml {
 		Boolean allOrNone,
 		System.AccessLevel accessLevel
 	) {
-		return Database.delete(records, allOrNone, accessLevel);
+		DatabaseLayer.Utils.Plugins.DmlPreAndPostProcessor?.processPreDml(Dml.Operation.DO_DELETE, records);
+		List<Database.DeleteResult> results = Database.delete(records, allOrNone, accessLevel);
+		DatabaseLayer.Utils.Plugins.DmlPreAndPostProcessor?.processPostDml(Dml.Operation.DO_DELETE, records, results);
+		return results;
 	}
 
 	public List<Database.DeleteResult> doDelete(List<SObject> records, Boolean allOrNone) {
@@ -173,7 +180,10 @@ public with sharing virtual class Dml {
 		DataSource.AsyncDeleteCallback callback,
 		System.AccessLevel accessLevel
 	) {
-		return Database.deleteAsync(records, callback, accessLevel);
+		DatabaseLayer.Utils.Plugins.DmlPreAndPostProcessor?.processPreDml(Dml.Operation.DO_DELETE, records);
+		List<Database.DeleteResult> results = Database.deleteAsync(records, callback, accessLevel);
+		DatabaseLayer.Utils.Plugins.DmlPreAndPostProcessor?.processPostDml(Dml.Operation.DO_DELETE, records, results);
+		return results;
 	}
 
 	public List<Database.DeleteResult> doDeleteAsync(List<SObject> records, DataSource.AsyncDeleteCallback callback) {
@@ -213,7 +223,10 @@ public with sharing virtual class Dml {
 		List<SObject> records,
 		System.AccessLevel accessLevel
 	) {
-		return Database.deleteImmediate(records, accessLevel);
+		DatabaseLayer.Utils.Plugins.DmlPreAndPostProcessor?.processPreDml(Dml.Operation.DO_DELETE, records);
+		List<Database.DeleteResult> results = Database.deleteImmediate(records, accessLevel);
+		DatabaseLayer.Utils.Plugins.DmlPreAndPostProcessor?.processPostDml(Dml.Operation.DO_DELETE, records, results);
+		return results;
 	}
 
 	public List<Database.DeleteResult> doDeleteImmediate(List<SObject> records) {
@@ -234,7 +247,10 @@ public with sharing virtual class Dml {
 		Database.DmlOptions options,
 		System.AccessLevel accessLevel
 	) {
-		return Database.insert(records, options, accessLevel);
+		DatabaseLayer.Utils.Plugins.DmlPreAndPostProcessor?.processPreDml(Dml.Operation.DO_INSERT, records);
+		List<Database.SaveResult> results = Database.insert(records, options, accessLevel);
+		DatabaseLayer.Utils.Plugins.DmlPreAndPostProcessor?.processPostDml(Dml.Operation.DO_INSERT, records, results);
+		return results;
 	}
 
 	public List<Database.SaveResult> doInsert(
@@ -291,7 +307,10 @@ public with sharing virtual class Dml {
 		DataSource.AsyncSaveCallback callback,
 		System.AccessLevel accessLevel
 	) {
-		return Database.insertAsync(records, callback, accessLevel);
+		DatabaseLayer.Utils.Plugins.DmlPreAndPostProcessor?.processPreDml(Dml.Operation.DO_INSERT, records);
+		List<Database.SaveResult> results = Database.insertAsync(records, callback, accessLevel);
+		DatabaseLayer.Utils.Plugins.DmlPreAndPostProcessor?.processPostDml(Dml.Operation.DO_INSERT, records, results);
+		return results;
 	}
 
 	public List<Database.SaveResult> doInsertAsync(List<SObject> records, DataSource.AsyncSaveCallback callback) {
@@ -328,7 +347,10 @@ public with sharing virtual class Dml {
 
 	// ** InsertImmediate Methods
 	public virtual List<Database.SaveResult> doInsertImmediate(List<SObject> records, System.AccessLevel accessLevel) {
-		return Database.insertImmediate(records, accessLevel);
+		DatabaseLayer.Utils.Plugins.DmlPreAndPostProcessor?.processPreDml(Dml.Operation.DO_INSERT, records);
+		List<Database.SaveResult> results = Database.insertImmediate(records, accessLevel);
+		DatabaseLayer.Utils.Plugins.DmlPreAndPostProcessor?.processPostDml(Dml.Operation.DO_INSERT, records, results);
+		return results;
 	}
 
 	public List<Database.SaveResult> doInsertImmediate(List<SObject> records) {
@@ -347,7 +369,10 @@ public with sharing virtual class Dml {
 	public virtual List<Database.SaveResult> doPublish(List<SObject> events) {
 		// Callback: "An Apex class that implements the EventPublishFailureCallback Interface or EventPublishSuccessCallback Interface."
 		// https://developer.salesforce.com/docs/atlas.en-us.apexref.meta/apexref/apex_class_System_eventbus.htm#apex_System_eventbus_publish_4
-		return EventBus.publish(events);
+		DatabaseLayer.Utils.Plugins.DmlPreAndPostProcessor?.processPreDml(Dml.Operation.DO_PUBLISH, events);
+		List<Database.SaveResult> results = EventBus.publish(events);
+		DatabaseLayer.Utils.Plugins.DmlPreAndPostProcessor?.processPostDml(Dml.Operation.DO_PUBLISH, events, results);
+		return results;
 	}
 
 	public Database.SaveResult doPublish(SObject event) {
@@ -360,7 +385,10 @@ public with sharing virtual class Dml {
 		Boolean allOrNone,
 		System.AccessLevel accessLevel
 	) {
-		return Database.undelete(records, allOrNone, accessLevel);
+		DatabaseLayer.Utils.Plugins.DmlPreAndPostProcessor?.processPreDml(Dml.Operation.DO_UNDELETE, records);
+		List<Database.UndeleteResult> results = Database.undelete(records, allOrNone, accessLevel);
+		DatabaseLayer.Utils.Plugins.DmlPreAndPostProcessor?.processPostDml(Dml.Operation.DO_UNDELETE, records, results);
+		return results;
 	}
 
 	public List<Database.UndeleteResult> doUndelete(List<SObject> records, Boolean allOrNone) {
@@ -434,7 +462,10 @@ public with sharing virtual class Dml {
 		Database.DmlOptions options,
 		System.AccessLevel accessLevel
 	) {
-		return Database.update(records, options, accessLevel);
+		DatabaseLayer.Utils.Plugins.DmlPreAndPostProcessor?.processPreDml(Dml.Operation.DO_UPDATE, records);
+		List<Database.SaveResult> results = Database.update(records, options, accessLevel);
+		DatabaseLayer.Utils.Plugins.DmlPreAndPostProcessor?.processPostDml(Dml.Operation.DO_UPDATE, records, results);
+		return results;
 	}
 
 	public List<Database.SaveResult> doUpdate(
@@ -491,7 +522,10 @@ public with sharing virtual class Dml {
 		DataSource.AsyncSaveCallback callback,
 		System.AccessLevel accessLevel
 	) {
-		return Database.updateAsync(records, callback, accessLevel);
+		DatabaseLayer.Utils.Plugins.DmlPreAndPostProcessor?.processPreDml(Dml.Operation.DO_UPDATE, records);
+		List<Database.SaveResult> results = Database.updateAsync(records, callback, accessLevel);
+		DatabaseLayer.Utils.Plugins.DmlPreAndPostProcessor?.processPostDml(Dml.Operation.DO_UPDATE, records, results);
+		return results;
 	}
 
 	public List<Database.SaveResult> doUpdateAsync(List<SObject> records, DataSource.AsyncSaveCallback callback) {
@@ -528,7 +562,10 @@ public with sharing virtual class Dml {
 
 	// ** UpdateImmediate Methods
 	public virtual List<Database.SaveResult> doUpdateImmediate(List<SObject> records, System.AccessLevel accessLevel) {
-		return Database.updateImmediate(records, accessLevel);
+		DatabaseLayer.Utils.Plugins.DmlPreAndPostProcessor?.processPreDml(Dml.Operation.DO_UPDATE, records);
+		List<Database.SaveResult> results = Database.updateImmediate(records, accessLevel);
+		DatabaseLayer.Utils.Plugins.DmlPreAndPostProcessor?.processPostDml(Dml.Operation.DO_UPDATE, records, results);
+		return results;
 	}
 
 	public List<Database.SaveResult> doUpdateImmediate(List<SObject> records) {
@@ -552,9 +589,12 @@ public with sharing virtual class Dml {
 	) {
 		// Note: Supplying a null ExternalIdField value to Database.upsert will result in an Exception
 		// To avoid this, call the correct overload depending on the supplied field value
-		return (externalIdField != null)
+		DatabaseLayer.Utils.Plugins.DmlPreAndPostProcessor?.processPreDml(Dml.Operation.DO_UPSERT, records);
+		List<Database.UpsertResult> results = (externalIdField != null)
 			? Database.upsert(records, externalIdField, allOrNone, accessLevel)
 			: Database.upsert(records, allOrNone, accessLevel);
+		DatabaseLayer.Utils.Plugins.DmlPreAndPostProcessor?.processPostDml(Dml.Operation.DO_UPSERT, records, results);
+		return results;
 	}
 
 	public List<Database.UpsertResult> doUpsert(
@@ -640,7 +680,11 @@ public with sharing virtual class Dml {
 
 	// ** EmptyRecycleBin Methods
 	public virtual List<Database.EmptyRecycleBinResult> emptyRecycleBin(List<SObject> records) {
-		return Database.emptyRecycleBin(records);
+		DatabaseLayer.Utils.Plugins.DmlPreAndPostProcessor?.processPreDml(Dml.Operation.EMPTY_RECYCLE_BIN, records);
+		List<Database.EmptyRecycleBinResult> results = Database.emptyRecycleBin(records);
+		DatabaseLayer.Utils.Plugins.DmlPreAndPostProcessor
+			?.processPostDml(Dml.Operation.EMPTY_RECYCLE_BIN, records, results);
+		return results;
 	}
 
 	public List<Database.EmptyRecycleBinResult> emptyRecycleBin(List<Id> recordIds) {
@@ -720,7 +764,8 @@ public with sharing virtual class Dml {
 		DO_PURGE,
 		DO_UNDELETE,
 		DO_UPDATE,
-		DO_UPSERT
+		DO_UPSERT,
+		EMPTY_RECYCLE_BIN
 	}
 
 	public interface PreAndPostProcessor {
