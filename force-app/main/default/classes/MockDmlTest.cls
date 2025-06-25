@@ -1,20 +1,24 @@
 @SuppressWarnings('PMD.ApexDoc, PMD.CyclomaticComplexity, PMD.EmptyCatchBlock')
 @IsTest
 private class MockDmlTest {
-	// **** CONSTANTS **** //
+	// **** VARIABLES **** //
 	private static final Integer TEST_SIZE;
+	private static Integer numPostDmlPluginCalls;
+	private static Integer numPreDmlPluginCalls;
 
 	static {
+		numPostDmlPluginCalls = 0;
+		numPreDmlPluginCalls = 0;
 		TEST_SIZE = 20;
 		// Custom metadata actually defined in the org should not interfere with this test:
-		// TODO!
-		// DatabaseLayer.Utils.MetadataSelector.settings = new List<DatabaseLayerSetting__mdt>{};
+		DatabaseLayer.Utils.MetadataSelector.settings = new List<DatabaseLayerSetting__mdt>{};
+		// Use Mock DML:
+		DatabaseLayer.useMockDml();
 	}
 
 	// **** TESTS **** //
 	@IsTest
 	static void shouldMockLeadConvert() {
-		DatabaseLayer.useMockDml();
 		Map<Id, Lead> leads = new Map<Id, Lead>();
 		List<Database.LeadConvert> leadsToConvert = new List<Database.LeadConvert>();
 		for (Integer i = 0; i < TEST_SIZE; i++) {
@@ -50,7 +54,6 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldMockLeadConvertWithExistingRecords() {
-		DatabaseLayer.useMockDml();
 		Account account = (Account) new MockRecord(Account.SObjectType)?.withId()?.toSObject();
 		Map<Id, Lead> leads = new Map<Id, Lead>();
 		List<Database.LeadConvert> leadsToConvert = new List<Database.LeadConvert>();
@@ -88,7 +91,6 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldThrowExceptionIfMissingLeadIdOnConvert() {
-		DatabaseLayer.useMockDml();
 		List<Database.LeadConvert> leadsToConvert = new List<Database.LeadConvert>();
 		for (Integer i = 0; i < TEST_SIZE; i++) {
 			Lead lead = (Lead) new MockRecord(Lead.SObjectType)?.withId()?.toSObject();
@@ -112,7 +114,6 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldThrowExceptionIfMissingLeadStatusConvert() {
-		DatabaseLayer.useMockDml();
 		List<Database.LeadConvert> leadsToConvert = new List<Database.LeadConvert>();
 		for (Integer i = 0; i < TEST_SIZE; i++) {
 			Lead lead = (Lead) new MockRecord(Lead.SObjectType)?.withId()?.toSObject();
@@ -136,6 +137,7 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldThrowExceptionIfErrorInjectedOnConvert() {
+		DatabaseLayer.useMockDml()?.fail();
 		List<Database.LeadConvert> leadsToConvert = new List<Database.LeadConvert>();
 		for (Integer i = 0; i < TEST_SIZE; i++) {
 			Lead lead = (Lead) new MockRecord(Lead.SObjectType)?.withId()?.toSObject();
@@ -144,7 +146,6 @@ private class MockDmlTest {
 			leadToConvert?.setConvertedStatus('Some Status');
 			leadsToConvert?.add(leadToConvert);
 		}
-		DatabaseLayer.useMockDml()?.fail();
 
 		Test.startTest();
 		try {
@@ -184,7 +185,6 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldMockDelete() {
-		DatabaseLayer.useMockDml();
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
 
 		Test.startTest();
@@ -205,7 +205,6 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldMockDeleteAsync() {
-		DatabaseLayer.useMockDml();
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
 
 		Test.startTest();
@@ -226,7 +225,6 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldMockDeleteImmediate() {
-		DatabaseLayer.useMockDml();
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
 
 		Test.startTest();
@@ -247,7 +245,6 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldMockEmptyRecycleBin() {
-		DatabaseLayer.useMockDml();
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
 		DatabaseLayer.Dml?.doDelete(leads);
 
@@ -300,7 +297,6 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldMockInsert() {
-		DatabaseLayer.useMockDml();
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType);
 
 		Test.startTest();
@@ -322,7 +318,6 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldMockInsertAsync() {
-		DatabaseLayer.useMockDml();
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType);
 
 		Test.startTest();
@@ -344,7 +339,6 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldMockInsertImmediate() {
-		DatabaseLayer.useMockDml();
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType);
 
 		Test.startTest();
@@ -401,7 +395,6 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldMockPublish() {
-		DatabaseLayer.useMockDml();
 		List<BatchApexErrorEvent> events = MockDmlTest.initRecords(BatchApexErrorEvent.SObjectType);
 
 		Test.startTest();
@@ -462,7 +455,6 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldMockUndelete() {
-		DatabaseLayer.useMockDml();
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
 
 		Test.startTest();
@@ -519,7 +511,6 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldMockUpdate() {
-		DatabaseLayer.useMockDml();
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
 
 		Test.startTest();
@@ -541,7 +532,6 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldMockUpdateAsync() {
-		DatabaseLayer.useMockDml();
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
 
 		Test.startTest();
@@ -563,7 +553,6 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldMockUpdateImmediate() {
-		DatabaseLayer.useMockDml();
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
 
 		Test.startTest();
@@ -620,7 +609,6 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldMockUpsert() {
-		DatabaseLayer.useMockDml();
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
 
 		Test.startTest();
@@ -677,7 +665,6 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldProvideUsefulInformationAboutProcessedRecords() {
-		DatabaseLayer.useMockDml();
 		Lead testLead = (Lead) new MockRecord(Lead.SObjectType)?.withId()?.toSObject();
 		// Pre-test asserts
 		Assert.isFalse(MockDml.UPDATED.wasProcessed(testLead), 'Pre-test: Should not have been processed');
@@ -756,7 +743,6 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldGetAllRecordsFromHistory() {
-		DatabaseLayer.useMockDml();
 		List<Account> accounts = MockDmlTest.initRecords(Account.SObjectType, false);
 		DatabaseLayer.Dml.doInsert(accounts);
 
@@ -770,7 +756,6 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldGetSpecificRecordFromHistory() {
-		DatabaseLayer.useMockDml();
 		List<Account> accounts = MockDmlTest.initRecords(Account.SObjectType, false);
 		Account firstAccount = accounts?.get(0);
 		DatabaseLayer.Dml.doInsert(accounts);
@@ -787,7 +772,6 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldCreateSnapshotOfMockDatabase() {
-		DatabaseLayer.useMockDml();
 		List<Account> accounts = MockDmlTest.initRecords(Account.SObjectType, false);
 		DatabaseLayer.Dml.doInsert(accounts);
 
@@ -808,8 +792,6 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldHandleSetSavepoints() {
-		DatabaseLayer.useMockDml();
-
 		Test.startTest();
 		System.Savepoint savepoint = DatabaseLayer.Dml.setSavepoint();
 		Test.stopTest();
@@ -824,8 +806,6 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldHandleReleasedSavepoints() {
-		DatabaseLayer.useMockDml();
-
 		Test.startTest();
 		System.Savepoint savepoint = DatabaseLayer.Dml.setSavepoint();
 		DatabaseLayer.Dml.releaseSavepoint(savepoint);
@@ -841,7 +821,6 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldHandleRolledBackSavepoints() {
-		DatabaseLayer.useMockDml();
 		MockDml.MockDatabase.resetOnRollback = true;
 
 		Test.startTest();
@@ -861,7 +840,6 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldHandleRolledBackSavepointsWithoutResettingMockDatabase() {
-		DatabaseLayer.useMockDml();
 		MockDml.MockDatabase.resetOnRollback = false;
 
 		Test.startTest();
@@ -881,7 +859,6 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldGetASpecificSavepoint() {
-		DatabaseLayer.useMockDml();
 		System.Savepoint sp1 = DatabaseLayer.Dml.setSavepoint();
 		System.Savepoint sp2 = DatabaseLayer.Dml.setSavepoint();
 		// Roll back the second savepoint, to distinguish the two:
@@ -902,8 +879,67 @@ private class MockDmlTest {
 		Assert.isNotNull(MockDml.Savepoints.get(spInfo2?.index), 'No Savepoint matching ' + spInfo2?.index);
 	}
 
+	@IsTest
+	static void shouldRunPreAndPostProcessorPluginLogic() {
+		DatabaseLayerSetting__mdt settings = MockDmlTest.initSettings();
+		settings.DmlPreAndPostProcessor__c = MockDmlTest.TestPlugin.class.getName();
+		List<Account> accounts = MockDmlTest.initRecords(Account.SObjectType, false);
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doInsert(accounts)?.get(0);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+		Assert.areEqual(1, MockDmlTest.numPreDmlPluginCalls, 'Wrong number of pre-dml plugin calls');
+		Assert.areEqual(1, MockDmlTest.numPostDmlPluginCalls, 'Wrong number of post-dml plugin calls');
+	}
+
+	@IsTest
+	static void shouldNotRunProcessorLogicIfInvalidApexClassDefined() {
+		DatabaseLayerSetting__mdt settings = MockDmlTest.initSettings();
+		settings.DmlPreAndPostProcessor__c = 'an obviously invalid apex class name';
+		List<Account> accounts = MockDmlTest.initRecords(Account.SObjectType, false);
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doInsert(accounts)?.get(0);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+		Assert.areEqual(0, MockDmlTest.numPreDmlPluginCalls, 'Wrong number of pre-dml plugin calls');
+		Assert.areEqual(0, MockDmlTest.numPostDmlPluginCalls, 'Wrong number of post-dml plugin calls');
+	}
+
+	@IsTest
+	static void shouldNotRunProcessorLogicIfNoValueDefined() {
+		DatabaseLayerSetting__mdt settings = MockDmlTest.initSettings();
+		settings.DmlPreAndPostProcessor__c = null;
+		List<Account> accounts = MockDmlTest.initRecords(Account.SObjectType, false);
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doInsert(accounts)?.get(0);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+		Assert.areEqual(0, MockDmlTest.numPreDmlPluginCalls, 'Wrong number of pre-dml plugin calls');
+		Assert.areEqual(0, MockDmlTest.numPostDmlPluginCalls, 'Wrong number of post-dml plugin calls');
+	}
+
+	@IsTest
+	static void shouldNotRunProcessorLogicIfNoSettingsDefined() {
+		// Without calling MockDmlTest.initSettings(), no settings are defined:
+		List<Account> accounts = MockDmlTest.initRecords(Account.SObjectType, false);
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doInsert(accounts)?.get(0);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+		Assert.areEqual(0, MockDmlTest.numPreDmlPluginCalls, 'Wrong number of pre-dml plugin calls');
+		Assert.areEqual(0, MockDmlTest.numPostDmlPluginCalls, 'Wrong number of post-dml plugin calls');
+	}
+
 	// **** HELPER **** //
-	static List<SObject> initRecords(SObjectType objectType, Boolean withId) {
+	private static List<SObject> initRecords(SObjectType objectType, Boolean withId) {
 		List<SObject> records = new List<SObject>();
 		for (Integer i = 0; i < TEST_SIZE; i++) {
 			MockRecord mock = new MockRecord(objectType);
@@ -916,8 +952,14 @@ private class MockDmlTest {
 		return records;
 	}
 
-	static List<SObject> initRecords(SObjectType objectType) {
+	private static List<SObject> initRecords(SObjectType objectType) {
 		return MockDmlTest.initRecords(objectType, false);
+	}
+
+	private static DatabaseLayerSetting__mdt initSettings() {
+		DatabaseLayerSetting__mdt settings = new DatabaseLayerSetting__mdt();
+		DatabaseLayer.Utils.MetadataSelector.settings?.add(settings);
+		return settings;
 	}
 
 	// **** INNER **** //

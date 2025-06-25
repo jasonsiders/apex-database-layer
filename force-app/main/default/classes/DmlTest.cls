@@ -15,8 +15,7 @@ private class DmlTest {
 		numPostDmlPluginCalls = 0;
 		numPreDmlPluginCalls = 0;
 		// Custom metadata actually defined in the org should not interfere with this test:
-		// TODO!
-		// DatabaseLayer.Utils.MetadataSelector.settings = new List<DatabaseLayerSetting__mdt>{};
+		DatabaseLayer.Utils.MetadataSelector.settings = new List<DatabaseLayerSetting__mdt>{};
 	}
 
 	// **** TESTS **** //
@@ -965,8 +964,7 @@ private class DmlTest {
 
 	private static DatabaseLayerSetting__mdt initSettings() {
 		DatabaseLayerSetting__mdt settings = new DatabaseLayerSetting__mdt();
-		// TODO!
-		// DatabaseLayer.Utils.MetadataSelector.settings?.add(settings);
+		DatabaseLayer.Utils.MetadataSelector.settings?.add(settings);
 		return settings;
 	}
 
@@ -984,11 +982,12 @@ private class DmlTest {
 	}
 
 	private class TestPlugin implements Dml.PreAndPostProcessor {
-		public void processPreDml(Dml.Operation operation, List<SObject> records) {
+		public void processPreDml(Dml.Request dmlRequest) {
+			System.debug('Request: ' + JSON.serialize(dmlRequest));
 			DmlTest.numPreDmlPluginCalls++;
 		}
 
-		public void processPostDml(Dml.Operation operation, List<SObject> records, List<Object> databaseResult) {
+		public void processPostDml(Dml.Request dmlRequest, List<Object> databaseResults) {
 			DmlTest.numPostDmlPluginCalls++;
 		}
 	}
