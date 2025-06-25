@@ -830,7 +830,7 @@ private class SoqlTest {
 
 	@IsTest
 	static void shouldGenerateSubqueryFromChildRelationship() {
-		Schema.ChildRelationship rel = DatabaseLayer.Utils.getChildRelationshipFrom(Case.AccountId);
+		Schema.ChildRelationship rel = DatabaseLayer.Utils.ChildRelationships.getChildRelationshipFrom(Case.AccountId);
 
 		Test.startTest();
 		String result = new Soql.Subquery(rel)?.addSelect(Case.Id)?.toString();
