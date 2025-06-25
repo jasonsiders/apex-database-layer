@@ -1,4 +1,11 @@
 public class DatabaseLayerUtils {
+	/**
+	 * This class contains utilities used by the framework internally
+	 * It uses a factory pattern to enforce access in a pseudo-namespace fashion;
+	 * Ex., DatabaseLayer.Utils.MetadataSelector.get()
+	 * This helps communicate the intent that these utils are really only designed to be used by the framework itself
+	 * Necessary since there isn't a way to *actually* enforce this, like @NamespaceAccessible for managed packages
+	 */
 	public final DatabaseLayerUtils.ChildRelationships childRelationships { get; private set; }
 	public final DatabaseLayerUtils.MetadataSelector metadataSelector { get; private set; }
 
