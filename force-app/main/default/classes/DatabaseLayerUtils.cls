@@ -13,8 +13,8 @@ public class DatabaseLayerUtils {
 	// **** INNER **** //
 	public class ChildRelationships {
 		/**
-		 * This small utility aims to make it easier to retrieve Schema.ChildRelationship objects from their linked SObjectField.
-		 * Unlike SObjectTypes/SObjectFields, they do not have a declarable token, ex. Account.Contacts.
+		 * This class makes it easier to retrieve Schema.ChildRelationship objects from their linked SObjectField.
+		 * Unlike SObjectTypes/SObjectFields, ChildRelationships do not have a declarable token, ex. Account.Contacts.
 		 * Callers typically have to perform expensive & verbose describe operations to retrieve this object.
 		 * Using this utility, callers can retrieve a relationship object with a single line, ex:
 		 * `Schema.ChildRelationship rel = DatabaseLayer.Utils.ChildRelationships.getChildRelationshipFrom(Contact.AccountId);`
@@ -54,10 +54,17 @@ public class DatabaseLayerUtils {
 	}
 
 	public class MetadataSelector {
+		/**
+		 * This utility class is used to retrieve DatabaseLayerSetting__mdt settings from the org.
+		 * It also provides a seam for mock settings to be injected.
+		 * Note: The framework will *always* use the first defined record;
+		 * There is a validation rule which helps enforce only 1x DatabaseLayerSetting__mdt per org
+		 */
 		@TestVisible
 		private List<DatabaseLayerSetting__mdt> settings;
 
 		public DatabaseLayerSetting__mdt get() {
+			// Retrieve the first/default settings record; if none defined, returns null
 			this.settings = this.settings ?? DatabaseLayerSetting__mdt.getAll()?.values();
 			return this.settings?.isEmpty() == false ? this.settings?.get(0) : null;
 		}
