@@ -81,9 +81,22 @@ public class DatabaseLayerUtils {
 	}
 
 	public class Plugins {
-		public Dml.PreAndPostProcessor DmlPreAndPostProcessor { get; private set; }
-
-		// ! TODO: Code to generate the plugins from CMDT
+		/**
+		 * This class contains utility methods re: the plugin framework
+		 */
+		public Object initPlugin(SObjectField field) {
+			// Constructs a new object of a type listed in the field on the CMDT using Type.forName:
+			String className;
+			try {
+				className = (String) DatabaseLayer.Utils.MetadataSelector.get().get(field);
+				return (className != null) ? Type.forName(className)?.newInstance() : null;
+			} catch (Exception error) {
+				String source = DatabaseLayerUtils.Plugin.class.getName();
+				String msg = source + ': Invalid ' + field + ': "' + className + '". Details: ' + error;
+				System.debug(System.LoggingLevel.WARN, msg);
+				return null;
+			}
+		}
 	}
 
 	private class CachedDescribe {

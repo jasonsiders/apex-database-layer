@@ -19,11 +19,12 @@ public with sharing virtual class Dml {
 	private static final System.AccessLevel DEFAULT_ACCESS_LEVEL = System.AccessLevel.USER_MODE;
 	private static final DataSource.AsyncDeleteCallback DEFAULT_DELETE_CALLBACK = new Dml.EmptyDeleteCallback();
 	private static final DataSource.AsyncSaveCallback DEFAULT_SAVE_CALLBACK = new Dml.EmptySaveCallback();
+	private static final SObjectField PLUGIN_FIELD = DatabaseLayerSetting__mdt.DmlPreAndPostProcessor__c;
+	private static Dml.PreAndPostProcessor preAndPostPlugin;
 
-	@SuppressWarnings('PMD.EmptyStatementBlock')
 	public Dml(DatabaseLayer factory) {
-		// Dml classes can't be constructed manually
-		// Instead, use the DatabaseLayer.Dml static property
+		// Note: Dml classes can't be constructed manually; instead, use the DatabaseLayer.Dml static property
+		this.initPlugins();
 	}
 
 	// ** Convert Methods
@@ -733,6 +734,16 @@ public with sharing virtual class Dml {
 		return records;
 	}
 
+	@TestVisible
+	private void initPlugins() {
+		// Initializes plugins based on the related custom metadata record
+		// In production use cases, this will only happen once per transaction
+		// In @IsTest uses cases, this happens every time the caller switches from Dml/MockDml
+		// Test callers can also call this method directly to recalculate the plugins after injecting mock metadata:
+		Dml.preAndPostPlugin = (Dml.PreAndPostProcessor) DatabaseLayer.Utils?.Plugins?.initPlugin(PLUGIN_FIELD);
+		// ... may add more plugins here in the future!
+	}
+
 	// **** INNER **** //
 	@TestVisible
 	private class EmptyDeleteCallback extends DataSource.AsyncDeleteCallback {
@@ -847,9 +858,9 @@ public with sharing virtual class Dml {
 
 		protected List<Object> process() {
 			// Main method called by the Dml class; processes DML, and calls the Pre/Post DML plugins:
-			DatabaseLayer.Utils.Plugins.DmlPreAndPostProcessor?.processPreDml(this);
+			Dml.preAndPostPlugin?.processPreDml(this);
 			List<Object> results = this.doDml();
-			DatabaseLayer.Utils.Plugins.DmlPreAndPostProcessor?.processPostDml(this, results);
+			Dml.preAndPostPlugin?.processPostDml(this, results);
 			return results;
 		}
 

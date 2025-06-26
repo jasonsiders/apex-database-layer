@@ -882,6 +882,8 @@ private class DmlTest {
 	static void shouldRunPreAndPostProcessorPluginLogic() {
 		DatabaseLayerSetting__mdt settings = DmlTest.initSettings();
 		settings.DmlPreAndPostProcessor__c = DmlTest.TestPlugin.class.getName();
+		// Re-initialize the plugins, now that the field has been set:
+		DatabaseLayer.Dml.initPlugins();
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();
@@ -897,6 +899,8 @@ private class DmlTest {
 	static void shouldNotRunProcessorLogicIfInvalidApexClassDefined() {
 		DatabaseLayerSetting__mdt settings = DmlTest.initSettings();
 		settings.DmlPreAndPostProcessor__c = 'an obviously invalid apex class name';
+		// Re-initialize the plugins, now that the field has been set:
+		DatabaseLayer.Dml.initPlugins();
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();
@@ -912,6 +916,7 @@ private class DmlTest {
 	static void shouldNotRunProcessorLogicIfNoValueDefined() {
 		DatabaseLayerSetting__mdt settings = DmlTest.initSettings();
 		settings.DmlPreAndPostProcessor__c = null;
+		DatabaseLayer.Dml.initPlugins();
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();
@@ -927,6 +932,7 @@ private class DmlTest {
 	static void shouldNotRunProcessorLogicIfNoSettingsDefined() {
 		// Without calling DmlTest.initSettings(), no settings are defined:
 		Account account = DmlTest.initAccount();
+		DatabaseLayer.Dml.initPlugins();
 
 		Test.startTest();
 		Database.SaveResult result = DatabaseLayer.Dml.doInsert(account);
@@ -984,11 +990,11 @@ private class DmlTest {
 	private class TestPlugin implements Dml.PreAndPostProcessor {
 		public void processPreDml(Dml.Request dmlRequest) {
 			System.debug('Request: ' + JSON.serialize(dmlRequest));
-			DmlTest.numPreDmlPluginCalls++;
+			DmlTest.numPreDmlPluginCalls += 1;
 		}
 
 		public void processPostDml(Dml.Request dmlRequest, List<Object> databaseResults) {
-			DmlTest.numPostDmlPluginCalls++;
+			DmlTest.numPostDmlPluginCalls += 1;
 		}
 	}
 }
