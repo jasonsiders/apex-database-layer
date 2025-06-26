@@ -793,19 +793,24 @@ public with sharing virtual class Dml {
 		public transient List<SObject> records { get; private set; }
 		public transient List<Database.LeadConvert> leadsToConvert { get; private set; }
 		// ** Optional Parameters:
-		public System.AccessLevel accessLevel { get; private set; }
-		public Boolean allOrNone { get; private set; }
+		public transient System.AccessLevel accessLevel { get; private set; }
 		public transient DataSource.AsyncDeleteCallback deleteCallback { get; private set; }
 		public transient SObjectField externalIdField { get; private set; }
-		public Boolean isAsync { get; private set; }
-		public Boolean isImmediate { get; private set; }
 		public Database.DmlOptions options { get; private set; }
 		public transient DataSource.AsyncSaveCallback saveCallback { get; private set; }
+		public Boolean allOrNone { get; private set; }
+		public Boolean isAsync { get; private set; }
+		public Boolean isImmediate { get; private set; }
 		// ** Getters
 		/**
 		 * These properties are read-only, and are used for JSON/output purposes,
 		 * ex., since some of the main class properties are not JSON-serializable
 		 **/
+		public String accessLevelName {
+			get {
+				return String.valueOf(this.accessLevel);
+			}
+		}
 		public String asyncDeleteCallback {
 			// The DataSource.AsyncDeleteCallback may/may not be serializable, based on its implementation
 			// Prevent serialization errors by outputting the raw toString() value for logs:

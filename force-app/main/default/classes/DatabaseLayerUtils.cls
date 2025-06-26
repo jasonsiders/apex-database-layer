@@ -88,7 +88,7 @@ public class DatabaseLayerUtils {
 			// Constructs a new object of a type listed in the field on the CMDT using Type.forName:
 			String className;
 			try {
-				className = (String) DatabaseLayer.Utils.MetadataSelector.get().get(field);
+				className = (String) DatabaseLayer.Utils.MetadataSelector.get()?.get(field);
 				return (className != null) ? Type.forName(className)?.newInstance() : null;
 			} catch (Exception error) {
 				String source = DatabaseLayerUtils.Plugin.class.getName();
