@@ -32,7 +32,7 @@ public with sharing virtual class Dml {
 		Database.DmlOptions options,
 		System.AccessLevel accessLevel
 	) {
-		Dml.Request request = new Dml.Request(leadsToConvert);
+		Dml.Request request = this.initRequest(Dml.Operation.DO_CONVERT, leadsToConvert);
 		request.options = options;
 		request.accessLevel = accessLevel;
 		return (List<Database.LeadConvertResult>) request?.process();
@@ -106,7 +106,7 @@ public with sharing virtual class Dml {
 		Boolean allOrNone,
 		System.AccessLevel accessLevel
 	) {
-		Dml.Request request = new Dml.Request(Dml.Operation.DO_DELETE, records);
+		Dml.Request request = this.initRequest(Dml.Operation.DO_DELETE, records);
 		request.allOrNone = allOrNone;
 		request.accessLevel = accessLevel;
 		return (List<Database.DeleteResult>) request?.process();
@@ -179,7 +179,7 @@ public with sharing virtual class Dml {
 		DataSource.AsyncDeleteCallback callback,
 		System.AccessLevel accessLevel
 	) {
-		Dml.Request request = new Dml.Request(Dml.Operation.DO_DELETE, records);
+		Dml.Request request = this.initRequest(Dml.Operation.DO_DELETE, records);
 		request.accessLevel = accessLevel;
 		request.deleteCallback = callback;
 		request.isAsync = true;
@@ -223,7 +223,7 @@ public with sharing virtual class Dml {
 		List<SObject> records,
 		System.AccessLevel accessLevel
 	) {
-		Dml.Request request = new Dml.Request(Dml.Operation.DO_DELETE, records);
+		Dml.Request request = this.initRequest(Dml.Operation.DO_DELETE, records);
 		request.accessLevel = accessLevel;
 		request.isImmediate = true;
 		return (List<Database.DeleteResult>) request?.process();
@@ -247,7 +247,7 @@ public with sharing virtual class Dml {
 		Database.DmlOptions options,
 		System.AccessLevel accessLevel
 	) {
-		Dml.Request request = new Dml.Request(Dml.Operation.DO_INSERT, records);
+		Dml.Request request = this.initRequest(Dml.Operation.DO_INSERT, records);
 		request.accessLevel = accessLevel;
 		request.options = options;
 		return (List<Database.SaveResult>) request?.process();
@@ -307,7 +307,7 @@ public with sharing virtual class Dml {
 		DataSource.AsyncSaveCallback callback,
 		System.AccessLevel accessLevel
 	) {
-		Dml.Request request = new Dml.Request(Dml.Operation.DO_INSERT, records);
+		Dml.Request request = this.initRequest(Dml.Operation.DO_INSERT, records);
 		request.accessLevel = accessLevel;
 		request.isAsync = true;
 		request.saveCallback = callback;
@@ -348,7 +348,7 @@ public with sharing virtual class Dml {
 
 	// ** InsertImmediate Methods
 	public virtual List<Database.SaveResult> doInsertImmediate(List<SObject> records, System.AccessLevel accessLevel) {
-		Dml.Request request = new Dml.Request(Dml.Operation.DO_INSERT, records);
+		Dml.Request request = this.initRequest(Dml.Operation.DO_INSERT, records);
 		request.accessLevel = accessLevel;
 		request.isImmediate = true;
 		return (List<Database.SaveResult>) request?.process();
@@ -370,7 +370,7 @@ public with sharing virtual class Dml {
 	public virtual List<Database.SaveResult> doPublish(List<SObject> events) {
 		// Callback: "An Apex class that implements the EventPublishFailureCallback Interface or EventPublishSuccessCallback Interface."
 		// https://developer.salesforce.com/docs/atlas.en-us.apexref.meta/apexref/apex_class_System_eventbus.htm#apex_System_eventbus_publish_4
-		return (List<Database.SaveResult>) new Dml.Request(Dml.Operation.DO_PUBLISH, events)?.process();
+		return (List<Database.SaveResult>) this.initRequest(Dml.Operation.DO_PUBLISH, events)?.process();
 	}
 
 	public Database.SaveResult doPublish(SObject event) {
@@ -383,7 +383,7 @@ public with sharing virtual class Dml {
 		Boolean allOrNone,
 		System.AccessLevel accessLevel
 	) {
-		Dml.Request request = new Dml.Request(Dml.Operation.DO_UNDELETE, records);
+		Dml.Request request = this.initRequest(Dml.Operation.DO_UNDELETE, records);
 		request.accessLevel = accessLevel;
 		request.allOrNone = allOrNone;
 		return (List<Database.UndeleteResult>) request?.process();
@@ -460,7 +460,7 @@ public with sharing virtual class Dml {
 		Database.DmlOptions options,
 		System.AccessLevel accessLevel
 	) {
-		Dml.Request request = new Dml.Request(Dml.Operation.DO_UPDATE, records);
+		Dml.Request request = this.initRequest(Dml.Operation.DO_UPDATE, records);
 		request.accessLevel = accessLevel;
 		request.options = options;
 		return (List<Database.SaveResult>) request?.process();
@@ -520,7 +520,7 @@ public with sharing virtual class Dml {
 		DataSource.AsyncSaveCallback callback,
 		System.AccessLevel accessLevel
 	) {
-		Dml.Request request = new Dml.Request(Dml.Operation.DO_UPDATE, records);
+		Dml.Request request = this.initRequest(Dml.Operation.DO_UPDATE, records);
 		request.accessLevel = accessLevel;
 		request.isAsync = true;
 		request.saveCallback = callback;
@@ -561,7 +561,7 @@ public with sharing virtual class Dml {
 
 	// ** UpdateImmediate Methods
 	public virtual List<Database.SaveResult> doUpdateImmediate(List<SObject> records, System.AccessLevel accessLevel) {
-		Dml.Request request = new Dml.Request(Dml.Operation.DO_UPDATE, records);
+		Dml.Request request = this.initRequest(Dml.Operation.DO_UPDATE, records);
 		request.accessLevel = accessLevel;
 		request.isImmediate = true;
 		return (List<Database.SaveResult>) request?.process();
@@ -586,7 +586,7 @@ public with sharing virtual class Dml {
 		Boolean allOrNone,
 		System.AccessLevel accessLevel
 	) {
-		Dml.Request request = new Dml.Request(Dml.Operation.DO_UPSERT, records);
+		Dml.Request request = this.initRequest(Dml.Operation.DO_UPSERT, records);
 		request.accessLevel = accessLevel;
 		request.allOrNone = allOrNone;
 		request.externalIdField = externalIdField;
@@ -676,7 +676,7 @@ public with sharing virtual class Dml {
 
 	// ** EmptyRecycleBin Methods
 	public virtual List<Database.EmptyRecycleBinResult> emptyRecycleBin(List<SObject> records) {
-		Dml.Request request = new Dml.Request(Dml.Operation.EMPTY_RECYCLE_BIN, records);
+		Dml.Request request = this.initRequest(Dml.Operation.EMPTY_RECYCLE_BIN, records);
 		return (List<Database.EmptyRecycleBinResult>) request?.process();
 	}
 
@@ -712,6 +712,11 @@ public with sharing virtual class Dml {
 	}
 
 	// **** PRIVATE **** //
+	protected virtual Dml.Request initRequest(Dml.Operation operation, List<Object> records) {
+		// Initialize a Dml.Request; mocks can override this method to return their own implementation which does not perform DML
+		return new Dml.Request(operation, records);
+	}
+
 	private Database.DmlOptions initDmlOptions(Boolean allOrNone) {
 		Database.DmlOptions options = new Database.DmlOptions();
 		options.OptAllOrNone = allOrNone;
@@ -779,24 +784,51 @@ public with sharing virtual class Dml {
 		// ** Optional Parameters:
 		public System.AccessLevel accessLevel { get; private set; }
 		public Boolean allOrNone { get; private set; }
-		public DataSource.AsyncDeleteCallback deleteCallback { get; private set; }
-		public SObjectField externalIdField { get; private set; }
+		public transient DataSource.AsyncDeleteCallback deleteCallback { get; private set; }
+		public transient SObjectField externalIdField { get; private set; }
 		public Boolean isAsync { get; private set; }
 		public Boolean isImmediate { get; private set; }
 		public Database.DmlOptions options { get; private set; }
-		public DataSource.AsyncSaveCallback saveCallback { get; private set; }
-
-		protected Request(Dml.Operation operation, List<SObject> records) {
-			this(operation);
-			this.records = records;
+		public transient DataSource.AsyncSaveCallback saveCallback { get; private set; }
+		// ** Getters
+		/**
+		 * These properties are read-only, and are used for JSON/output purposes,
+		 * ex., since some of the main class properties are not JSON-serializable
+		 **/
+		public String asyncDeleteCallback {
+			// The DataSource.AsyncDeleteCallback may/may not be serializable, based on its implementation
+			// Prevent serialization errors by outputting the raw toString() value for logs:
+			get {
+				return String.valueOf(this.deleteCallback);
+			}
+		}
+		public String asyncSaveCallback {
+			// The DataSource.AsyncSaveCallback may/may not be serializable, based on its implementation
+			// Prevent serialization errors by outputting the raw toString() value for logs:
+			get {
+				return String.valueOf(this.saveCallback);
+			}
+		}
+		public String externalIdFieldName {
+			// Output the name of field, since SObjectFields are not JSON-serializable
+			get {
+				return this.externalIdField?.toString();
+			}
+		}
+		public Integer numRecords {
+			// Output the number of records being operated on:
+			get {
+				return this.getNumRecords();
+			}
+		}
+		public String sObjectType {
+			// Output the name of the SObjectType being operated on, if known:
+			get {
+				return this.getSObjectTypeName();
+			}
 		}
 
-		protected Request(List<Database.LeadConvert> leadsToConvert) {
-			this(Dml.Operation.DO_CONVERT);
-			this.leadsToConvert = leadsToConvert;
-		}
-
-		private Request(Dml.Operation operation) {
+		protected Request(Dml.Operation operation, List<Object> records) {
 			this.operation = operation;
 			// Set default values:
 			this.accessLevel = DEFAULT_ACCESS_LEVEL;
@@ -805,6 +837,12 @@ public with sharing virtual class Dml {
 			this.isAsync = false;
 			this.isImmediate = false;
 			this.saveCallback = DEFAULT_SAVE_CALLBACK;
+			// Set the appropriate record collection:
+			if (this.operation == Dml.Operation.DO_CONVERT) {
+				this.leadsToConvert = (List<Database.LeadConvert>) records;
+			} else {
+				this.records = (List<SObject>) records;
+			}
 		}
 
 		protected List<Object> process() {
@@ -893,6 +931,24 @@ public with sharing virtual class Dml {
 
 		protected virtual List<Database.EmptyRecycleBinResult> emptyRecycleBin() {
 			return Database.emptyRecycleBin(this.records);
+		}
+
+		// **** PRIVATE **** //
+		private Integer getNumRecords() {
+			// Output the number of records being operated on:
+			Integer num = (this.operation == Dml.Operation.DO_CONVERT)
+				? this.leadsToConvert?.size()
+				: this.records?.size();
+			return num ?? 0;
+		}
+
+		private String getSObjectTypeName() {
+			// Output the name of the SObjectType, if known:
+			if (this.operation == Dml.Operation.DO_CONVERT) {
+				return Database.LeadConvert.class.getName();
+			} else {
+				return this.records?.getSObjectType()?.toString() ?? SObject.class.getName();
+			}
 		}
 	}
 }
