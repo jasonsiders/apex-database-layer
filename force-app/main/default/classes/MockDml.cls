@@ -102,7 +102,7 @@ public class MockDml extends Dml {
 	}
 
 	// **** OVERRIDES **** //
-	public override List<Database.LeadConvertResult> doConvert(
+	/* public override List<Database.LeadConvertResult> doConvert(
 		List<Database.LeadConvert> leadsToConvert,
 		Database.DmlOptions options,
 		System.AccessLevel accessLevel
@@ -256,7 +256,7 @@ public class MockDml extends Dml {
 			results?.add(result);
 		}
 		return this.toUpsertResults(results);
-	}
+	} */
 
 	public override void releaseSavepoint(System.Savepoint savepoint) {
 		MockDml.SAVEPOINTS.get(savepoint)?.release();
@@ -571,6 +571,46 @@ public class MockDml extends Dml {
 		DO_UNDELETE,
 		DO_UPDATE,
 		DO_UPSERT
+	}
+
+	public class Request extends Dml.Request {
+		private Request(Dml.Operation operation, List<Object> records) {
+			super(operation, records);
+		}
+
+		/*
+		protected override List<Database.LeadConvertResult> doConvert() {
+			return null; // TODO!
+		}
+
+		protected override List<Database.DeleteResult> doDelete() {
+			return null; // ! TODO
+		}
+
+		protected override List<Database.SaveResult> doInsert() {
+			return null; // ! TODO
+		}
+
+		protected override List<Database.SaveResult> doPublish() {
+			return null; // ! TODO
+		}
+
+		protected override List<Database.UndeleteResult> doUndelete() {
+			return null; // ! TODO
+		}
+
+		protected override List<Database.SaveResult> doUpdate() {
+			return null; // ! TODO
+		}
+
+		protected override List<Database.UpsertResult> doUpsert() {
+			return null; // ! TODO
+		}
+
+		protected override List<Database.EmptyRecycleBinResult> emptyRecycleBin() {
+			return null; // ! TODO
+		} 
+		*/
 	}
 
 	public virtual class PlatformEventHistory extends MockDml.History {
