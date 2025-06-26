@@ -89,7 +89,7 @@ public class DatabaseLayerUtils {
 			String className;
 			try {
 				className = (String) DatabaseLayer.Utils.MetadataSelector.get()?.get(field);
-				return (className != null) ? Type.forName(className)?.newInstance() : null;
+				return Type.forName(className)?.newInstance();
 			} catch (Exception error) {
 				String source = DatabaseLayerUtils.Plugin.class.getName();
 				String msg = source + ': Invalid ' + field + ': "' + className + '". Details: ' + error;

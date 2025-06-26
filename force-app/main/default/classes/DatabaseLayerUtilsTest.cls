@@ -101,4 +101,65 @@ private class DatabaseLayerUtilsTest {
 
 		Assert.isNull(results, 'Should not have returned a CMDT value');
 	}
+
+	@IsTest
+	static void shouldInitPluginObjectFromCustomMetadata() {
+		DatabaseLayerSetting__mdt mockSetting = new DatabaseLayerSetting__mdt(
+			DeveloperName = 'Test_123',
+			DmlPreAndPostProcessor__c = 'Schema.Account' // For example...
+		);
+		DatabaseLayer.Utils.MetadataSelector.settings = new List<DatabaseLayerSetting__mdt>{ mockSetting };
+		SObjectField field = DatabaseLayerSetting__mdt.DmlPreAndPostProcessor__c;
+
+		Test.startTest();
+		// Account would never *actually* be a plugin; this is just an example:
+		Account example = (Account) DatabaseLayer.Utils.Plugins.initPlugin(field);
+		Test.stopTest();
+
+		Assert.isNotNull(example, 'Did not generate an object from CMDT');
+	}
+
+	@IsTest
+	static void shouldReturnNullPluginIfPluginInvalid() {
+		DatabaseLayerSetting__mdt mockSetting = new DatabaseLayerSetting__mdt(
+			DeveloperName = 'Test_123',
+			DmlPreAndPostProcessor__c = 'not a real object name'
+		);
+		DatabaseLayer.Utils.MetadataSelector.settings = new List<DatabaseLayerSetting__mdt>{ mockSetting };
+		SObjectField field = DatabaseLayerSetting__mdt.DmlPreAndPostProcessor__c;
+
+		Test.startTest();
+		Object plugin = DatabaseLayer.Utils.Plugins.initPlugin(field);
+		Test.stopTest();
+
+		Assert.isNull(plugin, 'Did not return null plugin');
+	}
+
+	@IsTest
+	static void shouldReturnNullPluginIfMissingPluginName() {
+		DatabaseLayerSetting__mdt mockSetting = new DatabaseLayerSetting__mdt(
+			DeveloperName = 'Test_123',
+			DmlPreAndPostProcessor__c = null
+		);
+		DatabaseLayer.Utils.MetadataSelector.settings = new List<DatabaseLayerSetting__mdt>{ mockSetting };
+		SObjectField field = DatabaseLayerSetting__mdt.DmlPreAndPostProcessor__c;
+
+		Test.startTest();
+		Object plugin = DatabaseLayer.Utils.Plugins.initPlugin(field);
+		Test.stopTest();
+
+		Assert.isNull(plugin, 'Did not return null plugin');
+	}
+
+	@IsTest
+	static void shouldReturnNullPluginIfMissingSettingsRecords() {
+		DatabaseLayer.Utils.MetadataSelector.settings = new List<DatabaseLayerSetting__mdt>{};
+		SObjectField field = DatabaseLayerSetting__mdt.DmlPreAndPostProcessor__c;
+
+		Test.startTest();
+		Object plugin = DatabaseLayer.Utils.Plugins.initPlugin(field);
+		Test.stopTest();
+
+		Assert.isNull(plugin, 'Did not return null plugin');
+	}
 }
