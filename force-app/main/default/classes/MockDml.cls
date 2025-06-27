@@ -13,6 +13,7 @@ public class MockDml extends Dml {
 	// **** CONSTANT **** //
 	public static final MockDml.SavepointHistory SAVEPOINTS;
 	private static final String EVENT_UUID_FIELD;
+	public static List<MockDml.ConditionalFailure> FAILURES;
 	private static final String MOCK_STATUS_CODE;
 
 	// **** STATIC **** //
@@ -61,6 +62,7 @@ public class MockDml extends Dml {
 
 	static {
 		EVENT_UUID_FIELD = 'EventUuid';
+		FAILURES = new List<MockDml.ConditionalFailure>{};
 		MOCK_STATUS_CODE = 'MOCK_DML';
 		SAVEPOINTS = new MockDml.SavepointHistory();
 		MockDatabase = new MockDml.Database();
@@ -72,191 +74,55 @@ public class MockDml extends Dml {
 		MockDml.MockDatabase = new MockDml.Database();
 	}
 
-	// **** MEMBER **** //
-	private List<MockDml.ConditionalFailure> failures;
+	public static void shouldFail() {
+		// Adds a BaseFailure the list of failures - all DML operations will now fail.
+		MockDml.shouldSucceed();
+		MockDml.ConditionalFailure failure = new MockDml.BaseFailure();
+		MockDml.shouldFailIf(failure);
+	}
 
+	public static void shouldFailIf(MockDml.ConditionalFailure failure) {
+		// Adds the ConditionalFailure object to a list of failures.
+		// The ConditionalLogic interface defines if/when an error should be thrown during a DML operation.
+		// Each dml operation will iterate through the list of failures and call its interface method for each record.
+		MockDml.FAILURES?.add(failure);
+	}
+
+	public static void shouldSucceed() {
+		// Clears the list of failures - all mock DML operations should now succeed.
+		MockDml.FAILURES?.clear();
+	}
+
+	// **** MEMBER **** //
 	public MockDml(DatabaseLayer factory) {
 		super(factory);
-		this.failures = new List<MockDml.ConditionalFailure>();
 	}
 
 	public MockDml clearFailures() {
-		// Clears the list of failures from the current instance.
-		// As a result, all mock DML operations should now succeed.
-		this.failures?.clear();
+		// ! Deprecated - this method will be removed in future versions
+		// ! Replace all instances with the `MockDml.shouldSucceed()` static method
+		MockDml.shouldSucceed();
 		return this;
 	}
 
 	public MockDml fail() {
-		// Adds a BaseFailure to the current instance; all DML operations will now fail.
-		MockDml.ConditionalFailure failure = new MockDml.BaseFailure();
-		return this.failIf(failure);
-	}
-
-	public MockDml failIf(MockDml.ConditionalFailure failure) {
-		// Adds the ConditionalFailure object to a list of failures.
-		// The ConditionalLogic interface defines if/when an error should be thrown during a DML operation.
-		// Each dml operation will iterate through the list of failures and call its interface method for each record.
-		this.failures?.add(failure);
+		// ! Deprecated - this method will be removed in future versions
+		// ! Replace all instances with the `MockDml.shouldFail()` static method
+		MockDml.shouldFail();
 		return this;
 	}
 
-	// **** OVERRIDES **** //
-	/* public override List<Database.LeadConvertResult> doConvert(
-		List<Database.LeadConvert> leadsToConvert,
-		Database.DmlOptions options,
-		System.AccessLevel accessLevel
-	) {
-		List<MockDml.Result> results = new List<MockDml.Result>();
-		for (Database.LeadConvert leadToConvert : leadsToConvert) {
-			MockDml.Result result = this.generateMockResult(leadToConvert, options?.OptAllOrNone);
-			results?.add(result);
-		}
-		return this.toConvertResults(results);
+	public MockDml failIf(MockDml.ConditionalFailure failure) {
+		// ! Deprecated - this method will be removed in future versions
+		// ! Replace all instances with the `MockDml.shouldFailIf()` static method
+		MockDml.shouldFailIf(failure);
+		return this;
 	}
 
-	public override List<Database.DeleteResult> doDelete(
-		List<SObject> records,
-		Boolean allOrNone,
-		System.AccessLevel accessLevel
-	) {
-		List<MockDml.Result> results = new List<MockDml.Result>();
-		for (SObject record : records) {
-			MockDml.Result result = this.generateMockResult(MockDml.DELETED, record, allOrNone);
-			results?.add(result);
-		}
-		return this.toDeleteResults(results);
+	public override Dml.Request initRequest(Dml.Operation operation, List<Object> records) {
+		// Initialize a request object that will not actually perform DML:
+		return new MockDml.Request(operation, records);
 	}
-
-	public override List<Database.DeleteResult> doDeleteAsync(
-		List<SObject> records,
-		DataSource.AsyncDeleteCallback callback,
-		System.AccessLevel accessLevel
-	) {
-		// For mocking purposes, process the same as a "normal" doDelete operation, but w/callbacks
-		List<Database.DeleteResult> results = this.doDelete(records, accessLevel);
-		for (Database.DeleteResult result : results) {
-			callback?.processDelete(result);
-		}
-		return results;
-	}
-
-	public override List<Database.DeleteResult> doDeleteImmediate(
-		List<SObject> records,
-		System.AccessLevel accessLevel
-	) {
-		// For mocking purposes, process the same as a "normal" doDelete operation,
-		return this.doDelete(records, accessLevel);
-	}
-
-	public override List<Database.EmptyRecycleBinResult> emptyRecycleBin(List<SObject> records) {
-		List<MockDml.Result> results = new List<MockDml.Result>();
-		for (SObject record : records) {
-			MockDml.Result result = this.generateMockResult(MockDml.PURGED, record, true);
-			results?.add(result);
-		}
-		return this.toEmptyRecycleBinResults(results);
-	}
-
-	public override List<Database.SaveResult> doInsert(
-		List<SObject> records,
-		Database.DmlOptions options,
-		System.AccessLevel accessLevel
-	) {
-		List<MockDml.Result> results = new List<MockDml.Result>();
-		for (SObject record : records) {
-			MockDml.Result result = this.generateMockResult(MockDml.INSERTED, record, options?.OptAllOrNone);
-			results?.add(result);
-		}
-		return this.toSaveResults(results);
-	}
-
-	public override List<Database.SaveResult> doInsertAsync(
-		List<SObject> records,
-		DataSource.AsyncSaveCallback callback,
-		System.AccessLevel accessLevel
-	) {
-		// For mocking purposes, process the same as a "normal" doInsert operation, but w/callbacks
-		List<Database.SaveResult> results = this.doInsert(records, accessLevel);
-		for (Database.SaveResult result : results) {
-			callback?.processSave(result);
-		}
-		return results;
-	}
-
-	public override List<Database.SaveResult> doInsertImmediate(List<SObject> records, System.AccessLevel accessLevel) {
-		// For mocking purposes, process the same as a "normal" doInsert operation
-		return this.doInsert(records, accessLevel);
-	}
-
-	public override List<Database.SaveResult> doPublish(List<SObject> events) {
-		// Ensure the callback is set; if null, use the default value
-		List<MockDml.Result> results = new List<MockDml.Result>();
-		for (SObject event : events) {
-			// Note: EventBus.publish() always runs in allOrNone=false context
-			MockDml.Result result = this.generateMockResult(MockDml.PUBLISHED, event, false);
-			results?.add(result);
-		}
-		return this.toSaveResults(results);
-	}
-
-	public override List<Database.UndeleteResult> doUndelete(
-		List<SObject> records,
-		Boolean allOrNone,
-		System.AccessLevel accessLevel
-	) {
-		List<MockDml.Result> results = new List<MockDml.Result>();
-		for (SObject record : records) {
-			MockDml.Result result = this.generateMockResult(MockDml.UNDELETED, record, allOrNone);
-			results?.add(result);
-		}
-		return this.toUndeleteResults(results);
-	}
-
-	public override List<Database.SaveResult> doUpdate(
-		List<SObject> records,
-		Database.DmlOptions options,
-		System.AccessLevel accessLevel
-	) {
-		List<MockDml.Result> results = new List<MockDml.Result>();
-		for (SObject record : records) {
-			MockDml.Result result = this.generateMockResult(MockDml.UPDATED, record, options?.OptAllOrNone);
-			results?.add(result);
-		}
-		return this.toSaveResults(results);
-	}
-
-	public override List<Database.SaveResult> doUpdateAsync(
-		List<SObject> records,
-		DataSource.AsyncSaveCallback callback,
-		System.AccessLevel accessLevel
-	) {
-		// For mocking purposes, process the same as a "normal" doUpdate operation, but w/callbacks
-		List<Database.SaveResult> results = this.doUpdate(records, accessLevel);
-		for (Database.SaveResult result : results) {
-			callback?.processSave(result);
-		}
-		return results;
-	}
-
-	public override List<Database.SaveResult> doUpdateImmediate(List<SObject> records, System.AccessLevel accessLevel) {
-		// For mocking purposes, process the same as a "normal" doUpdate operation
-		return this.doUpdate(records, accessLevel);
-	}
-
-	public override List<Database.UpsertResult> doUpsert(
-		List<SObject> records,
-		SObjectField externalIdField,
-		Boolean allOrNone,
-		System.AccessLevel accessLevel
-	) {
-		List<MockDml.Result> results = new List<MockDml.Result>();
-		for (SObject record : records) {
-			MockDml.Result result = this.generateMockResult(MockDml.UPSERTED, record, allOrNone);
-			results?.add(result);
-		}
-		return this.toUpsertResults(results);
-	} */
 
 	public override void releaseSavepoint(System.Savepoint savepoint) {
 		MockDml.SAVEPOINTS.get(savepoint)?.release();
@@ -273,123 +139,6 @@ public class MockDml extends Dml {
 		// Now register the savepoint in the mock database:
 		MockDml.SAVEPOINTS?.add(savepoint);
 		return savepoint;
-	}
-
-	// **** PRIVATE **** //
-	private void checkFailures(MockDml.Operation operation, SObject record) {
-		// Runs all ConditionalFailures defined the current instance against each record.
-		for (MockDml.ConditionalFailure failure : this.failures) {
-			Exception error = failure?.checkFailure(operation, record);
-			if (error != null) {
-				throw error;
-			}
-		}
-	}
-
-	private MockDml.Result generateMockResult(MockDml.History history, SObject record, Boolean allOrNone) {
-		// Simulates a DML operation for a single record, returning a MockDml.Result,
-		// which calling methods can de/serialize into a Database.Save/Upsert/etc. Result.
-		try {
-			MockDml.Operation operation = history?.getOperation();
-			// Determine if the operation should fail for the specific record
-			this.checkFailures(operation, record);
-			// Simulate successful dml, return a MockDml.Result w/out errors
-			return history?.registerDml(record);
-		} catch (System.DmlException error) {
-			// Return a MockDml.Result w/errors
-			return history?.handleDmlError(record, error, allOrNone);
-		}
-	}
-
-	private MockDml.LeadConvertResult generateMockResult(Database.LeadConvert leadToConvert, Boolean allOrNone) {
-		// Simulate a Lead Conversion, which typically also involves inserting Account/Contact/Opportunity records
-		Lead leadRecord = new Lead(Id = leadToConvert?.getLeadId());
-		Account accountRecord = new Account(Id = leadToConvert?.getAccountId());
-		Contact contactRecord = new Contact(Id = leadToConvert?.getContactId());
-		Opportunity opportunityRecord = new Opportunity(Id = leadToConvert?.getOpportunityId());
-		try {
-			// Note: Process resulting records using allOrNone=true, regardless of its original value
-			// This allows injected errors for Accounts/Contacts/Opps to be caught and handled appropriately
-			// 1. Simulate converting the lead
-			this.validateConvertedLead(leadToConvert);
-			this.generateMockResult(MockDml.CONVERTED, leadRecord, true);
-			// 2. Simulate creating an Account/Contact/Opportunity, if their Id wasn't already provided
-			this.simulateInsertIfNew(accountRecord);
-			this.simulateInsertIfNew(contactRecord);
-			this.simulateInsertIfNew(opportunityRecord);
-			// 3. Build & return the LeadConvertResult w/the resulting record ids
-			return (MockDml.LeadConvertResult) new MockDml.LeadConvertResult(leadRecord)
-				?.setId(accountRecord)
-				?.setId(contactRecord)
-				?.setId(opportunityRecord);
-		} catch (System.DmlException error) {
-			// Deregister any of successful related records up to this point
-			MockDml.INSERTED?.deregisterDml(accountRecord);
-			MockDml.INSERTED?.deregisterDml(contactRecord);
-			MockDml.INSERTED?.deregisterDml(opportunityRecord);
-			MockDml.CONVERTED?.deregisterDml(leadRecord);
-			return (MockDml.LeadConvertResult) MockDml.CONVERTED?.handleDmlError(leadRecord, error, allOrNone);
-		}
-	}
-
-	private void simulateInsertIfNew(SObject record) {
-		// If the provided record does not already have an Id, simulate an insert operation
-		if (record?.Id == null) {
-			SObjectType objectType = record?.getSObjectType();
-			record.Id = MockRecord.initRecordId(objectType);
-			this.generateMockResult(MockDml.INSERTED, record, true);
-		}
-	}
-
-	private List<Database.LeadConvertResult> toConvertResults(List<MockDml.Result> results) {
-		return (List<Database.LeadConvertResult>) this.toDatabaseResults(
-			results,
-			List<Database.LeadConvertResult>.class
-		);
-	}
-
-	private List<Database.EmptyRecycleBinResult> toEmptyRecycleBinResults(List<MockDml.Result> results) {
-		return (List<Database.EmptyRecycleBinResult>) this.toDatabaseResults(
-			results,
-			List<Database.EmptyRecycleBinResult>.class
-		);
-	}
-
-	private List<Database.DeleteResult> toDeleteResults(List<MockDml.Result> results) {
-		return (List<Database.DeleteResult>) this.toDatabaseResults(results, List<Database.DeleteResult>.class);
-	}
-
-	private List<Database.SaveResult> toSaveResults(List<MockDml.Result> results) {
-		return (List<Database.SaveResult>) this.toDatabaseResults(results, List<Database.SaveResult>.class);
-	}
-
-	private List<Database.UndeleteResult> toUndeleteResults(List<MockDml.Result> results) {
-		// Note: For some reason, we can't directly deserialize into a List<Database.UndeleteResult> like the other methods.
-		// Attempting to do so will result in the "success" parameter always being set to false.
-		// Don't ask me why -- but deserializing to an untyped Object first solves this issue.
-		Object untyped = JSON.deserializeUntyped(JSON.serialize(results));
-		return (List<Database.UndeleteResult>) JSON.deserialize(
-			JSON.serialize(untyped),
-			List<Database.UndeleteResult>.class
-		);
-	}
-
-	private List<Database.UpsertResult> toUpsertResults(List<MockDml.Result> results) {
-		return (List<Database.UpsertResult>) this.toDatabaseResults(results, List<Database.UpsertResult>.class);
-	}
-
-	private Object toDatabaseResults(List<MockDml.Result> results, Type returnType) {
-		return JSON.deserialize(JSON.serialize(results), returnType);
-	}
-
-	private void validateConvertedLead(Database.LeadConvert leadToConvert) {
-		// Mimicks the stock behavior of Database.LeadConvert objects.
-		// These will always throw an error if you are missing a leadId or converted status.
-		if (leadToConvert?.getLeadId() == null) {
-			throw new System.DmlException('valid leadId is required');
-		} else if (leadToConvert?.getConvertedStatus() == null) {
-			throw new System.DmlException('convertedStatus is required');
-		}
 	}
 
 	// **** INNER: PUBLIC **** //
@@ -574,43 +323,227 @@ public class MockDml extends Dml {
 	}
 
 	public class Request extends Dml.Request {
+		/**
+		 * Contains overrides for each DML operation, and is responsible for mocking DML
+		 * An instance of this class (instead of the super type)
+		 * is initialized via the overridden `initRequest` method
+		 */
 		private Request(Dml.Operation operation, List<Object> records) {
 			super(operation, records);
 		}
 
-		/*
+		// ** OVERRIDES
 		protected override List<Database.LeadConvertResult> doConvert() {
-			return null; // TODO!
+			List<MockDml.Result> mockResults = new List<MockDml.Result>();
+			for (Database.LeadConvert leadToConvert : this.leadsToConvert) {
+				MockDml.Result result = this.generateMockResult(leadToConvert, this.options?.OptAllOrNone);
+				mockResults?.add(result);
+			}
+			return this.toConvertResults(mockResults);
 		}
 
 		protected override List<Database.DeleteResult> doDelete() {
-			return null; // ! TODO
+			List<MockDml.Result> mockResults = new List<MockDml.Result>();
+			for (SObject record : this.records) {
+				MockDml.Result result = this.generateMockResult(MockDml.DELETED, record, this.allOrNone);
+				mockResults?.add(result);
+			}
+			List<Database.DeleteResult> results = this.toDeleteResults(mockResults);
+			this.runDeleteCallbackIfAsync(results);
+			return results;
 		}
 
 		protected override List<Database.SaveResult> doInsert() {
-			return null; // ! TODO
+			List<MockDml.Result> mockResults = new List<MockDml.Result>();
+			for (SObject record : this.records) {
+				MockDml.Result result = this.generateMockResult(MockDml.INSERTED, record, this.options?.OptAllOrNone);
+				mockResults?.add(result);
+			}
+			List<Database.SaveResult> results = this.toSaveResults(mockResults);
+			this.runSaveCallbackIfAsync(results);
+			return results;
 		}
 
 		protected override List<Database.SaveResult> doPublish() {
-			return null; // ! TODO
+			// Ensure the callback is set; if null, use the default value
+			List<MockDml.Result> mockResults = new List<MockDml.Result>();
+			for (SObject event : this.records) {
+				// Note: EventBus.publish() always runs in allOrNone=false context
+				MockDml.Result result = this.generateMockResult(MockDml.PUBLISHED, event, false);
+				mockResults?.add(result);
+			}
+			return this.toSaveResults(mockResults);
 		}
 
 		protected override List<Database.UndeleteResult> doUndelete() {
-			return null; // ! TODO
+			List<MockDml.Result> mockResults = new List<MockDml.Result>();
+			for (SObject record : records) {
+				MockDml.Result result = this.generateMockResult(MockDml.UNDELETED, record, allOrNone);
+				mockResults?.add(result);
+			}
+			return this.toUndeleteResults(mockResults);
 		}
 
 		protected override List<Database.SaveResult> doUpdate() {
-			return null; // ! TODO
+			List<MockDml.Result> mockResults = new List<MockDml.Result>();
+			for (SObject record : this.records) {
+				MockDml.Result result = this.generateMockResult(MockDml.UPDATED, record, this.options?.OptAllOrNone);
+				mockResults?.add(result);
+			}
+			List<Database.SaveResult> results = this.toSaveResults(mockResults);
+			this.runSaveCallbackIfAsync(results);
+			return results;
 		}
 
 		protected override List<Database.UpsertResult> doUpsert() {
-			return null; // ! TODO
+			List<MockDml.Result> mockResults = new List<MockDml.Result>();
+			for (SObject record : this.records) {
+				MockDml.Result result = this.generateMockResult(MockDml.UPSERTED, record, this.allOrNone);
+				mockResults?.add(result);
+			}
+			return this.toUpsertResults(mockResults);
 		}
 
 		protected override List<Database.EmptyRecycleBinResult> emptyRecycleBin() {
-			return null; // ! TODO
-		} 
-		*/
+			List<MockDml.Result> mockResults = new List<MockDml.Result>();
+			for (SObject record : this.records) {
+				MockDml.Result result = this.generateMockResult(MockDml.PURGED, record, true);
+				mockResults?.add(result);
+			}
+			return this.toEmptyRecycleBinResults(mockResults);
+		}
+
+		// ** PRIVATE
+		private void checkFailures(MockDml.Operation operation, SObject record) {
+			// Runs all ConditionalFailures defined the current instance against each record.
+			for (MockDml.ConditionalFailure failure : MockDml.FAILURES) {
+				Exception error = failure?.checkFailure(operation, record);
+				if (error != null) {
+					throw error;
+				}
+			}
+		}
+
+		private MockDml.Result generateMockResult(MockDml.History history, SObject record, Boolean allOrNone) {
+			// Simulates a DML operation for a single record, returning a MockDml.Result,
+			// which calling methods can de/serialize into a Database.Save/Upsert/etc. Result.
+			try {
+				MockDml.Operation operation = history?.getOperation();
+				// Determine if the operation should fail for the specific record
+				this.checkFailures(operation, record);
+				// Simulate successful dml, return a MockDml.Result w/out errors
+				return history?.registerDml(record);
+			} catch (System.DmlException error) {
+				// Return a MockDml.Result w/errors
+				return history?.handleDmlError(record, error, allOrNone);
+			}
+		}
+
+		private MockDml.LeadConvertResult generateMockResult(Database.LeadConvert leadToConvert, Boolean allOrNone) {
+			// Simulate a Lead Conversion, which typically also involves inserting Account/Contact/Opportunity records
+			Lead leadRecord = new Lead(Id = leadToConvert?.getLeadId());
+			Account accountRecord = new Account(Id = leadToConvert?.getAccountId());
+			Contact contactRecord = new Contact(Id = leadToConvert?.getContactId());
+			Opportunity opportunityRecord = new Opportunity(Id = leadToConvert?.getOpportunityId());
+			try {
+				// Note: Process resulting records using allOrNone=true, regardless of its original value
+				// This allows injected errors for Accounts/Contacts/Opps to be caught and handled appropriately
+				// 1. Simulate converting the lead
+				this.validateConvertedLead(leadToConvert);
+				this.generateMockResult(MockDml.CONVERTED, leadRecord, true);
+				// 2. Simulate creating an Account/Contact/Opportunity, if their Id wasn't already provided
+				this.simulateInsertIfNew(accountRecord);
+				this.simulateInsertIfNew(contactRecord);
+				this.simulateInsertIfNew(opportunityRecord);
+				// 3. Build & return the LeadConvertResult w/the resulting record ids
+				return (MockDml.LeadConvertResult) new MockDml.LeadConvertResult(leadRecord)
+					?.setId(accountRecord)
+					?.setId(contactRecord)
+					?.setId(opportunityRecord);
+			} catch (System.DmlException error) {
+				// Deregister any of successful related records up to this point
+				MockDml.INSERTED?.deregisterDml(accountRecord);
+				MockDml.INSERTED?.deregisterDml(contactRecord);
+				MockDml.INSERTED?.deregisterDml(opportunityRecord);
+				MockDml.CONVERTED?.deregisterDml(leadRecord);
+				return (MockDml.LeadConvertResult) MockDml.CONVERTED?.handleDmlError(leadRecord, error, allOrNone);
+			}
+		}
+
+		private void runDeleteCallbackIfAsync(List<Database.DeleteResult> results) {
+			if (this.isAsync == true) {
+				for (Database.DeleteResult result : results) {
+					this.deleteCallback?.processDelete(result);
+				}
+			}
+		}
+
+		private void runSaveCallbackIfAsync(List<Database.SaveResult> results) {
+			if (this.isAsync == true) {
+				for (Database.SaveResult result : results) {
+					this.saveCallback?.processSave(result);
+				}
+			}
+		}
+
+		private void simulateInsertIfNew(SObject record) {
+			// If the provided record does not already have an Id, simulate an insert operation
+			if (record?.Id == null) {
+				SObjectType objectType = record?.getSObjectType();
+				record.Id = MockRecord.initRecordId(objectType);
+				this.generateMockResult(MockDml.INSERTED, record, true);
+			}
+		}
+
+		private List<Database.LeadConvertResult> toConvertResults(List<MockDml.Result> results) {
+			return (List<Database.LeadConvertResult>) this.toDatabaseResults(
+				results,
+				List<Database.LeadConvertResult>.class
+			);
+		}
+
+		private List<Database.EmptyRecycleBinResult> toEmptyRecycleBinResults(List<MockDml.Result> results) {
+			Type returnType = List<Database.EmptyRecycleBinResult>.class;
+			return (List<Database.EmptyRecycleBinResult>) this.toDatabaseResults(results, returnType);
+		}
+
+		private List<Database.DeleteResult> toDeleteResults(List<MockDml.Result> results) {
+			Type returnType = List<Database.DeleteResult>.class;
+			return (List<Database.DeleteResult>) this.toDatabaseResults(results, returnType);
+		}
+
+		private List<Database.SaveResult> toSaveResults(List<MockDml.Result> results) {
+			Type returnType = List<Database.SaveResult>.class;
+			return (List<Database.SaveResult>) this.toDatabaseResults(results, returnType);
+		}
+
+		private List<Database.UndeleteResult> toUndeleteResults(List<MockDml.Result> results) {
+			// Note: For some reason, we can't directly deserialize into a List<Database.UndeleteResult> like the other methods.
+			// Attempting to do so will result in the "success" parameter always being set to false.
+			// Don't ask me why -- but deserializing to an untyped Object first solves this issue.
+			Object untyped = JSON.deserializeUntyped(JSON.serialize(results));
+			Type returnType = List<Database.UndeleteResult>.class;
+			return (List<Database.UndeleteResult>) JSON.deserialize(JSON.serialize(untyped), returnType);
+		}
+
+		private List<Database.UpsertResult> toUpsertResults(List<MockDml.Result> results) {
+			Type returnType = List<Database.UpsertResult>.class;
+			return (List<Database.UpsertResult>) this.toDatabaseResults(results, returnType);
+		}
+
+		private Object toDatabaseResults(List<MockDml.Result> results, Type returnType) {
+			return JSON.deserialize(JSON.serialize(results), returnType);
+		}
+
+		private void validateConvertedLead(Database.LeadConvert leadToConvert) {
+			// Mimicks the stock behavior of Database.LeadConvert objects.
+			// These will always throw an error if you are missing a leadId or converted status.
+			if (leadToConvert?.getLeadId() == null) {
+				throw new System.DmlException('valid leadId is required');
+			} else if (leadToConvert?.getConvertedStatus() == null) {
+				throw new System.DmlException('convertedStatus is required');
+			}
+		}
 	}
 
 	public virtual class PlatformEventHistory extends MockDml.History {
