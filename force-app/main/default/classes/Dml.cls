@@ -791,21 +791,21 @@ public with sharing virtual class Dml {
 		public transient List<SObject> records { get; protected set; }
 		public transient List<Database.LeadConvert> leadsToConvert { get; protected set; }
 		// ** Optional Parameters:
-		public Boolean isMockDml { get; protected set; }
-		public Boolean isOperationAsync { get; protected set; }
-		public Boolean isOperationImmediate { get; protected set; }
-		public Database.DmlOptions options { get; protected set; }
 		public transient System.AccessLevel accessLevel { get; protected set; }
 		public transient DataSource.AsyncDeleteCallback deleteCallback { get; protected set; }
 		public transient SObjectField externalIdField { get; protected set; }
 		public transient DataSource.AsyncSaveCallback saveCallback { get; protected set; }
+		public Boolean isMockDml { get; protected set; }
+		public Boolean isOperationAsync { get; protected set; }
+		public Boolean isOperationImmediate { get; protected set; }
+		public Database.DmlOptions options { get; protected set; }
 		// ** Getters
 		// These properties are read-only, and are used for JSON/output purposes,
 		// ex., since some of the main class properties are not JSON-serializable
 		public String accessLevelName {
 			// System.AccessLevel is not JSON serializable
+			// Unlike other enums, it does not have a name() property, and toString() does not output its name either:
 			get {
-				// Unlike other enums, it does not have a name() property, and toString() does not output its name either:
 				return (this.accessLevel == System.AccessLevel.SYSTEM_MODE) ? 'SYSTEM_MODE' : 'USER_MODE';
 			}
 		}
@@ -855,7 +855,6 @@ public with sharing virtual class Dml {
 
 		protected Request(Dml.Operation operation, List<Object> records) {
 			this.operation = operation;
-			// Set default values:
 			this.accessLevel = DEFAULT_ACCESS_LEVEL;
 			this.deleteCallback = DEFAULT_DELETE_CALLBACK;
 			this.isMockDml = false;
