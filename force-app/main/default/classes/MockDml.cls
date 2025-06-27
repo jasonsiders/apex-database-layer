@@ -477,7 +477,7 @@ public class MockDml extends Dml {
 		private void runDeleteCallbackIfAsync(List<Database.DeleteResult> results) {
 			if (this.isOperationAsync == true) {
 				for (Database.DeleteResult result : results) {
-					this.deleteCallback?.processDelete(result);
+					this.asyncDeleteCallback?.processDelete(result);
 				}
 			}
 		}
@@ -485,7 +485,7 @@ public class MockDml extends Dml {
 		private void runSaveCallbackIfAsync(List<Database.SaveResult> results) {
 			if (this.isOperationAsync == true) {
 				for (Database.SaveResult result : results) {
-					this.saveCallback?.processSave(result);
+					this.asyncSaveCallback?.processSave(result);
 				}
 			}
 		}

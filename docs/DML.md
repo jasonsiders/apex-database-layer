@@ -156,9 +156,9 @@ All properties are read-only, and optional unless otherwise otherwise listed:
 
 - `System.AccessLevel accessLevel`: Determines if the DML operation is processed via SYSTEM_MODE or USER_MODE. Defaults to USER_MODE.
 - `String accessLevelName`: Outputs the name of the _accessLevel_ property in JSON, since `System.AccessLevel` objects are not supported in JSON.
-- `String asyncDeleteCallback`: Prints the string-value of the _deleteCallback_ property, which is omitted from JSON since its implementation may or may not be supported in JSON.
-- `String asyncSaveCallback`: Prints the string-value of the _saveCallback_ property, which is omitted from JSON since its implementation may or may not be supported in JSON.
-- `DataSource.AsyncDeleteCallback deleteCallback`: A callback object that can optionally be passed to async DML delete methods that support external objects, ex. `DatabaseLayer.Dml.doDeleteAsync()`.
+- `String deleteCallback`: Prints the string-value of the _deleteCallback_ property, which is omitted from JSON since its implementation may or may not be supported in JSON.
+- `String saveCallback`: Prints the string-value of the _saveCallback_ property, which is omitted from JSON since its implementation may or may not be supported in JSON.
+- `DataSource.AsyncDeleteCallback asyncDeleteCallback`: A callback object that can optionally be passed to async DML delete methods that support external objects, ex. `DatabaseLayer.Dml.doDeleteAsync()`.
 - `String externalIdFieldName`: Prints the API Name of the _externalIdField_.
 - `SObjectField externalIdField`: An optional primary key field to be used in upsert operations.
 - `Boolean isMockDml`: True if the request was processed using `DatabaseLayer.useMocks()`. Else, always False.
@@ -169,7 +169,7 @@ All properties are read-only, and optional unless otherwise otherwise listed:
 - `Dml.Operation operation`: The type of DML operation being processed. This is always present.
 - `Database.DmlOptions options`: Stores advanced configuration options for the DML operation. The most common property is _OptAllOrNone_, which determines if partial failures are allowed.
 - `List<SObject> records`: The record(s) being processed. This is present in all operations, except DO_CONVERT.
-- `DataSource.AsyncSaveCallback saveCallback`: A callback object that can optionally be passed to async DML insert/update methods that support external objects, ex. `DatabaseLayer.Dml.doInsertAsync()`.
+- `DataSource.AsyncSaveCallback asyncSaveCallback`: A callback object that can optionally be passed to async DML insert/update methods that support external objects, ex. `DatabaseLayer.Dml.doInsertAsync()`.
 - `String sObjectType`: Outputs the API Name of the SObjectType being processed, if known. For DO_CONVERT, outputs "Database.LeadConvert". When unknown, outputs "SObject".
 
 For logging purposes, you can safely JSON-serialize the `Dml.Request`, though Some of the properties of this class may be omitted to save on resources, or because they are not supported in JSON. Example:
@@ -188,8 +188,8 @@ For logging purposes, you can safely JSON-serialize the `Dml.Request`, though So
 	"isOperationImmediate": false,
 	"isOperationAsync": false,
 	"isMockDml": false,
-	"asyncSaveCallback": "EmptySaveCallback:[]",
-	"asyncDeleteCallback": "EmptyDeleteCallback:[]",
+	"saveCallback": "EmptySaveCallback:[]",
+	"deleteCallback": "EmptyDeleteCallback:[]",
 	"accessLevelName": "USER_MODE"
 }
 ```

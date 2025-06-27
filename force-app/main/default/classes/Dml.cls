@@ -178,7 +178,7 @@ public with sharing virtual class Dml {
 	) {
 		Dml.Request request = this.initRequest(Dml.Operation.DO_DELETE, records);
 		request.accessLevel = accessLevel;
-		request.deleteCallback = callback;
+		request.asyncDeleteCallback = callback;
 		request.isOperationAsync = true;
 		return (List<Database.DeleteResult>) request?.process();
 	}
@@ -303,8 +303,8 @@ public with sharing virtual class Dml {
 	) {
 		Dml.Request request = this.initRequest(Dml.Operation.DO_INSERT, records);
 		request.accessLevel = accessLevel;
+		request.asyncSaveCallback = callback;
 		request.isOperationAsync = true;
-		request.saveCallback = callback;
 		return (List<Database.SaveResult>) request?.process();
 	}
 
@@ -516,8 +516,8 @@ public with sharing virtual class Dml {
 	) {
 		Dml.Request request = this.initRequest(Dml.Operation.DO_UPDATE, records);
 		request.accessLevel = accessLevel;
+		request.asyncSaveCallback = callback;
 		request.isOperationAsync = true;
-		request.saveCallback = callback;
 		return (List<Database.SaveResult>) request?.process();
 	}
 
@@ -788,9 +788,9 @@ public with sharing virtual class Dml {
 		public transient List<Database.LeadConvert> leadsToConvert { get; protected set; }
 		// ** Optional Parameters:
 		public transient System.AccessLevel accessLevel { get; protected set; }
-		public transient DataSource.AsyncDeleteCallback deleteCallback { get; protected set; }
+		public transient DataSource.AsyncDeleteCallback asyncDeleteCallback { get; protected set; }
+		public transient DataSource.AsyncSaveCallback asyncSaveCallback { get; protected set; }
 		public transient SObjectField externalIdField { get; protected set; }
-		public transient DataSource.AsyncSaveCallback saveCallback { get; protected set; }
 		public Boolean isMockDml { get; protected set; }
 		public Boolean isOperationAsync { get; protected set; }
 		public Boolean isOperationImmediate { get; protected set; }
@@ -816,18 +816,11 @@ public with sharing virtual class Dml {
 				this.options.OptAllOrNone = value;
 			}
 		}
-		public String asyncDeleteCallback {
+		public String deleteCallback {
 			// The DataSource.AsyncDeleteCallback may/may not be serializable, based on its implementation
 			// Prevent serialization errors by outputting the raw toString() value for logs:
 			get {
-				return String.valueOf(this.deleteCallback);
-			}
-		}
-		public String asyncSaveCallback {
-			// The DataSource.AsyncSaveCallback may/may not be serializable, based on its implementation
-			// Prevent serialization errors by outputting the raw toString() value for logs:
-			get {
-				return String.valueOf(this.saveCallback);
+				return String.valueOf(this.asyncDeleteCallback);
 			}
 		}
 		public String externalIdFieldName {
@@ -842,6 +835,13 @@ public with sharing virtual class Dml {
 				return this.getNumRecords();
 			}
 		}
+		public String saveCallback {
+			// The DataSource.AsyncSaveCallback may/may not be serializable, based on its implementation
+			// Prevent serialization errors by outputting the raw toString() value for logs:
+			get {
+				return String.valueOf(this.asyncSaveCallback);
+			}
+		}
 		public String sObjectType {
 			// Output the name of the SObjectType being operated on, if known:
 			get {
@@ -853,12 +853,12 @@ public with sharing virtual class Dml {
 		protected Request(Dml.Operation operation, List<Object> records) {
 			this.operation = operation;
 			this.accessLevel = DEFAULT_ACCESS_LEVEL;
-			this.deleteCallback = DEFAULT_DELETE_CALLBACK;
+			this.asyncDeleteCallback = DEFAULT_DELETE_CALLBACK;
 			this.isMockDml = false;
 			this.isOperationAsync = false;
 			this.isOperationImmediate = false;
 			this.options = Dml.initDmlOptions(true);
-			this.saveCallback = DEFAULT_SAVE_CALLBACK;
+			this.asyncSaveCallback = DEFAULT_SAVE_CALLBACK;
 			this.setRecordCollection(records);
 		}
 
@@ -900,7 +900,7 @@ public with sharing virtual class Dml {
 
 		protected virtual List<Database.DeleteResult> doDelete() {
 			if (this.isOperationAsync == true) {
-				return Database.deleteAsync(this.records, this.deleteCallback, this.accessLevel);
+				return Database.deleteAsync(this.records, this.asyncDeleteCallback, this.accessLevel);
 			} else if (this.isOperationImmediate == true) {
 				return Database.deleteImmediate(this.records, this.accessLevel);
 			} else {
@@ -910,7 +910,7 @@ public with sharing virtual class Dml {
 
 		protected virtual List<Database.SaveResult> doInsert() {
 			if (this.isOperationAsync == true) {
-				return Database.insertAsync(this.records, this.saveCallback, this.accessLevel);
+				return Database.insertAsync(this.records, this.asyncSaveCallback, this.accessLevel);
 			} else if (this.isOperationImmediate == true) {
 				return Database.insertImmediate(this.records, this.accessLevel);
 			} else {
@@ -928,7 +928,7 @@ public with sharing virtual class Dml {
 
 		protected virtual List<Database.SaveResult> doUpdate() {
 			if (this.isOperationAsync == true) {
-				return Database.updateAsync(this.records, this.saveCallback, this.accessLevel);
+				return Database.updateAsync(this.records, this.asyncSaveCallback, this.accessLevel);
 			} else if (this.isOperationImmediate == true) {
 				return Database.updateImmediate(this.records, this.accessLevel);
 			} else {
