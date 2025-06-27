@@ -52,7 +52,7 @@ To simulate DML failures, use the `Dml.shouldFail()` method:
 ```java
 DatabaseLayer.useMocks();
 Account account = new Account(Name = 'Test Account');
-DatabaseLayer.Dml.shouldFail();
+MockDml.shouldFail();
 // All subsuquent dml operations should fail
 DatabaseLayer.Dml.doInsert(account);
 ```
@@ -80,7 +80,7 @@ public class ExampleFailure implements MockDml.ConditionalFailure {
 // Inject the conditional logic via the shouldFailIf() method
 DatabaseLayer.useMocks();
 MockDml.ConditionalFailure logic = new ExampleFailure();
-DatabaseLayer.Dml.shouldFailIf(logic);
+MockDml.shouldFailIf(logic);
 // This won't fail, because it's not an update!
 DatabaseLayer.Dml.doInsert(someRecord);
 ```
