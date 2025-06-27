@@ -62,6 +62,20 @@ DatabaseLayer.Dml.rollback(savepoint);
 Assert.isTrue(MockDml.SAVEPOINTS.get(0).wasRolledBack);
 ```
 
+### Public Inner Types
+
+#### The `Dml.Operation` Enum
+
+TODO!
+
+#### The `Dml.PreAndPostProcessor` Interface
+
+TODO!
+
+#### The `Dml.Request` Class
+
+TODO!
+
 ## Mocking DML Operations
 
 The `MockDml` class can be used in placed of a normal `Dml` class in the `@IsTest` context. The `MockDml` class manipulates the SObject records in memory, instead of actually inserting, modifying or deleting records in the Salesforce database.

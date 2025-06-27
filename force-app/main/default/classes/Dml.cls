@@ -710,6 +710,7 @@ public with sharing virtual class Dml {
 	}
 
 	// **** PRIVATE **** //
+	@TestVisible
 	protected virtual Dml.Request initRequest(Dml.Operation operation, List<Object> records) {
 		// Initialize a Dml.Request; mocks can override this method to return their own implementation which does not perform DML
 		return new Dml.Request(operation, records);

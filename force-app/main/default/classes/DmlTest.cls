@@ -943,6 +943,67 @@ private class DmlTest {
 		Assert.areEqual(0, DmlTest.numPostDmlPluginCalls, 'Wrong number of post-dml plugin calls');
 	}
 
+	@IsTest
+	static void shouldSerializeDmlRequestForRecords() {
+		// The Dml.Request may be used in plugins for a variety of purposes, including logging
+		// For this reason, we should make sure the request is JSON-serializable,
+		// despite containing several fields that are not typically allowed in JSON
+		Lead lead = DmlTest.initLead();
+		List<Lead> leads = new List<Lead>{ lead };
+		Dml.Request request = DatabaseLayer.Dml.initRequest(Dml.Operation.DO_INSERT, leads);
+
+		Test.startTest();
+		String requestJson = JSON.serialize(request);
+		Test.stopTest();
+
+		Assert.isNotNull(requestJson, 'Is not JSON serializable');
+	}
+
+	@IsTest
+	static void shouldSerializeDmlRequestForLeadConverts() {
+		// The Dml.Request may be used in plugins for a variety of purposes, including logging
+		// For this reason, we should make sure the request is JSON-serializable,
+		// despite containing several fields that are not typically allowed in JSON
+		Lead lead = (Lead) new MockRecord(Lead.SObjectType)?.withId()?.toSObject();
+		Database.LeadConvert leadToConvert = DmlTest.initLeadConvert(lead);
+		List<Database.LeadConvert> leadsToConvert = new List<Database.LeadConvert>{ leadToConvert };
+		Dml.Request request = DatabaseLayer.Dml.initRequest(Dml.Operation.DO_CONVERT, leadsToConvert);
+
+		Test.startTest();
+		String requestJson = JSON.serialize(request);
+		Test.stopTest();
+
+		Assert.isNotNull(requestJson, 'Is not JSON serializable');
+	}
+
+	@IsTest
+	static void shouldSetAllOrNoneOnOptionsParamFromBooleanParamOnRequest() {
+		Lead lead = DmlTest.initLead();
+		List<Lead> leads = new List<Lead>{ lead };
+		Dml.Request request = DatabaseLayer.Dml.initRequest(Dml.Operation.DO_INSERT, leads);
+
+		Test.startTest();
+		request.allOrNone = false;
+		Test.stopTest();
+
+		Assert.areEqual(false, request?.options?.OptAllOrNone, 'Options.OptAllOrNone != allOrNone');
+	}
+
+	@IsTest
+	static void shouldSetAllOrNoneBooleanParamFromOptionsParamOnRequest() {
+		Lead lead = DmlTest.initLead();
+		List<Lead> leads = new List<Lead>{ lead };
+		Dml.Request request = DatabaseLayer.Dml.initRequest(Dml.Operation.DO_INSERT, leads);
+		Database.DmlOptions options = new Database.DmlOptions();
+		request.options = options;
+
+		Test.startTest();
+		options.OptAllOrNone = false;
+		Test.stopTest();
+
+		Assert.areEqual(false, request?.allOrNone, 'Options.OptAllOrNone != allOrNone');
+	}
+
 	// **** HELPER **** //
 	private static LeadStatus getConvertedStatus() {
 		return [SELECT ApiName FROM LeadStatus WHERE IsConverted = TRUE LIMIT 1] ?? null;
