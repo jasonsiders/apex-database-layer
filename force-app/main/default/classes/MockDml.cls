@@ -99,21 +99,21 @@ public class MockDml extends Dml {
 	}
 
 	public MockDml clearFailures() {
-		// ! Deprecated - this method will be removed in future versions
+		// ! Deprecated - this method will be removed in a future release
 		// ! Replace all instances with the `MockDml.shouldSucceed()` static method
 		MockDml.shouldSucceed();
 		return this;
 	}
 
 	public MockDml fail() {
-		// ! Deprecated - this method will be removed in future versions
+		// ! Deprecated - this method will be removed in a future release
 		// ! Replace all instances with the `MockDml.shouldFail()` static method
 		MockDml.shouldFail();
 		return this;
 	}
 
 	public MockDml failIf(MockDml.ConditionalFailure failure) {
-		// ! Deprecated - this method will be removed in future versions
+		// ! Deprecated - this method will be removed in a future release
 		// ! Replace all instances with the `MockDml.shouldFailIf()` static method
 		MockDml.shouldFailIf(failure);
 		return this;
@@ -148,6 +148,9 @@ public class MockDml extends Dml {
 		 * Its method should return an exception to be thrown in case of a DML failure, or null in case of success.
 		 * Pass objects that implement this interface to MockDml's `failIf()` method.
 		 **/
+		// ! Deprecated - this method will be altered in a future release,
+		// ! Specifically, the `MockDml.Operation` enum will be replaced with the `Dml.Operation` enum
+		// ! For now, you can create a duplicate method in your class as an intermediary step
 		Exception checkFailure(MockDml.Operation operation, SObject record);
 	}
 
@@ -330,6 +333,7 @@ public class MockDml extends Dml {
 		 */
 		private Request(Dml.Operation operation, List<Object> records) {
 			super(operation, records);
+			this.isMockDml = true;
 		}
 
 		// ** OVERRIDES
@@ -471,7 +475,7 @@ public class MockDml extends Dml {
 		}
 
 		private void runDeleteCallbackIfAsync(List<Database.DeleteResult> results) {
-			if (this.isAsync == true) {
+			if (this.isOperationAsync == true) {
 				for (Database.DeleteResult result : results) {
 					this.deleteCallback?.processDelete(result);
 				}
@@ -479,7 +483,7 @@ public class MockDml extends Dml {
 		}
 
 		private void runSaveCallbackIfAsync(List<Database.SaveResult> results) {
-			if (this.isAsync == true) {
+			if (this.isOperationAsync == true) {
 				for (Database.SaveResult result : results) {
 					this.saveCallback?.processSave(result);
 				}

@@ -183,7 +183,7 @@ public with sharing virtual class Dml {
 		Dml.Request request = this.initRequest(Dml.Operation.DO_DELETE, records);
 		request.accessLevel = accessLevel;
 		request.deleteCallback = callback;
-		request.isAsync = true;
+		request.isOperationAsync = true;
 		return (List<Database.DeleteResult>) request?.process();
 	}
 
@@ -223,7 +223,7 @@ public with sharing virtual class Dml {
 	public List<Database.DeleteResult> doDeleteImmediate(List<SObject> records, System.AccessLevel accessLevel) {
 		Dml.Request request = this.initRequest(Dml.Operation.DO_DELETE, records);
 		request.accessLevel = accessLevel;
-		request.isImmediate = true;
+		request.isOperationImmediate = true;
 		return (List<Database.DeleteResult>) request?.process();
 	}
 
@@ -307,7 +307,7 @@ public with sharing virtual class Dml {
 	) {
 		Dml.Request request = this.initRequest(Dml.Operation.DO_INSERT, records);
 		request.accessLevel = accessLevel;
-		request.isAsync = true;
+		request.isOperationAsync = true;
 		request.saveCallback = callback;
 		return (List<Database.SaveResult>) request?.process();
 	}
@@ -348,7 +348,7 @@ public with sharing virtual class Dml {
 	public List<Database.SaveResult> doInsertImmediate(List<SObject> records, System.AccessLevel accessLevel) {
 		Dml.Request request = this.initRequest(Dml.Operation.DO_INSERT, records);
 		request.accessLevel = accessLevel;
-		request.isImmediate = true;
+		request.isOperationImmediate = true;
 		return (List<Database.SaveResult>) request?.process();
 	}
 
@@ -520,7 +520,7 @@ public with sharing virtual class Dml {
 	) {
 		Dml.Request request = this.initRequest(Dml.Operation.DO_UPDATE, records);
 		request.accessLevel = accessLevel;
-		request.isAsync = true;
+		request.isOperationAsync = true;
 		request.saveCallback = callback;
 		return (List<Database.SaveResult>) request?.process();
 	}
@@ -561,7 +561,7 @@ public with sharing virtual class Dml {
 	public List<Database.SaveResult> doUpdateImmediate(List<SObject> records, System.AccessLevel accessLevel) {
 		Dml.Request request = this.initRequest(Dml.Operation.DO_UPDATE, records);
 		request.accessLevel = accessLevel;
-		request.isImmediate = true;
+		request.isOperationImmediate = true;
 		return (List<Database.SaveResult>) request?.process();
 	}
 
@@ -674,7 +674,7 @@ public with sharing virtual class Dml {
 
 	// ** EmptyRecycleBin Methods
 	public List<Database.EmptyRecycleBinResult> emptyRecycleBin(List<SObject> records) {
-		Dml.Request request = this.initRequest(Dml.Operation.EMPTY_RECYCLE_BIN, records);
+		Dml.Request request = this.initRequest(Dml.Operation.DO_PURGE, records);
 		return (List<Database.EmptyRecycleBinResult>) request?.process();
 	}
 
@@ -772,13 +772,12 @@ public with sharing virtual class Dml {
 		DO_PURGE,
 		DO_UNDELETE,
 		DO_UPDATE,
-		DO_UPSERT,
-		EMPTY_RECYCLE_BIN
+		DO_UPSERT
 	}
 
 	public interface PreAndPostProcessor {
-		void processPreDml(Dml.Request dmlRequest);
-		void processPostDml(Dml.Request dmlRequest, List<Object> databaseResults);
+		void processPreDml(Dml.Request request);
+		void processPostDml(Dml.Request request, List<Object> databaseResults);
 	}
 
 	public virtual class Request {
@@ -787,34 +786,36 @@ public with sharing virtual class Dml {
 		 * Centralizing this information allows us to output information about the operation taking place
 		 */
 		// ** Always Required:
-		public Dml.Operation operation { get; private set; }
+		public Dml.Operation operation { get; protected set; }
 		// ** Conditionally Required:
-		public transient List<SObject> records { get; private set; }
-		public transient List<Database.LeadConvert> leadsToConvert { get; private set; }
+		public transient List<SObject> records { get; protected set; }
+		public transient List<Database.LeadConvert> leadsToConvert { get; protected set; }
 		// ** Optional Parameters:
-		public Boolean isAsync { get; private set; }
-		public Boolean isImmediate { get; private set; }
-		public Database.DmlOptions options { get; private set; }
-		public transient System.AccessLevel accessLevel { get; private set; }
-		public transient DataSource.AsyncDeleteCallback deleteCallback { get; private set; }
-		public transient SObjectField externalIdField { get; private set; }
-		public transient DataSource.AsyncSaveCallback saveCallback { get; private set; }
+		public Boolean isMockDml { get; protected set; }
+		public Boolean isOperationAsync { get; protected set; }
+		public Boolean isOperationImmediate { get; protected set; }
+		public Database.DmlOptions options { get; protected set; }
+		public transient System.AccessLevel accessLevel { get; protected set; }
+		public transient DataSource.AsyncDeleteCallback deleteCallback { get; protected set; }
+		public transient SObjectField externalIdField { get; protected set; }
+		public transient DataSource.AsyncSaveCallback saveCallback { get; protected set; }
 		// ** Getters
 		// These properties are read-only, and are used for JSON/output purposes,
 		// ex., since some of the main class properties are not JSON-serializable
 		public String accessLevelName {
 			// System.AccessLevel is not JSON serializable
 			get {
-				return String.valueOf(this.accessLevel);
+				// Unlike other enums, it does not have a name() property, and toString() does not output its name either:
+				return (this.accessLevel == System.AccessLevel.SYSTEM_MODE) ? 'SYSTEM_MODE' : 'USER_MODE';
 			}
 		}
-		public Boolean allOrNone {
+		public transient Boolean allOrNone {
 			get {
 				// Is not actually stored as a value; mirrors the DmlOptions' OptAllOrNone value
 				this.options = this.options ?? Dml.initDmlOptions(true);
 				return this.options?.OptAllOrNone;
 			}
-			private set {
+			protected set {
 				// Ensure the DmlOptions' OptAllOrNone value matches:
 				this.options.OptAllOrNone = value;
 			}
@@ -857,8 +858,9 @@ public with sharing virtual class Dml {
 			// Set default values:
 			this.accessLevel = DEFAULT_ACCESS_LEVEL;
 			this.deleteCallback = DEFAULT_DELETE_CALLBACK;
-			this.isAsync = false;
-			this.isImmediate = false;
+			this.isMockDml = false;
+			this.isOperationAsync = false;
+			this.isOperationImmediate = false;
 			this.options = Dml.initDmlOptions(true);
 			this.saveCallback = DEFAULT_SAVE_CALLBACK;
 			this.setRecordCollection(records);
@@ -883,14 +885,14 @@ public with sharing virtual class Dml {
 				results = this.doInsert();
 			} else if (this.operation == Dml.Operation.DO_PUBLISH) {
 				results = this.doPublish();
+			} else if (this.operation == Dml.Operation.DO_PURGE) {
+				results = this.emptyRecycleBin();
 			} else if (this.operation == Dml.Operation.DO_UNDELETE) {
 				results = this.doUndelete();
 			} else if (this.operation == Dml.Operation.DO_UPDATE) {
 				results = this.doUpdate();
 			} else if (this.operation == Dml.Operation.DO_UPSERT) {
 				results = this.doUpsert();
-			} else if (this.operation == Dml.Operation.EMPTY_RECYCLE_BIN) {
-				results = this.emptyRecycleBin();
 			}
 			return results;
 		}
@@ -901,9 +903,9 @@ public with sharing virtual class Dml {
 		}
 
 		protected virtual List<Database.DeleteResult> doDelete() {
-			if (this.isAsync == true) {
+			if (this.isOperationAsync == true) {
 				return Database.deleteAsync(this.records, this.deleteCallback, this.accessLevel);
-			} else if (this.isImmediate == true) {
+			} else if (this.isOperationImmediate == true) {
 				return Database.deleteImmediate(this.records, this.accessLevel);
 			} else {
 				return Database.delete(this.records, this.allOrNone, this.accessLevel);
@@ -911,9 +913,9 @@ public with sharing virtual class Dml {
 		}
 
 		protected virtual List<Database.SaveResult> doInsert() {
-			if (this.isAsync == true) {
+			if (this.isOperationAsync == true) {
 				return Database.insertAsync(this.records, this.saveCallback, this.accessLevel);
-			} else if (this.isImmediate == true) {
+			} else if (this.isOperationImmediate == true) {
 				return Database.insertImmediate(this.records, this.accessLevel);
 			} else {
 				return Database.insert(this.records, this.allOrNone, this.accessLevel);
@@ -929,9 +931,9 @@ public with sharing virtual class Dml {
 		}
 
 		protected virtual List<Database.SaveResult> doUpdate() {
-			if (this.isAsync == true) {
+			if (this.isOperationAsync == true) {
 				return Database.updateAsync(this.records, this.saveCallback, this.accessLevel);
-			} else if (this.isImmediate == true) {
+			} else if (this.isOperationImmediate == true) {
 				return Database.updateImmediate(this.records, this.accessLevel);
 			} else {
 				return Database.update(this.records, this.allOrNone, this.accessLevel);
@@ -964,8 +966,13 @@ public with sharing virtual class Dml {
 			// Output the name of the SObjectType, if known:
 			if (this.operation == Dml.Operation.DO_CONVERT) {
 				return Database.LeadConvert.class.getName();
+			} else if (this.records?.size() == 1) {
+				// Single records are always passed to a generic List<SObject>
+				// Multiple records shouldn't use this method, since they could contain multiple SObjectTypes
+				return this.records?.get(0)?.getSObjectType()?.toString();
 			} else {
-				return this.records?.getSObjectType()?.toString() ?? SObject.class.getName();
+				// Return the List type, or "SObject" if unknown:
+				return this.records?.toString() ?? SObject.class.getName();
 			}
 		}
 

@@ -1022,11 +1022,12 @@ private class DmlTest {
 
 	public class TestPlugin implements Dml.PreAndPostProcessor {
 		// Note: Class has to be public to work properly:
-		public void processPreDml(Dml.Request dmlRequest) {
+		public void processPreDml(Dml.Request request) {
+			System.debug(JSON.serialize(request, true));
 			DmlTest.numPreDmlPluginCalls += 1;
 		}
 
-		public void processPostDml(Dml.Request dmlRequest, List<Object> databaseResults) {
+		public void processPostDml(Dml.Request request, List<Object> databaseResults) {
 			DmlTest.numPostDmlPluginCalls += 1;
 		}
 	}
