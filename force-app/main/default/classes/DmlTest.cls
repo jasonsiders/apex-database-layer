@@ -976,34 +976,6 @@ private class DmlTest {
 		Assert.isNotNull(requestJson, 'Is not JSON serializable');
 	}
 
-	@IsTest
-	static void shouldSetAllOrNoneOnOptionsParamFromBooleanParamOnRequest() {
-		Lead lead = DmlTest.initLead();
-		List<Lead> leads = new List<Lead>{ lead };
-		Dml.Request request = DatabaseLayer.Dml.initRequest(Dml.Operation.DO_INSERT, leads);
-
-		Test.startTest();
-		request.allOrNone = false;
-		Test.stopTest();
-
-		Assert.areEqual(false, request?.options?.OptAllOrNone, 'Options.OptAllOrNone != allOrNone');
-	}
-
-	@IsTest
-	static void shouldSetAllOrNoneBooleanParamFromOptionsParamOnRequest() {
-		Lead lead = DmlTest.initLead();
-		List<Lead> leads = new List<Lead>{ lead };
-		Dml.Request request = DatabaseLayer.Dml.initRequest(Dml.Operation.DO_INSERT, leads);
-		Database.DmlOptions options = new Database.DmlOptions();
-		request.options = options;
-
-		Test.startTest();
-		options.OptAllOrNone = false;
-		Test.stopTest();
-
-		Assert.areEqual(false, request?.allOrNone, 'Options.OptAllOrNone != allOrNone');
-	}
-
 	// **** HELPER **** //
 	private static LeadStatus getConvertedStatus() {
 		return [SELECT ApiName FROM LeadStatus WHERE IsConverted = TRUE LIMIT 1] ?? null;

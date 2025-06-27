@@ -44,7 +44,7 @@ public with sharing virtual class Dml {
 		Boolean allOrNone,
 		System.AccessLevel accessLevel
 	) {
-		return this.doConvert(leadsToConvert, this.initDmlOptions(allOrNone), accessLevel);
+		return this.doConvert(leadsToConvert, Dml.initDmlOptions(allOrNone), accessLevel);
 	}
 
 	public List<Database.LeadConvertResult> doConvert(
@@ -62,7 +62,7 @@ public with sharing virtual class Dml {
 	}
 
 	public List<Database.LeadConvertResult> doConvert(List<Database.LeadConvert> leadsToConvert, Boolean allOrNone) {
-		return this.doConvert(leadsToConvert, this.initDmlOptions(allOrNone));
+		return this.doConvert(leadsToConvert, Dml.initDmlOptions(allOrNone));
 	}
 
 	public List<Database.LeadConvertResult> doConvert(List<Database.LeadConvert> leadsToConvert) {
@@ -256,7 +256,7 @@ public with sharing virtual class Dml {
 		Boolean allOrNone,
 		System.AccessLevel accessLevel
 	) {
-		return this.doInsert(records, this.initDmlOptions(allOrNone), accessLevel);
+		return this.doInsert(records, Dml.initDmlOptions(allOrNone), accessLevel);
 	}
 
 	public List<Database.SaveResult> doInsert(List<SObject> records, Database.DmlOptions options) {
@@ -469,7 +469,7 @@ public with sharing virtual class Dml {
 		Boolean allOrNone,
 		System.AccessLevel accessLevel
 	) {
-		return this.doUpdate(records, this.initDmlOptions(allOrNone), accessLevel);
+		return this.doUpdate(records, Dml.initDmlOptions(allOrNone), accessLevel);
 	}
 
 	public List<Database.SaveResult> doUpdate(List<SObject> records, Database.DmlOptions options) {
@@ -716,12 +716,6 @@ public with sharing virtual class Dml {
 		return new Dml.Request(operation, records);
 	}
 
-	private Database.DmlOptions initDmlOptions(Boolean allOrNone) {
-		Database.DmlOptions options = new Database.DmlOptions();
-		options.OptAllOrNone = allOrNone;
-		return options;
-	}
-
 	private List<SObject> initRecordsFromIds(List<Id> recordIds) {
 		// Converts a List<Id> into a List<SObject> with those Ids:
 		List<SObject> records = new List<SObject>();
@@ -740,6 +734,13 @@ public with sharing virtual class Dml {
 		// Test callers can also call this method directly to recalculate the plugins after injecting mock metadata:
 		Dml.preAndPostPlugin = (Dml.PreAndPostProcessor) DatabaseLayer.Utils?.Plugins?.initPlugin(PLUGIN_FIELD);
 		// ... may add more plugins here in the future!
+	}
+
+	// **** STATIC **** //
+	private static Database.DmlOptions initDmlOptions(Boolean allOrNone) {
+		Database.DmlOptions options = new Database.DmlOptions();
+		options.OptAllOrNone = allOrNone;
+		return options;
 	}
 
 	// **** INNER **** //
@@ -791,22 +792,31 @@ public with sharing virtual class Dml {
 		public transient List<SObject> records { get; private set; }
 		public transient List<Database.LeadConvert> leadsToConvert { get; private set; }
 		// ** Optional Parameters:
+		public Boolean isAsync { get; private set; }
+		public Boolean isImmediate { get; private set; }
+		public Database.DmlOptions options { get; private set; }
 		public transient System.AccessLevel accessLevel { get; private set; }
 		public transient DataSource.AsyncDeleteCallback deleteCallback { get; private set; }
 		public transient SObjectField externalIdField { get; private set; }
-		public Database.DmlOptions options { get; private set; }
 		public transient DataSource.AsyncSaveCallback saveCallback { get; private set; }
-		public Boolean allOrNone { get; private set; }
-		public Boolean isAsync { get; private set; }
-		public Boolean isImmediate { get; private set; }
 		// ** Getters
-		/**
-		 * These properties are read-only, and are used for JSON/output purposes,
-		 * ex., since some of the main class properties are not JSON-serializable
-		 **/
+		// These properties are read-only, and are used for JSON/output purposes,
+		// ex., since some of the main class properties are not JSON-serializable
 		public String accessLevelName {
+			// System.AccessLevel is not JSON serializable
 			get {
 				return String.valueOf(this.accessLevel);
+			}
+		}
+		public Boolean allOrNone {
+			get {
+				// Is not actually stored as a value; mirrors the DmlOptions' OptAllOrNone value
+				this.options = this.options ?? Dml.initDmlOptions(true);
+				return this.options?.OptAllOrNone;
+			}
+			private set {
+				// Ensure the DmlOptions' OptAllOrNone value matches:
+				this.options.OptAllOrNone = value;
 			}
 		}
 		public String asyncDeleteCallback {
@@ -824,7 +834,7 @@ public with sharing virtual class Dml {
 			}
 		}
 		public String externalIdFieldName {
-			// Output the name of field, since SObjectFields are not JSON-serializable
+			// SObjectFields are not JSON-serializable
 			get {
 				return this.externalIdField?.toString();
 			}
@@ -846,17 +856,12 @@ public with sharing virtual class Dml {
 			this.operation = operation;
 			// Set default values:
 			this.accessLevel = DEFAULT_ACCESS_LEVEL;
-			this.allOrNone = false;
 			this.deleteCallback = DEFAULT_DELETE_CALLBACK;
 			this.isAsync = false;
 			this.isImmediate = false;
+			this.options = Dml.initDmlOptions(true);
 			this.saveCallback = DEFAULT_SAVE_CALLBACK;
-			// Set the appropriate record collection:
-			if (this.operation == Dml.Operation.DO_CONVERT) {
-				this.leadsToConvert = (List<Database.LeadConvert>) records;
-			} else {
-				this.records = (List<SObject>) records;
-			}
+			this.setRecordCollection(records);
 		}
 
 		protected List<Object> process() {
@@ -949,7 +954,6 @@ public with sharing virtual class Dml {
 
 		// **** PRIVATE **** //
 		private Integer getNumRecords() {
-			// Output the number of records being operated on:
 			Integer num = (this.operation == Dml.Operation.DO_CONVERT)
 				? this.leadsToConvert?.size()
 				: this.records?.size();
@@ -962,6 +966,15 @@ public with sharing virtual class Dml {
 				return Database.LeadConvert.class.getName();
 			} else {
 				return this.records?.getSObjectType()?.toString() ?? SObject.class.getName();
+			}
+		}
+
+		private void setRecordCollection(List<Object> objs) {
+			// Set the appropriate record collection, based on the operation:
+			if (this.operation == Dml.Operation.DO_CONVERT) {
+				this.leadsToConvert = (List<Database.LeadConvert>) objs;
+			} else {
+				this.records = (List<SObject>) objs;
 			}
 		}
 	}
