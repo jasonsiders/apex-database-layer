@@ -83,7 +83,7 @@ Enumerates all of the supported DML operations. The framework uses this in the `
 
 You can use this interface in conjunction with the plugin framework to define logic that runs just before, and/or just after DML operations are run. You can use this for logging, or other specialized use cases.
 
-Read more about how Plugins work [**here**](#plugins).
+Read more about how DML Plugins work [**here**](#dml-plugins).
 
 The interface contains two required methods:
 
@@ -196,9 +196,24 @@ For logging purposes, you can safely JSON-serialize the `Dml.Request`, though So
 
 Note: The _records_ and _leadsToConvert_ properties are _never_ printed in JSON, but can still be accessed by referencing them directly, ex., `request?.records`.
 
-## Plugins
+## DML Plugins
 
-TODO!
+You can optionally define an Apex class which can perform pre/post processing tasks on your DML operations. For example, logging via your logging framework of choice.
+
+Plugins are handled by a Custom Metadata Type, and the `Dml.PreAndPostProcessor` interface. Read more about this interface [**here**](#the-dmlpreandpostprocessor-interface).
+
+Follow these steps to create your own DML plugin:
+
+1. Create an Apex Class that includes your desired logic. Requirements:
+
+- This class must implement `Dml.PreAndPostProcessor`.
+- This class must be `public` or `global`, and have an accessible 0-arg constructor (either implicit or explicit).
+
+2. Create a `DatabaseLayerSetting__mdt` record, if one doesn't already exist.
+
+- Note: There may only be a single record at a time; this is enforced by a validation rule.
+
+3. Set the _DML: Pre & Post Processor_ field to the fully qualified API name of your Apex Class, including namespace if applicable.
 
 ## Mocking DML Operations
 
