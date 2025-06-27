@@ -47,18 +47,17 @@ DatabaseLayer.Dml.doInsert(account);
 Assert.isNotNull(account?.Id, 'Was not inserted');
 ```
 
-To simulate DML failures, use the `fail()` method:
+To simulate DML failures, use the `Dml.shouldFail()` method:
 
 ```java
 DatabaseLayer.useMocks();
 Account account = new Account(Name = 'Test Account');
-MockDml dml = (MockDml) DatabaseLayer.Dml;
-dml?.fail();
+DatabaseLayer.Dml.shouldFail();
 // All subsuquent dml operations should fail
-dml?.doInsert(account);
+DatabaseLayer.Dml.doInsert(account);
 ```
 
-If necessary, you can inject "smarter" failure logic via the `MockDml.ConditionalFailure` interface and the `failIf()` method:
+If necessary, you can inject "smarter" failure logic via the `MockDml.ConditionalFailure` interface and the `DatabaseLayer.shouldFailIf()` method:
 
 ```java
 public class ExampleFailure implements MockDml.ConditionalFailure {
@@ -78,13 +77,12 @@ public class ExampleFailure implements MockDml.ConditionalFailure {
 ```
 
 ```java
-// Inject the conditional logic via the failIf() method
+// Inject the conditional logic via the shouldFailIf() method
 DatabaseLayer.useMocks();
-MockDml dml = (MockDml) DatabaseLayer.Dml;
 MockDml.ConditionalFailure logic = new ExampleFailure();
-dml?.failIf(logic);
+DatabaseLayer.Dml.shouldFailIf(logic);
 // This won't fail, because it's not an update!
-dml?.doInsert();
+DatabaseLayer.Dml.doInsert(someRecord);
 ```
 
 `MockDml` does not actually modify records in the database, so you cannot use SOQL to retrieve changes and perform assertions against them. Instead, use history objects, like `MockDml.INSERTED` to retrieve modified SObject records in memory:
