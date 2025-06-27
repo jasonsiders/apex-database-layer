@@ -10,11 +10,7 @@ public with sharing virtual class Dml {
 	 * or the corresponding Database methods [ex., `Database.insert()`].
 	 * Each of this class's methods eventually ties back to an underlying `Database` method,
 	 * ex., `new Dml().doInsert()` -> `Database.insert()`.
-	 * To mock this instance, use the included `MockDml` class, or your own class which extends `Dml`.
-	 * - NOTE: This class is intentionally set to API 59.0
-	 * More recent versions do not support using "normal" SObjects in Database.*async/immediate methods
-	 * This functionality is necessary for us to be able to properly cover these methods in tests,
-	 * since we cannot introduce external objects as a part of this package.
+	 * Use the included `MockDml` class to perform Mock DML
 	 **/
 	private static final System.AccessLevel DEFAULT_ACCESS_LEVEL = System.AccessLevel.USER_MODE;
 	private static final DataSource.AsyncDeleteCallback DEFAULT_DELETE_CALLBACK = new Dml.EmptyDeleteCallback();
@@ -853,6 +849,7 @@ public with sharing virtual class Dml {
 			}
 		}
 
+		// ** Methods:
 		protected Request(Dml.Operation operation, List<Object> records) {
 			this.operation = operation;
 			this.accessLevel = DEFAULT_ACCESS_LEVEL;
@@ -896,7 +893,7 @@ public with sharing virtual class Dml {
 			return results;
 		}
 
-		// **** VIRTUAL **** //
+		// ** Virtual:
 		protected virtual List<Database.LeadConvertResult> doConvert() {
 			return Database.convertLead(this.leadsToConvert, this.options, this.accessLevel);
 		}
@@ -953,7 +950,7 @@ public with sharing virtual class Dml {
 			return Database.emptyRecycleBin(this.records);
 		}
 
-		// **** PRIVATE **** //
+		// ** Private:
 		private Integer getNumRecords() {
 			Integer num = (this.operation == Dml.Operation.DO_CONVERT)
 				? this.leadsToConvert?.size()
