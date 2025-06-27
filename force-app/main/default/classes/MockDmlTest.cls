@@ -883,6 +883,8 @@ private class MockDmlTest {
 	static void shouldRunPreAndPostProcessorPluginLogic() {
 		DatabaseLayerSetting__mdt settings = MockDmlTest.initSettings();
 		settings.DmlPreAndPostProcessor__c = MockDmlTest.TestPlugin.class.getName();
+		// Re-initialize the plugins, now that the field has been set:
+		DatabaseLayer.Dml.initPlugins();
 		List<Account> accounts = MockDmlTest.initRecords(Account.SObjectType, false);
 
 		Test.startTest();
@@ -898,6 +900,8 @@ private class MockDmlTest {
 	static void shouldNotRunProcessorLogicIfInvalidApexClassDefined() {
 		DatabaseLayerSetting__mdt settings = MockDmlTest.initSettings();
 		settings.DmlPreAndPostProcessor__c = 'an obviously invalid apex class name';
+		// Re-initialize the plugins, now that the field has been set:
+		DatabaseLayer.Dml.initPlugins();
 		List<Account> accounts = MockDmlTest.initRecords(Account.SObjectType, false);
 
 		Test.startTest();
@@ -913,6 +917,7 @@ private class MockDmlTest {
 	static void shouldNotRunProcessorLogicIfNoValueDefined() {
 		DatabaseLayerSetting__mdt settings = MockDmlTest.initSettings();
 		settings.DmlPreAndPostProcessor__c = null;
+		DatabaseLayer.Dml.initPlugins();
 		List<Account> accounts = MockDmlTest.initRecords(Account.SObjectType, false);
 
 		Test.startTest();
@@ -927,6 +932,7 @@ private class MockDmlTest {
 	@IsTest
 	static void shouldNotRunProcessorLogicIfNoSettingsDefined() {
 		// Without calling MockDmlTest.initSettings(), no settings are defined:
+		DatabaseLayer.Dml.initPlugins();
 		List<Account> accounts = MockDmlTest.initRecords(Account.SObjectType, false);
 
 		Test.startTest();
@@ -978,6 +984,18 @@ private class MockDmlTest {
 				operation == this.failingOperation &&
 				record?.getSObjectType() == this.failingSObjectType;
 			return (shouldFail) ? new System.DmlException() : null;
+		}
+	}
+
+	public class TestPlugin implements Dml.PreAndPostProcessor {
+		// Note: Class has to be public to work properly:
+		public void processPreDml(Dml.Request dmlRequest) {
+			System.debug('Request: ' + JSON.serialize(dmlRequest));
+			MockDmlTest.numPreDmlPluginCalls += 1;
+		}
+
+		public void processPostDml(Dml.Request dmlRequest, List<Object> databaseResults) {
+			MockDmlTest.numPostDmlPluginCalls += 1;
 		}
 	}
 }

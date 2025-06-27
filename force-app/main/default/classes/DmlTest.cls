@@ -931,8 +931,8 @@ private class DmlTest {
 	@IsTest
 	static void shouldNotRunProcessorLogicIfNoSettingsDefined() {
 		// Without calling DmlTest.initSettings(), no settings are defined:
-		Account account = DmlTest.initAccount();
 		DatabaseLayer.Dml.initPlugins();
+		Account account = DmlTest.initAccount();
 
 		Test.startTest();
 		Database.SaveResult result = DatabaseLayer.Dml.doInsert(account);
@@ -990,7 +990,6 @@ private class DmlTest {
 	public class TestPlugin implements Dml.PreAndPostProcessor {
 		// Note: Class has to be public to work properly:
 		public void processPreDml(Dml.Request dmlRequest) {
-			System.debug('Request: ' + JSON.serialize(dmlRequest));
 			DmlTest.numPreDmlPluginCalls += 1;
 		}
 
