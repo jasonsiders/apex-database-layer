@@ -2,9 +2,21 @@
 @IsTest
 private class DmlTest {
 	// **** VARIABLES **** //
-	private static final LeadStatus CONVERTED_STATUS = DmlTest.getConvertedStatus();
-	private static List<Database.DeleteResult> deleteCallbacksMade = new List<Database.DeleteResult>();
-	private static List<Database.SaveResult> saveCallbacksMade = new List<Database.SaveResult>();
+	private static final LeadStatus CONVERTED_STATUS;
+	private static List<Database.DeleteResult> deleteCallbacksMade;
+	private static Integer numPostDmlPluginCalls;
+	private static Integer numPreDmlPluginCalls;
+	private static List<Database.SaveResult> saveCallbacksMade;
+
+	static {
+		CONVERTED_STATUS = DmlTest.getConvertedStatus();
+		deleteCallbacksMade = new List<Database.DeleteResult>();
+		saveCallbacksMade = new List<Database.SaveResult>();
+		numPostDmlPluginCalls = 0;
+		numPreDmlPluginCalls = 0;
+		// Custom metadata actually defined in the org should not interfere with this test:
+		DatabaseLayer.Utils.MetadataSelector.settings = new List<DatabaseLayerSetting__mdt>{};
+	}
 
 	// **** TESTS **** //
 	@IsTest
@@ -866,31 +878,136 @@ private class DmlTest {
 		Assert.areEqual(0, [SELECT COUNT() FROM Account], 'DML operation was not rolled back');
 	}
 
+	@IsTest
+	static void shouldRunPreAndPostProcessorPluginLogic() {
+		DatabaseLayerSetting__mdt settings = DmlTest.initSettings();
+		settings.DmlPreAndPostProcessor__c = DmlTest.TestPlugin.class.getName();
+		// Re-initialize the plugins, now that the field has been set:
+		DatabaseLayer.Dml.initPlugins();
+		Account account = DmlTest.initAccount();
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doInsert(account);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+		Assert.areEqual(1, DmlTest.numPreDmlPluginCalls, 'Wrong number of pre-dml plugin calls');
+		Assert.areEqual(1, DmlTest.numPostDmlPluginCalls, 'Wrong number of post-dml plugin calls');
+	}
+
+	@IsTest
+	static void shouldNotRunProcessorLogicIfInvalidApexClassDefined() {
+		DatabaseLayerSetting__mdt settings = DmlTest.initSettings();
+		settings.DmlPreAndPostProcessor__c = 'an obviously invalid apex class name';
+		// Re-initialize the plugins, now that the field has been set:
+		DatabaseLayer.Dml.initPlugins();
+		Account account = DmlTest.initAccount();
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doInsert(account);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+		Assert.areEqual(0, DmlTest.numPreDmlPluginCalls, 'Wrong number of pre-dml plugin calls');
+		Assert.areEqual(0, DmlTest.numPostDmlPluginCalls, 'Wrong number of post-dml plugin calls');
+	}
+
+	@IsTest
+	static void shouldNotRunProcessorLogicIfNoValueDefined() {
+		DatabaseLayerSetting__mdt settings = DmlTest.initSettings();
+		settings.DmlPreAndPostProcessor__c = null;
+		DatabaseLayer.Dml.initPlugins();
+		Account account = DmlTest.initAccount();
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doInsert(account);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+		Assert.areEqual(0, DmlTest.numPreDmlPluginCalls, 'Wrong number of pre-dml plugin calls');
+		Assert.areEqual(0, DmlTest.numPostDmlPluginCalls, 'Wrong number of post-dml plugin calls');
+	}
+
+	@IsTest
+	static void shouldNotRunProcessorLogicIfNoSettingsDefined() {
+		// Without calling DmlTest.initSettings(), no settings are defined:
+		DatabaseLayer.Dml.initPlugins();
+		Account account = DmlTest.initAccount();
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doInsert(account);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+		Assert.areEqual(0, DmlTest.numPreDmlPluginCalls, 'Wrong number of pre-dml plugin calls');
+		Assert.areEqual(0, DmlTest.numPostDmlPluginCalls, 'Wrong number of post-dml plugin calls');
+	}
+
+	@IsTest
+	static void shouldSerializeDmlRequestForRecords() {
+		// The Dml.Request may be used in plugins for a variety of purposes, including logging
+		// For this reason, we should make sure the request is JSON-serializable,
+		// despite containing several fields that are not typically allowed in JSON
+		Lead lead = DmlTest.initLead();
+		List<Lead> leads = new List<Lead>{ lead };
+		Dml.Request request = DatabaseLayer.Dml.initRequest(Dml.Operation.DO_INSERT, leads);
+
+		Test.startTest();
+		String requestJson = JSON.serialize(request);
+		Test.stopTest();
+
+		Assert.isNotNull(requestJson, 'Is not JSON serializable');
+	}
+
+	@IsTest
+	static void shouldSerializeDmlRequestForLeadConverts() {
+		// The Dml.Request may be used in plugins for a variety of purposes, including logging
+		// For this reason, we should make sure the request is JSON-serializable,
+		// despite containing several fields that are not typically allowed in JSON
+		Lead lead = (Lead) new MockRecord(Lead.SObjectType)?.withId()?.toSObject();
+		Database.LeadConvert leadToConvert = DmlTest.initLeadConvert(lead);
+		List<Database.LeadConvert> leadsToConvert = new List<Database.LeadConvert>{ leadToConvert };
+		Dml.Request request = DatabaseLayer.Dml.initRequest(Dml.Operation.DO_CONVERT, leadsToConvert);
+
+		Test.startTest();
+		String requestJson = JSON.serialize(request);
+		Test.stopTest();
+
+		Assert.isNotNull(requestJson, 'Is not JSON serializable');
+	}
+
 	// **** HELPER **** //
-	static LeadStatus getConvertedStatus() {
+	private static LeadStatus getConvertedStatus() {
 		return [SELECT ApiName FROM LeadStatus WHERE IsConverted = TRUE LIMIT 1] ?? null;
 	}
 
-	static Account initAccount() {
+	private static Account initAccount() {
 		return new Account(Name = 'Robinson Industries');
 	}
 
-	static List<Account> initAccountList() {
+	private static List<Account> initAccountList() {
 		Account account = DmlTest.initAccount();
 		return new List<Account>{ account };
 	}
 
-	static Lead initLead() {
+	private static Lead initLead() {
 		return new Lead(Company = 'Tharsis Inc.', FirstName = 'John', LastName = 'Doe');
 	}
 
-	static Database.LeadConvert initLeadConvert(Lead lead) {
+	private static Database.LeadConvert initLeadConvert(Lead lead) {
 		Database.LeadConvert leadToConvert = new Database.LeadConvert();
 		leadToConvert?.setLeadId(lead?.Id);
 		leadToConvert?.setConvertedStatus(CONVERTED_STATUS?.ApiName);
 		return leadToConvert;
 	}
 
+	private static DatabaseLayerSetting__mdt initSettings() {
+		DatabaseLayerSetting__mdt settings = new DatabaseLayerSetting__mdt();
+		DatabaseLayer.Utils.MetadataSelector.settings?.add(settings);
+		return settings;
+	}
+
+	// **** INNER **** //
 	private class DeleteCallback extends DataSource.AsyncDeleteCallback {
 		public override void processDelete(Database.DeleteResult result) {
 			DmlTest.deleteCallbacksMade?.add(result);
@@ -900,6 +1017,18 @@ private class DmlTest {
 	private class SaveCallback extends DataSource.AsyncSaveCallback {
 		public override void processSave(Database.SaveResult result) {
 			DmlTest.saveCallbacksMade?.add(result);
+		}
+	}
+
+	public class TestPlugin implements Dml.PreAndPostProcessor {
+		// Note: Class has to be public to work properly:
+		public void processPreDml(Dml.Request request) {
+			System.debug(JSON.serialize(request, true));
+			DmlTest.numPreDmlPluginCalls += 1;
+		}
+
+		public void processPostDml(Dml.Request request, List<Object> databaseResults) {
+			DmlTest.numPostDmlPluginCalls += 1;
 		}
 	}
 }
