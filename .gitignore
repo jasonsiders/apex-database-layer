@@ -46,3 +46,7 @@ $RECYCLE.BIN/
 
 # VS Code Settings
 .vscode/settings.json
+
+# Unrelated Metadata
+force-app/main/default/objectTranslations/**
+force-app/main/default/profiles/**

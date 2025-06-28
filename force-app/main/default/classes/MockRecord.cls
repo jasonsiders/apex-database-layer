@@ -58,7 +58,9 @@ public class MockRecord {
 	}
 
 	public List<SObject> getRelatedList(SObjectField lookupField) {
-		Schema.ChildRelationship relationship = ChildRelationshipService.getChildRelationshipFrom(lookupField);
+		Schema.ChildRelationship relationship = DatabaseLayer.Utils.ChildRelationships.getChildRelationshipFrom(
+			lookupField
+		);
 		return this.getRelatedList(relationship);
 	}
 
@@ -97,7 +99,9 @@ public class MockRecord {
 	}
 
 	public MockRecord setRelatedList(SObjectField lookupField, List<SObject> relatedRecords) {
-		Schema.ChildRelationship relationship = ChildRelationshipService.getChildRelationshipFrom(lookupField);
+		Schema.ChildRelationship relationship = DatabaseLayer.Utils.ChildRelationships.getChildRelationshipFrom(
+			lookupField
+		);
 		return this.setRelatedList(relationship, relatedRecords);
 	}
 
