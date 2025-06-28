@@ -1094,7 +1094,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		public Subquery(SObjectField lookupFieldOnChildObject) {
-			this(ChildRelationshipService.getChildRelationshipFrom(lookupFieldOnChildObject));
+			this(DatabaseLayer.Utils.ChildRelationships.getChildRelationshipFrom(lookupFieldOnChildObject));
 		}
 
 		public override String getFrom() {
