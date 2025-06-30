@@ -1,5 +1,5 @@
 @SuppressWarnings('PMD.PropertyNamingConventions')
-public class DatabaseLayerUtils {
+public without sharing class DatabaseLayerUtils {
 	/**
 	 * This class contains utilities used by the framework internally
 	 * It uses a factory pattern to enforce access in a pseudo-namespace fashion;
