@@ -4,9 +4,9 @@
 			"path": "force-app",
 			"default": true,
 			"package": "apex-database-layer",
-			"versionName": "ver 2.4.0",
-			"versionNumber": "2.4.0.NEXT",
-			"versionDescription": "New plugin framework; static MockDml failure methods"
+			"versionName": "ver 2.4.1",
+			"versionNumber": "2.4.1.NEXT",
+			"versionDescription": "Fixing Dml class sharing logic"
 		}
 	],
 	"name": "apex-database-layer",
@@ -23,6 +23,7 @@
 		"apex-database-layer@2.2.1-1": "04tDn0000011OQYIA2",
 		"apex-database-layer@2.2.2-1": "04tDn0000011OQdIAM",
 		"apex-database-layer@2.3.0-1": "04tDn0000011OQsIAM",
-		"apex-database-layer@2.4.0-1": "04tDn0000011OR7IAM"
+		"apex-database-layer@2.4.0-1": "04tDn0000011OR7IAM",
+		"apex-database-layer@2.4.1-1": "04tDn0000011ORHIA2"
 	}
 }

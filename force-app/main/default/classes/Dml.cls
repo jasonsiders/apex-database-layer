@@ -1,7 +1,7 @@
 @SuppressWarnings(
 	'PMD.ApexDoc, PMD.CognitiveComplexity, PMD.CyclomaticComplexity, PMD.EmptyStatementBlock, PMD.ExcessiveParameterList, PMD.ExcessivePublicCount'
 )
-public with sharing virtual class Dml {
+public inherited sharing virtual class Dml {
 	/**
 	 * This class is responsible for performing CRUD operations with the Salesforce database.
 	 * While the apex language allows developers to directly interact with the database,
