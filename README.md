@@ -1,263 +1,76 @@
-# Apex Database Layer
+# `apex-database-layer`
 
-Welcome to the `apex-database-layer`, a comprehensive toolkit designed to simplify database operations and enhance testing capabilities within Salesforce. This package abstracts standard DML and SOQL operations, offering a more flexible, testable, and mockable approach to handling database interactions in your Apex code.
+Welcome to `apex-database-layer`, an open-source library used to easily mock Salesforce database operations in Apex.
 
-Whether you're building complex applications or writing robust tests, the `apex-database-layer` equips you with tools to streamline your development process. By leveraging this package, you can ensure that your database logic is not only efficient but also easily adaptable to various testing scenarios.
+## Features
 
-## Getting Started
+Apex Database Layer was designed to be feature-rich, yet easy to use, closely mirroring standard platform patterns.
 
-`apex-database-layer` is available as an unlocked package. You can find the latest or past versions in the [Releases](https://github.com/jasonsiders/apex-database-layer/releases) tab.
+You get the following out of the box:
+
+- Support for all standard `Database` class DML & SOQL operations
+- Easily mock [DML operations](./Mocking-DML-Operations) and [SOQL queries](./Mocking-SOQL-Queries).
+- A [Query framework](./The-Soql-Class) that enables strongly-typed, yet dynamic SOQL queries.
+- Easily [generate test records](./Generating-Test-Records) without using DML or SOQL.
+- [Switch between real & mock database operations](./The-DatabaseLayer-Class#useMocks) in Apex Tests, with a single line of code
+- An optional [Plugin Framework](./The-Plugin-Framework) allows you to fine-tune the platform to your exact use case.
+- Simplicity: The framework uses just a couple of Apex classes (and a custom metadata type, to support Plugins).
+
+Best of all, the framework is built 100% on the Salesforce platform, using standard Salesforce technology. It's open source, and free, and it always will be.
+
+## Installation
+
+`apex-database-layer` is available for free as an unlocked package. You can find the latest or past versions in the [Releases](https://github.com/jasonsiders/apex-database-layer/releases) tab.
 
 Use the following command to install the package in your environment:
 
-```
-sf package install -p {{package_version_id}}
+```sh
+sf package install --package {{package_version_id}} --wait 10
 ```
 
 ## Usage
 
-This package can be thought of in four categories, each with its own distinct set of responsibilities:
+Once intalled, use [`DatabaseLayer.Dml`](./Performing-DML-Operations) for all of your DML operations:
 
-- `Dml` & `MockDml`: Performing DML operations
-- `Soql` & `MockSoql`: Performing SOQL operations
-- `DatabaseLayer`: Constructing `Dml` and `Soql` objects
-- `MockRecord`: Mocking SObject records for test purposes
-
-<details>
-  <summary><h3>Performing DML Operations</h3></summary>
-
-The `Dml` class is responsible for inserting, modifying, and deleting records in the salesforce database. It wraps the relevant methods in the standard [Database](https://developer.salesforce.com/docs/atlas.en-us.apexref.meta/apexref/apex_methods_system_database.htm) class, like `Database.insert`. Use the `Dml` class and its methods in place of these system methods, as demonstrated below:
-
-```java
-// Don't use these built-in platform methods
-insert records;
-Database.insert(records);
-// Instead, use the Dml class's methods
-DatabaseLayer.Dml.doInsert(records);
-```
-
-In apex tests, you can mock all of your DML operations by calling `DatabaseLayer.useMocks()`. This will automatically substitute real `Dml` objects with a `MockDml` object.
-
-By default this class will simulate successful DML operations:
-
-```java
-DatabaseLayer.useMocks();
-Account account = new Account(Name = 'Test Account');
-DatabaseLayer.Dml.doInsert(account);
-Assert.isNotNull(account?.Id, 'Was not inserted');
-```
-
-To simulate DML failures, use the `Dml.shouldFail()` method:
-
-```java
-DatabaseLayer.useMocks();
-Account account = new Account(Name = 'Test Account');
-MockDml.shouldFail();
-// All subsuquent dml operations should fail
+```apex
+// Don't use these standard apex DML methods:
+insert account;
+Database.insert(account);
+// Use this instead:
 DatabaseLayer.Dml.doInsert(account);
 ```
 
-If necessary, you can inject "smarter" failure logic via the `MockDml.ConditionalFailure` interface and the `DatabaseLayer.shouldFailIf()` method:
+Use [`DatabaseLayer.Soql`](./Performing-SOQL-Queries) for all of your SOQL queries:
 
-```java
-public class ExampleFailure implements MockDml.ConditionalFailure {
-  public Exception checkFailure(MockDml.Operation operation, SObject record) {
-    // Return an Exception if the record/operation should fail
-    // In this case, any updated Accounts will fail
-    if (
-      operation == MockDml.Operation.DO_UPDATE &&
-      record?.getSObjectType() == Account.SObjectType
-    ) {
-      return new System.DmlException();
-    } else {
-      return null;
-    }
-  }
-}
+```apex
+List<Account> accounts = (List<Account>) DatabaseLayer.Soql.newQuery(Account.SObjectType)
+  ?.addSelect(Account.Name)
+  ?.addWhere(Account.OwnerId, Soql.EQUALS, UserInfo.getUserId())
+  ?.orderBy(Account.LastModifiedDate, Soql.SortDirection.DESCENDING)
+  ?.setRowLimit(200)
+  ?.toSoql()
+  ?.query();
 ```
 
-```java
-// Inject the conditional logic via the shouldFailIf() method
+Once this is done, you can instantly decouple your `Dml` and `Soql` operations from the Salesforce database in apex tests, with just a [single line of code](./The-DatabaseLayer-Class#useMocks):
+
+```apex
 DatabaseLayer.useMocks();
-MockDml.ConditionalFailure logic = new ExampleFailure();
-MockDml.shouldFailIf(logic);
-// This won't fail, because it's not an update!
-DatabaseLayer.Dml.doInsert(someRecord);
 ```
 
-`MockDml` does not actually modify records in the database, so you cannot use SOQL to retrieve changes and perform assertions against them. Instead, use history objects, like `MockDml.INSERTED` to retrieve modified SObject records in memory:
+In apex tests, you can easily [generate test records](./Generating-Test-Records.md) for use in mocks, that would otherwise require extensive database operations:
 
-```java
-@IsTest
-static void someTest() {
-  DatabaseLayer.useMocks();
-  Account acc = new Account(Name = 'John Doe');
-
-  Test.startTest();
-  DatabaseLayer.Dml.doInsert(acc);
-  Test.stopTest();
-
-  List<Account> insertedAccs = MockDml.INSERTED.getRecords(Account.SObjectType);
-  Assert.areEqual(1, insertedAccs?.size(), 'Account was not inserted');
-}
-```
-
-View the [docs](docs/DML.md) to learn more about the `Dml` and `MockDml` classes.
-
-</details>
-
-<details>
-  <summary><h3>Performing SOQL Operations</h3></summary>
-
-The `Soql` class is responsible for querying records from the database. It wraps the standard `Database.query` and related methods. You can use its flexible builder pattern to compose a wide range of queries.
-
-```java
-Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
-  ?.addSelect(User.FirstName)
-  ?.addSelect(User.LastName)
-  ?.addSelect(User.Email)
-  ?.addWhere(User.IsActive, Soql.EQUALS, true)
-  ?.addWhere(new Soql.ParentField(User.ProfileId, Profile.Name), Soql.EQUALS, 'System Administrator')
-  ?.orderBy(User.CreatedDate, Soql.SortDirection.ASCENDING)
-  ?.setRowLimit(1)
-  ?.toSoql();
-List<User> users = soql?.query();
-```
-
-In apex tests, you can mock all of your query operations by calling `DatabaseLayer.useMocks()`. This will automatically substitute real `Soql` objects with a `MockSoql` object.
-By default, `MockSoql` objects will return an empty list of results. You can inject mock results for each query set using the `setGlobalMock` and `setMock` methods:
-
-```java
-DatabaseLayer.useMocks();
-Account mockAccount = new Account(Name = 'Test Account');
-// Note: The setGlobalMock static method injects mock results for all queries
-// If you want to mock a specific query, use the setMock member method instead
-MockSoql.setGlobalMock()?.withResults(new List<Account>{ mockAccount });
-List<Account> results = (List<Account>) DatabaseLayer.newQuery(Account.SObjectType)?.query();
-Assert.areEqual(1, results?.size(), 'Wrong # of results');
-```
-
-You can also simulate query errors via the `withError()` method:
-
-```java
-DatabaseLayer.useMocks();
-// Note: The setMock member method injects mock results for the specified queries
-// If you want to mock all queries w/out needing to assign a mock to each,
-// use the setGlobalMock static method instead
-MockSoql myQuery = DatabaseLayer.newQuery(Account.SObjectType);
-myQuery?.setMock()?.withError();
-
-try {
-  myQuery?.query();
-  Assert.fail('Did not throw an exception');
-} catch (System.QueryException error) {
-  // As expected
-}
-```
-
-Mocking queries by passing the records to be returned, or errors to be thrown (as shown above) should work for most use cases. If needed, you can implement your own custom logic via the `MockSoql.Simulator` interface:
-
-```java
-DatabaseLayer.useMocks();
-MockSoql.Simulator simulator = new MySimulator();
-MockSoql.setGlobalMock(simulator);
-List<Opportunity> opps = DatabaseLayer.Soql.newQuery(Opportunity.SObjectType)?.query();
-
-public class MySimulator implements MockSoql.Simulator {
-  // This implementation generates a List<Opportunity> w/random values
-  public Object simulateQuery(Soql queryToMock) {
-    Integer numOpps = Integer.valueOf(Math.random() * 200);
-    List<Opportunity> opps = new List<Opportunity>();
-    for (Integer i = 0; i < numOpps; i++) {
-      Opportunity opp = new Opportunity();
-      opp.Amount = Decimal.valueOf(Math.random() * 10000);
-      opps?.add(opp);
-    }
-    return opps;
-  }
-}
-```
-
-View the [docs](docs/SOQL.md) to learn more about the `Soql` and `MockSoql` classes.
-
-</details>
-
-<details>
-  <summary><h3>Constructing Database Objects</h3></summary>
-
-The `DatabaseLayer` class is responsible for constructing new `Dml` and `Soql` objects:
-
-```java
-Dml myDml = DatabaseLayer.Dml;
-Soql mySoql = DatabaseLayer.Soql.newQuery(Account.SObjectType)?.toSoql();
-```
-
-This approach allows for mocks to be automatically substituted at runtime during tests, if desired. By default, each of these methods will return base implementations of the `Dml` and `Soql` classes, which directly interact with the Salesforce database. In `@IsTest` context, you can use the `DatabaseLayer.useMocks()` method. Once this is done, the `Dml` and `Soql` static properties will reflect mock instances of their respective objects:
-
-```java
-@IsTest
-static void shouldUseMockDml() {
-  // Assuming ExampleClass has a Dml property called "dml"
-  DatabaseLayer.useMocks();
-  ExampleClass example = new ExampleClass();
-  Assert.isInstanceOfType(example.dml, MockDml.class, 'Not using mocks');
-}
-```
-
-You can also revert the `DatabaseLayer` class to use real database operations by calling `DatabaseLayer.useRealData()`. This should only be used in cases where some (but not all) database operations should be mocked:
-
-```java
-@IsTest
-static void shouldUseMixedOfMocksAndRealDml() {
-  DatabaseLayer.useMocks();
-  ExampleClass mockExample = new ExampleClass();
-  Assert.isInstanceOfType(mockExample.dml, MockDml.class, 'Not using mocks');
-  // Now switch to using real data,
-  // will apply to any new Dml classes going forward
-  DatabaseLayer.useRealData();
-  ExampleClass databaseExample = new ExampleClass();
-  Assert.isNotInstanceOfType(databaseExample.dml, MockDml.class, 'Using mocks?');
-}
-```
-
-</details>
-
-<details>
-  <summary><h3>Building Test Records</h3></summary>
-
-While mocking database operations can provide many benefits, mocking SObject records in the absence of real DML or SOQL can be tedious.
-
-The `MockRecord` class addresses many of the pains associated with this process, including:
-
-- Set read-only fields (including system-level fields)
-- Simulate record inserts
-- Simulate parent and child relationship retrievals through SOQL
-
-Use the class's fluent builder pattern to generate a record to your specifications, and then cast it back to a concrete SObject. Example:
-
-```java
-Account realAccount = [
-  SELECT
-    Id, CreatedDate, Owner.Name,
-    (SELECT Id FROM Contacts)
-  FROM Account
-  LIMIT 1
-];
-// Let's make a test record that can be used to mock the above query!
-User mockUser = (User) new MockRecord(User.SObjectType)
-  ?.setField(User.Name, 'John Doe')
-  ?.withId()
-  ?.toSObject();
-Contact mockContact = (Contact) new MockRecord(Contact.SObjectType)
-  ?.withId()
-  ?.toSObject();
-Account mockAccount = (Account) new MockRecord(Account.SObjectType)
-  ?.setField(Account.Name, 'John Doe Enterprises')
-  ?.setField(Account.CreatedDate, DateTime.now()?.addDays(-100))
-  ?.setLookup(Account.OwnerId, mockUser)
-  ?.setRelatedList(Contact.AccountId, new List<Contact>{ mockContact })
+```apex
+// This operation takes ~2ms; would require 4 separate DML operations otherwise:
+OpportunityContactRole contactRole = (OpportunityContactRole) new MockRecord(OpportunityContactRole.SObjectType)
   ?.withId()
   ?.toSObject();
 ```
 
-</summary>
+## Want To Learn More?
+
+Head over to our [wiki](https://github.com/jasonsiders/apex-database-layer/wiki), which includes articles about:
+
+- Mocking database operations, and why it's important
+- Techniques for mocking using the framework
+- Documentation for all public classes & methods
