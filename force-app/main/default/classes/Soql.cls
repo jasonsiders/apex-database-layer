@@ -317,17 +317,35 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			return String.format('SELECT {0} FROM {1} {2}', queryArgs)?.trim();
 		}
 
-		public Soql.Builder bind(Map<String, Object> bindMap) {
+		public Soql.Builder addBind(Map<String, Object> bindMap) {
 			this.binds?.putAll(bindMap);
 			return this;
 		}
 
+		public Soql.Builder addBind(String key, Object value) {
+			return this.addBind(new Map<String, Object>{ key => value });
+		}
+
+		public Soql.Builder addBind(Soql.Binder binder) {
+			return this.addBind(binder?.getKey(), binder?.getValue());
+		}
+
+		public Soql.Builder bind(Map<String, Object> bindMap) {
+			// ! Deprecated - this method will be removed in a future release
+			// ! Replace all instances with the `addBind()` method
+			return this.addBind(bindMap);
+		}
+
 		public Soql.Builder bind(String key, Object value) {
-			return this.bind(new Map<String, Object>{ key => value });
+			// ! Deprecated - this method will be removed in a future release
+			// ! Replace all instances with the `addBind()` method
+			return this.addBind(key, value);
 		}
 
 		public Soql.Builder bind(Soql.Binder binder) {
-			return this.bind(binder?.getKey(), binder?.getValue());
+			// ! Deprecated - this method will be removed in a future release
+			// ! Replace all instances with the `addBind()` method
+			return this.addBind(binder);
 		}
 
 		public Soql.Builder deselectAll() {
@@ -544,7 +562,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
 		public Soql.Builder addWhere(String fieldName, Soql.Operator operator, Soql.Binder binder) {
 			// If the current `value` object is a Binder, bind the values so that callers don't need to do so manually
-			return this.addWhere(fieldName, operator, binder?.toString())?.bind(binder);
+			return this.addWhere(fieldName, operator, binder?.toString())?.addBind(binder);
 		}
 
 		public Soql.Builder addWhere(SObjectField field, Soql.Operator operator, Soql.Binder binder) {
