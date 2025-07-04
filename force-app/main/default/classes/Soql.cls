@@ -317,40 +317,20 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			return String.format('SELECT {0} FROM {1} {2}', queryArgs)?.trim();
 		}
 
-		public Soql.Builder bind(Map<String, Object> bindMap) {
+		public Soql.Builder addBind(Map<String, Object> bindMap) {
 			this.binds?.putAll(bindMap);
 			return this;
 		}
 
-		public Soql.Builder bind(String key, Object value) {
-			return this.bind(new Map<String, Object>{ key => value });
+		public Soql.Builder addBind(String key, Object value) {
+			return this.addBind(new Map<String, Object>{ key => value });
 		}
 
-		public Soql.Builder bind(Soql.Binder binder) {
-			return this.bind(binder?.getKey(), binder?.getValue());
+		public Soql.Builder addBind(Soql.Binder binder) {
+			return this.addBind(binder?.getKey(), binder?.getValue());
 		}
 
-		public Soql.Builder deselectAll() {
-			// Remove all SELECT fields from the current query
-			this.selectClauses?.clear();
-			return this;
-		}
-
-		public Soql.Builder deselect(String fieldName) {
-			// Remove a field from the current query
-			this.selectClauses?.remove(fieldName);
-			return this;
-		}
-
-		public Soql.Builder deselect(SObjectField field) {
-			return this.deselect(field?.toString());
-		}
-
-		public Soql.Builder deselect(Soql.Selectable selectable) {
-			return this.deselect(selectable?.toString());
-		}
-
-		public Soql.Builder defineAccess(System.AccessLevel accessLevel) {
+		public Soql.Builder setAccessLevel(System.AccessLevel accessLevel) {
 			this.accessLevel = accessLevel;
 			return this;
 		}
@@ -501,14 +481,34 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			return this.addSelect(field, null);
 		}
 
+		public Soql.Builder deselectAll() {
+			// Remove all SELECT fields from the current query
+			this.selectClauses?.clear();
+			return this;
+		}
+
+		public Soql.Builder deselect(String fieldName) {
+			// Remove a field from the current query
+			this.selectClauses?.remove(fieldName);
+			return this;
+		}
+
+		public Soql.Builder deselect(SObjectField field) {
+			return this.deselect(field?.toString());
+		}
+
+		public Soql.Builder deselect(Soql.Selectable selectable) {
+			return this.deselect(selectable?.toString());
+		}
+
 		// * FROM *
-		public Soql.Builder fromSObject(SObjectType objectType) {
+		public Soql.Builder setFrom(SObjectType objectType) {
 			this.entity = objectType?.toString();
 			return this;
 		}
 
 		// * USING SCOPE *
-		public Soql.Builder usingScope(Soql.Scope scope) {
+		public Soql.Builder setScope(Soql.Scope scope) {
 			this.scope = scope;
 			return this;
 		}
@@ -544,7 +544,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
 		public Soql.Builder addWhere(String fieldName, Soql.Operator operator, Soql.Binder binder) {
 			// If the current `value` object is a Binder, bind the values so that callers don't need to do so manually
-			return this.addWhere(fieldName, operator, binder?.toString())?.bind(binder);
+			return this.addWhere(fieldName, operator, binder?.toString())?.addBind(binder);
 		}
 
 		public Soql.Builder addWhere(SObjectField field, Soql.Operator operator, Soql.Binder binder) {
@@ -564,24 +564,24 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		public Soql.Builder withSecurityEnforced() {
 			this.withClause = 'SECURITY_ENFORCED';
 			// Note: Cannot use the WITH SECURITY_ENFORCED clause in queries using USER_MODE access level.
-			this.defineAccess(System.AccessLevel.SYSTEM_MODE);
+			this.setAccessLevel(System.AccessLevel.SYSTEM_MODE);
 			return this;
 		}
 
 		// * GROUP BY *
-		public Soql.Builder groupBy(String fieldName) {
+		public Soql.Builder addGroupBy(String fieldName) {
 			// Note: GROUP BY queries should never assume an implicit "Id" in the query
 			this.deselect(ID_REFERENCE);
 			this.groupByClauses?.add(fieldName);
 			return this;
 		}
 
-		public Soql.Builder groupBy(SObjectField field) {
-			return this.groupBy(field?.toString());
+		public Soql.Builder addGroupBy(SObjectField field) {
+			return this.addGroupBy(field?.toString());
 		}
 
-		public Soql.Builder groupBy(Soql.ParentField field) {
-			return this.groupBy(field?.toString());
+		public Soql.Builder addGroupBy(Soql.ParentField field) {
+			return this.addGroupBy(field?.toString());
 		}
 
 		// * HAVING *
@@ -598,22 +598,22 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		// * ORDER BY *
-		public Soql.Builder orderBy(Soql.SortOrder sortOrder) {
+		public Soql.Builder addOrderBy(Soql.SortOrder sortOrder) {
 			this.orderByClauses?.add(sortOrder?.toString());
 			return this;
 		}
 
-		public Soql.Builder orderBy(String fieldName, Soql.SortDirection direction) {
+		public Soql.Builder addOrderBy(String fieldName, Soql.SortDirection direction) {
 			Soql.SortOrder sortOrder = new Soql.SortOrder(fieldName, direction);
-			return this.orderBy(sortOrder);
+			return this.addOrderBy(sortOrder);
 		}
 
-		public Soql.Builder orderBy(SObjectField field, Soql.SortDirection direction) {
-			return this.orderBy(field?.toString(), direction);
+		public Soql.Builder addOrderBy(SObjectField field, Soql.SortDirection direction) {
+			return this.addOrderBy(field?.toString(), direction);
 		}
 
-		public Soql.Builder orderBy(Soql.ParentField field, Soql.SortDirection direction) {
-			return this.orderBy(field?.toString(), direction);
+		public Soql.Builder addOrderBy(Soql.ParentField field, Soql.SortDirection direction) {
+			return this.addOrderBy(field?.toString(), direction);
 		}
 
 		// * LIMIT *
@@ -632,6 +632,86 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		public Soql.Builder setUsage(Soql.Usage usage) {
 			this.usage = usage;
 			return this;
+		}
+
+		// **** DEPRECATED **** //
+		public Soql.Builder bind(Map<String, Object> bindMap) {
+			// ! Deprecated - this method will be removed in a future release
+			// ! Replace all instances with the `addBind` method
+			return this.addBind(bindMap);
+		}
+
+		public Soql.Builder bind(String key, Object value) {
+			// ! Deprecated - this method will be removed in a future release
+			// ! Replace all instances with the `addBind` method
+			return this.addBind(key, value);
+		}
+
+		public Soql.Builder bind(Soql.Binder binder) {
+			// ! Deprecated - this method will be removed in a future release
+			// ! Replace all instances with the `addBind` method
+			return this.addBind(binder);
+		}
+
+		public Soql.Builder defineAccess(System.AccessLevel accessLevel) {
+			// ! Deprecated - this method will be removed in a future release
+			// ! Replace all instances with the `setAccessLevel` method
+			return this.setAccessLevel(accessLevel);
+		}
+
+		public Soql.Builder fromSObject(SObjectType objectType) {
+			// ! Deprecated - this method will be removed in a future release
+			// ! Replace all instances with the `setFrom` method
+			return this.setFrom(objectType);
+		}
+
+		public Soql.Builder groupBy(String fieldName) {
+			// ! Deprecated - this method will be removed in a future release
+			// ! Replace all instances with the `addGroupBy` method
+			return this.addGroupBy(fieldName);
+		}
+
+		public Soql.Builder groupBy(SObjectField field) {
+			// ! Deprecated - this method will be removed in a future release
+			// ! Replace all instances with the `addGroupBy` method
+			return this.addGroupBy(field);
+		}
+
+		public Soql.Builder groupBy(Soql.ParentField field) {
+			// ! Deprecated - this method will be removed in a future release
+			// ! Replace all instances with the `addGroupBy` method
+			return this.addGroupBy(field);
+		}
+
+		public Soql.Builder orderBy(Soql.SortOrder sortOrder) {
+			// ! Deprecated - this method will be removed in a future release
+			// ! Replace all instances with the `addOrderBy` method
+			return this.addOrderBy(sortOrder);
+		}
+
+		public Soql.Builder orderBy(String fieldName, Soql.SortDirection direction) {
+			// ! Deprecated - this method will be removed in a future release
+			// ! Replace all instances with the `addOrderBy` method
+			Soql.SortOrder sortOrder = new Soql.SortOrder(fieldName, direction);
+			return this.addOrderBy(fieldName, direction);
+		}
+
+		public Soql.Builder orderBy(SObjectField field, Soql.SortDirection direction) {
+			// ! Deprecated - this method will be removed in a future release
+			// ! Replace all instances with the `addOrderBy` method
+			return this.addOrderBy(field, direction);
+		}
+
+		public Soql.Builder orderBy(Soql.ParentField field, Soql.SortDirection direction) {
+			// ! Deprecated - this method will be removed in a future release
+			// ! Replace all instances with the `addOrderBy` method
+			return this.addOrderBy(field, direction);
+		}
+
+		public Soql.Builder usingScope(Soql.Scope scope) {
+			// ! Deprecated - this method will be removed in a future release
+			// ! Replace all instances with the `setScope` method
+			return this.setScope(scope);
 		}
 
 		// **** PRIVATE **** //
@@ -885,7 +965,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
 		public InnerQuery(SObjectType objectType) {
 			this();
-			this.fromSObject(objectType);
+			this.setFrom(objectType);
 		}
 
 		public override String toString() {
