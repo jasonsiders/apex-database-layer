@@ -564,7 +564,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		public Soql.Builder withSecurityEnforced() {
 			this.withClause = 'SECURITY_ENFORCED';
 			// Note: Cannot use the WITH SECURITY_ENFORCED clause in queries using USER_MODE access level.
-			this.defineAccess(System.AccessLevel.SYSTEM_MODE);
+			this.setAccessLevel(System.AccessLevel.SYSTEM_MODE);
 			return this;
 		}
 
