@@ -330,26 +330,6 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			return this.addBind(binder?.getKey(), binder?.getValue());
 		}
 
-		public Soql.Builder deselectAll() {
-			// Remove all SELECT fields from the current query
-			this.selectClauses?.clear();
-			return this;
-		}
-
-		public Soql.Builder deselect(String fieldName) {
-			// Remove a field from the current query
-			this.selectClauses?.remove(fieldName);
-			return this;
-		}
-
-		public Soql.Builder deselect(SObjectField field) {
-			return this.deselect(field?.toString());
-		}
-
-		public Soql.Builder deselect(Soql.Selectable selectable) {
-			return this.deselect(selectable?.toString());
-		}
-
 		public Soql.Builder setAccessLevel(System.AccessLevel accessLevel) {
 			this.accessLevel = accessLevel;
 			return this;
@@ -499,6 +479,26 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
 		public Soql.Builder addSelect(Soql.Selectable field) {
 			return this.addSelect(field, null);
+		}
+
+		public Soql.Builder deselectAll() {
+			// Remove all SELECT fields from the current query
+			this.selectClauses?.clear();
+			return this;
+		}
+
+		public Soql.Builder deselect(String fieldName) {
+			// Remove a field from the current query
+			this.selectClauses?.remove(fieldName);
+			return this;
+		}
+
+		public Soql.Builder deselect(SObjectField field) {
+			return this.deselect(field?.toString());
+		}
+
+		public Soql.Builder deselect(Soql.Selectable selectable) {
+			return this.deselect(selectable?.toString());
 		}
 
 		// * FROM *
