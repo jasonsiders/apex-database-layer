@@ -332,19 +332,19 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
 		public Soql.Builder bind(Map<String, Object> bindMap) {
 			// ! Deprecated - this method will be removed in a future release
-			// ! Replace all instances with the `addBind()` method
+			// ! Replace all instances with the `addBind` method
 			return this.addBind(bindMap);
 		}
 
 		public Soql.Builder bind(String key, Object value) {
 			// ! Deprecated - this method will be removed in a future release
-			// ! Replace all instances with the `addBind()` method
+			// ! Replace all instances with the `addBind` method
 			return this.addBind(key, value);
 		}
 
 		public Soql.Builder bind(Soql.Binder binder) {
 			// ! Deprecated - this method will be removed in a future release
-			// ! Replace all instances with the `addBind()` method
+			// ! Replace all instances with the `addBind` method
 			return this.addBind(binder);
 		}
 
@@ -370,7 +370,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
 		public Soql.Builder defineAccess(System.AccessLevel accessLevel) {
 			// ! Deprecated - this method will be removed in a future release
-			// ! Replace all instances with the `setAccessLevel()` method
+			// ! Replace all instances with the `setAccessLevel` method
 			return this.setAccessLevel(accessLevel);
 		}
 
@@ -533,14 +533,20 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
 		public Soql.Builder fromSObject(SObjectType objectType) {
 			// ! Deprecated - this method will be removed in a future release
-			// ! Replace all instances with the `setFrom()` method
+			// ! Replace all instances with the `setFrom` method
 			return this.setFrom(objectType);
 		}
 
 		// * USING SCOPE *
-		public Soql.Builder usingScope(Soql.Scope scope) {
+		public Soql.Builder setScope(Soql.Scope scope) {
 			this.scope = scope;
 			return this;
+		}
+
+		public Soql.Builder usingScope(Soql.Scope scope) {
+			// ! Deprecated - this method will be removed in a future release
+			// ! Replace all instances with the `setScope` method
+			return this.setScope(scope);
 		}
 
 		// * WHERE *
