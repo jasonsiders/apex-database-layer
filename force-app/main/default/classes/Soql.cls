@@ -369,6 +369,12 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		public Soql.Builder defineAccess(System.AccessLevel accessLevel) {
+			// ! Deprecated - this method will be removed in a future release
+			// ! Replace all instances with the `setAccessLevel()` method
+			return this.setAccessLevel(accessLevel);
+		}
+
+		public Soql.Builder setAccessLevel(System.AccessLevel accessLevel) {
 			this.accessLevel = accessLevel;
 			return this;
 		}
