@@ -526,9 +526,15 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		// * FROM *
-		public Soql.Builder fromSObject(SObjectType objectType) {
+		public Soql.Builder setFrom(SObjectType objectType) {
 			this.entity = objectType?.toString();
 			return this;
+		}
+
+		public Soql.Builder fromSObject(SObjectType objectType) {
+			// ! Deprecated - this method will be removed in a future release
+			// ! Replace all instances with the `setEntity()` method
+			return this.setFrom(objectType);
 		}
 
 		// * USING SCOPE *
@@ -909,7 +915,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
 		public InnerQuery(SObjectType objectType) {
 			this();
-			this.fromSObject(objectType);
+			this.setFrom(objectType);
 		}
 
 		public override String toString() {
