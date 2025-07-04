@@ -599,19 +599,37 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		// * GROUP BY *
-		public Soql.Builder groupBy(String fieldName) {
+		public Soql.Builder addGroupBy(String fieldName) {
 			// Note: GROUP BY queries should never assume an implicit "Id" in the query
 			this.deselect(ID_REFERENCE);
 			this.groupByClauses?.add(fieldName);
 			return this;
 		}
 
+		public Soql.Builder addGroupBy(SObjectField field) {
+			return this.addGroupBy(field?.toString());
+		}
+
+		public Soql.Builder addGroupBy(Soql.ParentField field) {
+			return this.addGroupBy(field?.toString());
+		}
+
+		public Soql.Builder groupBy(String fieldName) {
+			// ! Deprecated - this method will be removed in a future release
+			// ! Replace all instances with the `addGroupBy` method
+			return this.addGroupBy(fieldName);
+		}
+
 		public Soql.Builder groupBy(SObjectField field) {
-			return this.groupBy(field?.toString());
+			// ! Deprecated - this method will be removed in a future release
+			// ! Replace all instances with the `addGroupBy` method
+			return this.addGroupBy(field);
 		}
 
 		public Soql.Builder groupBy(Soql.ParentField field) {
-			return this.groupBy(field?.toString());
+			// ! Deprecated - this method will be removed in a future release
+			// ! Replace all instances with the `addGroupBy` method
+			return this.addGroupBy(field);
 		}
 
 		// * HAVING *
@@ -628,22 +646,47 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		// * ORDER BY *
-		public Soql.Builder orderBy(Soql.SortOrder sortOrder) {
+		public Soql.Builder addOrderBy(Soql.SortOrder sortOrder) {
 			this.orderByClauses?.add(sortOrder?.toString());
 			return this;
 		}
 
-		public Soql.Builder orderBy(String fieldName, Soql.SortDirection direction) {
+		public Soql.Builder addOrderBy(String fieldName, Soql.SortDirection direction) {
 			Soql.SortOrder sortOrder = new Soql.SortOrder(fieldName, direction);
-			return this.orderBy(sortOrder);
+			return this.addOrderBy(sortOrder);
+		}
+
+		public Soql.Builder addOrderBy(SObjectField field, Soql.SortDirection direction) {
+			return this.addOrderBy(field?.toString(), direction);
+		}
+
+		public Soql.Builder addOrderBy(Soql.ParentField field, Soql.SortDirection direction) {
+			return this.addOrderBy(field?.toString(), direction);
+		}
+
+		public Soql.Builder orderBy(Soql.SortOrder sortOrder) {
+			// ! Deprecated - this method will be removed in a future release
+			// ! Replace all instances with the `addOrderBy` method
+			return this.addOrderBy(sortOrder);
+		}
+
+		public Soql.Builder orderBy(String fieldName, Soql.SortDirection direction) {
+			// ! Deprecated - this method will be removed in a future release
+			// ! Replace all instances with the `addOrderBy` method
+			Soql.SortOrder sortOrder = new Soql.SortOrder(fieldName, direction);
+			return this.addOrderBy(fieldName, direction);
 		}
 
 		public Soql.Builder orderBy(SObjectField field, Soql.SortDirection direction) {
-			return this.orderBy(field?.toString(), direction);
+			// ! Deprecated - this method will be removed in a future release
+			// ! Replace all instances with the `addOrderBy` method
+			return this.addOrderBy(field, direction);
 		}
 
 		public Soql.Builder orderBy(Soql.ParentField field, Soql.SortDirection direction) {
-			return this.orderBy(field?.toString(), direction);
+			// ! Deprecated - this method will be removed in a future release
+			// ! Replace all instances with the `addOrderBy` method
+			return this.addOrderBy(field, direction);
 		}
 
 		// * LIMIT *
