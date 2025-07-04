@@ -533,7 +533,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
 		public Soql.Builder fromSObject(SObjectType objectType) {
 			// ! Deprecated - this method will be removed in a future release
-			// ! Replace all instances with the `setEntity()` method
+			// ! Replace all instances with the `setFrom()` method
 			return this.setFrom(objectType);
 		}
 
