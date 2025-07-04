@@ -330,24 +330,6 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			return this.addBind(binder?.getKey(), binder?.getValue());
 		}
 
-		public Soql.Builder bind(Map<String, Object> bindMap) {
-			// ! Deprecated - this method will be removed in a future release
-			// ! Replace all instances with the `addBind` method
-			return this.addBind(bindMap);
-		}
-
-		public Soql.Builder bind(String key, Object value) {
-			// ! Deprecated - this method will be removed in a future release
-			// ! Replace all instances with the `addBind` method
-			return this.addBind(key, value);
-		}
-
-		public Soql.Builder bind(Soql.Binder binder) {
-			// ! Deprecated - this method will be removed in a future release
-			// ! Replace all instances with the `addBind` method
-			return this.addBind(binder);
-		}
-
 		public Soql.Builder deselectAll() {
 			// Remove all SELECT fields from the current query
 			this.selectClauses?.clear();
@@ -366,12 +348,6 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
 		public Soql.Builder deselect(Soql.Selectable selectable) {
 			return this.deselect(selectable?.toString());
-		}
-
-		public Soql.Builder defineAccess(System.AccessLevel accessLevel) {
-			// ! Deprecated - this method will be removed in a future release
-			// ! Replace all instances with the `setAccessLevel` method
-			return this.setAccessLevel(accessLevel);
 		}
 
 		public Soql.Builder setAccessLevel(System.AccessLevel accessLevel) {
@@ -531,22 +507,10 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			return this;
 		}
 
-		public Soql.Builder fromSObject(SObjectType objectType) {
-			// ! Deprecated - this method will be removed in a future release
-			// ! Replace all instances with the `setFrom` method
-			return this.setFrom(objectType);
-		}
-
 		// * USING SCOPE *
 		public Soql.Builder setScope(Soql.Scope scope) {
 			this.scope = scope;
 			return this;
-		}
-
-		public Soql.Builder usingScope(Soql.Scope scope) {
-			// ! Deprecated - this method will be removed in a future release
-			// ! Replace all instances with the `setScope` method
-			return this.setScope(scope);
 		}
 
 		// * WHERE *
@@ -620,24 +584,6 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			return this.addGroupBy(field?.toString());
 		}
 
-		public Soql.Builder groupBy(String fieldName) {
-			// ! Deprecated - this method will be removed in a future release
-			// ! Replace all instances with the `addGroupBy` method
-			return this.addGroupBy(fieldName);
-		}
-
-		public Soql.Builder groupBy(SObjectField field) {
-			// ! Deprecated - this method will be removed in a future release
-			// ! Replace all instances with the `addGroupBy` method
-			return this.addGroupBy(field);
-		}
-
-		public Soql.Builder groupBy(Soql.ParentField field) {
-			// ! Deprecated - this method will be removed in a future release
-			// ! Replace all instances with the `addGroupBy` method
-			return this.addGroupBy(field);
-		}
-
 		// * HAVING *
 		public Soql.Builder addHaving(Soql.Aggregation agg, Soql.Operator operator, Object value) {
 			// Shorthand overload constructs the AggregateCondition for the caller
@@ -670,6 +616,73 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			return this.addOrderBy(field?.toString(), direction);
 		}
 
+		// * LIMIT *
+		public Soql.Builder setRowLimit(Integer rowLimit) {
+			this.rowLimit = rowLimit;
+			return this;
+		}
+
+		// * OFFSET *
+		public Soql.Builder setRowOffset(Integer rowOffset) {
+			this.rowOffset = rowOffset;
+			return this;
+		}
+
+		// * USAGE *
+		public Soql.Builder setUsage(Soql.Usage usage) {
+			this.usage = usage;
+			return this;
+		}
+
+		// **** DEPRECATED **** //
+		public Soql.Builder bind(Map<String, Object> bindMap) {
+			// ! Deprecated - this method will be removed in a future release
+			// ! Replace all instances with the `addBind` method
+			return this.addBind(bindMap);
+		}
+
+		public Soql.Builder bind(String key, Object value) {
+			// ! Deprecated - this method will be removed in a future release
+			// ! Replace all instances with the `addBind` method
+			return this.addBind(key, value);
+		}
+
+		public Soql.Builder bind(Soql.Binder binder) {
+			// ! Deprecated - this method will be removed in a future release
+			// ! Replace all instances with the `addBind` method
+			return this.addBind(binder);
+		}
+
+		public Soql.Builder defineAccess(System.AccessLevel accessLevel) {
+			// ! Deprecated - this method will be removed in a future release
+			// ! Replace all instances with the `setAccessLevel` method
+			return this.setAccessLevel(accessLevel);
+		}
+
+		public Soql.Builder fromSObject(SObjectType objectType) {
+			// ! Deprecated - this method will be removed in a future release
+			// ! Replace all instances with the `setFrom` method
+			return this.setFrom(objectType);
+		}
+
+		public Soql.Builder groupBy(String fieldName) {
+			// ! Deprecated - this method will be removed in a future release
+			// ! Replace all instances with the `addGroupBy` method
+			return this.addGroupBy(fieldName);
+		}
+
+		public Soql.Builder groupBy(SObjectField field) {
+			// ! Deprecated - this method will be removed in a future release
+			// ! Replace all instances with the `addGroupBy` method
+			return this.addGroupBy(field);
+		}
+
+		public Soql.Builder groupBy(Soql.ParentField field) {
+			// ! Deprecated - this method will be removed in a future release
+			// ! Replace all instances with the `addGroupBy` method
+			return this.addGroupBy(field);
+		}
+
 		public Soql.Builder orderBy(Soql.SortOrder sortOrder) {
 			// ! Deprecated - this method will be removed in a future release
 			// ! Replace all instances with the `addOrderBy` method
@@ -695,22 +708,10 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			return this.addOrderBy(field, direction);
 		}
 
-		// * LIMIT *
-		public Soql.Builder setRowLimit(Integer rowLimit) {
-			this.rowLimit = rowLimit;
-			return this;
-		}
-
-		// * OFFSET *
-		public Soql.Builder setRowOffset(Integer rowOffset) {
-			this.rowOffset = rowOffset;
-			return this;
-		}
-
-		// * USAGE *
-		public Soql.Builder setUsage(Soql.Usage usage) {
-			this.usage = usage;
-			return this;
+		public Soql.Builder usingScope(Soql.Scope scope) {
+			// ! Deprecated - this method will be removed in a future release
+			// ! Replace all instances with the `setScope` method
+			return this.setScope(scope);
 		}
 
 		// **** PRIVATE **** //
