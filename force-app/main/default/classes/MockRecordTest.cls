@@ -70,7 +70,7 @@ private class MockRecordTest {
 			?.withId();
 
 		Test.startTest();
-		accountMock?.getRelatedList(Contact.AccountId)?.add(contact2);
+		accountMock?.addToRelatedList(Contact.AccountId, contact2);
 		Test.stopTest();
 
 		List<Contact> contacts = accountMock?.getRelatedList(Contact.AccountId);

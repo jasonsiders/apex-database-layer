@@ -1,5 +1,5 @@
-@SuppressWarnings('PMD.ApexDoc')
 @IsTest
+@SuppressWarnings('PMD.ApexDoc, PMD.CognitiveComplexity, PMD.ExcessivePublicCount')
 public class MockRecord {
 	/**
 	 * This class uses a builder pattern to construct SObject records for the purpose of mock database operations.
@@ -38,6 +38,27 @@ public class MockRecord {
 	}
 
 	// **** MEMBER **** //
+	public MockRecord addToRelatedList(Schema.ChildRelationship relationship, List<SObject> records) {
+		String relationshipName = relationship?.getRelationshipName();
+		MockRecord.RelatedList relatedList = (MockRecord.RelatedList) this.get(relationshipName) ??
+			new MockRecord.RelatedList();
+		relatedList?.add(records);
+		return this;
+	}
+
+	public MockRecord addToRelatedList(SObjectField lookupField, List<SObject> records) {
+		Schema.ChildRelationship relationship = this.getChildRelationship(lookupField);
+		return this.addToRelatedList(relationship, records);
+	}
+
+	public MockRecord addToRelatedList(Schema.ChildRelationship relationship, SObject record) {
+		return this.addToRelatedList(relationship, new List<SObject>{ record });
+	}
+
+	public MockRecord addToRelatedList(SObjectField lookupField, SObject record) {
+		return this.addToRelatedList(lookupField, new List<SObject>{ record });
+	}
+
 	public Object get(String parameterName) {
 		return this.recordValues?.get(parameterName);
 	}
@@ -58,9 +79,7 @@ public class MockRecord {
 	}
 
 	public List<SObject> getRelatedList(SObjectField lookupField) {
-		Schema.ChildRelationship relationship = DatabaseLayer.Utils.ChildRelationships.getChildRelationshipFrom(
-			lookupField
-		);
+		Schema.ChildRelationship relationship = this.getChildRelationship(lookupField);
 		return this.getRelatedList(relationship);
 	}
 
@@ -90,7 +109,7 @@ public class MockRecord {
 
 	public MockRecord setRelatedList(String relationshipName, List<SObject> relatedRecords) {
 		// Simulates a child object retrieval in SOQL; ex., SELECT Id, (SELECT Id FROM Contacts) FROM Account LIMIT 1
-		MockRecord.RelatedList relatedList = new MockRecord.RelatedList(relatedRecords);
+		MockRecord.RelatedList relatedList = new MockRecord.RelatedList()?.add(relatedRecords);
 		return this.setField(relationshipName, relatedList);
 	}
 
@@ -99,10 +118,13 @@ public class MockRecord {
 	}
 
 	public MockRecord setRelatedList(SObjectField lookupField, List<SObject> relatedRecords) {
-		Schema.ChildRelationship relationship = DatabaseLayer.Utils.ChildRelationships.getChildRelationshipFrom(
-			lookupField
-		);
+		Schema.ChildRelationship relationship = this.getChildRelationship(lookupField);
 		return this.setRelatedList(relationship, relatedRecords);
+	}
+
+	public SObject toSObject() {
+		// Builds the specified record
+		return (SObject) JSON.deserialize(JSON.serialize(this.recordValues), SObject.class);
 	}
 
 	public MockRecord withId() {
@@ -112,9 +134,8 @@ public class MockRecord {
 		return this.setField(ID_TOKEN, recordId);
 	}
 
-	public SObject toSObject() {
-		// Builds the specified record
-		return (SObject) JSON.deserialize(JSON.serialize(this.recordValues), SObject.class);
+	private Schema.ChildRelationship getChildRelationship(SObjectField lookupField) {
+		return DatabaseLayer.Utils.ChildRelationships.getChildRelationshipFrom(lookupField);
 	}
 
 	// **** INNER **** //
@@ -125,14 +146,25 @@ public class MockRecord {
 		private List<SObject> records;
 		private Integer totalSize;
 
-		private RelatedList(List<SObject> records) {
+		private RelatedList() {
 			this.done = true;
-			this.records = records ?? new List<SObject>();
-			this.totalSize = records?.size() ?? 0;
+			this.records = new List<SObject>();
+			this.setSize();
+		}
+
+		private RelatedList add(List<SObject> records) {
+			this.records?.addAll(records);
+			this.setSize();
+			return this;
 		}
 
 		private List<SObject> getRecords() {
 			return this.records;
+		}
+
+		private void setSize() {
+			// Fun fact! The totalSize parameter is what controls the List.size() result
+			this.totalSize = this.records?.size() ?? 0;
 		}
 	}
 }
