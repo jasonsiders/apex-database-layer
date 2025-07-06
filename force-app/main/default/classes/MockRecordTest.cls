@@ -21,11 +21,7 @@ private class MockRecordTest {
 		Assert.areEqual(now, mockAccount?.CreatedDate, 'Did not set read-only field');
 		Assert.areEqual(UserInfo.getUserId(), mockAccount?.OwnerId, 'Did not set lookup field');
 		Assert.areNotEqual(null, mockAccount.Owner, 'Did not set lookup relationship');
-		Assert.areEqual(
-			1,
-			mockAccount?.Contacts?.size(),
-			'Did not set related list: ' + JSON.serialize(accountMock?.toSObject())
-		);
+		Assert.areEqual(1, mockAccount?.Contacts?.size(), 'Did not set related list');
 	}
 
 	@IsTest
@@ -61,7 +57,7 @@ private class MockRecordTest {
 		User owner = (User) accountMock?.getLookup(Account.OwnerId);
 		Assert.areEqual(UserInfo.getUserId(), owner?.Id, 'Wrong OwnerId value');
 		List<Contact> contacts = accountMock?.getRelatedList(Schema.Contact.AccountId);
-		Assert.areEqual(1, contacts?.size(), 'Wrong # of Contacts: ' + JSON.serialize(accountMock?.toSObject()));
+		Assert.areEqual(1, contacts?.size(), 'Wrong # of Contacts');
 		Assert.areEqual(contact?.Id, contacts?.get(0)?.Id, 'Wrong Contact Id');
 	}
 
@@ -79,7 +75,7 @@ private class MockRecordTest {
 
 		List<Contact> contacts = accountMock?.getRelatedList(Contact.AccountId);
 		Map<Id, Contact> contactMap = new Map<Id, Contact>(contacts);
-		Assert.areEqual(2, contactMap?.size(), 'Wrong # of Contacts: ' + JSON.serialize(accountMock?.toSObject()));
+		Assert.areEqual(2, contactMap?.size(), 'Wrong # of Contacts');
 		Assert.areEqual(true, contactMap?.containsKey(contact2?.Id), 'Did not add Contact to related list');
 	}
 
@@ -97,7 +93,7 @@ private class MockRecordTest {
 		Test.stopTest();
 
 		Map<Id, Contact> contacts = new Map<Id, Contact>(account?.Contacts);
-		Assert.areEqual(2, contacts?.size(), 'Wrong # of Contacts: ' + JSON.serialize(account));
+		Assert.areEqual(2, contacts?.size(), 'Wrong # of Contacts');
 		Assert.isTrue(contacts?.containsKey(mockContact?.Id), 'Did not add mock Contact to related list');
 		Assert.isTrue(contacts?.containsKey(realContact?.Id), 'Did not add real Contact to related list');
 	}
