@@ -14,8 +14,14 @@ public class MockRecord {
 	private static final String ID_TOKEN = 'Id';
 	private static Integer numMockIds = 0;
 
-	private SObjectType objectType;
-	private Map<String, Object> recordValues;
+	private transient SObjectType objectType;
+	private transient Map<String, Object> recordValues;
+	public Id Id {
+		get {
+			// Mirrors standard SObject functionality; all SObject records have an Id property - even untyped!
+			return (Id) this.get(ID_TOKEN);
+		}
+	}
 
 	public MockRecord(SObject realRecord) {
 		// This constructor preserves the original values of the provided record.
@@ -59,6 +65,27 @@ public class MockRecord {
 		return this.addToRelatedList(lookupField, new List<SObject>{ record });
 	}
 
+	public MockRecord addToRelatedList(Schema.ChildRelationship relationship, List<MockRecord> records) {
+		String relationshipName = relationship?.getRelationshipName();
+		MockRecord.RelatedList relatedList = (MockRecord.RelatedList) this.get(relationshipName) ??
+			new MockRecord.RelatedList();
+		relatedList?.add(records);
+		return this;
+	}
+
+	public MockRecord addToRelatedList(SObjectField lookupField, List<MockRecord> records) {
+		Schema.ChildRelationship relationship = this.getChildRelationship(lookupField);
+		return this.addToRelatedList(relationship, records);
+	}
+
+	public MockRecord addToRelatedList(Schema.ChildRelationship relationship, MockRecord record) {
+		return this.addToRelatedList(relationship, new List<MockRecord>{ record });
+	}
+
+	public MockRecord addToRelatedList(SObjectField lookupField, MockRecord record) {
+		return this.addToRelatedList(lookupField, new List<MockRecord>{ record });
+	}
+
 	public Object get(String parameterName) {
 		return this.recordValues?.get(parameterName);
 	}
@@ -75,7 +102,7 @@ public class MockRecord {
 	public List<SObject> getRelatedList(Schema.ChildRelationship relationship) {
 		String relationshipName = relationship?.getRelationshipName();
 		MockRecord.RelatedList relatedList = (MockRecord.RelatedList) this.get(relationshipName);
-		return relatedList?.getRecords();
+		return relatedList?.records;
 	}
 
 	public List<SObject> getRelatedList(SObjectField lookupField) {
@@ -134,6 +161,7 @@ public class MockRecord {
 		return this.setField(ID_TOKEN, recordId);
 	}
 
+	// **** PRIVATE **** //
 	private Schema.ChildRelationship getChildRelationship(SObjectField lookupField) {
 		return DatabaseLayer.Utils.ChildRelationships.getChildRelationshipFrom(lookupField);
 	}
@@ -143,28 +171,35 @@ public class MockRecord {
 		// Represents a child object relationship retrieved by SOQL.
 		// This structure is required when mocking related lists on an SObject
 		private Boolean done;
-		private List<SObject> records;
-		private Integer totalSize;
+		private transient List<Object> mockOrRealRecords;
+		private List<SObject> records {
+			get {
+				return (List<SObject>) JSON.deserialize(JSON.serialize(this.mockOrRealRecords), List<SObject>.class);
+			}
+		}
+
+		private Integer totalSize {
+			get {
+				return this.mockOrRealRecords?.size() ?? 0;
+			}
+		}
 
 		private RelatedList() {
 			this.done = true;
-			this.records = new List<SObject>();
-			this.setSize();
+			this.mockOrRealRecords = new List<Object>();
 		}
 
-		private RelatedList add(List<SObject> records) {
-			this.records?.addAll(records);
-			this.setSize();
+		private RelatedList add(List<Object> incoming) {
+			this.mockOrRealRecords?.addAll(incoming);
+			System.debug(
+				'@jason: add: ' +
+					incoming +
+					'\nMockOrRealRecords: ' +
+					this.mockOrRealRecords +
+					'\n' +
+					JSON.serialize(this)
+			);
 			return this;
-		}
-
-		private List<SObject> getRecords() {
-			return this.records;
-		}
-
-		private void setSize() {
-			// Fun fact! The totalSize parameter is what controls the List.size() result
-			this.totalSize = this.records?.size() ?? 0;
 		}
 	}
 }
