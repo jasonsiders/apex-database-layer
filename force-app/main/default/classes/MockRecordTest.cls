@@ -117,11 +117,14 @@ private class MockRecordTest {
 		MockRecord mockContact = new MockRecord(Contact.SObjectType)?.withId();
 		Contact realContact = (Contact) new MockRecord(Contact.SObjectType)?.withId()?.toSObject();
 		MockRecord mockAccount = new MockRecord(Account.SObjectType)?.withId();
+		Schema.ChildRelationship rel = DatabaseLayer.Utils.ChildRelationships.getChildRelationshipFrom(
+			Contact.AccountId
+		);
 
 		Test.startTest();
 		Account account = (Account) mockAccount
-			?.addToRelatedList(Contact.AccountId, mockContact)
-			?.addToRelatedList(Contact.AccountId, realContact)
+			?.addToRelatedList(rel, mockContact)
+			?.addToRelatedList(rel, realContact)
 			?.toSObject();
 		Test.stopTest();
 
