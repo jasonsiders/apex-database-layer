@@ -14,7 +14,6 @@ public class MockRecord {
 	private static final String ID_TOKEN = 'Id';
 	private static Integer numMockIds = 0;
 
-	private MockRecord.Attributes attributes;
 	private Boolean isMock = true; // TODO!
 	private transient SObjectType objectType;
 	private transient Map<String, Object> recordValues;
@@ -30,7 +29,6 @@ public class MockRecord {
 		// This constructor preserves the original values of the provided record.
 		this.objectType = realRecord?.getSObjectType();
 		this.recordValues = (Map<String, Object>) JSON.deserializeUntyped(JSON.serialize(realRecord));
-		this.attributes = new MockRecord.Attributes(this.objectType);
 	}
 
 	public MockRecord(SObjectType objectType) {
@@ -75,6 +73,7 @@ public class MockRecord {
 		MockRecord.RelatedList relatedList = (MockRecord.RelatedList) this.get(relationshipName) ??
 			new MockRecord.RelatedList(relationship);
 		relatedList?.add(records);
+		this.setField(relationshipName, relatedList);
 		return this;
 	}
 
@@ -107,7 +106,7 @@ public class MockRecord {
 	public List<SObject> getRelatedList(Schema.ChildRelationship relationship) {
 		String relationshipName = relationship?.getRelationshipName();
 		MockRecord.RelatedList relatedList = (MockRecord.RelatedList) this.get(relationshipName);
-		return relatedList?.records;
+		return relatedList?.getRecords();
 	}
 
 	public List<SObject> getRelatedList(SObjectField lookupField) {
@@ -169,50 +168,52 @@ public class MockRecord {
 	}
 
 	// **** INNER **** //
-	private class Attributes {
-		/**
-		 * Salesforce uses this object to aid in deserializing SObjects
-		 * Without this, attempting to serialize & deserialize to a generic List<SObject> results in an error
-		 */
-		private String type;
-
-		private Attributes(SObjectType objectType) {
-			this.type = objectType?.toString();
-		}
-	}
-
 	private class RelatedList {
 		// Represents a child object relationship retrieved by SOQL.
 		// This structure is required when mocking related lists on an SObject
 		private Boolean done;
-		private transient List<Object> mockOrRealRecords;
+		private transient List<MockRecord> mockRecords;
+		private transient List<SObject> realRecords;
 		private transient SObjectType objectType;
 		private List<SObject> records {
 			get {
-				return (List<SObject>) JSON.deserialize(JSON.serialize(this.mockOrRealRecords), List<SObject>.class);
+				return this.getRecords();
 			}
 		}
 
 		private Integer totalSize {
 			get {
-				return this.mockOrRealRecords?.size() ?? 0;
+				Integer numMocks = this.mockRecords?.size() ?? 0;
+				Integer numRecords = this.realRecords?.size() ?? 0;
+				return numMocks + numRecords;
 			}
 		}
 
 		private RelatedList(Schema.ChildRelationship relationship) {
 			this.done = true;
-			this.mockOrRealRecords = new List<Object>();
+			this.mockRecords = new List<MockRecord>();
+			this.realRecords = new List<SObject>();
 			this.objectType = relationship?.getChildSObject();
 		}
 
-		private RelatedList add(List<Object> incoming) {
-			this.mockOrRealRecords?.addAll(incoming);
-			System.debug('@jason: <add()> --------------');
-			System.debug('@jason: incoming: ' + JSON.serialize(incoming));
-			System.debug('@jason: mockOrRealRecords: ' + JSON.serialize(this.mockOrRealRecords));
-			System.debug('@jason: this: ' + JSON.serialize(this));
-			System.debug('@jason: </add()> --------------');
+		private RelatedList add(List<SObject> incoming) {
+			this.realRecords?.addAll(incoming);
 			return this;
+		}
+
+		private RelatedList add(List<MockRecord> incoming) {
+			this.mockRecords?.addAll(incoming);
+			return this;
+		}
+
+		private List<SObject> getRecords() {
+			List<SObject> results = new List<SObject>();
+			results?.addAll(this.realRecords);
+			for (MockRecord mockRecord : this.mockRecords) {
+				SObject record = mockRecord?.toSObject();
+				results?.add(record);
+			}
+			return results;
 		}
 	}
 }
