@@ -14,7 +14,6 @@ public class MockRecord {
 	private static final String ID_TOKEN = 'Id';
 	private static Integer numMockIds = 0;
 
-	private Boolean isMock = true; // TODO!
 	private transient SObjectType objectType;
 	private transient Map<String, Object> recordValues;
 
@@ -174,13 +173,11 @@ public class MockRecord {
 		private Boolean done;
 		private transient List<MockRecord> mockRecords;
 		private transient List<SObject> realRecords;
-		private transient SObjectType objectType;
 		private List<SObject> records {
 			get {
 				return this.getRecords();
 			}
 		}
-
 		private Integer totalSize {
 			get {
 				Integer numMocks = this.mockRecords?.size() ?? 0;
@@ -193,7 +190,6 @@ public class MockRecord {
 			this.done = true;
 			this.mockRecords = new List<MockRecord>();
 			this.realRecords = new List<SObject>();
-			this.objectType = relationship?.getChildSObject();
 		}
 
 		private RelatedList add(List<SObject> incoming) {
