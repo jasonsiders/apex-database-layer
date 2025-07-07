@@ -1,4 +1,4 @@
-@SuppressWarnings('PMD.ApexDoc')
+@SuppressWarnings('PMD.ApexDoc, PMD.ApexUnitTestClassShouldHaveRunAs')
 @IsTest
 private class MockRecordTest {
 	@IsTest
@@ -70,12 +70,90 @@ private class MockRecordTest {
 			?.withId();
 
 		Test.startTest();
-		accountMock?.getRelatedList(Contact.AccountId)?.add(contact2);
+		accountMock?.addToRelatedList(Contact.AccountId, contact2);
 		Test.stopTest();
 
 		List<Contact> contacts = accountMock?.getRelatedList(Contact.AccountId);
 		Map<Id, Contact> contactMap = new Map<Id, Contact>(contacts);
 		Assert.areEqual(2, contactMap?.size(), 'Wrong # of Contacts');
 		Assert.areEqual(true, contactMap?.containsKey(contact2?.Id), 'Did not add Contact to related list');
+	}
+
+	@IsTest
+	static void shouldSetRelatedListWithMockRecords() {
+		List<MockRecord> mockContacts = new List<MockRecord>();
+		for (Integer i = 0; i < 3; i++) {
+			MockRecord mockContact = new MockRecord(Contact.SObjectType)?.withId();
+			mockContacts?.add(mockContact);
+		}
+
+		Test.startTest();
+		Account account = (Account) new MockRecord(Account.SObjectType)
+			?.setRelatedList(Contact.AccountId, mockContacts)
+			?.withId()
+			?.toSObject();
+		Test.stopTest();
+
+		Assert.areEqual(mockContacts?.size(), account?.Contacts?.size(), 'Wrong # of Contacts');
+	}
+
+	@IsTest
+	static void shouldAddMockRecordToRelatedList() {
+		MockRecord mockContact = new MockRecord(Contact.SObjectType)?.withId();
+
+		Test.startTest();
+		Account account = (Account) new MockRecord(Account.getSObjectType())
+			?.addToRelatedList(Contact.AccountId, mockContact)
+			?.withId()
+			?.toSObject();
+		Test.stopTest();
+
+		Assert.areEqual(1, account?.Contacts?.size(), 'Wrong # of Contacts');
+		Assert.areEqual(mockContact?.Id, account?.Contacts?.get(0)?.Id, 'Wrong Contact Id');
+	}
+
+	@IsTest
+	static void shouldAddMockAndRealRecordsToRelatedList() {
+		MockRecord mockContact = new MockRecord(Contact.SObjectType)?.withId();
+		Contact realContact = (Contact) new MockRecord(Contact.SObjectType)?.withId()?.toSObject();
+		MockRecord mockAccount = new MockRecord(Account.SObjectType)?.withId();
+		Schema.ChildRelationship rel = DatabaseLayer.Utils.ChildRelationships.getChildRelationshipFrom(
+			Contact.AccountId
+		);
+
+		Test.startTest();
+		Account account = (Account) mockAccount
+			?.addToRelatedList(rel, mockContact)
+			?.addToRelatedList(rel, realContact)
+			?.toSObject();
+		Test.stopTest();
+
+		Map<Id, Contact> contacts = new Map<Id, Contact>(account?.Contacts);
+		Assert.areEqual(2, contacts?.size(), 'Wrong # of Contacts');
+		Assert.isTrue(contacts?.containsKey(mockContact?.Id), 'Did not add mock Contact to related list');
+		Assert.isTrue(contacts?.containsKey(realContact?.Id), 'Did not add real Contact to related list');
+	}
+
+	@IsTest
+	static void shouldAddMockRecordsToLookup() {
+		MockRecord mockAccount = new MockRecord(Account.SObjectType)?.withId();
+
+		Test.startTest();
+		Contact contact = (Contact) new MockRecord(Contact.SObjectType)
+			?.setLookup(Contact.AccountId, mockAccount)
+			?.withId()
+			?.toSObject();
+		Test.stopTest();
+
+		Assert.areEqual(mockAccount?.Id, contact?.AccountId, 'Did not set lookup id value');
+		Assert.areEqual(mockAccount?.Id, contact?.Account?.Id, 'Did not set lookup relationship');
+	}
+
+	@IsTest
+	static void shouldUseUnderlyingSObjectForObjectMethods() {
+		MockRecord mock = new MockRecord(Account.SObjectType)?.withId();
+		Account account = (Account) mock?.toSObject();
+		Assert.areEqual(account?.hashCode(), mock?.hashCode(), 'Wrong hashCode value');
+		Assert.areEqual(account?.toString(), mock?.toString(), 'Wrong toString value');
 	}
 }
