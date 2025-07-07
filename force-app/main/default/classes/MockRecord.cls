@@ -27,7 +27,7 @@ public class MockRecord {
 	public MockRecord(SObject realRecord) {
 		// This constructor preserves the original values of the provided record.
 		this.objectType = realRecord?.getSObjectType();
-		this.recordValues = (Map<String, Object>) JSON.deserializeUntyped(JSON.serialize(realRecord));
+		this.recordValues = (Map<String, Object>) JSON.deserializeUntyped(JSON.serialize(realRecord, false));
 	}
 
 	public MockRecord(SObjectType objectType) {
@@ -152,7 +152,7 @@ public class MockRecord {
 
 	public SObject toSObject() {
 		// Builds the specified record
-		return (SObject) JSON.deserialize(JSON.serialize(this.recordValues), SObject.class);
+		return (SObject) JSON.deserialize(JSON.serialize(this.recordValues, false), SObject.class);
 	}
 
 	public MockRecord withId() {
