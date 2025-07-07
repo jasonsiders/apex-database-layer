@@ -1,4 +1,4 @@
-@SuppressWarnings('PMD.ApexDoc')
+@SuppressWarnings('PMD.ApexDoc, PMD.ApexUnitTestClassShouldHaveRunAs')
 @IsTest
 private class MockRecordTest {
 	@IsTest
@@ -80,15 +80,48 @@ private class MockRecordTest {
 	}
 
 	@IsTest
-	static void shouldAddMockAndRealRecordsToRelatedList() {
-		MockRecord mockContact = new MockRecord(Contact.SObjectType)?.withId();
-		Contact realContact = (Contact) new MockRecord(Contact.SObjectType)?.withId()?.toSObject();
+	static void shouldSetRelatedListWithMockRecords() {
+		List<MockRecord> mockContacts = new List<MockRecord>();
+		for (Integer i = 0; i < 3; i++) {
+			MockRecord mockContact = new MockRecord(Contact.SObjectType)?.withId();
+			mockContacts?.add(mockContact);
+		}
 
 		Test.startTest();
 		Account account = (Account) new MockRecord(Account.SObjectType)
+			?.setRelatedList(Contact.AccountId, mockContacts)
+			?.withId()
+			?.toSObject();
+		Test.stopTest();
+
+		Assert.areEqual(mockContacts?.size(), account?.Contacts?.size(), 'Wrong # of Contacts');
+	}
+
+	@IsTest
+	static void shouldAddMockRecordToRelatedList() {
+		MockRecord mockContact = new MockRecord(Contact.SObjectType)?.withId();
+
+		Test.startTest();
+		Account account = (Account) new MockRecord(Account.getSObjectType())
+			?.addToRelatedList(Contact.AccountId, mockContact)
+			?.withId()
+			?.toSObject();
+		Test.stopTest();
+
+		Assert.areEqual(1, account?.Contacts?.size(), 'Wrong # of Contacts');
+		Assert.areEqual(mockContact?.Id, account?.Contacts?.get(0)?.Id, 'Wrong Contact Id');
+	}
+
+	@IsTest
+	static void shouldAddMockAndRealRecordsToRelatedList() {
+		MockRecord mockContact = new MockRecord(Contact.SObjectType)?.withId();
+		Contact realContact = (Contact) new MockRecord(Contact.SObjectType)?.withId()?.toSObject();
+		MockRecord mockAccount = new MockRecord(Account.SObjectType)?.withId();
+
+		Test.startTest();
+		Account account = (Account) mockAccount
 			?.addToRelatedList(Contact.AccountId, mockContact)
 			?.addToRelatedList(Contact.AccountId, realContact)
-			?.withId()
 			?.toSObject();
 		Test.stopTest();
 
@@ -96,5 +129,20 @@ private class MockRecordTest {
 		Assert.areEqual(2, contacts?.size(), 'Wrong # of Contacts');
 		Assert.isTrue(contacts?.containsKey(mockContact?.Id), 'Did not add mock Contact to related list');
 		Assert.isTrue(contacts?.containsKey(realContact?.Id), 'Did not add real Contact to related list');
+	}
+
+	@IsTest
+	static void shouldAddMockRecordsToLookup() {
+		MockRecord mockAccount = new MockRecord(Account.SObjectType)?.withId();
+
+		Test.startTest();
+		Contact contact = (Contact) new MockRecord(Contact.SObjectType)
+			?.setLookup(Contact.AccountId, mockAccount)
+			?.withId()
+			?.toSObject();
+		Test.stopTest();
+
+		Assert.areEqual(mockAccount?.Id, contact?.AccountId, 'Did not set lookup id value');
+		Assert.areEqual(mockAccount?.Id, contact?.Account?.Id, 'Did not set lookup relationship');
 	}
 }
