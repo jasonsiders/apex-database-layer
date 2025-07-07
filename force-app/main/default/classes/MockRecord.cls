@@ -1,4 +1,4 @@
-// @IsTest
+@IsTest
 @SuppressWarnings('PMD.ApexDoc, PMD.CognitiveComplexity, PMD.ExcessivePublicCount')
 public class MockRecord {
 	/**
@@ -207,7 +207,7 @@ public class MockRecord {
 		// This untyped method supports both mock & real records, used to consolidate logic from strongly-typed overrides
 		String relationshipName = relationship?.getRelationshipName();
 		// Overwrite previously set relationship name values before re-adding the related list:
-		this.recordValues?.remove(relationshipName);
+		this.setField(relationshipName, new MockRecord.RelatedList());
 		return this.addUntypedChildRecords(relationship, mockOrRealRecords);
 	}
 
@@ -250,7 +250,7 @@ public class MockRecord {
 
 		private List<SObject> getRecords() {
 			// Gets a consolidated list of SObject records,
-			// This may consist of both real records, and all mocks' toSObject values
+			// This may consist of both real records, and all mocks' SObject values
 			List<SObject> results = new List<SObject>();
 			results?.addAll(this.realRecords);
 			for (MockRecord mockRecord : this.mockRecords) {
