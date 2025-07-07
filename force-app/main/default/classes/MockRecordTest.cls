@@ -148,4 +148,12 @@ private class MockRecordTest {
 		Assert.areEqual(mockAccount?.Id, contact?.AccountId, 'Did not set lookup id value');
 		Assert.areEqual(mockAccount?.Id, contact?.Account?.Id, 'Did not set lookup relationship');
 	}
+
+	@IsTest
+	static void shouldUseUnderlyingSObjectForObjectMethods() {
+		MockRecord mock = new MockRecord(Account.SObjectType)?.withId();
+		Account account = (Account) mock?.toSObject();
+		Assert.areEqual(account?.hashCode(), mock?.hashCode(), 'Wrong hashCode value');
+		Assert.areEqual(account?.toString(), mock?.toString(), 'Wrong toString value');
+	}
 }

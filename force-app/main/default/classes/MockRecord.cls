@@ -1,4 +1,4 @@
-@IsTest
+// @IsTest
 @SuppressWarnings('PMD.ApexDoc, PMD.CognitiveComplexity, PMD.ExcessivePublicCount')
 public class MockRecord {
 	/**
@@ -160,6 +160,17 @@ public class MockRecord {
 		// Note: If an Id is already present, its value will NOT be overwritten.
 		Id recordId = this.Id ?? MockRecord.initRecordId(this.objectType);
 		return this.setField(ID_TOKEN, recordId);
+	}
+
+	// **** OVERRIDES **** //
+	public override Integer hashCode() {
+		// Use the underlying SObject for hashCode purposes:
+		return this.toSObject()?.hashCode();
+	}
+
+	public override String toString() {
+		// Use the underlying SObject for toString purposes:
+		return this.toSObject()?.toString();
 	}
 
 	// **** PRIVATE **** //
