@@ -14,8 +14,11 @@ public class MockRecord {
 	private static final String ID_TOKEN = 'Id';
 	private static Integer numMockIds = 0;
 
+	private MockRecord.Attributes attributes;
+	private Boolean isMock = true; // TODO!
 	private transient SObjectType objectType;
 	private transient Map<String, Object> recordValues;
+
 	public Id Id {
 		get {
 			// Mirrors standard SObject functionality; all SObject records have an Id property - even untyped!
@@ -27,6 +30,7 @@ public class MockRecord {
 		// This constructor preserves the original values of the provided record.
 		this.objectType = realRecord?.getSObjectType();
 		this.recordValues = (Map<String, Object>) JSON.deserializeUntyped(JSON.serialize(realRecord));
+		this.attributes = new MockRecord.Attributes(this.objectType);
 	}
 
 	public MockRecord(SObjectType objectType) {
@@ -47,8 +51,9 @@ public class MockRecord {
 	public MockRecord addToRelatedList(Schema.ChildRelationship relationship, List<SObject> records) {
 		String relationshipName = relationship?.getRelationshipName();
 		MockRecord.RelatedList relatedList = (MockRecord.RelatedList) this.get(relationshipName) ??
-			new MockRecord.RelatedList();
+			new MockRecord.RelatedList(relationship);
 		relatedList?.add(records);
+		this.setField(relationshipName, relatedList);
 		return this;
 	}
 
@@ -68,7 +73,7 @@ public class MockRecord {
 	public MockRecord addToRelatedList(Schema.ChildRelationship relationship, List<MockRecord> records) {
 		String relationshipName = relationship?.getRelationshipName();
 		MockRecord.RelatedList relatedList = (MockRecord.RelatedList) this.get(relationshipName) ??
-			new MockRecord.RelatedList();
+			new MockRecord.RelatedList(relationship);
 		relatedList?.add(records);
 		return this;
 	}
@@ -134,14 +139,11 @@ public class MockRecord {
 		return this.setField(relationshipName, parent);
 	}
 
-	public MockRecord setRelatedList(String relationshipName, List<SObject> relatedRecords) {
-		// Simulates a child object retrieval in SOQL; ex., SELECT Id, (SELECT Id FROM Contacts) FROM Account LIMIT 1
-		MockRecord.RelatedList relatedList = new MockRecord.RelatedList()?.add(relatedRecords);
-		return this.setField(relationshipName, relatedList);
-	}
-
 	public MockRecord setRelatedList(Schema.ChildRelationship relationship, List<SObject> relatedRecords) {
-		return this.setRelatedList(relationship?.getRelationshipName(), relatedRecords);
+		// Simulates a child object retrieval in SOQL; ex., SELECT Id, (SELECT Id FROM Contacts) FROM Account LIMIT 1
+		String relationshipName = relationship?.getRelationshipName();
+		MockRecord.RelatedList relatedList = new MockRecord.RelatedList(relationship)?.add(relatedRecords);
+		return this.setField(relationshipName, relatedList);
 	}
 
 	public MockRecord setRelatedList(SObjectField lookupField, List<SObject> relatedRecords) {
@@ -167,11 +169,24 @@ public class MockRecord {
 	}
 
 	// **** INNER **** //
+	private class Attributes {
+		/**
+		 * Salesforce uses this object to aid in deserializing SObjects
+		 * Without this, attempting to serialize & deserialize to a generic List<SObject> results in an error
+		 */
+		private String type;
+
+		private Attributes(SObjectType objectType) {
+			this.type = objectType?.toString();
+		}
+	}
+
 	private class RelatedList {
 		// Represents a child object relationship retrieved by SOQL.
 		// This structure is required when mocking related lists on an SObject
 		private Boolean done;
 		private transient List<Object> mockOrRealRecords;
+		private transient SObjectType objectType;
 		private List<SObject> records {
 			get {
 				return (List<SObject>) JSON.deserialize(JSON.serialize(this.mockOrRealRecords), List<SObject>.class);
@@ -184,21 +199,19 @@ public class MockRecord {
 			}
 		}
 
-		private RelatedList() {
+		private RelatedList(Schema.ChildRelationship relationship) {
 			this.done = true;
 			this.mockOrRealRecords = new List<Object>();
+			this.objectType = relationship?.getChildSObject();
 		}
 
 		private RelatedList add(List<Object> incoming) {
 			this.mockOrRealRecords?.addAll(incoming);
-			System.debug(
-				'@jason: add: ' +
-					incoming +
-					'\nMockOrRealRecords: ' +
-					this.mockOrRealRecords +
-					'\n' +
-					JSON.serialize(this)
-			);
+			System.debug('@jason: <add()> --------------');
+			System.debug('@jason: incoming: ' + JSON.serialize(incoming));
+			System.debug('@jason: mockOrRealRecords: ' + JSON.serialize(this.mockOrRealRecords));
+			System.debug('@jason: this: ' + JSON.serialize(this));
+			System.debug('@jason: </add()> --------------');
 			return this;
 		}
 	}
