@@ -46,12 +46,8 @@ public class MockRecord {
 
 	// **** MEMBER **** //
 	public MockRecord addToRelatedList(Schema.ChildRelationship relationship, List<SObject> records) {
-		String relationshipName = relationship?.getRelationshipName();
-		MockRecord.RelatedList relatedList = (MockRecord.RelatedList) this.get(relationshipName) ??
-			new MockRecord.RelatedList(relationship);
-		relatedList?.add(records);
-		this.setField(relationshipName, relatedList);
-		return this;
+		// Adds to the related list used to simulate a child object retrieval in SOQL; ex., SELECT Id, (SELECT Id FROM Contacts) FROM Account LIMIT 1
+		return this.addUntypedChildRecords(relationship, records);
 	}
 
 	public MockRecord addToRelatedList(SObjectField lookupField, List<SObject> records) {
@@ -67,13 +63,8 @@ public class MockRecord {
 		return this.addToRelatedList(lookupField, new List<SObject>{ record });
 	}
 
-	public MockRecord addToRelatedList(Schema.ChildRelationship relationship, List<MockRecord> records) {
-		String relationshipName = relationship?.getRelationshipName();
-		MockRecord.RelatedList relatedList = (MockRecord.RelatedList) this.get(relationshipName) ??
-			new MockRecord.RelatedList(relationship);
-		relatedList?.add(records);
-		this.setField(relationshipName, relatedList);
-		return this;
+	public MockRecord addToRelatedList(Schema.ChildRelationship relationship, List<MockRecord> mocks) {
+		return this.addUntypedChildRecords(relationship, mocks);
 	}
 
 	public MockRecord addToRelatedList(SObjectField lookupField, List<MockRecord> records) {
@@ -90,6 +81,7 @@ public class MockRecord {
 	}
 
 	public Object get(String parameterName) {
+		// Retrieve the current record value for the given parameter:
 		return this.recordValues?.get(parameterName);
 	}
 
@@ -98,11 +90,13 @@ public class MockRecord {
 	}
 
 	public SObject getLookup(SObjectField lookupField) {
+		// Retrieves the lookup relationship matching the lookup field, ex., 'contact?.Owner'
 		String relationshipName = lookupField?.getDescribe()?.getRelationshipName();
 		return (SObject) this.get(relationshipName);
 	}
 
 	public List<SObject> getRelatedList(Schema.ChildRelationship relationship) {
+		// Retrieves the underlying List<SObject> that makes up the corresponding related list, ex., 'account?.Contacts'
 		String relationshipName = relationship?.getRelationshipName();
 		MockRecord.RelatedList relatedList = (MockRecord.RelatedList) this.get(relationshipName);
 		return relatedList?.getRecords();
@@ -130,21 +124,28 @@ public class MockRecord {
 
 	public MockRecord setLookup(SObjectField lookupField, SObject parent) {
 		// Simulates a parent object retrieval in SOQL; ex., SELECT Id, Account.Name FROM Contact LIMIT 1
-		// Set the lookup/Id pointer
-		this.setField(lookupField, parent?.Id);
-		// Set the lookup relationship
-		String relationshipName = lookupField?.getDescribe()?.getRelationshipName();
-		return this.setField(relationshipName, parent);
+		return this.addUntypedParentRecord(lookupField, parent);
+	}
+
+	public MockRecord setLookup(SObjectField lookupField, MockRecord parent) {
+		return this.addUntypedParentRecord(lookupField, parent);
 	}
 
 	public MockRecord setRelatedList(Schema.ChildRelationship relationship, List<SObject> relatedRecords) {
-		// Simulates a child object retrieval in SOQL; ex., SELECT Id, (SELECT Id FROM Contacts) FROM Account LIMIT 1
-		String relationshipName = relationship?.getRelationshipName();
-		MockRecord.RelatedList relatedList = new MockRecord.RelatedList(relationship)?.add(relatedRecords);
-		return this.setField(relationshipName, relatedList);
+		// Sets the related list used to simulate a child object retrieval in SOQL; ex., SELECT Id, (SELECT Id FROM Contacts) FROM Account LIMIT 1
+		return this.setUntypedChildRecords(relationship, relatedRecords);
 	}
 
 	public MockRecord setRelatedList(SObjectField lookupField, List<SObject> relatedRecords) {
+		Schema.ChildRelationship relationship = this.getChildRelationship(lookupField);
+		return this.setRelatedList(relationship, relatedRecords);
+	}
+
+	public MockRecord setRelatedList(Schema.ChildRelationship relationship, List<MockRecord> relatedRecords) {
+		return this.setUntypedChildRecords(relationship, relatedRecords);
+	}
+
+	public MockRecord setRelatedList(SObjectField lookupField, List<MockRecord> relatedRecords) {
 		Schema.ChildRelationship relationship = this.getChildRelationship(lookupField);
 		return this.setRelatedList(relationship, relatedRecords);
 	}
@@ -157,22 +158,54 @@ public class MockRecord {
 	public MockRecord withId() {
 		// Provides a unique Id to simulate inserted records.
 		// Note: If an Id is already present, its value will NOT be overwritten.
-		Id recordId = (Id) this.recordValues?.get(ID_TOKEN) ?? MockRecord.initRecordId(this.objectType);
+		Id recordId = this.Id ?? MockRecord.initRecordId(this.objectType);
 		return this.setField(ID_TOKEN, recordId);
 	}
 
 	// **** PRIVATE **** //
+	private MockRecord addUntypedChildRecords(Schema.ChildRelationship relationship, Object untypedListOfRecords) {
+		// Simulates a child object retrieval in SOQL; ex., SELECT Id, (SELECT Id FROM Contacts) FROM Account LIMIT 1
+		// This untyped method supports both mock & real records, used to consolidate logic from strongly-typed overrides
+		String relationshipName = relationship?.getRelationshipName();
+		MockRecord.RelatedList relatedList = (MockRecord.RelatedList) this.get(relationshipName) ??
+			new MockRecord.RelatedList();
+		relatedList?.add(untypedListOfRecords);
+		this.setField(relationshipName, relatedList);
+		return this;
+	}
+
+	private MockRecord addUntypedParentRecord(SObjectField lookupField, Object mockOrRealRecord) {
+		// Simulates a parent object retrieval in SOQL
+		// This untyped method supports both mock & real records, used to consolidate logic from strongly-typed overrides
+		// Set the lookup/Id pointer
+		Id parentId = (mockOrRealRecord instanceof MockRecord)
+			? ((MockRecord) mockOrRealRecord)?.Id
+			: ((SObject) mockOrRealRecord)?.Id;
+		this.setField(lookupField, parentId);
+		// Set the lookup relationship
+		String relationshipName = lookupField?.getDescribe()?.getRelationshipName();
+		return this.setField(relationshipName, mockOrRealRecord);
+	}
+
 	private Schema.ChildRelationship getChildRelationship(SObjectField lookupField) {
 		return DatabaseLayer.Utils.ChildRelationships.getChildRelationshipFrom(lookupField);
+	}
+
+	private MockRecord setUntypedChildRecords(Schema.ChildRelationship relationship, Object mockOrRealRecords) {
+		// Sets the related list used to simulate a child object retrieval in SOQL
+		// This untyped method supports both mock & real records, used to consolidate logic from strongly-typed overrides
+		String relationshipName = relationship?.getRelationshipName();
+		// Overwrite previously set relationship name values before re-adding the related list:
+		this.recordValues?.remove(relationshipName);
+		return this.addUntypedChildRecords(relationship, mockOrRealRecords);
 	}
 
 	// **** INNER **** //
 	private class RelatedList {
 		// Represents a child object relationship retrieved by SOQL.
 		// This structure is required when mocking related lists on an SObject
+		// ** Members
 		private Boolean done;
-		private transient List<MockRecord> mockRecords;
-		private transient List<SObject> realRecords;
 		private List<SObject> records {
 			get {
 				return this.getRecords();
@@ -180,29 +213,33 @@ public class MockRecord {
 		}
 		private Integer totalSize {
 			get {
-				Integer numMocks = this.mockRecords?.size() ?? 0;
-				Integer numRecords = this.realRecords?.size() ?? 0;
-				return numMocks + numRecords;
+				return this.getSize();
 			}
 		}
+		// ** Transient
+		private transient List<MockRecord> mockRecords;
+		private transient List<SObject> realRecords;
 
-		private RelatedList(Schema.ChildRelationship relationship) {
+		private RelatedList() {
 			this.done = true;
 			this.mockRecords = new List<MockRecord>();
 			this.realRecords = new List<SObject>();
 		}
 
-		private RelatedList add(List<SObject> incoming) {
-			this.realRecords?.addAll(incoming);
-			return this;
-		}
-
-		private RelatedList add(List<MockRecord> incoming) {
-			this.mockRecords?.addAll(incoming);
+		private RelatedList add(Object incoming) {
+			if (incoming instanceof List<MockRecord>) {
+				List<MockRecord> mocks = (List<MockRecord>) incoming;
+				this.mockRecords?.addAll(mocks);
+			} else {
+				List<SObject> real = (List<SObject>) incoming;
+				this.realRecords?.addAll(real);
+			}
 			return this;
 		}
 
 		private List<SObject> getRecords() {
+			// Gets a consolidated list of SObject records,
+			// This may consist of both real records, and all mocks' toSObject values
 			List<SObject> results = new List<SObject>();
 			results?.addAll(this.realRecords);
 			for (MockRecord mockRecord : this.mockRecords) {
@@ -210,6 +247,12 @@ public class MockRecord {
 				results?.add(record);
 			}
 			return results;
+		}
+
+		private Integer getSize() {
+			Integer numMocks = this.mockRecords?.size() ?? 0;
+			Integer numRecords = this.realRecords?.size() ?? 0;
+			return numMocks + numRecords;
 		}
 	}
 }
