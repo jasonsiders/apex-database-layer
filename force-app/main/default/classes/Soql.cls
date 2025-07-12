@@ -68,7 +68,10 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			// Avoid errors and simplify query construction by handling this in a temporary copy of the current query
 			Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT);
 			Soql tempCopy = this.clone()?.deselectAll()?.addSelect(count)?.toSoql();
-			return Database.countQueryWithBinds(tempCopy?.toString(), this.binds, this.accessLevel);
+			this.plugin?.processPreSoql(tempCopy);
+			Integer results = Database.countQueryWithBinds(tempCopy?.toString(), this.binds, this.accessLevel);
+			this.plugin?.processPostSoql(this, results);
+			return results;
 		} catch (Exception error) {
 			this.handleQueryError(error);
 			throw error;
@@ -77,8 +80,11 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
 	public virtual Soql.Cursor getCursor() {
 		try {
+			this.plugin?.processPreSoql(this);
 			Database.Cursor cursor = Database.getCursorWithBinds(this.toString(), this.binds, this.accessLevel);
-			return new Soql.Cursor(cursor);
+			Soql.Cursor results = new Soql.Cursor(cursor);
+			this.plugin?.processPostSoql(this, results);
+			return results;
 		} catch (Exception error) {
 			this.handleQueryError(error);
 			throw error;
@@ -87,12 +93,15 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
 	public virtual Soql.QueryLocator getQueryLocator() {
 		try {
+			this.plugin?.processPreSoql(this);
 			Database.QueryLocator locator = Database.getQueryLocatorWithBinds(
 				this.toString(),
 				this.binds,
 				this.accessLevel
 			);
-			return new Soql.QueryLocator(locator);
+			Soql.QueryLocator results = new Soql.QueryLocator(locator);
+			this.plugin?.processPostSoql(this, results);
+			return results;
 		} catch (Exception error) {
 			this.handleQueryError(error);
 			throw error;
@@ -101,7 +110,10 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
 	public virtual List<SObject> query() {
 		try {
-			return Database.queryWithBinds(this.toString(), this.binds, this.accessLevel);
+			this.plugin?.processPreSoql(this);
+			List<SObject> results = Database.queryWithBinds(this.toString(), this.binds, this.accessLevel);
+			this.plugin?.processPostSoql(this, results);
+			return results;
 		} catch (Exception error) {
 			this.handleQueryError(error);
 			throw error;
@@ -135,6 +147,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
 	protected void handleQueryError(Exception error) {
 		// Attach the original query to the Exception for easier debugging
+		this.plugin?.processSoqlError(this, error);
 		String augmentedMsg = error?.getMessage() + '\nQuery: [' + this.toString() + ']';
 		error?.setMessage(augmentedMsg);
 	}
