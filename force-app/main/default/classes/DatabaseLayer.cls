@@ -105,7 +105,12 @@ public class DatabaseLayer {
 
 		@TestVisible
 		private void initPlugins() {
-			// Method to recalculate plugins, primarily used in test generation
+			// Initializes plugins based on the related custom metadata record
+			// In production use cases, this will only happen once per transaction
+			// In @IsTest uses cases, this happens every time the caller switches from Soql/MockSoql
+			// Test callers can also call this method directly to recalculate the plugins after injecting mock metadata:
+			SObjectField field = DatabaseLayerSetting__mdt.SoqlPreAndPostProcessor__c;
+			this.plugin = (Soql.PreAndPostProcessor) DatabaseLayer.Utils?.Plugins?.initPlugin(field);
 		}
 
 		private SoqlProvider useMocks(Boolean useMocks) {
