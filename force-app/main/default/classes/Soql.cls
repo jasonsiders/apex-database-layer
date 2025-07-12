@@ -186,6 +186,14 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		NULLS_LAST
 	}
 
+	public enum Operation {
+		AGGREGATE_QUERY,
+		COUNT_QUERY,
+		GET_CURSOR,
+		GET_QUERY_LOCATOR,
+		QUERY
+	}
+
 	public enum Scope {
 		// https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_select_using_scope.htm
 		DELEGATED,
@@ -220,9 +228,9 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 	}
 
 	public interface PreAndPostProcessor {
-		void processPreSoql(Soql query);
-		void processPostSoql(Soql query, Object results);
-		void processSoqlError(Soql query, Exception error);
+		void processPreSoql(Soql.Request request);
+		void processPostSoql(Soql.Request request, Object results);
+		void processSoqlError(Soql.Request request, Exception error);
 	}
 
 	public interface Selectable {
@@ -1118,6 +1126,18 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
 		public virtual System.Iterator<SObject> iterator() {
 			return (System.Iterator<SObject>) this.locator?.iterator();
+		}
+	}
+
+	public class Request {
+		public Soql.Operation operation { get; private set; }
+		public Soql query { get; private set; }
+		public transient Object results { get; private set; }
+		// TODO! Build this class out
+
+		private Request(Soql.Operation operation, Soql query) {
+			this.operation = operation;
+			this.query = query;
 		}
 	}
 
