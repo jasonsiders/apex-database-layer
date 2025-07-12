@@ -459,14 +459,14 @@ private class MockSoqlTest {
 		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
 		settings.SoqlPreAndPostProcessor__c = DatabaseLayerTestUtils.SamplePlugin.class.getName();
 		DatabaseLayer.Soql.initPlugins();
+		MockSoql.setGlobalMock()?.withError();
 
 		Test.startTest();
 		try {
-			// Can't query w/a null FROM object:
-			DatabaseLayer.Soql.newQuery(null)?.toSoql()?.query();
+			DatabaseLayer.Soql.newQuery(Account.SObjectType)?.toSoql()?.query();
 			Assert.fail('Did not throw an Exception');
 		} catch (Exception error) {
-			// As expected
+			// As expected...
 		}
 		Test.stopTest();
 
