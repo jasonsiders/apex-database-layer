@@ -204,6 +204,12 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		String toString();
 	}
 
+	public interface PreAndPostProcessor {
+		void processPreSoql(Soql query);
+		void processPostSoql(Soql query, Object results);
+		void processSoqlError(Soql query, Exception error);
+	}
+
 	public interface Selectable {
 		// Mostly a marker interface, but also used to coerce toString()
 		// Use this to denote classes that can be used in SELECT clauses

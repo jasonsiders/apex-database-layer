@@ -3,6 +3,11 @@
 )
 @IsTest
 private class SoqlTest {
+	private static Integer numPreSoqlPluginCalls = 0;
+	private static Integer numPostSoqlPluginCalls = 0;
+	private static Integer numSoqlErrorPluginCalls = 0;
+
+	// **** TESTS **** //
 	@IsTest
 	static void shouldAggregateQuery() {
 		Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id);
@@ -1504,13 +1509,116 @@ private class SoqlTest {
 		Test.stopTest();
 	}
 
+	@IsTest
+	static void shouldRunPreAndPostProcessorPluginLogic() {
+		DatabaseLayerSetting__mdt settings = SoqlTest.initSettings();
+		settings.SoqlPreAndPostProcessor__c = SoqlTest.SamplePlugin.class.getName();
+		DatabaseLayer.Soql.initPlugins();
+
+		Test.startTest();
+		DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowLimit(1)?.toSoql()?.query();
+		Test.stopTest();
+
+		Assert.areEqual(1, SoqlTest.numPreSoqlPluginCalls, 'Wrong number of pre-soql plugin calls');
+		Assert.areEqual(0, SoqlTest.numSoqlErrorPluginCalls, 'Wrong number of soql error plugin calls');
+		Assert.areEqual(1, SoqlTest.numPostSoqlPluginCalls, 'Wrong number of post-soql plugin calls');
+	}
+
+	@IsTest
+	static void shouldRunPluginErrorLogic() {
+		DatabaseLayerSetting__mdt settings = SoqlTest.initSettings();
+		settings.SoqlPreAndPostProcessor__c = SoqlTest.SamplePlugin.class.getName();
+		DatabaseLayer.Soql.initPlugins();
+
+		Test.startTest();
+		try {
+			// Can't query w/a null FROM object:
+			DatabaseLayer.Soql.newQuery(null)?.toSoql()?.query();
+			Assert.fail('Did not throw an Exception');
+		} catch (Exception error) {
+			// As expected
+		}
+		Test.stopTest();
+
+		Assert.areEqual(1, SoqlTest.numPreSoqlPluginCalls, 'Wrong number of pre-soql plugin calls');
+		Assert.areEqual(1, SoqlTest.numSoqlErrorPluginCalls, 'Wrong number of soql error plugin calls');
+		Assert.areEqual(0, SoqlTest.numPostSoqlPluginCalls, 'Wrong number of post-soql plugin calls');
+	}
+
+	@IsTest
+	static void shouldNotRunProcessorLogicIfInvalidApexClassDefined() {
+		DatabaseLayerSetting__mdt settings = SoqlTest.initSettings();
+		settings.SoqlPreAndPostProcessor__c = 'an obviously invalid apex class name';
+		DatabaseLayer.Soql.initPlugins();
+
+		Test.startTest();
+		DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowLimit(1)?.toSoql()?.query();
+		Test.stopTest();
+
+		Assert.areEqual(0, SoqlTest.numPreSoqlPluginCalls, 'Wrong number of pre-soql plugin calls');
+		Assert.areEqual(0, SoqlTest.numSoqlErrorPluginCalls, 'Wrong number of soql error plugin calls');
+		Assert.areEqual(0, SoqlTest.numPostSoqlPluginCalls, 'Wrong number of post-soql plugin calls');
+	}
+
+	@IsTest
+	static void shouldNotRunProcessorLogicIfNoValueDefined() {
+		DatabaseLayerSetting__mdt settings = SoqlTest.initSettings();
+		settings.SoqlPreAndPostProcessor__c = null;
+		DatabaseLayer.Soql.initPlugins();
+
+		Test.startTest();
+		DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowLimit(1)?.toSoql()?.query();
+		Test.stopTest();
+
+		Assert.areEqual(0, SoqlTest.numPreSoqlPluginCalls, 'Wrong number of pre-soql plugin calls');
+		Assert.areEqual(0, SoqlTest.numSoqlErrorPluginCalls, 'Wrong number of soql error plugin calls');
+		Assert.areEqual(0, SoqlTest.numPostSoqlPluginCalls, 'Wrong number of post-soql plugin calls');
+	}
+
+	@IsTest
+	static void shouldNotRunProcessorLogicIfNoSettingsDefined() {
+		// Without calling SoqlTest.initSettings(), no settings are defined:
+		DatabaseLayer.Soql.initPlugins();
+
+		Test.startTest();
+		DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowLimit(1)?.toSoql()?.query();
+		Test.stopTest();
+
+		Assert.areEqual(0, SoqlTest.numPreSoqlPluginCalls, 'Wrong number of pre-soql plugin calls');
+		Assert.areEqual(0, SoqlTest.numSoqlErrorPluginCalls, 'Wrong number of soql error plugin calls');
+		Assert.areEqual(0, SoqlTest.numPostSoqlPluginCalls, 'Wrong number of post-soql plugin calls');
+	}
+
 	// **** HELPER **** //
-	static Object validateQuery(Soql soql, String expected) {
+	private static DatabaseLayerSetting__mdt initSettings() {
+		// TODO: Consider consolidating this method, and similar code from DmlTest into a shared test utility class
+		DatabaseLayerSetting__mdt settings = new DatabaseLayerSetting__mdt();
+		DatabaseLayer.Utils.MetadataSelector.settings?.add(settings);
+		return settings;
+	}
+
+	private static Object validateQuery(Soql soql, String expected) {
 		Assert.areEqual('"' + expected + '"', '"' + soql?.toString() + '"', 'Unexpected SOQL output');
 		return soql?.query();
 	}
 
 	// **** INNER **** //
+	private class SamplePlugin implements Soql.PreAndPostProcessor {
+		public void processPreSoql(Soql query) {
+			SoqlTest.numPreSoqlPluginCalls += 1;
+		}
+
+		public void processPostSoql(Soql query, Object results) {
+			// Should be able to serialize the query results:
+			String resultsJson = JSON.serialize(results);
+			SoqlTest.numPostSoqlPluginCalls += 1;
+		}
+
+		public void processSoqlError(Soql query, Exception error) {
+			SoqlTest.numSoqlErrorPluginCalls += 1;
+		}
+	}
+
 	private class SampleWrapper {
 		public Integer numRecords;
 		public String profileName;
