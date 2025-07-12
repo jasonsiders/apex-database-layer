@@ -16,7 +16,7 @@ public inherited sharing virtual class Dml {
 	private static final DataSource.AsyncDeleteCallback DEFAULT_DELETE_CALLBACK = new Dml.EmptyDeleteCallback();
 	private static final DataSource.AsyncSaveCallback DEFAULT_SAVE_CALLBACK = new Dml.EmptySaveCallback();
 	private static final SObjectField PLUGIN_FIELD = DatabaseLayerSetting__mdt.DmlPreAndPostProcessor__c;
-	private static Dml.PreAndPostProcessor preAndPostPlugin;
+	private static Dml.PreAndPostProcessor Plugin;
 
 	public Dml(DatabaseLayer factory) {
 		// Note: Dml classes can't be constructed manually; instead, use the DatabaseLayer.Dml static property
@@ -728,7 +728,7 @@ public inherited sharing virtual class Dml {
 		// In production use cases, this will only happen once per transaction
 		// In @IsTest uses cases, this happens every time the caller switches from Dml/MockDml
 		// Test callers can also call this method directly to recalculate the plugins after injecting mock metadata:
-		Dml.preAndPostPlugin = (Dml.PreAndPostProcessor) DatabaseLayer.Utils?.Plugins?.initPlugin(PLUGIN_FIELD);
+		Dml.Plugin = (Dml.PreAndPostProcessor) DatabaseLayer.Utils?.Plugins?.initPlugin(PLUGIN_FIELD);
 		// ... may add more plugins here in the future!
 	}
 
@@ -774,6 +774,7 @@ public inherited sharing virtual class Dml {
 	public interface PreAndPostProcessor {
 		void processPreDml(Dml.Request request);
 		void processPostDml(Dml.Request request, List<Object> databaseResults);
+		void processDmlError(Dml.Request request, Exception error);
 	}
 
 	public virtual class Request {
@@ -864,10 +865,17 @@ public inherited sharing virtual class Dml {
 
 		protected List<Object> process() {
 			// Main method called by the Dml class; processes DML, and calls the Pre/Post DML plugins:
-			Dml.preAndPostPlugin?.processPreDml(this);
-			List<Object> results = this.doDml();
-			Dml.preAndPostPlugin?.processPostDml(this, results);
-			return results;
+			try {
+				Dml.Plugin?.processPreDml(this);
+				List<Object> results = this.doDml();
+				Dml.Plugin?.processPostDml(this, results);
+				return results;
+			} catch (Exception error) {
+				// Allow the plugin to act on DML exceptions, ex., for logging
+				// The error will still be thrown anyways:
+				Dml.Plugin?.processDmlError(this, error);
+				throw error;
+			}
 		}
 
 		protected List<Object> doDml() {
