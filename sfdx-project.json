@@ -4,9 +4,9 @@
 			"path": "force-app",
 			"default": true,
 			"package": "apex-database-layer",
-			"versionName": "ver 2.4.3",
-			"versionNumber": "2.4.3.NEXT",
-			"versionDescription": "MockRecord improvements"
+			"versionName": "ver 2.4.4",
+			"versionNumber": "2.4.4.NEXT",
+			"versionDescription": "Added Exception handling to Dml Plugin"
 		}
 	],
 	"name": "apex-database-layer",
@@ -26,6 +26,7 @@
 		"apex-database-layer@2.4.0-1": "04tDn0000011OR7IAM",
 		"apex-database-layer@2.4.1-1": "04tDn0000011ORHIA2",
 		"apex-database-layer@2.4.2-2": "04tDn0000011ORbIAM",
-		"apex-database-layer@2.4.3-1": "04tDn0000011ORgIAM"
+		"apex-database-layer@2.4.3-1": "04tDn0000011ORgIAM",
+		"apex-database-layer@2.4.4-1": "04tDn0000011ORvIAM"
 	}
 }

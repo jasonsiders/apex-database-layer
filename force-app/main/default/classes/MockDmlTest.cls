@@ -3,10 +3,12 @@
 private class MockDmlTest {
 	// **** VARIABLES **** //
 	private static final Integer TEST_SIZE;
+	private static Integer numDmlErrorPluginCalls;
 	private static Integer numPostDmlPluginCalls;
 	private static Integer numPreDmlPluginCalls;
 
 	static {
+		numDmlErrorPluginCalls = 0;
 		numPostDmlPluginCalls = 0;
 		numPreDmlPluginCalls = 0;
 		TEST_SIZE = 20;
@@ -893,7 +895,32 @@ private class MockDmlTest {
 
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
 		Assert.areEqual(1, MockDmlTest.numPreDmlPluginCalls, 'Wrong number of pre-dml plugin calls');
+		Assert.areEqual(0, MockDmlTest.numDmlErrorPluginCalls, 'Wrong number of dml error plugin calls');
 		Assert.areEqual(1, MockDmlTest.numPostDmlPluginCalls, 'Wrong number of post-dml plugin calls');
+	}
+
+	@IsTest
+	static void shouldRunPluginErrorLogic() {
+		DatabaseLayerSetting__mdt settings = MockDmlTest.initSettings();
+		settings.DmlPreAndPostProcessor__c = MockDmlTest.TestPlugin.class.getName();
+		// Re-initialize the plugins, now that the field has been set:
+		DatabaseLayer.Dml.initPlugins();
+		List<Account> accounts = MockDmlTest.initRecords(Account.SObjectType, false);
+		MockDml.shouldFail();
+
+		Test.startTest();
+		try {
+			// Updates will fail, since there isn't an Id set:
+			DatabaseLayer.Dml.doUpdate(accounts);
+			Assert.fail('Did not throw a System.DmlException');
+		} catch (System.DmlException error) {
+			// As expected...
+		}
+		Test.stopTest();
+
+		Assert.areEqual(1, MockDmlTest.numPreDmlPluginCalls, 'Wrong number of pre-dml plugin calls');
+		Assert.areEqual(1, MockDmlTest.numDmlErrorPluginCalls, 'Wrong number of dml error plugin calls');
+		Assert.areEqual(0, MockDmlTest.numPostDmlPluginCalls, 'Wrong number of post-dml plugin calls');
 	}
 
 	@IsTest
@@ -910,6 +937,7 @@ private class MockDmlTest {
 
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
 		Assert.areEqual(0, MockDmlTest.numPreDmlPluginCalls, 'Wrong number of pre-dml plugin calls');
+		Assert.areEqual(0, MockDmlTest.numDmlErrorPluginCalls, 'Wrong number of dml error plugin calls');
 		Assert.areEqual(0, MockDmlTest.numPostDmlPluginCalls, 'Wrong number of post-dml plugin calls');
 	}
 
@@ -926,6 +954,7 @@ private class MockDmlTest {
 
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
 		Assert.areEqual(0, MockDmlTest.numPreDmlPluginCalls, 'Wrong number of pre-dml plugin calls');
+		Assert.areEqual(0, MockDmlTest.numDmlErrorPluginCalls, 'Wrong number of dml error plugin calls');
 		Assert.areEqual(0, MockDmlTest.numPostDmlPluginCalls, 'Wrong number of post-dml plugin calls');
 	}
 
@@ -941,6 +970,7 @@ private class MockDmlTest {
 
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
 		Assert.areEqual(0, MockDmlTest.numPreDmlPluginCalls, 'Wrong number of pre-dml plugin calls');
+		Assert.areEqual(0, MockDmlTest.numDmlErrorPluginCalls, 'Wrong number of dml error plugin calls');
 		Assert.areEqual(0, MockDmlTest.numPostDmlPluginCalls, 'Wrong number of post-dml plugin calls');
 	}
 
@@ -996,6 +1026,10 @@ private class MockDmlTest {
 
 		public void processPostDml(Dml.Request dmlRequest, List<Object> databaseResults) {
 			MockDmlTest.numPostDmlPluginCalls += 1;
+		}
+
+		public void processDmlError(Dml.Request request, Exception error) {
+			MockDmlTest.numDmlErrorPluginCalls += 1;
 		}
 	}
 }
