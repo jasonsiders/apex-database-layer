@@ -433,6 +433,111 @@ private class MockSoqlTest {
 		Assert.areEqual(true, queryCastresults?.isEmpty(), 'query(Type) returned results');
 	}
 
+	@IsTest
+	static void shouldRunPreAndPostProcessorPluginLogic() {
+		DatabaseLayer.useMocks();
+		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
+		settings.SoqlPreAndPostProcessor__c = DatabaseLayerTestUtils.SamplePlugin.class.getName();
+		DatabaseLayer.Soql.initPlugins();
+
+		Test.startTest();
+		DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowLimit(1)?.toSoql()?.query();
+		Test.stopTest();
+
+		Assert.areEqual(1, DatabaseLayerTestUtils.SoqlPluginSpy.numPreCalls, 'Wrong number of pre-soql plugin calls');
+		Assert.areEqual(
+			0,
+			DatabaseLayerTestUtils.SoqlPluginSpy.numErrorCalls,
+			'Wrong number of soql error plugin calls'
+		);
+		Assert.areEqual(1, DatabaseLayerTestUtils.SoqlPluginSpy.numPostCalls, 'Wrong number of post-soql plugin calls');
+	}
+
+	@IsTest
+	static void shouldRunPluginErrorLogic() {
+		DatabaseLayer.useMocks();
+		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
+		settings.SoqlPreAndPostProcessor__c = DatabaseLayerTestUtils.SamplePlugin.class.getName();
+		DatabaseLayer.Soql.initPlugins();
+
+		Test.startTest();
+		try {
+			// Can't query w/a null FROM object:
+			DatabaseLayer.Soql.newQuery(null)?.toSoql()?.query();
+			Assert.fail('Did not throw an Exception');
+		} catch (Exception error) {
+			// As expected
+		}
+		Test.stopTest();
+
+		Assert.areEqual(1, DatabaseLayerTestUtils.SoqlPluginSpy.numPreCalls, 'Wrong number of pre-soql plugin calls');
+		Assert.areEqual(
+			1,
+			DatabaseLayerTestUtils.SoqlPluginSpy.numErrorCalls,
+			'Wrong number of soql error plugin calls'
+		);
+		Assert.areEqual(0, DatabaseLayerTestUtils.SoqlPluginSpy.numPostCalls, 'Wrong number of post-soql plugin calls');
+	}
+
+	@IsTest
+	static void shouldNotRunProcessorLogicIfInvalidApexClassDefined() {
+		DatabaseLayer.useMocks();
+		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
+		settings.SoqlPreAndPostProcessor__c = 'an obviously invalid apex class name';
+		DatabaseLayer.Soql.initPlugins();
+
+		Test.startTest();
+		DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowLimit(1)?.toSoql()?.query();
+		Test.stopTest();
+
+		Assert.areEqual(0, DatabaseLayerTestUtils.SoqlPluginSpy.numPreCalls, 'Wrong number of pre-soql plugin calls');
+		Assert.areEqual(
+			0,
+			DatabaseLayerTestUtils.SoqlPluginSpy.numErrorCalls,
+			'Wrong number of soql error plugin calls'
+		);
+		Assert.areEqual(0, DatabaseLayerTestUtils.SoqlPluginSpy.numPostCalls, 'Wrong number of post-soql plugin calls');
+	}
+
+	@IsTest
+	static void shouldNotRunProcessorLogicIfNoValueDefined() {
+		DatabaseLayer.useMocks();
+		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
+		settings.SoqlPreAndPostProcessor__c = null;
+		DatabaseLayer.Soql.initPlugins();
+
+		Test.startTest();
+		DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowLimit(1)?.toSoql()?.query();
+		Test.stopTest();
+
+		Assert.areEqual(0, DatabaseLayerTestUtils.SoqlPluginSpy.numPreCalls, 'Wrong number of pre-soql plugin calls');
+		Assert.areEqual(
+			0,
+			DatabaseLayerTestUtils.SoqlPluginSpy.numErrorCalls,
+			'Wrong number of soql error plugin calls'
+		);
+		Assert.areEqual(0, DatabaseLayerTestUtils.SoqlPluginSpy.numPostCalls, 'Wrong number of post-soql plugin calls');
+	}
+
+	@IsTest
+	static void shouldNotRunProcessorLogicIfNoSettingsDefined() {
+		// Without calling DatabaseLayerTestUtils.initSettings(), no settings are defined:
+		DatabaseLayer.useMocks();
+		DatabaseLayer.Soql.initPlugins();
+
+		Test.startTest();
+		DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowLimit(1)?.toSoql()?.query();
+		Test.stopTest();
+
+		Assert.areEqual(0, DatabaseLayerTestUtils.SoqlPluginSpy.numPreCalls, 'Wrong number of pre-soql plugin calls');
+		Assert.areEqual(
+			0,
+			DatabaseLayerTestUtils.SoqlPluginSpy.numErrorCalls,
+			'Wrong number of soql error plugin calls'
+		);
+		Assert.areEqual(0, DatabaseLayerTestUtils.SoqlPluginSpy.numPostCalls, 'Wrong number of post-soql plugin calls');
+	}
+
 	// **** HELPER **** //
 	static List<Account> initAccounts(Integer numAccounts) {
 		List<Account> accounts = new List<Account>();
