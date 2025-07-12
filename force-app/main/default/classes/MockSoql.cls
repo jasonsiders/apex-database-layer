@@ -10,8 +10,8 @@ public class MockSoql extends Soql {
 	private static MockSoql.Simulator globalMock;
 	private MockSoql.Simulator currentMock;
 
-	public MockSoql(DatabaseLayer factory) {
-		super(factory);
+	public MockSoql(DatabaseLayer factory, Soql.PreAndPostProcessor plugin) {
+		super(factory, plugin);
 	}
 
 	// **** STATIC **** //

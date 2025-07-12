@@ -89,16 +89,23 @@ public class DatabaseLayer {
 		/**
 		 * This class is responsible for provisioning a Soql instance of the correct type
 		 **/
+		private Soql.PreAndPostProcessor plugin;
 		private Boolean useMocks;
 
 		private SoqlProvider(DatabaseLayer factory) {
 			this.useMocks = false;
+			this.initPlugins();
 		}
 
 		public Soql newQuery(SObjectType objectType) {
 			return (this.useMocks == true)
-				? (Soql) new MockSoql(INSTANCE)?.fromSObject(objectType)
-				: (Soql) new Soql(INSTANCE)?.fromSObject(objectType);
+				? new MockSoql(INSTANCE, this.plugin)?.fromSObject(objectType)?.toSoql()
+				: new Soql(INSTANCE, this.plugin)?.fromSObject(objectType)?.toSoql();
+		}
+
+		@TestVisible
+		private void initPlugins() {
+			// Method to recalculate plugins, primarily used in test generation
 		}
 
 		private SoqlProvider useMocks(Boolean useMocks) {
