@@ -774,6 +774,7 @@ public inherited sharing virtual class Dml {
 	public interface PreAndPostProcessor {
 		void processPreDml(Dml.Request request);
 		void processPostDml(Dml.Request request, List<Object> databaseResults);
+		void processDmlError(Dml.Request request, Exception error);
 	}
 
 	public virtual class Request {
