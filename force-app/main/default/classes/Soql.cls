@@ -47,8 +47,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		// Note: Since the Schema.AggregateResult class cannot be mocked via traditional means,
 		// this method returns a decorator object. See the "AggregateResult" inner class.
 		List<Soql.AggregateResult> wrappers = new List<Soql.AggregateResult>();
-		List<Schema.AggregateResult> aggResults = (List<Schema.AggregateResult>) new Soql.Request(
-				this,
+		List<Schema.AggregateResult> aggResults = (List<Schema.AggregateResult>) this.initRequest(
 				Soql.Operation.AGGREGATE_QUERY
 			)
 			?.process();
@@ -60,19 +59,19 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 	}
 
 	public virtual Integer countQuery() {
-		return (Integer) new Soql.Request(this, Soql.Operation.COUNT_QUERY)?.process();
+		return (Integer) this.initRequest(Soql.Operation.COUNT_QUERY)?.process();
 	}
 
 	public virtual Soql.Cursor getCursor() {
-		return (Soql.Cursor) new Soql.Request(this, Soql.Operation.GET_CURSOR)?.process();
+		return (Soql.Cursor) this.initRequest(Soql.Operation.GET_CURSOR)?.process();
 	}
 
 	public virtual Soql.QueryLocator getQueryLocator() {
-		return (Soql.QueryLocator) new Soql.Request(this, Soql.Operation.GET_QUERY_LOCATOR)?.process();
+		return (Soql.QueryLocator) this.initRequest(Soql.Operation.GET_QUERY_LOCATOR)?.process();
 	}
 
 	public virtual List<SObject> query() {
-		return (List<SObject>) new Soql.Request(this, Soql.Operation.QUERY)?.process();
+		return (List<SObject>) this.initRequest(Soql.Operation.QUERY)?.process();
 	}
 
 	public virtual Object query(Type returnType) {
@@ -98,6 +97,10 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		// Use this method to give a name/identifier value that can be referenced in mocks
 		this.identifier = identifier;
 		return this;
+	}
+
+	protected virtual Soql.Request initRequest(Soql.Operation operation) {
+		return new Soql.Request(this, operation);
 	}
 
 	// **** ENUMS *** //
