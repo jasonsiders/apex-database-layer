@@ -69,7 +69,8 @@ public class MockSoql extends Soql {
 	} */
 
 	public override Soql.Request initRequest(Soql.Operation operation) {
-		return new MockSoql.Request(this, operation);
+		MockSoql.Simulator simulator = this.getSimulator();
+		return new MockSoql.Request(this, operation, simulator);
 	}
 
 	// **** PRIVATE **** //
@@ -77,11 +78,6 @@ public class MockSoql extends Soql {
 		// If the current query has a specific simulator assigned to it, return that simulator
 		// Else return the globally assigned simulator
 		return this.currentMock ?? MockSoql.globalMock;
-	}
-
-	private Object simulate() {
-		// Run the Simulator logic, and handle errors just like the super() class does
-		return this.getSimulator()?.simulateQuery(this);
 	}
 
 	// **** INNER **** //
@@ -246,28 +242,36 @@ public class MockSoql extends Soql {
 	}
 
 	public class Request extends Soql.Request {
-		private Request(Soql query, Soql.Operation operation) {
+		private transient MockSoql.Simulator simulator;
+
+		private Request(Soql query, Soql.Operation operation, MockSoql.Simulator simulator) {
 			super(query, operation);
+			this.simulator = simulator;
 		}
 
 		public override List<Soql.AggregateResult> doAggregateQuery() {
-			// TODO
+			return (List<Soql.AggregateResult>) this.simulate() ?? new List<Soql.AggregateResult>();
 		}
 
 		public override Integer doCountQuery() {
-			// TODO
+			return this.doQuery()?.size();
 		}
 
 		public override Soql.Cursor doGetCursor() {
-			// TODO
+			return new MockSoql.Cursor((MockSoql) this.query);
 		}
 
 		public override Soql.QueryLocator doGetQueryLocator() {
-			// TODO
+			return new MockSoql.QueryLocator((MockSoql) this.query);
 		}
 
 		public override List<SObject> doQuery() {
-			// TODO
+			return (List<SObject>) this.simulate() ?? new List<SObject>();
+		}
+
+		private Object simulate() {
+			// Run the Simulator logic
+			return this.simulator?.simulateQuery(this.query);
 		}
 	}
 
