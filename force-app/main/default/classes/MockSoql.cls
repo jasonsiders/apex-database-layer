@@ -8,7 +8,7 @@ public class MockSoql extends Soql {
 	 **/
 	private static final String AGGREGATE_KEY_PREFIX = 'expr';
 	private static MockSoql.Simulator globalMock;
-	private MockSoql.Simulator currentMock;
+	private transient MockSoql.Simulator currentMock;
 
 	public MockSoql(DatabaseLayer factory) {
 		super(factory);
