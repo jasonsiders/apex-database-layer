@@ -30,6 +30,11 @@ public class MockSoql extends Soql {
 	}
 
 	// **** MEMBER **** //
+	public override Soql.Request initRequest(Soql.Operation operation) {
+		MockSoql.Simulator simulator = this.getSimulator();
+		return new MockSoql.Request(this, operation, simulator);
+	}
+
 	public MockSoql.Simulator setMock(MockSoql.Simulator simulator) {
 		// Call this method to inject the given Simulator object
 		// to be run whenever the current query runs, instead of the global mock
@@ -43,13 +48,6 @@ public class MockSoql extends Soql {
 		return (MockSoql.StaticResults) this.setMock(new MockSoql.StaticResults());
 	}
 
-	// **** OVERRIDES **** //
-	public override Soql.Request initRequest(Soql.Operation operation) {
-		MockSoql.Simulator simulator = this.getSimulator();
-		return new MockSoql.Request(this, operation, simulator);
-	}
-
-	// **** PRIVATE **** //
 	private MockSoql.Simulator getSimulator() {
 		// If the current query has a specific simulator assigned to it, return that simulator
 		// Else return the globally assigned simulator
