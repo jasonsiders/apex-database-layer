@@ -44,29 +44,9 @@ public class MockSoql extends Soql {
 	}
 
 	// **** OVERRIDES **** //
-	/* public List<Soql.AggregateResult> aggregateQuery() {
-		return (List<Soql.AggregateResult>) this.simulate() ?? new List<Soql.AggregateResult>();
+	public override Object query(Type returnType) {
+		return this.query() ?? returnType?.newInstance();
 	}
-
-	public Integer countQuery() {
-		return this.query()?.size();
-	}
-
-	public Soql.Cursor getCursor() {
-		return new MockSoql.Cursor(this);
-	}
-
-	public Soql.QueryLocator getQueryLocator() {
-		return new MockSoql.QueryLocator(this);
-	}
-
-	public List<SObject> query() {
-		return (List<SObject>) this.simulate() ?? new List<SObject>();
-	}
-
-	public Object query(Type returnType) {
-		return this.simulate() ?? returnType?.newInstance();
-	} */
 
 	public override Soql.Request initRequest(Soql.Operation operation) {
 		MockSoql.Simulator simulator = this.getSimulator();
