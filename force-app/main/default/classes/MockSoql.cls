@@ -229,7 +229,6 @@ public class MockSoql extends Soql {
 
 	public class Request extends Soql.Request {
 		private transient MockSoql.Simulator simulator;
-		private final Boolean isMockSoql;
 
 		private Request(Soql query, Soql.Operation operation, MockSoql.Simulator simulator) {
 			super(query, operation);

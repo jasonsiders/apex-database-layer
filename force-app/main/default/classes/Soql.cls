@@ -1088,6 +1088,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 	}
 
 	public virtual class Request {
+		public Boolean isMockSoql { get; protected set; }
 		public Soql.Operation operation { get; private set; }
 		public Soql query { get; private set; }
 		protected transient System.AccessLevel accessLevel;
@@ -1096,6 +1097,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		protected Request(Soql query, Soql.Operation operation) {
 			this.accessLevel = query?.accessLevel;
 			this.binds = query?.binds;
+			this.isMockSoql = false;
 			this.operation = operation;
 			this.query = query;
 		}
