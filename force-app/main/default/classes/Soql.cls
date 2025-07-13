@@ -1091,13 +1091,14 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		public Boolean isMockSoql { get; protected set; }
 		public Soql.Operation operation { get; private set; }
 		public Soql query { get; private set; }
+		protected transient System.AccessLevel accessLevel;
+		protected transient Map<String, Object> binds;
+		// ** Getters:
 		public String queryString {
 			get {
 				return this.query?.toString();
 			}
 		}
-		protected transient System.AccessLevel accessLevel;
-		protected transient Map<String, Object> binds;
 
 		protected Request(Soql query, Soql.Operation operation) {
 			this.accessLevel = query?.accessLevel;
