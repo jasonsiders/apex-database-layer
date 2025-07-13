@@ -792,7 +792,6 @@ public inherited sharing virtual class Dml {
 		public transient DataSource.AsyncDeleteCallback asyncDeleteCallback { get; protected set; }
 		public transient DataSource.AsyncSaveCallback asyncSaveCallback { get; protected set; }
 		public transient SObjectField externalIdField { get; protected set; }
-		public Boolean isMockDml { get; protected set; }
 		public Boolean isOperationAsync { get; protected set; }
 		public Boolean isOperationImmediate { get; protected set; }
 		public Database.DmlOptions options { get; protected set; }
@@ -855,7 +854,6 @@ public inherited sharing virtual class Dml {
 			this.operation = operation;
 			this.accessLevel = DEFAULT_ACCESS_LEVEL;
 			this.asyncDeleteCallback = DEFAULT_DELETE_CALLBACK;
-			this.isMockDml = false;
 			this.isOperationAsync = false;
 			this.isOperationImmediate = false;
 			this.options = Dml.initDmlOptions(true);

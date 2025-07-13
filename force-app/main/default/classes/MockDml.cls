@@ -331,6 +331,8 @@ public class MockDml extends Dml {
 		 * An instance of this class (instead of the super type)
 		 * is initialized via the overridden `initRequest` method
 		 */
+		private final Boolean isMockDml;
+
 		private Request(Dml.Operation operation, List<Object> records) {
 			super(operation, records);
 			this.isMockDml = true;
