@@ -1102,7 +1102,6 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			this.operation = operation;
 			this.query = query;
 			this.queryString = query?.toString();
-			System.debug('@jason: ' + JSON.serialize(this, true));
 		}
 
 		public Object process() {
