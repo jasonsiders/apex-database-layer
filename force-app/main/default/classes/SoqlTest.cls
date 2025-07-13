@@ -1636,7 +1636,6 @@ private class SoqlTest {
 
 	// **** HELPER **** //
 	private static DatabaseLayerSetting__mdt initSettings() {
-		// TODO: Consider consolidating this method, and similar code from DmlTest into a shared test utility class
 		DatabaseLayerSetting__mdt settings = new DatabaseLayerSetting__mdt();
 		DatabaseLayer.Utils.MetadataSelector.settings?.add(settings);
 		return settings;
