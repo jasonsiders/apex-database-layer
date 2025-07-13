@@ -528,7 +528,7 @@ private class MockSoqlTest {
 
 	@IsTest
 	static void shouldNotRunProcessorLogicIfNoSettingsDefined() {
-		// Without calling DatabaseLayerTestUtils.initSettings(), no settings are defined:
+		DatabaseLayer.Utils.MetadataSelector.settings = new List<DatabaseLayerSetting__mdt>{};
 		DatabaseLayer.useMocks();
 		DatabaseLayer.Soql.initPlugins();
 
