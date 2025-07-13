@@ -974,7 +974,7 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldNotRunProcessorLogicIfNoSettingsDefined() {
-		// Without calling DatabaseLayerTestUtils.initSettings(), no settings are defined:
+		DatabaseLayer.Utils.MetadataSelector.settings = new List<DatabaseLayerSetting__mdt>{};
 		DatabaseLayer.Dml.initPlugins();
 		List<Account> accounts = MockDmlTest.initRecords(Account.SObjectType, false);
 
