@@ -8,7 +8,7 @@ public class MockSoql extends Soql {
 	 **/
 	private static final String AGGREGATE_KEY_PREFIX = 'expr';
 	private static MockSoql.Simulator globalMock;
-	private MockSoql.Simulator currentMock;
+	private transient MockSoql.Simulator currentMock;
 
 	public MockSoql(DatabaseLayer factory) {
 		super(factory);
@@ -30,6 +30,11 @@ public class MockSoql extends Soql {
 	}
 
 	// **** MEMBER **** //
+	public override Soql.Request initRequest(Soql.Operation operation) {
+		MockSoql.Simulator simulator = this.getSimulator();
+		return new MockSoql.Request(this, operation, simulator);
+	}
+
 	public MockSoql.Simulator setMock(MockSoql.Simulator simulator) {
 		// Call this method to inject the given Simulator object
 		// to be run whenever the current query runs, instead of the global mock
@@ -43,46 +48,10 @@ public class MockSoql extends Soql {
 		return (MockSoql.StaticResults) this.setMock(new MockSoql.StaticResults());
 	}
 
-	// **** OVERRIDES **** //
-	public override List<Soql.AggregateResult> aggregateQuery() {
-		return (List<Soql.AggregateResult>) this.simulate() ?? new List<Soql.AggregateResult>();
-	}
-
-	public override Integer countQuery() {
-		return this.query()?.size();
-	}
-
-	public override Soql.Cursor getCursor() {
-		return new MockSoql.Cursor(this);
-	}
-
-	public override Soql.QueryLocator getQueryLocator() {
-		return new MockSoql.QueryLocator(this);
-	}
-
-	public override List<SObject> query() {
-		return (List<SObject>) this.simulate() ?? new List<SObject>();
-	}
-
-	public override Object query(Type returnType) {
-		return this.simulate() ?? returnType?.newInstance();
-	}
-
-	// **** PRIVATE **** //
 	private MockSoql.Simulator getSimulator() {
 		// If the current query has a specific simulator assigned to it, return that simulator
 		// Else return the globally assigned simulator
 		return this.currentMock ?? MockSoql.globalMock;
-	}
-
-	private Object simulate() {
-		// Run the Simulator logic, and handle errors just like the super() class does
-		try {
-			return this.getSimulator()?.simulateQuery(this);
-		} catch (Exception error) {
-			this.handleQueryError(error);
-			throw error;
-		}
 	}
 
 	// **** INNER **** //
@@ -170,19 +139,31 @@ public class MockSoql extends Soql {
 
 		private void validateFetch(Integer position, Integer count) {
 			// Throws an exception if the provided arguments are invalid
-			// 1. Neither parameter should be null:
+			this.validateFetchArgsAreNotNull(position, count);
+			this.validateFetchArgsArePositive(position, count);
+			this.validateFetchArgsAreInBounds(position, count);
+		}
+
+		private void validateFetchArgsAreNotNull(Integer position, Integer count) {
+			// Neither parameter should be null:
 			if (position == null || count == null) {
-				System.Exception npe = new System.NullPointerException();
-				npe?.setMessage('Attempt to de-reference a null object');
-				throw npe;
+				System.Exception error = new System.NullPointerException();
+				error?.setMessage('Attempt to de-reference a null object');
+				throw error;
 			}
-			// 2. Neither parameter should be negative:
+		}
+
+		private void validateFetchArgsArePositive(Integer position, Integer count) {
+			// Neither parameter should be negative:
 			if (position < 0) {
 				throw new Soql.InvalidParameterValueException('Start position cannot be a negative value: ' + position);
 			} else if (count < 0) {
 				throw new Soql.InvalidParameterValueException('Fetch size cannot be a negative value: ' + count);
 			}
-			// 3. Should not attempt to fetch an index that doesn't exist:
+		}
+
+		private void validateFetchArgsAreInBounds(Integer position, Integer count) {
+			// Should not attempt to fetch an index that doesn't exist:
 			Integer maxIndexToFetch = (position + count);
 			Integer upperBound = (this.records?.size() - 1);
 			if (maxIndexToFetch > upperBound) {
@@ -243,6 +224,41 @@ public class MockSoql extends Soql {
 				String msg = 'Iterator has no more elements.';
 				throw new System.NoSuchElementException(msg);
 			}
+		}
+	}
+
+	public class Request extends Soql.Request {
+		private transient MockSoql.Simulator simulator;
+
+		private Request(Soql query, Soql.Operation operation, MockSoql.Simulator simulator) {
+			super(query, operation);
+			this.isMockSoql = true;
+			this.simulator = simulator;
+		}
+
+		public override List<Soql.AggregateResult> doAggregateQuery() {
+			return (List<Soql.AggregateResult>) this.simulate() ?? new List<Soql.AggregateResult>();
+		}
+
+		public override Integer doCountQuery() {
+			return ((List<SObject>) this.doQuery())?.size() ?? 0;
+		}
+
+		public override Soql.Cursor doGetCursor() {
+			return new MockSoql.Cursor((MockSoql) this.query);
+		}
+
+		public override Soql.QueryLocator doGetQueryLocator() {
+			return new MockSoql.QueryLocator((MockSoql) this.query);
+		}
+
+		public override Object doQuery() {
+			return this.simulate() ?? new List<SObject>();
+		}
+
+		private Object simulate() {
+			// Run the Simulator logic
+			return this.simulator?.simulateQuery(this.query);
 		}
 	}
 

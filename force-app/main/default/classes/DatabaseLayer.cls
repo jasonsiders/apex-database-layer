@@ -89,16 +89,28 @@ public class DatabaseLayer {
 		/**
 		 * This class is responsible for provisioning a Soql instance of the correct type
 		 **/
-		private Boolean useMocks;
+		public Soql.PreAndPostProcessor plugin { get; private set; }
+		private Boolean useMocks { get; private set; }
 
 		private SoqlProvider(DatabaseLayer factory) {
 			this.useMocks = false;
+			this.initPlugins();
 		}
 
 		public Soql newQuery(SObjectType objectType) {
 			return (this.useMocks == true)
-				? (Soql) new MockSoql(INSTANCE)?.fromSObject(objectType)
-				: (Soql) new Soql(INSTANCE)?.fromSObject(objectType);
+				? new MockSoql(INSTANCE)?.fromSObject(objectType)?.toSoql()
+				: new Soql(INSTANCE)?.fromSObject(objectType)?.toSoql();
+		}
+
+		@TestVisible
+		private void initPlugins() {
+			// Initializes plugins based on the related custom metadata record
+			// In production use cases, this will only happen once per transaction
+			// In @IsTest uses cases, this happens every time the caller switches from Soql/MockSoql
+			// Test callers can also call this method directly to recalculate the plugins after injecting mock metadata:
+			SObjectField field = DatabaseLayerSetting__mdt.SoqlPreAndPostProcessor__c;
+			this.plugin = (Soql.PreAndPostProcessor) DatabaseLayer.Utils?.Plugins?.initPlugin(field);
 		}
 
 		private SoqlProvider useMocks(Boolean useMocks) {

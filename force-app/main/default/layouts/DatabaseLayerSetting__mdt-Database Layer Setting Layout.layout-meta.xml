@@ -30,7 +30,12 @@
                 <field>DmlPreAndPostProcessor__c</field>
             </layoutItems>
         </layoutColumns>
-        <layoutColumns />
+        <layoutColumns>
+            <layoutItems>
+                <behavior>Edit</behavior>
+                <field>SoqlPreAndPostProcessor__c</field>
+            </layoutItems>
+        </layoutColumns>
         <style>TwoColumnsLeftToRight</style>
     </layoutSections>
     <layoutSections>
@@ -76,7 +81,7 @@
     <showRunAssignmentRulesCheckbox>false</showRunAssignmentRulesCheckbox>
     <showSubmitAndAttachButton>false</showSubmitAndAttachButton>
     <summaryLayout>
-        <masterLabel>00hDU000009Uplu</masterLabel>
+        <masterLabel>00hDF000001FfPd</masterLabel>
         <sizeX>4</sizeX>
         <sizeY>0</sizeY>
         <summaryLayoutStyle>Default</summaryLayoutStyle>

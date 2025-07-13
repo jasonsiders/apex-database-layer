@@ -4,7 +4,7 @@
     <externalId>false</externalId>
     <fieldManageability>SubscriberControlled</fieldManageability>
     <inlineHelpText
-	>The name of an Apex Class that runs special processing before &amp; after DML is processed. You can use this for things like automatic login. 
+	>The name of an Apex Class that runs special processing before &amp; after DML is processed. You can use this for things like automatic logging.
 
 Must be the fully qualified API Name (including namespace, if applicable) of an Apex Class that implements the Dml.PreAndPostProcessor interface, and has a public 0-arg constructor.</inlineHelpText>
     <label>DML: Pre &amp; Post Processor</label>

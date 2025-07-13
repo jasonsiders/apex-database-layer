@@ -3,19 +3,17 @@
 private class MockDmlTest {
 	// **** VARIABLES **** //
 	private static final Integer TEST_SIZE;
-	private static Integer numDmlErrorPluginCalls;
-	private static Integer numPostDmlPluginCalls;
-	private static Integer numPreDmlPluginCalls;
 
 	static {
-		numDmlErrorPluginCalls = 0;
-		numPostDmlPluginCalls = 0;
-		numPreDmlPluginCalls = 0;
 		TEST_SIZE = 20;
 		// Custom metadata actually defined in the org should not interfere with this test:
 		DatabaseLayer.Utils.MetadataSelector.settings = new List<DatabaseLayerSetting__mdt>{};
 		// Use Mock DML:
 		DatabaseLayer.useMockDml();
+		// Initialize plugins:
+		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
+		settings.DmlPreAndPostProcessor__c = DatabaseLayerTestUtils.SamplePlugin.class.getName();
+		DatabaseLayer.Dml.initPlugins();
 	}
 
 	// **** TESTS **** //
@@ -883,8 +881,8 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldRunPreAndPostProcessorPluginLogic() {
-		DatabaseLayerSetting__mdt settings = MockDmlTest.initSettings();
-		settings.DmlPreAndPostProcessor__c = MockDmlTest.TestPlugin.class.getName();
+		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
+		settings.DmlPreAndPostProcessor__c = DatabaseLayerTestUtils.SamplePlugin.class.getName();
 		// Re-initialize the plugins, now that the field has been set:
 		DatabaseLayer.Dml.initPlugins();
 		List<Account> accounts = MockDmlTest.initRecords(Account.SObjectType, false);
@@ -894,15 +892,19 @@ private class MockDmlTest {
 		Test.stopTest();
 
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
-		Assert.areEqual(1, MockDmlTest.numPreDmlPluginCalls, 'Wrong number of pre-dml plugin calls');
-		Assert.areEqual(0, MockDmlTest.numDmlErrorPluginCalls, 'Wrong number of dml error plugin calls');
-		Assert.areEqual(1, MockDmlTest.numPostDmlPluginCalls, 'Wrong number of post-dml plugin calls');
+		Assert.areEqual(1, DatabaseLayerTestUtils.DmlPluginSpy?.numPreCalls, 'Wrong number of pre-dml plugin calls');
+		Assert.areEqual(
+			0,
+			DatabaseLayerTestUtils.DmlPluginSpy?.numErrorCalls,
+			'Wrong number of dml error plugin calls'
+		);
+		Assert.areEqual(1, DatabaseLayerTestUtils.DmlPluginSpy?.numPostCalls, 'Wrong number of post-dml plugin calls');
 	}
 
 	@IsTest
 	static void shouldRunPluginErrorLogic() {
-		DatabaseLayerSetting__mdt settings = MockDmlTest.initSettings();
-		settings.DmlPreAndPostProcessor__c = MockDmlTest.TestPlugin.class.getName();
+		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
+		settings.DmlPreAndPostProcessor__c = DatabaseLayerTestUtils.SamplePlugin.class.getName();
 		// Re-initialize the plugins, now that the field has been set:
 		DatabaseLayer.Dml.initPlugins();
 		List<Account> accounts = MockDmlTest.initRecords(Account.SObjectType, false);
@@ -918,14 +920,18 @@ private class MockDmlTest {
 		}
 		Test.stopTest();
 
-		Assert.areEqual(1, MockDmlTest.numPreDmlPluginCalls, 'Wrong number of pre-dml plugin calls');
-		Assert.areEqual(1, MockDmlTest.numDmlErrorPluginCalls, 'Wrong number of dml error plugin calls');
-		Assert.areEqual(0, MockDmlTest.numPostDmlPluginCalls, 'Wrong number of post-dml plugin calls');
+		Assert.areEqual(1, DatabaseLayerTestUtils.DmlPluginSpy?.numPreCalls, 'Wrong number of pre-dml plugin calls');
+		Assert.areEqual(
+			1,
+			DatabaseLayerTestUtils.DmlPluginSpy?.numErrorCalls,
+			'Wrong number of dml error plugin calls'
+		);
+		Assert.areEqual(0, DatabaseLayerTestUtils.DmlPluginSpy?.numPostCalls, 'Wrong number of post-dml plugin calls');
 	}
 
 	@IsTest
 	static void shouldNotRunProcessorLogicIfInvalidApexClassDefined() {
-		DatabaseLayerSetting__mdt settings = MockDmlTest.initSettings();
+		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
 		settings.DmlPreAndPostProcessor__c = 'an obviously invalid apex class name';
 		// Re-initialize the plugins, now that the field has been set:
 		DatabaseLayer.Dml.initPlugins();
@@ -936,14 +942,18 @@ private class MockDmlTest {
 		Test.stopTest();
 
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
-		Assert.areEqual(0, MockDmlTest.numPreDmlPluginCalls, 'Wrong number of pre-dml plugin calls');
-		Assert.areEqual(0, MockDmlTest.numDmlErrorPluginCalls, 'Wrong number of dml error plugin calls');
-		Assert.areEqual(0, MockDmlTest.numPostDmlPluginCalls, 'Wrong number of post-dml plugin calls');
+		Assert.areEqual(0, DatabaseLayerTestUtils.DmlPluginSpy?.numPreCalls, 'Wrong number of pre-dml plugin calls');
+		Assert.areEqual(
+			0,
+			DatabaseLayerTestUtils.DmlPluginSpy?.numErrorCalls,
+			'Wrong number of dml error plugin calls'
+		);
+		Assert.areEqual(0, DatabaseLayerTestUtils.DmlPluginSpy?.numPostCalls, 'Wrong number of post-dml plugin calls');
 	}
 
 	@IsTest
 	static void shouldNotRunProcessorLogicIfNoValueDefined() {
-		DatabaseLayerSetting__mdt settings = MockDmlTest.initSettings();
+		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
 		settings.DmlPreAndPostProcessor__c = null;
 		DatabaseLayer.Dml.initPlugins();
 		List<Account> accounts = MockDmlTest.initRecords(Account.SObjectType, false);
@@ -953,14 +963,18 @@ private class MockDmlTest {
 		Test.stopTest();
 
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
-		Assert.areEqual(0, MockDmlTest.numPreDmlPluginCalls, 'Wrong number of pre-dml plugin calls');
-		Assert.areEqual(0, MockDmlTest.numDmlErrorPluginCalls, 'Wrong number of dml error plugin calls');
-		Assert.areEqual(0, MockDmlTest.numPostDmlPluginCalls, 'Wrong number of post-dml plugin calls');
+		Assert.areEqual(0, DatabaseLayerTestUtils.DmlPluginSpy?.numPreCalls, 'Wrong number of pre-dml plugin calls');
+		Assert.areEqual(
+			0,
+			DatabaseLayerTestUtils.DmlPluginSpy?.numErrorCalls,
+			'Wrong number of dml error plugin calls'
+		);
+		Assert.areEqual(0, DatabaseLayerTestUtils.DmlPluginSpy?.numPostCalls, 'Wrong number of post-dml plugin calls');
 	}
 
 	@IsTest
 	static void shouldNotRunProcessorLogicIfNoSettingsDefined() {
-		// Without calling MockDmlTest.initSettings(), no settings are defined:
+		DatabaseLayer.Utils.MetadataSelector.settings = new List<DatabaseLayerSetting__mdt>{};
 		DatabaseLayer.Dml.initPlugins();
 		List<Account> accounts = MockDmlTest.initRecords(Account.SObjectType, false);
 
@@ -969,9 +983,13 @@ private class MockDmlTest {
 		Test.stopTest();
 
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
-		Assert.areEqual(0, MockDmlTest.numPreDmlPluginCalls, 'Wrong number of pre-dml plugin calls');
-		Assert.areEqual(0, MockDmlTest.numDmlErrorPluginCalls, 'Wrong number of dml error plugin calls');
-		Assert.areEqual(0, MockDmlTest.numPostDmlPluginCalls, 'Wrong number of post-dml plugin calls');
+		Assert.areEqual(0, DatabaseLayerTestUtils.DmlPluginSpy?.numPreCalls, 'Wrong number of pre-dml plugin calls');
+		Assert.areEqual(
+			0,
+			DatabaseLayerTestUtils.DmlPluginSpy?.numErrorCalls,
+			'Wrong number of dml error plugin calls'
+		);
+		Assert.areEqual(0, DatabaseLayerTestUtils.DmlPluginSpy?.numPostCalls, 'Wrong number of post-dml plugin calls');
 	}
 
 	// **** HELPER **** //
@@ -1014,22 +1032,6 @@ private class MockDmlTest {
 				operation == this.failingOperation &&
 				record?.getSObjectType() == this.failingSObjectType;
 			return (shouldFail) ? new System.DmlException() : null;
-		}
-	}
-
-	public class TestPlugin implements Dml.PreAndPostProcessor {
-		// Note: Class has to be public to work properly:
-		public void processPreDml(Dml.Request dmlRequest) {
-			System.debug('Request: ' + JSON.serialize(dmlRequest));
-			MockDmlTest.numPreDmlPluginCalls += 1;
-		}
-
-		public void processPostDml(Dml.Request dmlRequest, List<Object> databaseResults) {
-			MockDmlTest.numPostDmlPluginCalls += 1;
-		}
-
-		public void processDmlError(Dml.Request request, Exception error) {
-			MockDmlTest.numDmlErrorPluginCalls += 1;
 		}
 	}
 }
