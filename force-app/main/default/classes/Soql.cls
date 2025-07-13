@@ -1091,7 +1091,11 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		public Boolean isMockSoql { get; protected set; }
 		public Soql.Operation operation { get; private set; }
 		public Soql query { get; private set; }
-		public String queryString { get; private set; }
+		public String queryString {
+			get {
+				return this.query?.toString();
+			}
+		}
 		protected transient System.AccessLevel accessLevel;
 		protected transient Map<String, Object> binds;
 
@@ -1101,7 +1105,6 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			this.isMockSoql = false;
 			this.operation = operation;
 			this.query = query;
-			this.queryString = query?.toString();
 		}
 
 		public Object process() {
@@ -1146,8 +1149,8 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			// Note: A count query must not contain any fields, other than COUNT() aggregation
 			// Avoid errors and simplify query construction by handling this in a temporary copy of the current query
 			Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT);
-			Soql tempCopy = this.query?.clone()?.deselectAll()?.addSelect(count)?.toSoql();
-			return Database.countQueryWithBinds(tempCopy?.toString(), this.binds, this.accessLevel);
+			this.query?.deselectAll()?.addSelect(count)?.toSoql();
+			return Database.countQueryWithBinds(this.queryString, this.binds, this.accessLevel);
 		}
 
 		protected virtual Soql.Cursor doGetCursor() {
