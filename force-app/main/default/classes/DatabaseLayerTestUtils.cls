@@ -39,17 +39,17 @@ public class DatabaseLayerTestUtils {
 			DatabaseLayerTestUtils.DmlPluginSpy.numErrorCalls += 1;
 		}
 
-		public void processPreSoql(Soql query) {
+		public void processPreSoql(Soql.Request request) {
 			DatabaseLayerTestUtils.SoqlPluginSpy.numPreCalls += 1;
 		}
 
-		public void processPostSoql(Soql query, Object results) {
+		public void processPostSoql(Soql.Request request, Object results) {
 			// Should be able to serialize the query results:
 			String resultsJson = JSON.serialize(results);
 			DatabaseLayerTestUtils.SoqlPluginSpy.numPostCalls += 1;
 		}
 
-		public void processSoqlError(Soql query, Exception error) {
+		public void processSoqlError(Soql.Request request, Exception error) {
 			DatabaseLayerTestUtils.SoqlPluginSpy.numErrorCalls += 1;
 		}
 	}

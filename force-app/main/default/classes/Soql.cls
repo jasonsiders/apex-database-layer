@@ -33,11 +33,9 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 
 	// Member Properties:
 	public String identifier { get; private set; }
-	private Soql.PreAndPostProcessor plugin { get; private set; }
 
 	public Soql(DatabaseLayer factory, Soql.PreAndPostProcessor plugin) {
 		this();
-		this.plugin = plugin;
 	}
 
 	protected Soql() {
@@ -45,79 +43,36 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 	}
 
 	public virtual List<Soql.AggregateResult> aggregateQuery() {
-		try {
-			// Call this method for aggregate queries, when not casting to a specific Type.
-			// Note: Since the Schema.AggregateResult class cannot be mocked via traditional means,
-			// this method returns a decorator object. See the "AggregateResult" inner class.
-			List<Soql.AggregateResult> wrappers = new List<Soql.AggregateResult>();
-			List<Schema.AggregateResult> aggResults = (List<Schema.AggregateResult>) this.query();
-			for (Schema.AggregateResult aggResult : aggResults) {
-				Soql.AggregateResult wrapper = new Soql.AggregateResult(aggResult);
-				wrappers?.add(wrapper);
-			}
-			return wrappers;
-		} catch (Exception error) {
-			this.handleQueryError(error);
-			throw error;
+		// Call this method for aggregate queries, when not casting to a specific Type.
+		// Note: Since the Schema.AggregateResult class cannot be mocked via traditional means,
+		// this method returns a decorator object. See the "AggregateResult" inner class.
+		List<Soql.AggregateResult> wrappers = new List<Soql.AggregateResult>();
+		List<Schema.AggregateResult> aggResults = (List<Schema.AggregateResult>) new Soql.Request(
+				this,
+				Soql.Operation.AGGREGATE_QUERY
+			)
+			?.process();
+		for (Schema.AggregateResult aggResult : aggResults) {
+			Soql.AggregateResult wrapper = new Soql.AggregateResult(aggResult);
+			wrappers?.add(wrapper);
 		}
+		return wrappers;
 	}
 
 	public virtual Integer countQuery() {
-		try {
-			// Note: A count query must not contain any fields, other than COUNT() aggregation
-			// Avoid errors and simplify query construction by handling this in a temporary copy of the current query
-			Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT);
-			Soql tempCopy = this.clone()?.deselectAll()?.addSelect(count)?.toSoql();
-			this.plugin?.processPreSoql(tempCopy);
-			Integer results = Database.countQueryWithBinds(tempCopy?.toString(), this.binds, this.accessLevel);
-			this.plugin?.processPostSoql(this, results);
-			return results;
-		} catch (Exception error) {
-			this.handleQueryError(error);
-			throw error;
-		}
+		return (Integer) new Soql.Request(this, Soql.Operation.COUNT_QUERY)?.process();
 	}
 
 	public virtual Soql.Cursor getCursor() {
-		try {
-			this.plugin?.processPreSoql(this);
-			Database.Cursor cursor = Database.getCursorWithBinds(this.toString(), this.binds, this.accessLevel);
-			Soql.Cursor results = new Soql.Cursor(cursor);
-			this.plugin?.processPostSoql(this, results);
-			return results;
-		} catch (Exception error) {
-			this.handleQueryError(error);
-			throw error;
-		}
+		return (Soql.Cursor) new Soql.Request(this, Soql.Operation.GET_CURSOR)?.process();
 	}
 
 	public virtual Soql.QueryLocator getQueryLocator() {
-		try {
-			this.plugin?.processPreSoql(this);
-			Database.QueryLocator locator = Database.getQueryLocatorWithBinds(
-				this.toString(),
-				this.binds,
-				this.accessLevel
-			);
-			Soql.QueryLocator results = new Soql.QueryLocator(locator);
-			this.plugin?.processPostSoql(this, results);
-			return results;
-		} catch (Exception error) {
-			this.handleQueryError(error);
-			throw error;
-		}
+		return (Soql.QueryLocator) new Soql.Request(this, Soql.Operation.GET_QUERY_LOCATOR)?.process();
 	}
 
 	public virtual List<SObject> query() {
-		try {
-			this.plugin?.processPreSoql(this);
-			List<SObject> results = Database.queryWithBinds(this.toString(), this.binds, this.accessLevel);
-			this.plugin?.processPostSoql(this, results);
-			return results;
-		} catch (Exception error) {
-			this.handleQueryError(error);
-			throw error;
-		}
+		return (List<SObject>) new Soql.Request(this, Soql.Operation.QUERY)?.process();
 	}
 
 	public virtual Object query(Type returnType) {
@@ -143,13 +98,6 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		// Use this method to give a name/identifier value that can be referenced in mocks
 		this.identifier = identifier;
 		return this;
-	}
-
-	protected void handleQueryError(Exception error) {
-		// Attach the original query to the Exception for easier debugging
-		this.plugin?.processSoqlError(this, error);
-		String augmentedMsg = error?.getMessage() + '\nQuery: [' + this.toString() + ']';
-		error?.setMessage(augmentedMsg);
 	}
 
 	// **** ENUMS *** //
@@ -1129,15 +1077,65 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		}
 	}
 
-	public class Request {
+	public virtual class Request {
 		public Soql.Operation operation { get; private set; }
 		public Soql query { get; private set; }
-		public transient Object results { get; private set; }
-		// TODO! Build this class out
+		private transient System.AccessLevel accessLevel;
+		private transient Map<String, Object> binds;
+		// TODO: Ensure the SOQL object is safe to serialize; may need to add more transient properties
 
-		private Request(Soql.Operation operation, Soql query) {
+		private Request(Soql query, Soql.Operation operation) {
 			this.operation = operation;
 			this.query = query;
+			this.accessLevel = query?.accessLevel;
+			this.binds = query?.binds;
+		}
+
+		public Object process() {
+			try {
+				DatabaseLayer.Soql.Plugin?.processPreSoql(this);
+				Object results = this.doQuery();
+				DatabaseLayer.Soql.Plugin?.processPostSoql(this, results);
+				return results;
+			} catch (Exception error) {
+				DatabaseLayer.Soql.Plugin?.processSoqlError(this, error);
+				String augmentedMsg = error?.getMessage() + '\nQuery: [' + this.query?.toString() + ']';
+				error?.setMessage(augmentedMsg);
+				throw error;
+			}
+		}
+
+		protected virtual Object doQuery() {
+			if (this.operation == Soql.Operation.AGGREGATE_QUERY) {
+				return (List<Schema.AggregateResult>) Database.queryWithBinds(
+					this.query?.toString(),
+					this.binds,
+					this.accessLevel
+				);
+			} else if (this.operation == Soql.Operation.COUNT_QUERY) {
+				// Note: A count query must not contain any fields, other than COUNT() aggregation
+				// Avoid errors and simplify query construction by handling this in a temporary copy of the current query
+				Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT);
+				Soql tempCopy = this.query?.clone()?.deselectAll()?.addSelect(count)?.toSoql();
+				return Database.countQueryWithBinds(tempCopy?.toString(), this.binds, this.accessLevel);
+			} else if (this.operation == Soql.Operation.GET_CURSOR) {
+				Database.Cursor cursor = Database.getCursorWithBinds(
+					this.query?.toString(),
+					this.binds,
+					this.accessLevel
+				);
+				return new Soql.Cursor(cursor);
+			} else if (this.operation == Soql.Operation.GET_QUERY_LOCATOR) {
+				Database.QueryLocator locator = Database.getQueryLocatorWithBinds(
+					this.query?.toString(),
+					this.binds,
+					this.accessLevel
+				);
+				return new Soql.QueryLocator(locator);
+			} else {
+				// All other operations use the standard Database.query method:
+				return Database.queryWithBinds(this.query?.toString(), this.binds, this.accessLevel);
+			}
 		}
 	}
 

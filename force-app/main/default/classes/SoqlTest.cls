@@ -29,7 +29,10 @@ private class SoqlTest {
 			soql?.aggregateQuery();
 			Assert.fail('Illegal query did not throw an error');
 		} catch (System.TypeException error) {
-			Assert.isTrue(error?.getMessage()?.contains(soql?.toString()), 'Did not append query to error');
+			Assert.isTrue(
+				error?.getMessage()?.contains(soql?.toString()),
+				'Did not append query to error: ' + error?.getMessage() + '\n' + error?.getStackTraceString()
+			);
 		}
 		Test.stopTest();
 	}

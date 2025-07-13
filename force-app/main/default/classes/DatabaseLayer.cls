@@ -89,8 +89,8 @@ public class DatabaseLayer {
 		/**
 		 * This class is responsible for provisioning a Soql instance of the correct type
 		 **/
-		private Soql.PreAndPostProcessor plugin;
-		private Boolean useMocks;
+		public Soql.PreAndPostProcessor plugin { get; private set; }
+		private Boolean useMocks { get; private set; }
 
 		private SoqlProvider(DatabaseLayer factory) {
 			this.useMocks = false;

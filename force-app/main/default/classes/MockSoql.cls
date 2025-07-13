@@ -77,12 +77,7 @@ public class MockSoql extends Soql {
 
 	private Object simulate() {
 		// Run the Simulator logic, and handle errors just like the super() class does
-		try {
-			return this.getSimulator()?.simulateQuery(this);
-		} catch (Exception error) {
-			this.handleQueryError(error);
-			throw error;
-		}
+		return this.getSimulator()?.simulateQuery(this);
 	}
 
 	// **** INNER **** //
