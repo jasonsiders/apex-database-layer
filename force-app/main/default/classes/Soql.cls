@@ -1091,6 +1091,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		public Boolean isMockSoql { get; protected set; }
 		public Soql.Operation operation { get; private set; }
 		public Soql query { get; private set; }
+		public String queryString { get; private set; }
 		protected transient System.AccessLevel accessLevel;
 		protected transient Map<String, Object> binds;
 
@@ -1100,6 +1101,8 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			this.isMockSoql = false;
 			this.operation = operation;
 			this.query = query;
+			this.queryString = query?.toString();
+			System.debug('@jason: ' + JSON.serialize(this, true));
 		}
 
 		public Object process() {
@@ -1110,7 +1113,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 				return results;
 			} catch (Exception error) {
 				DatabaseLayer.Soql.Plugin?.processSoqlError(this, error);
-				String augmentedMsg = error?.getMessage() + '\nQuery: [' + this.query?.toString() + ']';
+				String augmentedMsg = error?.getMessage() + '\nQuery: [' + this.queryString + ']';
 				error?.setMessage(augmentedMsg);
 				throw error;
 			}
@@ -1149,13 +1152,13 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		protected virtual Soql.Cursor doGetCursor() {
-			Database.Cursor cursor = Database.getCursorWithBinds(this.query?.toString(), this.binds, this.accessLevel);
+			Database.Cursor cursor = Database.getCursorWithBinds(this.queryString, this.binds, this.accessLevel);
 			return new Soql.Cursor(cursor);
 		}
 
 		protected virtual Soql.QueryLocator doGetQueryLocator() {
 			Database.QueryLocator locator = Database.getQueryLocatorWithBinds(
-				this.query?.toString(),
+				this.queryString,
 				this.binds,
 				this.accessLevel
 			);
@@ -1163,7 +1166,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		protected virtual Object doQuery() {
-			return Database.queryWithBinds(this.query?.toString(), this.binds, this.accessLevel);
+			return Database.queryWithBinds(this.queryString, this.binds, this.accessLevel);
 		}
 	}
 
