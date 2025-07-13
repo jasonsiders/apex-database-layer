@@ -270,19 +270,28 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 	}
 
 	public abstract class Builder {
-		public Set<String> selectClauses { get; protected set; }
+		public transient System.AccessLevel accessLevel { get; protected set; }
+		public Map<String, Object> binds { get; protected set; }
 		public String entity { get; protected set; }
-		public Soql.Scope scope { get; protected set; }
-		public Soql.ConditionalLogic whereCriteria { get; protected set; }
-		public String withClause { get; protected set; }
 		public List<String> groupByClauses { get; protected set; }
 		public Soql.ConditionalLogic havingCriteria { get; protected set; }
 		public List<String> orderByClauses { get; protected set; }
 		public Integer rowLimit { get; protected set; }
 		public Integer rowOffset { get; protected set; }
+		public Soql.Scope scope { get; protected set; }
+		public Set<String> selectClauses { get; protected set; }
 		public Soql.Usage usage { get; protected set; }
-		public System.AccessLevel accessLevel { get; protected set; }
-		public Map<String, Object> binds { get; protected set; }
+		public Soql.ConditionalLogic whereCriteria { get; protected set; }
+		public String withClause { get; protected set; }
+		// Read-only properties included for JSON output:
+		public String accessLevelName {
+			// System.AccessLevel isn't serializable,
+			// and it does not have an enum name() property,
+			// and toString() does not output its name either:
+			get {
+				return (this.accessLevel == System.AccessLevel.SYSTEM_MODE) ? 'SYSTEM_MODE' : 'USER_MODE';
+			}
+		}
 
 		protected Builder() {
 			this.reset();
@@ -1083,7 +1092,6 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		public Soql query { get; private set; }
 		protected transient System.AccessLevel accessLevel;
 		protected transient Map<String, Object> binds;
-		// TODO: Ensure the SOQL object is safe to serialize; may need to add more transient properties
 
 		protected Request(Soql query, Soql.Operation operation) {
 			this.accessLevel = query?.accessLevel;

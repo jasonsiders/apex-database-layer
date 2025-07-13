@@ -27,7 +27,7 @@ public class DatabaseLayerTestUtils {
 	public class SamplePlugin implements Dml.PreAndPostProcessor, Soql.PreAndPostProcessor {
 		public void processPreDml(Dml.Request request) {
 			// Should be able to serialize the Dml.Request object:
-			JSON.serialize(request, true);
+			System.debug(JSON.serialize(request, true));
 			DatabaseLayerTestUtils.DmlPluginSpy.numPreCalls += 1;
 		}
 
@@ -40,6 +40,8 @@ public class DatabaseLayerTestUtils {
 		}
 
 		public void processPreSoql(Soql.Request request) {
+			// Should be able to serialize the query:
+			System.debug(JSON.serialize(request, true));
 			DatabaseLayerTestUtils.SoqlPluginSpy.numPreCalls += 1;
 		}
 
