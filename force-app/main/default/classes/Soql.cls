@@ -43,22 +43,31 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 	}
 
 	public List<Soql.AggregateResult> aggregateQuery() {
+		// Call this method for aggregate queries, when not casting to a specific Type.
+		// Note: Since the Schema.AggregateResult class cannot be mocked via traditional means,
+		// this method returns a decorator object. See the "AggregateResult" inner class.
 		return (List<Soql.AggregateResult>) this.initRequest(Soql.Operation.AGGREGATE_QUERY)?.process();
 	}
 
 	public Integer countQuery() {
+		// Returns the results of a SOQL COUNT() query:
 		return (Integer) this.initRequest(Soql.Operation.COUNT_QUERY)?.process();
 	}
 
 	public Soql.Cursor getCursor() {
+		// Returns the query results as a Soql.Cursor object
+		// This type wraps a Database.Cursor, which cannot be mocked
 		return (Soql.Cursor) this.initRequest(Soql.Operation.GET_CURSOR)?.process();
 	}
 
 	public Soql.QueryLocator getQueryLocator() {
+		// Returns the query results as a Soql.QueryLocator object
+		// This type wraps a Database.QueryLocator, which cannot be mocked
 		return (Soql.QueryLocator) this.initRequest(Soql.Operation.GET_QUERY_LOCATOR)?.process();
 	}
 
 	public List<SObject> query() {
+		// Perform a standard SOQL query, returning a List<SObject>:
 		return (List<SObject>) this.initRequest(Soql.Operation.QUERY)?.process();
 	}
 
@@ -1112,11 +1121,8 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		protected virtual List<Soql.AggregateResult> doAggregateQuery() {
-			// Call this method for aggregate queries, when not casting to a specific Type.
-			// Note: Since the Schema.AggregateResult class cannot be mocked via traditional means,
-			// this method returns a decorator object. See the "AggregateResult" inner class.
-			List<Soql.AggregateResult> wrappers = new List<Soql.AggregateResult>();
 			List<Schema.AggregateResult> results = (List<Schema.AggregateResult>) this.doQuery();
+			List<Soql.AggregateResult> wrappers = new List<Soql.AggregateResult>();
 			for (Schema.AggregateResult result : results) {
 				Soql.AggregateResult wrapper = new Soql.AggregateResult(result);
 				wrappers?.add(wrapper);
@@ -1147,7 +1153,6 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		protected virtual Object doQuery() {
-			// All other operations use the standard Database.query method
 			return Database.queryWithBinds(this.query?.toString(), this.binds, this.accessLevel);
 		}
 	}
