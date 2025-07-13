@@ -40,14 +40,12 @@ public class DatabaseLayerTestUtils {
 		}
 
 		public void processPreSoql(Soql.Request request) {
-			// Should be able to serialize the query:
+			// Should be able to serialize the Soql.Request object:
 			System.debug(JSON.serialize(request, true));
 			DatabaseLayerTestUtils.SoqlPluginSpy.numPreCalls += 1;
 		}
 
 		public void processPostSoql(Soql.Request request, Object results) {
-			// Should be able to serialize the query results:
-			String resultsJson = JSON.serialize(results);
 			DatabaseLayerTestUtils.SoqlPluginSpy.numPostCalls += 1;
 		}
 
