@@ -3,6 +3,13 @@
 )
 @IsTest
 private class SoqlTest {
+	static {
+		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
+		settings.SoqlPreAndPostProcessor__c = DatabaseLayerTestUtils.SamplePlugin.class.getName();
+		DatabaseLayer.Soql.initPlugins();
+	}
+
+	// **** TESTS **** //
 	@IsTest
 	static void shouldAggregateQuery() {
 		Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id);

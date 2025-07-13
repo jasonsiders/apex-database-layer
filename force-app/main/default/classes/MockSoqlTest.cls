@@ -2,7 +2,14 @@
 @IsTest
 private class MockSoqlTest {
 	// **** CONSTANTS **** //
-	private static final Integer NUM_ACCS = 10;
+	private static final Integer NUM_ACCS;
+
+	static {
+		NUM_ACCS = 10;
+		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
+		settings.SoqlPreAndPostProcessor__c = DatabaseLayerTestUtils.SamplePlugin.class.getName();
+		DatabaseLayer.Soql.initPlugins();
+	}
 
 	// **** TESTS **** //
 	@IsTest

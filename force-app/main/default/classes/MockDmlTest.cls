@@ -10,6 +10,10 @@ private class MockDmlTest {
 		DatabaseLayer.Utils.MetadataSelector.settings = new List<DatabaseLayerSetting__mdt>{};
 		// Use Mock DML:
 		DatabaseLayer.useMockDml();
+		// Initialize plugins:
+		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
+		settings.DmlPreAndPostProcessor__c = DatabaseLayerTestUtils.SamplePlugin.class.getName();
+		DatabaseLayer.Dml.initPlugins();
 	}
 
 	// **** TESTS **** //
