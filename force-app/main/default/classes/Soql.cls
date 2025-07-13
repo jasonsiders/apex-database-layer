@@ -42,39 +42,27 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		super();
 	}
 
-	public virtual List<Soql.AggregateResult> aggregateQuery() {
-		// Call this method for aggregate queries, when not casting to a specific Type.
-		// Note: Since the Schema.AggregateResult class cannot be mocked via traditional means,
-		// this method returns a decorator object. See the "AggregateResult" inner class.
-		List<Soql.AggregateResult> wrappers = new List<Soql.AggregateResult>();
-		List<Schema.AggregateResult> aggResults = (List<Schema.AggregateResult>) this.initRequest(
-				Soql.Operation.AGGREGATE_QUERY
-			)
-			?.process();
-		for (Schema.AggregateResult aggResult : aggResults) {
-			Soql.AggregateResult wrapper = new Soql.AggregateResult(aggResult);
-			wrappers?.add(wrapper);
-		}
-		return wrappers;
+	public List<Soql.AggregateResult> aggregateQuery() {
+		return (List<Soql.AggregateResult>) this.initRequest(Soql.Operation.AGGREGATE_QUERY)?.process();
 	}
 
-	public virtual Integer countQuery() {
+	public Integer countQuery() {
 		return (Integer) this.initRequest(Soql.Operation.COUNT_QUERY)?.process();
 	}
 
-	public virtual Soql.Cursor getCursor() {
+	public Soql.Cursor getCursor() {
 		return (Soql.Cursor) this.initRequest(Soql.Operation.GET_CURSOR)?.process();
 	}
 
-	public virtual Soql.QueryLocator getQueryLocator() {
+	public Soql.QueryLocator getQueryLocator() {
 		return (Soql.QueryLocator) this.initRequest(Soql.Operation.GET_QUERY_LOCATOR)?.process();
 	}
 
-	public virtual List<SObject> query() {
+	public List<SObject> query() {
 		return (List<SObject>) this.initRequest(Soql.Operation.QUERY)?.process();
 	}
 
-	public virtual Object query(Type returnType) {
+	public Object query(Type returnType) {
 		// Return the query results as an instance of the returnType
 		// Mostly useful for returning Aggregate Query results as a wrapper type
 		return JSON.deserialize(JSON.serialize(this.query()), returnType);
@@ -1083,21 +1071,21 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 	public virtual class Request {
 		public Soql.Operation operation { get; private set; }
 		public Soql query { get; private set; }
-		private transient System.AccessLevel accessLevel;
-		private transient Map<String, Object> binds;
+		protected transient System.AccessLevel accessLevel;
+		protected transient Map<String, Object> binds;
 		// TODO: Ensure the SOQL object is safe to serialize; may need to add more transient properties
 
-		private Request(Soql query, Soql.Operation operation) {
-			this.operation = operation;
-			this.query = query;
+		protected Request(Soql query, Soql.Operation operation) {
 			this.accessLevel = query?.accessLevel;
 			this.binds = query?.binds;
+			this.operation = operation;
+			this.query = query;
 		}
 
 		public Object process() {
 			try {
 				DatabaseLayer.Soql.Plugin?.processPreSoql(this);
-				Object results = this.doQuery();
+				Object results = this.performQueryOperation();
 				DatabaseLayer.Soql.Plugin?.processPostSoql(this, results);
 				return results;
 			} catch (Exception error) {
@@ -1108,37 +1096,62 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			}
 		}
 
-		protected virtual Object doQuery() {
+		protected Object performQueryOperation() {
 			if (this.operation == Soql.Operation.AGGREGATE_QUERY) {
-				return (List<Schema.AggregateResult>) Database.queryWithBinds(
-					this.query?.toString(),
-					this.binds,
-					this.accessLevel
-				);
+				return this.doAggregateQuery();
 			} else if (this.operation == Soql.Operation.COUNT_QUERY) {
-				// Note: A count query must not contain any fields, other than COUNT() aggregation
-				// Avoid errors and simplify query construction by handling this in a temporary copy of the current query
-				Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT);
-				Soql tempCopy = this.query?.clone()?.deselectAll()?.addSelect(count)?.toSoql();
-				return Database.countQueryWithBinds(tempCopy?.toString(), this.binds, this.accessLevel);
+				return this.doCountQuery();
 			} else if (this.operation == Soql.Operation.GET_CURSOR) {
-				Database.Cursor cursor = Database.getCursorWithBinds(
-					this.query?.toString(),
-					this.binds,
-					this.accessLevel
-				);
-				return new Soql.Cursor(cursor);
+				return this.doGetCursor();
 			} else if (this.operation == Soql.Operation.GET_QUERY_LOCATOR) {
-				Database.QueryLocator locator = Database.getQueryLocatorWithBinds(
-					this.query?.toString(),
-					this.binds,
-					this.accessLevel
-				);
-				return new Soql.QueryLocator(locator);
+				return this.doGetQueryLocator();
 			} else {
-				// All other operations use the standard Database.query method:
-				return Database.queryWithBinds(this.query?.toString(), this.binds, this.accessLevel);
+				return this.doQuery();
 			}
+		}
+
+		protected virtual List<Soql.AggregateResult> doAggregateQuery() {
+			// Call this method for aggregate queries, when not casting to a specific Type.
+			// Note: Since the Schema.AggregateResult class cannot be mocked via traditional means,
+			// this method returns a decorator object. See the "AggregateResult" inner class.
+			List<Soql.AggregateResult> wrappers = new List<Soql.AggregateResult>();
+			List<Schema.AggregateResult> results = Database.queryWithBinds(
+				this.query?.toString(),
+				this.binds,
+				this.accessLevel
+			);
+			for (Schema.AggregateResult result : results) {
+				Soql.AggregateResult wrapper = new Soql.AggregateResult(result);
+				wrappers?.add(wrapper);
+			}
+			return wrappers;
+		}
+
+		protected virtual Integer doCountQuery() {
+			// Note: A count query must not contain any fields, other than COUNT() aggregation
+			// Avoid errors and simplify query construction by handling this in a temporary copy of the current query
+			Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT);
+			Soql tempCopy = this.query?.clone()?.deselectAll()?.addSelect(count)?.toSoql();
+			return Database.countQueryWithBinds(tempCopy?.toString(), this.binds, this.accessLevel);
+		}
+
+		protected virtual Soql.Cursor doGetCursor() {
+			Database.Cursor cursor = Database.getCursorWithBinds(this.query?.toString(), this.binds, this.accessLevel);
+			return new Soql.Cursor(cursor);
+		}
+
+		protected virtual Soql.QueryLocator doGetQueryLocator() {
+			Database.QueryLocator locator = Database.getQueryLocatorWithBinds(
+				this.query?.toString(),
+				this.binds,
+				this.accessLevel
+			);
+			return new Soql.QueryLocator(locator);
+		}
+
+		protected virtual List<SObject> doQuery() {
+			// All other operations use the standard Database.query method:
+			return Database.queryWithBinds(this.query?.toString(), this.binds, this.accessLevel);
 		}
 	}
 

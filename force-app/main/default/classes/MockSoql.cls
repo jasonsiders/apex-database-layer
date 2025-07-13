@@ -44,28 +44,32 @@ public class MockSoql extends Soql {
 	}
 
 	// **** OVERRIDES **** //
-	public override List<Soql.AggregateResult> aggregateQuery() {
+	/* public List<Soql.AggregateResult> aggregateQuery() {
 		return (List<Soql.AggregateResult>) this.simulate() ?? new List<Soql.AggregateResult>();
 	}
 
-	public override Integer countQuery() {
+	public Integer countQuery() {
 		return this.query()?.size();
 	}
 
-	public override Soql.Cursor getCursor() {
+	public Soql.Cursor getCursor() {
 		return new MockSoql.Cursor(this);
 	}
 
-	public override Soql.QueryLocator getQueryLocator() {
+	public Soql.QueryLocator getQueryLocator() {
 		return new MockSoql.QueryLocator(this);
 	}
 
-	public override List<SObject> query() {
+	public List<SObject> query() {
 		return (List<SObject>) this.simulate() ?? new List<SObject>();
 	}
 
-	public override Object query(Type returnType) {
+	public Object query(Type returnType) {
 		return this.simulate() ?? returnType?.newInstance();
+	} */
+
+	public override Soql.Request initRequest(Soql.Operation operation) {
+		return new MockSoql.Request(this, operation);
 	}
 
 	// **** PRIVATE **** //
@@ -238,6 +242,32 @@ public class MockSoql extends Soql {
 				String msg = 'Iterator has no more elements.';
 				throw new System.NoSuchElementException(msg);
 			}
+		}
+	}
+
+	public class Request extends Soql.Request {
+		private Request(Soql query, Soql.Operation operation) {
+			super(query, operation);
+		}
+
+		public override List<Soql.AggregateResult> doAggregateQuery() {
+			// TODO
+		}
+
+		public override Integer doCountQuery() {
+			// TODO
+		}
+
+		public override Soql.Cursor doGetCursor() {
+			// TODO
+		}
+
+		public override Soql.QueryLocator doGetQueryLocator() {
+			// TODO
+		}
+
+		public override List<SObject> doQuery() {
+			// TODO
 		}
 	}
 
