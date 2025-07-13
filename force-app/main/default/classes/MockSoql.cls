@@ -44,10 +44,6 @@ public class MockSoql extends Soql {
 	}
 
 	// **** OVERRIDES **** //
-	public override Object query(Type returnType) {
-		return this.query() ?? returnType?.newInstance();
-	}
-
 	public override Soql.Request initRequest(Soql.Operation operation) {
 		MockSoql.Simulator simulator = this.getSimulator();
 		return new MockSoql.Request(this, operation, simulator);
@@ -145,19 +141,31 @@ public class MockSoql extends Soql {
 
 		private void validateFetch(Integer position, Integer count) {
 			// Throws an exception if the provided arguments are invalid
-			// 1. Neither parameter should be null:
+			this.validateFetchArgsAreNotNull(position, count);
+			this.validateFetchArgsArePositive(position, count);
+			this.validateFetchArgsAreInBounds(position, count);
+		}
+
+		private void validateFetchArgsAreNotNull(Integer position, Integer count) {
+			// Neither parameter should be null:
 			if (position == null || count == null) {
-				System.Exception npe = new System.NullPointerException();
-				npe?.setMessage('Attempt to de-reference a null object');
-				throw npe;
+				System.Exception error = new System.NullPointerException();
+				error?.setMessage('Attempt to de-reference a null object');
+				throw error;
 			}
-			// 2. Neither parameter should be negative:
+		}
+
+		private void validateFetchArgsArePositive(Integer position, Integer count) {
+			// Neither parameter should be negative:
 			if (position < 0) {
 				throw new Soql.InvalidParameterValueException('Start position cannot be a negative value: ' + position);
 			} else if (count < 0) {
 				throw new Soql.InvalidParameterValueException('Fetch size cannot be a negative value: ' + count);
 			}
-			// 3. Should not attempt to fetch an index that doesn't exist:
+		}
+
+		private void validateFetchArgsAreInBounds(Integer position, Integer count) {
+			// Should not attempt to fetch an index that doesn't exist:
 			Integer maxIndexToFetch = (position + count);
 			Integer upperBound = (this.records?.size() - 1);
 			if (maxIndexToFetch > upperBound) {

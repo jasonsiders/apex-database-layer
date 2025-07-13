@@ -62,7 +62,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		return (List<SObject>) this.initRequest(Soql.Operation.QUERY)?.process();
 	}
 
-	public virtual Object query(Type returnType) {
+	public Object query(Type returnType) {
 		// Return the query results as an instance of the returnType
 		// Mostly useful for returning Aggregate Query results as a wrapper type
 		return JSON.deserialize(JSON.serialize(this.query()), returnType);
