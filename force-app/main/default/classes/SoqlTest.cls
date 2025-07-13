@@ -3,6 +3,13 @@
 )
 @IsTest
 private class SoqlTest {
+	static {
+		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
+		settings.SoqlPreAndPostProcessor__c = DatabaseLayerTestUtils.SamplePlugin.class.getName();
+		DatabaseLayer.Soql.initPlugins();
+	}
+
+	// **** TESTS **** //
 	@IsTest
 	static void shouldAggregateQuery() {
 		Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id);
@@ -29,7 +36,10 @@ private class SoqlTest {
 			soql?.aggregateQuery();
 			Assert.fail('Illegal query did not throw an error');
 		} catch (System.TypeException error) {
-			Assert.isTrue(error?.getMessage()?.contains(soql?.toString()), 'Did not append query to error');
+			Assert.isTrue(
+				error?.getMessage()?.contains(soql?.toString()),
+				'Did not append query to error: ' + error?.getMessage() + '\n' + error?.getStackTraceString()
+			);
 		}
 		Test.stopTest();
 	}
@@ -1504,8 +1514,134 @@ private class SoqlTest {
 		Test.stopTest();
 	}
 
+	@IsTest
+	static void shouldRunPreAndPostProcessorPluginLogic() {
+		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
+		settings.SoqlPreAndPostProcessor__c = DatabaseLayerTestUtils.SamplePlugin.class.getName();
+		DatabaseLayer.Soql.initPlugins();
+
+		Test.startTest();
+		DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowLimit(1)?.toSoql()?.query();
+		Test.stopTest();
+
+		Assert.areEqual(1, DatabaseLayerTestUtils.SoqlPluginSpy?.numPreCalls, 'Wrong number of pre-soql plugin calls');
+		Assert.areEqual(
+			0,
+			DatabaseLayerTestUtils.SoqlPluginSpy?.numErrorCalls,
+			'Wrong number of soql error plugin calls'
+		);
+		Assert.areEqual(
+			1,
+			DatabaseLayerTestUtils.SoqlPluginSpy?.numPostCalls,
+			'Wrong number of post-soql plugin calls'
+		);
+	}
+
+	@IsTest
+	static void shouldRunPluginErrorLogic() {
+		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
+		settings.SoqlPreAndPostProcessor__c = DatabaseLayerTestUtils.SamplePlugin.class.getName();
+		DatabaseLayer.Soql.initPlugins();
+
+		Test.startTest();
+		try {
+			// Can't query w/a null FROM object:
+			DatabaseLayer.Soql.newQuery(null)?.toSoql()?.query();
+			Assert.fail('Did not throw an Exception');
+		} catch (Exception error) {
+			// As expected
+		}
+		Test.stopTest();
+
+		Assert.areEqual(1, DatabaseLayerTestUtils.SoqlPluginSpy?.numPreCalls, 'Wrong number of pre-soql plugin calls');
+		Assert.areEqual(
+			1,
+			DatabaseLayerTestUtils.SoqlPluginSpy?.numErrorCalls,
+			'Wrong number of soql error plugin calls'
+		);
+		Assert.areEqual(
+			0,
+			DatabaseLayerTestUtils.SoqlPluginSpy?.numPostCalls,
+			'Wrong number of post-soql plugin calls'
+		);
+	}
+
+	@IsTest
+	static void shouldNotRunProcessorLogicIfInvalidApexClassDefined() {
+		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
+		settings.SoqlPreAndPostProcessor__c = 'an obviously invalid apex class name';
+		DatabaseLayer.Soql.initPlugins();
+
+		Test.startTest();
+		DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowLimit(1)?.toSoql()?.query();
+		Test.stopTest();
+
+		Assert.areEqual(0, DatabaseLayerTestUtils.SoqlPluginSpy?.numPreCalls, 'Wrong number of pre-soql plugin calls');
+		Assert.areEqual(
+			0,
+			DatabaseLayerTestUtils.SoqlPluginSpy?.numErrorCalls,
+			'Wrong number of soql error plugin calls'
+		);
+		Assert.areEqual(
+			0,
+			DatabaseLayerTestUtils.SoqlPluginSpy?.numPostCalls,
+			'Wrong number of post-soql plugin calls'
+		);
+	}
+
+	@IsTest
+	static void shouldNotRunProcessorLogicIfNoValueDefined() {
+		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
+		settings.SoqlPreAndPostProcessor__c = null;
+		DatabaseLayer.Soql.initPlugins();
+
+		Test.startTest();
+		DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowLimit(1)?.toSoql()?.query();
+		Test.stopTest();
+
+		Assert.areEqual(0, DatabaseLayerTestUtils.SoqlPluginSpy?.numPreCalls, 'Wrong number of pre-soql plugin calls');
+		Assert.areEqual(
+			0,
+			DatabaseLayerTestUtils.SoqlPluginSpy?.numErrorCalls,
+			'Wrong number of soql error plugin calls'
+		);
+		Assert.areEqual(
+			0,
+			DatabaseLayerTestUtils.SoqlPluginSpy?.numPostCalls,
+			'Wrong number of post-soql plugin calls'
+		);
+	}
+
+	@IsTest
+	static void shouldNotRunProcessorLogicIfNoSettingsDefined() {
+		DatabaseLayer.Utils.MetadataSelector.settings = new List<DatabaseLayerSetting__mdt>{};
+		DatabaseLayer.Soql.initPlugins();
+
+		Test.startTest();
+		DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowLimit(1)?.toSoql()?.query();
+		Test.stopTest();
+
+		Assert.areEqual(0, DatabaseLayerTestUtils.SoqlPluginSpy?.numPreCalls, 'Wrong number of pre-soql plugin calls');
+		Assert.areEqual(
+			0,
+			DatabaseLayerTestUtils.SoqlPluginSpy?.numErrorCalls,
+			'Wrong number of soql error plugin calls'
+		);
+		Assert.areEqual(
+			0,
+			DatabaseLayerTestUtils.SoqlPluginSpy?.numPostCalls,
+			'Wrong number of post-soql plugin calls'
+		);
+	}
+
 	// **** HELPER **** //
-	static Object validateQuery(Soql soql, String expected) {
+	private static DatabaseLayerSetting__mdt initSettings() {
+		DatabaseLayerSetting__mdt settings = new DatabaseLayerSetting__mdt();
+		DatabaseLayer.Utils.MetadataSelector.settings?.add(settings);
+		return settings;
+	}
+
+	private static Object validateQuery(Soql soql, String expected) {
 		Assert.areEqual('"' + expected + '"', '"' + soql?.toString() + '"', 'Unexpected SOQL output');
 		return soql?.query();
 	}
