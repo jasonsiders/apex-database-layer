@@ -242,7 +242,7 @@ public class MockSoql extends Soql {
 		}
 
 		public override Integer doCountQuery() {
-			return this.doQuery()?.size();
+			return ((List<SObject>) this.doQuery())?.size() ?? 0;
 		}
 
 		public override Soql.Cursor doGetCursor() {
@@ -253,8 +253,8 @@ public class MockSoql extends Soql {
 			return new MockSoql.QueryLocator((MockSoql) this.query);
 		}
 
-		public override List<SObject> doQuery() {
-			return (List<SObject>) this.simulate() ?? new List<SObject>();
+		public override Object doQuery() {
+			return this.simulate() ?? new List<SObject>();
 		}
 
 		private Object simulate() {

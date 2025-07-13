@@ -65,7 +65,8 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 	public Object query(Type returnType) {
 		// Return the query results as an instance of the returnType
 		// Mostly useful for returning Aggregate Query results as a wrapper type
-		return JSON.deserialize(JSON.serialize(this.query()), returnType);
+		Object result = this.initRequest(Soql.Operation.QUERY)?.process();
+		return JSON.deserialize(JSON.serialize(result), returnType);
 	}
 
 	public SObject queryFirst() {
@@ -1115,11 +1116,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			// Note: Since the Schema.AggregateResult class cannot be mocked via traditional means,
 			// this method returns a decorator object. See the "AggregateResult" inner class.
 			List<Soql.AggregateResult> wrappers = new List<Soql.AggregateResult>();
-			List<Schema.AggregateResult> results = Database.queryWithBinds(
-				this.query?.toString(),
-				this.binds,
-				this.accessLevel
-			);
+			List<Schema.AggregateResult> results = (List<Schema.AggregateResult>) this.doQuery();
 			for (Schema.AggregateResult result : results) {
 				Soql.AggregateResult wrapper = new Soql.AggregateResult(result);
 				wrappers?.add(wrapper);
@@ -1149,8 +1146,8 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 			return new Soql.QueryLocator(locator);
 		}
 
-		protected virtual List<SObject> doQuery() {
-			// All other operations use the standard Database.query method:
+		protected virtual Object doQuery() {
+			// All other operations use the standard Database.query method
 			return Database.queryWithBinds(this.query?.toString(), this.binds, this.accessLevel);
 		}
 	}
