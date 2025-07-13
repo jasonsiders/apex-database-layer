@@ -99,8 +99,8 @@ public class DatabaseLayer {
 
 		public Soql newQuery(SObjectType objectType) {
 			return (this.useMocks == true)
-				? new MockSoql(INSTANCE, this.plugin)?.fromSObject(objectType)?.toSoql()
-				: new Soql(INSTANCE, this.plugin)?.fromSObject(objectType)?.toSoql();
+				? new MockSoql(INSTANCE)?.fromSObject(objectType)?.toSoql()
+				: new Soql(INSTANCE)?.fromSObject(objectType)?.toSoql();
 		}
 
 		@TestVisible

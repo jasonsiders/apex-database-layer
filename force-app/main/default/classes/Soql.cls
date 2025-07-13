@@ -34,7 +34,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 	// Member Properties:
 	public String identifier { get; private set; }
 
-	public Soql(DatabaseLayer factory, Soql.PreAndPostProcessor plugin) {
+	public Soql(DatabaseLayer factory) {
 		this();
 	}
 
