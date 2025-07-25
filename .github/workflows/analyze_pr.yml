@@ -112,10 +112,11 @@ jobs:
           ORG_EXISTS=$(echo "$RESULT" | jq -r '.result.totalSize')
           if [[ "$ORG_EXISTS" -eq 1 ]]; then
             # TODO: Log into the org using the stored password
+            # TODO: Set 'success=true' if successful
           fi
 
       - name: Create Scratch Org
-        id: create-scratch-org
+        if: ${{ steps.get-scratch-org.outputs.success == 'true' }}
         run: |
           set -euo pipefail
           RESPONSE=$(sf org create scratch \
