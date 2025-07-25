@@ -42,6 +42,7 @@ jobs:
       - name: Get Changed Files
         run: |
           # Ensure this check only runs against changed files in the current PR; not the entire codebase
+          set -euo pipefail
           mkdir "$CHANGES_DIR"
           sf sgd source delta --generate-delta --from "HEAD^" --to "HEAD" --output-dir "$CHANGES_DIR"/ --source-dir "force-app/"
           echo "Changed files:"
@@ -90,6 +91,7 @@ jobs:
           JWT_KEY: ${{ secrets.SALESFORCE_JWT_KEY }}
           USERNAME: ${{ secrets.SALESFORCE_DEVHUB_USERNAME }}
         run: |
+          set -euo pipefail
           echo "${JWT_KEY}" > server.key
           sf org login jwt \
             --client-id "$CLIENT_ID" \
@@ -101,6 +103,7 @@ jobs:
       - name: Create Scratch Org
         id: create-scratch-org
         run: |
+          set -euo pipefail
           RESPONSE=$(sf org create scratch \
             --duration-days 1 \
             --json \
@@ -110,13 +113,13 @@ jobs:
           echo "username=$USERNAME" >> "$GITHUB_OUTPUT"
 
       - name: Run Tests
-        run: "sf apex run test --code-coverage --result-format human --synchronous"
+        run: sf apex run test --code-coverage --result-format human --synchronous
 
       - name: Delete Scratch Org
         if: ${{ always() && steps.create-scratch-org.outputs.username != '' }}
         env:
           SCRATCH_ORG: ${{ steps.create-scratch-org.outputs.username }}
-        run: "sf org delete scratch --no-prompt --target-org $SCRATCH_ORG"
+        run: sf org delete scratch --no-prompt --target-org "$SCRATCH_ORG"
 
       - name: Handle Errors
         if: ${{ failure() && !cancelled() }}
