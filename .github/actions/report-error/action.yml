@@ -7,7 +7,6 @@ inputs:
       Necessary since composite actions can't access to 'github' variables.
   repo:
     description: The
-
   run-id:
     description: The Id of the failed run.
     required: true

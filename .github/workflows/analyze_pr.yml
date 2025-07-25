@@ -16,6 +16,11 @@ concurrency:
 env:
   CHANGES_DIR: changes
 
+permissions:
+  actions: read
+  contents: read
+  pull-requests: write
+
 jobs:
   scan:
     name: Run Static Analysis
@@ -23,13 +28,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           fetch-depth: 2
+
       - name: Setup SF CLI
         uses: ./.github/actions/setup-sf-cli
         with:
           install-plugins: "true"
+
       - name: Get Changed Files
         run: |
           # Ensure this check only runs against changed files in the current PR; not the entire codebase
@@ -37,6 +45,7 @@ jobs:
           sf sgd source delta --generate-delta --from "HEAD^" --to "HEAD" --output-dir "$CHANGES_DIR"/ --source-dir "force-app/"
           echo "Changed files:"
           ls "$CHANGES_DIR"
+
       - name: Run Salesforce Code Analyzer
         id: scan
         uses: forcedotcom/run-code-analyzer@v2
@@ -44,6 +53,7 @@ jobs:
           github-token: ${{ github.token }}
           results-artifact-name: salesforce-code-analyzer-results
           run-arguments: "--target $CHANGES_DIR --view detail --output-file sfca_results.json"
+
       - name: Handle Errors
         if: ${{ failure() && !cancelled() }}
         uses: ./.github/actions/report-error
@@ -51,6 +61,7 @@ jobs:
           actor: ${{ github.actor }}
           run-id: ${{ github.run_id }}
           token: ${{ github.token }}
+
       - name: Evaluate
         if: |
           steps.scan.outputs.exit-code > 0 ||
