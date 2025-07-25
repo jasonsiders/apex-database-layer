@@ -1,5 +1,7 @@
-public with sharing class DummyClass {
-	public DummyClass() {
-		System.debug('This is a violation');
+@IsTest
+private class DummyClass {
+	@IsTest
+	static void shouldFail() {
+		Assert.fail('Sheeeeeeeeeeeesh');
 	}
 }
