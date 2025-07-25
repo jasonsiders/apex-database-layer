@@ -108,6 +108,7 @@ jobs:
           echo "📢 Creating scratch org..."
           RESPONSE=$(sf org create scratch \
             --alias scratch \
+            --definition-file config/project-scratch-def.json \
             --duration-days 1 \
             --json \
             --set-default \
