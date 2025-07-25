@@ -102,17 +102,30 @@ jobs:
             --set-default-dev-hub \
             --username "$USERNAME"
 
+      - name: Get Existing Scratch Org
+        id: get-scratch-org
+        run: |
+          # Note: Salesforce limits Dev orgs to 3 active scratch orgs at a time, and only 6 new/day
+          # Must re-use the same scratch org to prevent exceeding limits
+          QUERY="SELECT SignupUsername FROM ActiveScratchOrg WHERE SignupUsername = '$EXISTING_USERNAME'"
+          RESULT=$(sf data query --target-org devhub -q "$QUERY" --json)
+          ORG_EXISTS=$(echo "$RESULT" | jq -r '.result.totalSize')
+          if [[ "$ORG_EXISTS" -eq 1 ]]; then
+            # TODO: Log into the org using the stored password
+          fi
+
       - name: Create Scratch Org
         id: create-scratch-org
         run: |
           set -euo pipefail
-          sf org create scratch \
+          RESPONSE=$(sf org create scratch \
             --alias "$SCRATCH_ORG_ALIAS" \
             --definition-file config/project-scratch-def.json \
             --duration-days 1 \
             --set-default \
             --target-dev-hub "$DEVHUB_ALIAS" \
-            --wait 10
+            --wait 10)
+          # TODO: Use sf org generate password to generate a password & assign to a secret
           echo "is-success=true" >> "$GITHUB_OUTPUT"
 
       - name: Deploy
@@ -120,10 +133,6 @@ jobs:
 
       - name: Run Tests
         run: sf apex run test --code-coverage --result-format human --synchronous
-
-      - name: Delete Scratch Org
-        if: ${{ always() && steps.create-scratch-org.outputs.is-success == 'true' }}
-        run: sf org delete scratch --no-prompt --target-org "$SCRATCH_ORG_ALIAS"
 
       - name: Cleanup
         if: ${{ always() }}
