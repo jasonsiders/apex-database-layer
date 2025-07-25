@@ -15,6 +15,8 @@ concurrency:
 
 env:
   CHANGES_DIR: changes
+  DEVHUB_ALIAS: devhub
+  SCRATCH_ORG_ALIAS: scratch
 
 permissions:
   actions: read
@@ -94,7 +96,7 @@ jobs:
           set -euo pipefail
           echo "${JWT_KEY}" > server.key
           sf org login jwt \
-            --alias devhub \
+            --alias "$DEVHUB_ALIAS" \
             --client-id "$CLIENT_ID" \
             --jwt-key-file server.key \
             --set-default-dev-hub \
@@ -105,32 +107,24 @@ jobs:
         id: create-scratch-org
         run: |
           set -euo pipefail
-          echo "📢 Creating scratch org..."
-          RESPONSE=$(sf org create scratch \
-            --alias scratch \
+          sf org create scratch \
+            --alias "$SCRATCH_ORG_ALIAS" \
             --definition-file config/project-scratch-def.json \
             --duration-days 1 \
-            --json \
             --set-default \
-            --target-dev-hub devhub \
-            --wait 10)
-          # Print the response (always safe if `sf` succeeded)
-          echo "🔍 sf response:"
-          echo "$RESPONSE"
-          # Extract username
-          USERNAME=$(echo "$RESPONSE" | jq -r '.result.username')
-          echo "✅ Scratch org username: $USERNAME"
-          # Send to outputs
-          echo "username=$USERNAME" >> "$GITHUB_OUTPUT"
+            --target-dev-hub "$DEVHUB_ALIAS" \
+            --wait 10
+          echo "is-success=true" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy
+        run: sf project deploy start
 
       - name: Run Tests
         run: sf apex run test --code-coverage --result-format human --synchronous
 
       - name: Delete Scratch Org
-        if: ${{ always() && steps.create-scratch-org.outputs.username != '' }}
-        env:
-          SCRATCH_ORG: ${{ steps.create-scratch-org.outputs.username }}
-        run: sf org delete scratch --no-prompt --target-org "$SCRATCH_ORG"
+        if: ${{ always() && steps.create-scratch-org.outputs.is-success == 'true' }}
+        run: sf org delete scratch --no-prompt --target-org "$SCRATCH_ORG_ALIAS"
 
       - name: Handle Errors
         if: ${{ failure() && !cancelled() }}
