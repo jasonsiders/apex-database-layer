@@ -86,10 +86,11 @@ jobs:
 
       - name: Auth Devhub
         env:
-          JWT_KEY: ${{ secrets.SALESFORCE_JWT_SECRET_KEY }}
+          JWT_KEY: ${{ secrets.SALESFORCE_JWT_KEY }}
         run: |
           echo "${JWT_KEY}" > server.key
-          "sf org login jwt --client-id ${{ secrets.SALESFORCE_CONSUMER_KEY }} \
+          "sf org login jwt \
+            --client-id ${{ secrets.SALESFORCE_CONSUMER_KEY }} \
             --jwt-key-file server.key \
             --set-default-dev-hub \
             --username ${{ secrets.SALESFORCE_DEVHUB_USERNAME}}"
