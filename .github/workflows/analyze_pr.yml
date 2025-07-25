@@ -15,6 +15,8 @@ concurrency:
 
 env:
   CHANGES_DIR: changes
+  DEVHUB_ALIAS: devhub
+  SCRATCH_ORG_ALIAS: ci
 
 permissions:
   actions: read
@@ -71,3 +73,51 @@ jobs:
         run: |
           echo "🚨 sf code-analyzer detected violations that exceed the acceptable threshold."
           exit 1
+
+  run-unit-tests:
+    name: Run Unit Tests
+    if: ${{ '! github.event.pull_request.draft' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup SF CLI
+        uses: ./.github/actions/setup-sf-cli
+
+      - name: Auth Devhub
+        env:
+          JWT_KEY: ${{ secrets.SALESFORCE_JWT_SECRET_KEY }}
+        run: |
+          echo "${JWT_KEY}" > server.key
+          "sf org login jwt --client-id ${{ secrets.SALESFORCE_CONSUMER_KEY }} \
+            --alias $DEVHUB_ALIAS \
+            --jwt-key-file server.key \
+            --set-default-dev-hub \
+            --username ${{ secrets.SALESFORCE_DEVHUB_USERNAME}}"
+          trap 'rm -f server.key' EXIT
+
+      - name: Create Scratch Org
+        run: |
+          "sf org create scratch \
+            --alias $SCRATCH_ORG_ALIAS \
+            --duration-days 1 \
+            --set-default \
+            --target-dev-hub $DEVHUB_ALIAS \
+            --wait 10"
+
+      - name: Run Tests
+        run: "sf apex run test --code-coverage --result-format human --synchronous"
+
+      - name: Delete Scratch Org
+        if: ${{ always() }}
+        run: "sf org delete scratch --no-prompt --target-org $SCRATCH_ORG_ALIAS"
+
+      - name: Handle Errors
+        if: ${{ failure() && !cancelled() }}
+        uses: ./.github/actions/report-error
+        with:
+          actor: ${{ github.actor }}
+          run-id: ${{ github.run_id }}
+          token: ${{ github.token }}
