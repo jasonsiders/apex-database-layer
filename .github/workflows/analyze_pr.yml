@@ -53,7 +53,7 @@ jobs:
         with:
           github-token: ${{ github.token }}
           results-artifact-name: salesforce-code-analyzer-results
-          run-arguments: "--target $CHANGES_DIR --view detail --output-file sfca_results.json"
+          run-arguments: "--target ${{ env.CHANGES_DIR }} --view detail --output-file sfca_results.json"
 
       - name: Handle Errors
         if: ${{ failure() && !cancelled() }}
