@@ -15,8 +15,6 @@ concurrency:
 
 env:
   CHANGES_DIR: changes
-  DEVHUB_ALIAS: devhub
-  SCRATCH_ORG_ALIAS: ci
 
 permissions:
   actions: read
@@ -92,27 +90,30 @@ jobs:
         run: |
           echo "${JWT_KEY}" > server.key
           "sf org login jwt --client-id ${{ secrets.SALESFORCE_CONSUMER_KEY }} \
-            --alias $DEVHUB_ALIAS \
             --jwt-key-file server.key \
             --set-default-dev-hub \
             --username ${{ secrets.SALESFORCE_DEVHUB_USERNAME}}"
           trap 'rm -f server.key' EXIT
 
       - name: Create Scratch Org
+        id: create-scratch-org
         run: |
-          "sf org create scratch \
-            --alias $SCRATCH_ORG_ALIAS \
+          RESPONSE=$(sf org create scratch \
             --duration-days 1 \
+            --json \
             --set-default \
-            --target-dev-hub $DEVHUB_ALIAS \
-            --wait 10"
+            --wait 10)
+          USERNAME=$(echo "$RESPONSE" | jq -r '.result.username')
+          echo "username=$USERNAME" >> "$GITHUB_OUTPUT"
 
       - name: Run Tests
         run: "sf apex run test --code-coverage --result-format human --synchronous"
 
       - name: Delete Scratch Org
-        if: ${{ always() }}
-        run: "sf org delete scratch --no-prompt --target-org $SCRATCH_ORG_ALIAS"
+        if: ${{ always() && steps.create-scratch-org.outputs.username != '' }}
+        env:
+          SCRATCH_ORG: ${{ steps.create-scratch-org.outputs.username }}
+        run: "sf org delete scratch --no-prompt --target-org $SCRATCH_ORG"
 
       - name: Handle Errors
         if: ${{ failure() && !cancelled() }}
