@@ -101,7 +101,6 @@ jobs:
             --jwt-key-file server.key \
             --set-default-dev-hub \
             --username "$USERNAME"
-          trap 'rm -f server.key' EXIT
 
       - name: Create Scratch Org
         id: create-scratch-org
@@ -125,6 +124,10 @@ jobs:
       - name: Delete Scratch Org
         if: ${{ always() && steps.create-scratch-org.outputs.is-success == 'true' }}
         run: sf org delete scratch --no-prompt --target-org "$SCRATCH_ORG_ALIAS"
+
+      - name: Cleanup
+        if: ${{ always() }}
+        run: rm -f server.key
 
       - name: Handle Errors
         if: ${{ failure() && !cancelled() }}
