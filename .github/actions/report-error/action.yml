@@ -109,9 +109,6 @@ runs:
         CMD="gh issue list --repo $GITHUB_REPOSITORY --search '\"$TITLE\" in:title' --state all --json closed,number,title"
         echo "$CMD"
         RESPONSE=$(eval "$CMD")
-        echo "::group::Response:"
-        echo "$RESPONSE" | jq
-        echo "::endgroup::"
         ISSUE_OBJ=$(echo "$RESPONSE" | jq -c '.[] | select(.title == "'"$TITLE"'")')
         IS_CLOSED=$(echo "$ISSUE_OBJ" | jq -r '.closed')
         ISSUE_ID=$(echo "$ISSUE_OBJ" | jq -r '.number')
