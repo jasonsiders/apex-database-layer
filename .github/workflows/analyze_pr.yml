@@ -1,0 +1,61 @@
+name: Analyze PR
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "force-app/**"
+    types: [opened, reopened, synchronize]
+
+concurrency:
+  # Cancel old runs when a new commit is pushed to the same branch
+  group: analyze-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  CHANGES_DIR: changes
+
+jobs:
+  scan:
+    name: Run Static Analysis
+    if: ${{ '! github.event.pull_request.draft' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Setup SF CLI
+        uses: ./.github/actions/setup-sf-cli
+        with:
+          install-plugins: "true"
+      - name: Get Changed Files
+        run: |
+          # Ensure this check only runs against changed files in the current PR; not the entire codebase
+          mkdir "$CHANGES_DIR"
+          sf sgd source delta --generate-delta --from "HEAD^" --to "HEAD" --output-dir "$CHANGES_DIR"/ --source-dir "force-app/"
+          echo "Changed files:"
+          ls "$CHANGES_DIR"
+      - name: Run Salesforce Code Analyzer
+        id: scan
+        uses: forcedotcom/run-code-analyzer@v2
+        with:
+          github-token: ${{ github.token }}
+          results-artifact-name: salesforce-code-analyzer-results
+          run-arguments: "--target $CHANGES_DIR --view detail --output-file sfca_results.json"
+      - name: Handle Errors
+        if: ${{ failure() && !cancelled() }}
+        uses: ./.github/actions/report-error
+        with:
+          actor: ${{ github.actor }}
+          run-id: ${{ github.run_id }}
+          token: ${{ github.token }}
+      - name: Evaluate
+        if: |
+          steps.scan.outputs.exit-code > 0 ||
+          steps.scan.outputs.num-sev1-violations > 0 ||
+          steps.scan.outputs.num-sev2-violations > 0
+        run: |
+          echo "🚨 sf code-analyzer detected violations that exceed the acceptable threshold."
+          exit 1
