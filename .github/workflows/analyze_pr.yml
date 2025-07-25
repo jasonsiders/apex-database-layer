@@ -91,11 +91,11 @@ jobs:
           USERNAME: ${{ secrets.SALESFORCE_DEVHUB_USERNAME }}
         run: |
           echo "${JWT_KEY}" > server.key
-          "sf org login jwt \
-            --client-id $CLIENT_ID \
+          sf org login jwt \
+            --client-id "$CLIENT_ID" \
             --jwt-key-file server.key \
             --set-default-dev-hub \
-            --username $USERNAME"
+            --username "$USERNAME"
           trap 'rm -f server.key' EXIT
 
       - name: Create Scratch Org
