@@ -105,6 +105,7 @@ jobs:
         id: create-scratch-org
         run: |
           set -euo pipefail
+          echo "📢 Creating scratch org..."
           RESPONSE=$(sf org create scratch \
             --alias scratch \
             --duration-days 1 \
@@ -112,8 +113,13 @@ jobs:
             --set-default \
             --target-dev-hub devhub \
             --wait 10)
+          # Print the response (always safe if `sf` succeeded)
+          echo "🔍 sf response:"
           echo "$RESPONSE"
+          # Extract username
           USERNAME=$(echo "$RESPONSE" | jq -r '.result.username')
+          echo "✅ Scratch org username: $USERNAME"
+          # Send to outputs
           echo "username=$USERNAME" >> "$GITHUB_OUTPUT"
 
       - name: Run Tests
