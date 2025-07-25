@@ -94,6 +94,7 @@ jobs:
           set -euo pipefail
           echo "${JWT_KEY}" > server.key
           sf org login jwt \
+            --alias devhub \
             --client-id "$CLIENT_ID" \
             --jwt-key-file server.key \
             --set-default-dev-hub \
@@ -105,9 +106,11 @@ jobs:
         run: |
           set -euo pipefail
           RESPONSE=$(sf org create scratch \
+            --alias scratch \
             --duration-days 1 \
             --json \
             --set-default \
+            --target-dev-hub devhub \
             --wait 10)
           echo "$RESPONSE"
           USERNAME=$(echo "$RESPONSE" | jq -r '.result.username')
