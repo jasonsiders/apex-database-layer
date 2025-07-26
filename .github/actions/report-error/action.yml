@@ -5,8 +5,9 @@ inputs:
     description: |
       The user who triggered the failing run. 
       Necessary since composite actions can't access to 'github' variables.
-  repo:
-    description: The
+  job:
+    description: The logical name of the failed job. Get this via 'github.job'
+    required: true
   run-id:
     description: The Id of the failed run.
     required: true
@@ -33,6 +34,7 @@ runs:
     - name: Get Run Details
       id: get-run
       env:
+        JOB: ${{ inputs.job }}
         RUN_ID: ${{ inputs.run-id }}
       shell: bash
       run: |
@@ -49,8 +51,7 @@ runs:
         echo "job-number=$JOB_NUMBER" >> "$GITHUB_OUTPUT"
         WORKFLOW=$(echo "$RESPONSE" | jq -r '.workflowName')
         echo "workflow=$WORKFLOW" >> "$GITHUB_OUTPUT"
-        # The last job is always the one that failed:
-        JOB_OBJ=$(echo "$RESPONSE" | jq '[.jobs[] | select(.conclusion == "failure")] | last')
+        JOB_OBJ=$(echo "$RESPONSE" | jq --arg job "$JOB" '.jobs[] | select(.name == $job)')
         JOB_NAME=$(echo "$JOB_OBJ" | jq -r '.name')
         echo "job=$JOB_NAME" >> "$GITHUB_OUTPUT"
         URL=$(echo "$JOB_OBJ" | jq -r '.url')
