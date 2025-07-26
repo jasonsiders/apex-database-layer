@@ -15,8 +15,6 @@ concurrency:
 
 env:
   CHANGES_DIR: changes
-  DEVHUB_ALIAS: devhub
-  SCRATCH_ORG_ALIAS: scratch
 
 permissions:
   actions: read
@@ -96,41 +94,62 @@ jobs:
           set -euo pipefail
           echo "${JWT_KEY}" > server.key
           sf org login jwt \
-            --alias "$DEVHUB_ALIAS" \
             --client-id "$CLIENT_ID" \
             --jwt-key-file server.key \
             --set-default-dev-hub \
             --username "$USERNAME"
 
+      # TODO: Consider making a dedicated get/create scratch org helper action.yml
+      - name: Generate Username
+        id: generate-username
+        run: |
+          # Dynamically generate a scratch org username, based on the repository
+          USERNAME="${GITHUB_REPOSITORY##*/}-ci@${GITHUB_REPOSITORY%%/*}.com"
+          echo "username=$USERNAME" >> "$GITHUB_OUTPUT"
+          echo "Scratch Org Username: $USERNAME"
+
       - name: Get Existing Scratch Org
-        id: get-scratch-org
+        id: get-existing
+        continue-on-error: true
+        env:
+          CLIENT_ID: ${{ secrets.SALESFORCE_CONSUMER_KEY }}
+          JWT_KEY: ${{ secrets.SALESFORCE_JWT_KEY }}
+          USERNAME: ${{ steps.generate-username.outputs.username }}
         run: |
           # Note: Salesforce limits Dev orgs to 3 active scratch orgs at a time, and only 6 new/day
           # Must re-use the same scratch org to prevent exceeding limits
-          QUERY="SELECT SignupUsername FROM ActiveScratchOrg WHERE SignupUsername = '$EXISTING_USERNAME'"
-          RESULT=$(sf data query --target-org devhub -q "$QUERY" --json)
-          ORG_EXISTS=$(echo "$RESULT" | jq -r '.result.totalSize')
-          if [[ "$ORG_EXISTS" -eq 1 ]]; then
-            # TODO: Log into the org using the stored password
-            # TODO: Set 'success=true' if successful
+          set -euo pipefail
+          QUERY="SELECT LoginUrl FROM ScratchOrgInfo WHERE SignupUsername = '$USERNAME'"
+          LOGIN_URL=$(sf data query --target-org devhub -q "$QUERY" --json | jq -r '.result.records[0].LoginUrl')
+          if [[ -n "$LOGIN_URL" && "$LOGIN_URL" != "null" ]]; then
+            sf org login jwt \
+              --client-id "$CLIENT_ID" \
+              --instance-url "$LOGIN_URL" \
+              --jwt-key-file server.key \
+              --set-default \
+              --username "$USERNAME"
+            echo "success=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Existing Scratch Org not found"
           fi
 
       - name: Create Scratch Org
-        if: ${{ steps.get-scratch-org.outputs.success == 'true' }}
+        if: ${{ steps.get-existing.outputs.success != 'true' }}
+        env:
+          USERNAME: ${{ steps.generate-username.outputs.username }}
         run: |
           set -euo pipefail
-          RESPONSE=$(sf org create scratch \
-            --alias "$SCRATCH_ORG_ALIAS" \
+          sf org create scratch \
             --definition-file config/project-scratch-def.json \
             --duration-days 1 \
             --set-default \
-            --target-dev-hub "$DEVHUB_ALIAS" \
-            --wait 10)
-          # TODO: Use sf org generate password to generate a password & assign to a secret
-          echo "is-success=true" >> "$GITHUB_OUTPUT"
+            --username "$USERNAME" \
+            --wait 10
 
       - name: Deploy
-        run: sf project deploy start
+        env:
+          SCRATCH_ORG: ${{ steps.generate-username.outputs.username }}
+        run: sf project deploy start --target-org "$SCRATCH_ORG"
 
       - name: Run Tests
         run: sf apex run test --code-coverage --result-format human --synchronous
