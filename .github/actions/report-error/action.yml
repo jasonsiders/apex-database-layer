@@ -38,6 +38,7 @@ runs:
         RUN_ID: ${{ inputs.run-id }}
       shell: bash
       run: |
+        echo "Job: $JOB"
         # Get information about the failed run:
         set -euo pipefail
         echo "🔍 Querying failed run: $RUN_ID..."
