@@ -40,8 +40,8 @@ runs:
         set -euo pipefail
         echo "🔍 Querying failed run: $RUN_ID..."
         CMD="gh run view $RUN_ID --repo $GITHUB_REPOSITORY --json attempt,jobs,name,number,updatedAt,url,workflowName"
-        echo "$CMD"
         RESPONSE=$(eval "$CMD" | jq)
+        echo -e "$CMD\n$RESPONSE"
         # Unpack the response into individual output variables:
         ATTEMPT=$(echo "$RESPONSE" | jq -r '.attempt')
         echo "attempt=$ATTEMPT" >> "$GITHUB_OUTPUT"
