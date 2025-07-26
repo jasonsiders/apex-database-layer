@@ -120,7 +120,8 @@ jobs:
           # Must re-use the same scratch org to prevent exceeding limits
           set -euo pipefail
           QUERY="SELECT LoginUrl FROM ScratchOrgInfo WHERE SignupUsername = '$USERNAME'"
-          LOGIN_URL=$(sf data query --target-org devhub -q "$QUERY" --json | jq -r '.result.records[0].LoginUrl')
+          LOGIN_URL=$(sf data query --target-org devhub -q "$QUERY" --json | jq -r '.result.records[0]?.LoginUrl // empty')
+          echo "Existing Scratch Org: $LOGIN_URL"
           if [[ -n "$LOGIN_URL" && "$LOGIN_URL" != "null" ]]; then
             sf org login jwt \
               --client-id "$CLIENT_ID" \
@@ -129,8 +130,6 @@ jobs:
               --set-default \
               --username "$USERNAME"
             echo "success=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "Existing Scratch Org not found"
           fi
 
       - name: Create Scratch Org
