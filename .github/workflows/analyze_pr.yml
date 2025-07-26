@@ -113,6 +113,7 @@ jobs:
         continue-on-error: true
         env:
           CLIENT_ID: ${{ secrets.SALESFORCE_CONSUMER_KEY }}
+          DEV_HUB: ${{ secrets.SALESFORCE_DEVHUB_USERNAME }}
           JWT_KEY: ${{ secrets.SALESFORCE_JWT_KEY }}
           USERNAME: ${{ steps.generate-username.outputs.username }}
         run: |
@@ -120,8 +121,9 @@ jobs:
           # Must re-use the same scratch org to prevent exceeding limits
           set -euo pipefail
           QUERY="SELECT LoginUrl FROM ScratchOrgInfo WHERE SignupUsername = '$USERNAME'"
-          LOGIN_URL=$(sf data query --target-org devhub -q "$QUERY" --json | jq -r '.result.records[0]?.LoginUrl // empty')
-          echo "Existing Scratch Org: $LOGIN_URL"
+          RESPONSE=$(sf data query --target-org "$DEV_HUB" -q "$QUERY" --json 2>/dev/null || true)
+          echo "$RESPONSE"
+          LOGIN_URL=$(echo "$RESPONSE" | jq -r '.result.records[0]?.LoginUrl // empty')
           if [[ -n "$LOGIN_URL" && "$LOGIN_URL" != "null" ]]; then
             sf org login jwt \
               --client-id "$CLIENT_ID" \
