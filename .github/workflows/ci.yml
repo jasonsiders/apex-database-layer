@@ -61,6 +61,7 @@ jobs:
         uses: ./.github/actions/report-error
         with:
           actor: ${{ github.actor }}
+          job: ${{ github.job }}
           run-id: ${{ github.run_id }}
           token: ${{ github.token }}
 
@@ -163,5 +164,6 @@ jobs:
         uses: ./.github/actions/report-error
         with:
           actor: ${{ github.actor }}
+          job: ${{ github.job }}
           run-id: ${{ github.run_id }}
           token: ${{ github.token }}
