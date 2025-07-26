@@ -56,15 +56,6 @@ jobs:
           results-artifact-name: salesforce-code-analyzer-results
           run-arguments: "--target ${{ env.CHANGES_DIR }} --view detail --output-file sfca_results.json"
 
-      - name: Handle Errors
-        if: ${{ failure() && !cancelled() }}
-        uses: ./.github/actions/report-error
-        with:
-          actor: ${{ github.actor }}
-          job: ${{ github.job }}
-          run-id: ${{ github.run_id }}
-          token: ${{ github.token }}
-
       - name: Evaluate
         if: |
           steps.scan.outputs.exit-code > 0 ||
@@ -158,12 +149,3 @@ jobs:
       - name: Cleanup
         if: ${{ always() }}
         run: rm -f server.key
-
-      - name: Handle Errors
-        if: ${{ failure() && !cancelled() }}
-        uses: ./.github/actions/report-error
-        with:
-          actor: ${{ github.actor }}
-          job: ${{ github.job }}
-          run-id: ${{ github.run_id }}
-          token: ${{ github.token }}

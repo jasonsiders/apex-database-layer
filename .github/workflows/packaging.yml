@@ -79,11 +79,3 @@ jobs:
         with:
           commit_message: "Requested new package version ${{ steps.bump-version.outputs.new-version-name }}"
           tagging_message: ${{ steps.bump-version.outputs.new-version-name }}
-
-      - name: Handle Errors
-        if: ${{ failure() && !cancelled() }}
-        uses: ./.github/actions/report-error
-        with:
-          actor: ${{ github.actor }}
-          run-id: ${{ github.run_id }}
-          token: ${{ github.token }}
