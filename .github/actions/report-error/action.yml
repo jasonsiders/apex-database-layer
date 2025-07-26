@@ -50,7 +50,7 @@ runs:
         WORKFLOW=$(echo "$RESPONSE" | jq -r '.workflowName')
         echo "workflow=$WORKFLOW" >> "$GITHUB_OUTPUT"
         # The last job is always the one that failed:
-        JOB_OBJ=$(echo "$RESPONSE" | jq '.jobs | .[-1]')
+        JOB_OBJ=$(echo "$RESPONSE" | jq '[.jobs[] | select(.conclusion == "failure")] | last')
         JOB_NAME=$(echo "$JOB_OBJ" | jq -r '.name')
         echo "job=$JOB_NAME" >> "$GITHUB_OUTPUT"
         URL=$(echo "$JOB_OBJ" | jq -r '.url')
