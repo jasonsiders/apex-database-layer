@@ -122,8 +122,8 @@ jobs:
           set -euo pipefail
           QUERY="SELECT LoginUrl FROM ScratchOrgInfo WHERE SignupUsername = '$USERNAME'"
           RESPONSE=$(sf data query --target-org "$DEV_HUB" -q "$QUERY" --json 2>/dev/null || true)
-          echo "$RESPONSE"
           LOGIN_URL=$(echo "$RESPONSE" | jq -r '.result.records[0]?.LoginUrl // empty')
+          echo "Existing Scratch Org: $LOGIN_URL"
           if [[ -n "$LOGIN_URL" && "$LOGIN_URL" != "null" ]]; then
             sf org login jwt \
               --client-id "$CLIENT_ID" \
