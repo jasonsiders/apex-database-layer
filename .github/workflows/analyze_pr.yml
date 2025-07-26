@@ -117,8 +117,7 @@ jobs:
           JWT_KEY: ${{ secrets.SALESFORCE_JWT_KEY }}
           USERNAME: ${{ steps.generate-username.outputs.username }}
         run: |
-          # Note: Salesforce limits Dev orgs to 3 active scratch orgs at a time, and only 6 new/day
-          # Must re-use the same scratch org to prevent exceeding limits
+          # Re-use scratch orgs to prevent exceeding new scratch orgs/day limits:
           set -euo pipefail
           QUERY="SELECT LoginUrl FROM ScratchOrgInfo WHERE SignupUsername = '$USERNAME'"
           RESPONSE=$(sf data query --target-org "$DEV_HUB" -q "$QUERY" --json 2>/dev/null || true)
