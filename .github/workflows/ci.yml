@@ -1,0 +1,155 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "force-app/**"
+    types: [opened, reopened, synchronize]
+
+concurrency:
+  # Cancel old runs when a new commit is pushed to the same branch
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  CHANGES_DIR: changes
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  scan:
+    name: Run Static Analysis
+    if: ${{ '! github.event.pull_request.draft' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Setup SF CLI
+        uses: ./.github/actions/setup-sf-cli
+        with:
+          install-plugins: "true"
+
+      - name: Get Changed Files
+        run: |
+          # Ensure this check only runs against changed files in the current PR; not the entire codebase
+          set -euo pipefail
+          mkdir "$CHANGES_DIR"
+          sf sgd source delta --generate-delta --from "HEAD^" --to "HEAD" --output-dir "$CHANGES_DIR"/ --source-dir "force-app/"
+          echo "Changed files:"
+          ls "$CHANGES_DIR"
+
+      - name: Run Salesforce Code Analyzer
+        id: scan
+        uses: forcedotcom/run-code-analyzer@v2
+        with:
+          github-token: ${{ github.token }}
+          results-artifact-name: salesforce-code-analyzer-results
+          run-arguments: "--target ${{ env.CHANGES_DIR }} --view detail --output-file sfca_results.json"
+
+      - name: Evaluate
+        if: |
+          steps.scan.outputs.exit-code > 0 ||
+          steps.scan.outputs.num-sev1-violations > 0 ||
+          steps.scan.outputs.num-sev2-violations > 0
+        run: |
+          echo "🚨 sf code-analyzer detected violations that exceed the acceptable threshold."
+          exit 1
+
+  run-unit-tests:
+    name: Run Unit Tests
+    if: ${{ '! github.event.pull_request.draft' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup SF CLI
+        uses: ./.github/actions/setup-sf-cli
+
+      - name: Authenticate Devhub
+        env:
+          CLIENT_ID: ${{ secrets.SALESFORCE_CONSUMER_KEY }}
+          JWT_KEY: ${{ secrets.SALESFORCE_JWT_KEY }}
+          USERNAME: ${{ secrets.SALESFORCE_DEVHUB_USERNAME }}
+        run: |
+          set -euo pipefail
+          echo "${JWT_KEY}" > server.key
+          sf org login jwt \
+            --client-id "$CLIENT_ID" \
+            --jwt-key-file server.key \
+            --set-default-dev-hub \
+            --username "$USERNAME"
+
+      - name: Generate Username
+        id: generate-username
+        run: |
+          # Dynamically generate a scratch org username, based on the repository
+          USERNAME="${GITHUB_REPOSITORY##*/}-ci@${GITHUB_REPOSITORY%%/*}.com"
+          echo "username=$USERNAME" >> "$GITHUB_OUTPUT"
+          echo "Scratch Org Username: $USERNAME"
+
+      - name: Get Existing Scratch Org
+        id: get-existing
+        continue-on-error: true
+        env:
+          CLIENT_ID: ${{ secrets.SALESFORCE_CONSUMER_KEY }}
+          DEV_HUB: ${{ secrets.SALESFORCE_DEVHUB_USERNAME }}
+          JWT_KEY: ${{ secrets.SALESFORCE_JWT_KEY }}
+          USERNAME: ${{ steps.generate-username.outputs.username }}
+        run: |
+          # Re-use scratch orgs to prevent exceeding new scratch orgs/day limits:
+          set -euo pipefail
+          QUERY="SELECT LoginUrl FROM ScratchOrgInfo WHERE SignupUsername = '$USERNAME'"
+          RESPONSE=$(sf data query --target-org "$DEV_HUB" -q "$QUERY" --json 2>/dev/null || true)
+          LOGIN_URL=$(echo "$RESPONSE" | jq -r '.result.records[0]?.LoginUrl // empty')
+          echo "Existing Scratch Org: $LOGIN_URL"
+          if [[ -n "$LOGIN_URL" && "$LOGIN_URL" != "null" ]]; then
+            sf org login jwt \
+              --client-id "$CLIENT_ID" \
+              --instance-url "$LOGIN_URL" \
+              --jwt-key-file server.key \
+              --set-default \
+              --username "$USERNAME"
+            echo "success=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create Scratch Org
+        if: ${{ steps.get-existing.outputs.success != 'true' }}
+        env:
+          USERNAME: ${{ steps.generate-username.outputs.username }}
+        run: |
+          set -euo pipefail
+          sf org create scratch \
+            --definition-file config/project-scratch-def.json \
+            --duration-days 1 \
+            --set-default \
+            --username "$USERNAME" \
+            --wait 10
+
+      - name: Run Tests
+        env:
+          SCRATCH_ORG: ${{ steps.generate-username.outputs.username }}
+        run: |
+          sf project deploy start \
+            --dry-run \
+            --ignore-conflicts \
+            --source-dir force-app \
+            --target-org "$SCRATCH_ORG" \
+            --test-level RunLocalTests \
+            --verbose \
+            --wait 30
+
+      - name: Post Authenticate Devhub
+        if: ${{ always() }}
+        run: rm -f server.key
