@@ -81,5 +81,5 @@ jobs:
       - name: Tag & Commit Changes
         uses: "stefanzweifel/git-auto-commit-action@v6"
         with:
-          commit_message: "Requested new package version ${{ steps.bump-version.outputs.new-version-name }}"
-          tagging_message: ${{ steps.bump-version.outputs.new-version-name }}
+          commit_message: "Requested new package version v${{ steps.get-version.outputs.version-number }}"
+          tagging_message: "v${{ steps.get-version.outputs.version-number }}"
