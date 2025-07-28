@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       version-number:
-        description: "Version Number (vX.X.X)"
+        description: "Version Number (#.#.#): Do not include the 'v'"
         required: false
 
 concurrency:
@@ -17,7 +17,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PACKAGE_ALIAS: "apex-starter-pack"
+  PACKAGE_ALIAS: "apex-database-layer"
 
 jobs:
   create-unlocked-package:
@@ -34,15 +34,16 @@ jobs:
           fetch-depth: 0
           token: ${{ github.token }}
 
-      - name: Get Verison Number
+      - name: Get Version Number
         id: get-version
         env:
           INPUT_VERSION: ${{ inputs.version-number }}
         run: |
           # If an input version number isn't set, use the current version defined in sfdx-project.json:
-          VERSION_NUMBER="$INPUT_VERSION"
-          if [[ -z "$VERSION_NUMBER" ]]; then
+          if [[ -z "$INPUT_VERSION" ]]; then
             VERSION_NUMBER=$(jq -r '.packageDirectories[] | select(.default == true) | .versionNumber' sfdx-project.json)
+          else
+            VERSION_NUMBER="${INPUT_VERSION}.NEXT"
           fi
           echo "version-number=$VERSION_NUMBER" >> "$GITHUB_OUTPUT"
 
