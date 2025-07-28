@@ -12,6 +12,15 @@
 		{
 			"files": "*.{cmp,page,component}",
 			"options": { "parser": "html" }
+		},
+		{
+			"files": "*.{yml,yaml}",
+			"options": {
+				"tabWidth": 2,
+				"useTabs": false,
+				"singleQuote": false,
+				"bracketSpacing": true
+			}
 		}
 	]
 }

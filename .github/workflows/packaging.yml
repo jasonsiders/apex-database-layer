@@ -1,0 +1,81 @@
+name: Packaging
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "force-app/**"
+  workflow_dispatch:
+    inputs:
+      version-number:
+        description: "Version Number (vX.X.X)"
+        required: false
+
+concurrency:
+  group: packaging-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PACKAGE_ALIAS: "apex-starter-pack"
+
+jobs:
+  create-unlocked-package:
+    name: Create Unlocked Package Version
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ github.token }}
+
+      - name: Get Verison Number
+        id: get-version
+        env:
+          INPUT_VERSION: ${{ inputs.version-number }}
+        run: |
+          # If an input version number isn't set, use the current version defined in sfdx-project.json:
+          VERSION_NUMBER="$INPUT_VERSION"
+          if [[ -z "$VERSION_NUMBER" ]]; then
+            VERSION_NUMBER=$(jq -r '.packageDirectories[] | select(.default == true) | .versionNumber' sfdx-project.json)
+          fi
+          echo "version-number=$VERSION_NUMBER" >> "$GITHUB_OUTPUT"
+
+      - name: Setup SF CLI
+        uses: ./.github/actions/setup-sf-cli
+
+      - name: Authenticate Devhub
+        env:
+          CLIENT_ID: ${{ secrets.SALESFORCE_CONSUMER_KEY }}
+          JWT_KEY: ${{ secrets.SALESFORCE_JWT_KEY }}
+          USERNAME: ${{ secrets.SALESFORCE_DEVHUB_USERNAME }}
+        run: |
+          set -euo pipefail
+          echo "${JWT_KEY}" > server.key
+          sf org login jwt \
+            --client-id "$CLIENT_ID" \
+            --jwt-key-file server.key \
+            --set-default-dev-hub \
+            --username "$USERNAME"
+          trap 'rm -f server.key' EXIT
+
+      - name: Create New Package Version
+        env:
+          VERSION_NUMBER: ${{ steps.get-version.outputs.version-number }}
+        run: sf package version create \
+          --code-coverage \
+          --installation-key-bypass \
+          --package "$PACKAGE_ALIAS" \
+          --version-number "$VERSION_NUMBER"
+          --wait 29
+
+      - name: Tag & Commit Changes
+        uses: "stefanzweifel/git-auto-commit-action@v6"
+        with:
+          commit_message: "Requested new package version ${{ steps.bump-version.outputs.new-version-name }}"
+          tagging_message: ${{ steps.bump-version.outputs.new-version-name }}

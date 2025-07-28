@@ -1,4 +1,4 @@
 rules:
-    pmd:
-        ApexUnitTestClassShouldHaveRunAs:
-            severity: info
+  pmd:
+    ApexUnitTestClassShouldHaveRunAs:
+      severity: info
