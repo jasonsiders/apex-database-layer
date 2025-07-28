@@ -72,7 +72,7 @@ jobs:
           --code-coverage \
           --installation-key-bypass \
           --package "$PACKAGE_ALIAS" \
-          --version-number "$VERSION_NUMBER"
+          --version-number "$VERSION_NUMBER" \
           --wait 29
 
       - name: Tag & Commit Changes
