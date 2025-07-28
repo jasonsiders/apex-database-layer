@@ -91,7 +91,6 @@ jobs:
             --set-default-dev-hub \
             --username "$USERNAME"
 
-      # TODO: Consider making a dedicated get/create scratch org helper action.yml
       - name: Generate Username
         id: generate-username
         run: |
@@ -138,14 +137,19 @@ jobs:
             --username "$USERNAME" \
             --wait 10
 
-      - name: Deploy
+      - name: Run Tests
         env:
           SCRATCH_ORG: ${{ steps.generate-username.outputs.username }}
-        run: sf project deploy start --target-org "$SCRATCH_ORG"
+        run: |
+          sf project deploy start \
+            --dry-run \
+            --ignore-conflicts \
+            --source-dir force-app \
+            --target-org "$SCRATCH_ORG" \
+            --test-level RunLocalTests \
+            --verbose \
+            --wait 30
 
-      - name: Run Tests
-        run: sf apex run test --code-coverage --result-format human --synchronous
-
-      - name: Cleanup
+      - name: Post Authenticate Devhub
         if: ${{ always() }}
         run: rm -f server.key
