@@ -230,7 +230,7 @@ private class MockSoqlTest {
 			?.newQuery(User.SObjectType)
 			?.addSelect(new Soql.ParentField(User.ProfileId, Profile.Name))
 			?.addSelect(count)
-			?.groupBy(new Soql.ParentField(User.ProfileId, Profile.Name));
+			?.addGroupBy(new Soql.ParentField(User.ProfileId, Profile.Name));
 		// Inject results into the query
 		MockSoql.AggregateResult mockResult1 = new MockSoql.AggregateResult()
 			?.addParameter('Foo Profile')
@@ -266,7 +266,7 @@ private class MockSoqlTest {
 			?.newQuery(User.SObjectType)
 			?.addSelect(new Soql.ParentField(User.ProfileId, Profile.Name))
 			?.addSelect(count)
-			?.groupBy(new Soql.ParentField(User.ProfileId, Profile.Name));
+			?.addGroupBy(new Soql.ParentField(User.ProfileId, Profile.Name));
 		// Inject an error
 		soql?.setMock()?.withError();
 
@@ -289,7 +289,7 @@ private class MockSoqlTest {
 			?.newQuery(User.SObjectType)
 			?.addSelect(new Soql.ParentField(User.ProfileId, Profile.Name))
 			?.addSelect(count)
-			?.groupBy(new Soql.ParentField(User.ProfileId, Profile.Name));
+			?.addGroupBy(new Soql.ParentField(User.ProfileId, Profile.Name));
 		// Inject results
 		MockSoqlTest.SampleWrapper mockResult1 = new MockSoqlTest.SampleWrapper()?.wrap('Foo Profile', 123);
 		MockSoqlTest.SampleWrapper mockResult2 = new MockSoqlTest.SampleWrapper()?.wrap('Bar Profile', 45);
@@ -320,7 +320,7 @@ private class MockSoqlTest {
 			?.newQuery(User.SObjectType)
 			?.addSelect(new Soql.ParentField(User.ProfileId, Profile.Name))
 			?.addSelect(count)
-			?.groupBy(new Soql.ParentField(User.ProfileId, Profile.Name));
+			?.addGroupBy(new Soql.ParentField(User.ProfileId, Profile.Name));
 		// Inject an error
 		soql?.setMock()?.withError(new System.TypeException());
 
