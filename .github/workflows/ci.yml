@@ -131,7 +131,6 @@ jobs:
         run: |
           set -euo pipefail
           echo y | sf org list --all --clean --verbose
-          sf org 
           sf org create scratch \
             --definition-file config/project-scratch-def.json \
             --duration-days 1 \
