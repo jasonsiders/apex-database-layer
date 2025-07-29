@@ -108,8 +108,8 @@ jobs:
           echo "$RESPONSE"
           LOGIN_URL=$(echo "$RESPONSE" | jq -r '.result.records[0]?.LoginUrl // empty')
           USERNAME=$(echo "$RESPONSE" | jq -r '.result.records[0]?.SignupUsername // empty')
-          if [[ -n "$LOGIN_URL" && "$LOGIN_URL" != "null" ]]; then
-            echo "Signing into scratch org with username $USERNAME"
+          if [[ -n "$USERNAME" && "$USERNAME" != "null" ]]; then
+            echo "Signing into scratch org with username $USERNAME..."
             sf org login jwt \
               --client-id "$CLIENT_ID" \
               --instance-url "$LOGIN_URL" \
@@ -122,13 +122,14 @@ jobs:
       - name: Create Scratch Org
         if: ${{ steps.get-existing.outputs.success != 'true' }}
         run: |
+          # Create a new scratch org, with a dynamic username ending in the repo's domain:
           set -euo pipefail
           DATE=$(date +%y%m%d)
           USERNAME="$DATE-ci@$SCRATCH_ORG_DOMAIN"
           echo "Creating scratch org with username $USERNAME..."
           sf org create scratch \
             --definition-file config/project-scratch-def.json \
-            --duration-days 1 \
+            --duration-days 2 \
             --set-default \
             --username "$USERNAME" \
             --wait 10
