@@ -102,7 +102,7 @@ jobs:
         run: |
           # Re-use scratch orgs to prevent exceeding new scratch orgs/day limits:
           set -euo pipefail
-          QUERY="SELECT LoginUrl, SignupUsername FROM ScratchOrgInfo WHERE SignupUsername LIKE '*$SCRATCH_ORG_DOMAIN' AND Status = 'Active'"
+          QUERY="SELECT LoginUrl, SignupUsername FROM ScratchOrgInfo WHERE SignupUsername LIKE '%$SCRATCH_ORG_DOMAIN' AND Status = 'Active'"
           echo "$QUERY"
           RESPONSE=$(sf data query --target-org "$DEV_HUB" -q "$QUERY" --json 2>/dev/null || true)
           echo "$RESPONSE"
