@@ -108,8 +108,8 @@ jobs:
           echo "$RESPONSE"
           LOGIN_URL=$(echo "$RESPONSE" | jq -r '.result.records[0]?.LoginUrl // empty')
           USERNAME=$(echo "$RESPONSE" | jq -r '.result.records[0]?.SignupUsername // empty')
-          echo "Existing Scratch Org: $USERNAME"
           if [[ -n "$LOGIN_URL" && "$LOGIN_URL" != "null" ]]; then
+            echo "Signing into scratch org with username $USERNAME"
             sf org login jwt \
               --client-id "$CLIENT_ID" \
               --instance-url "$LOGIN_URL" \
@@ -125,6 +125,7 @@ jobs:
           set -euo pipefail
           DATE=$(date +%y%m%d)
           USERNAME="$DATE-ci@$SCRATCH_ORG_DOMAIN"
+          echo "Creating scratch org with username $USERNAME..."
           sf org create scratch \
             --definition-file config/project-scratch-def.json \
             --duration-days 1 \
