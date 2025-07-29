@@ -137,7 +137,8 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldThrowExceptionIfErrorInjectedOnConvert() {
-		DatabaseLayer.useMockDml()?.fail();
+		DatabaseLayer.useMockDml();
+		MockDml.shouldFail();
 		List<Database.LeadConvert> leadsToConvert = new List<Database.LeadConvert>();
 		for (Integer i = 0; i < TEST_SIZE; i++) {
 			Lead lead = (Lead) new MockRecord(Lead.SObjectType)?.withId()?.toSObject();
@@ -169,7 +170,8 @@ private class MockDmlTest {
 			leadToConvert?.setConvertedStatus('Some Status');
 			leadsToConvert?.add(leadToConvert);
 		}
-		DatabaseLayer.useMockDml()?.fail();
+		DatabaseLayer.useMockDml();
+		MockDml.shouldFail();
 
 		Test.startTest();
 		List<Database.LeadConvertResult> results = DatabaseLayer.Dml.doConvert(leadsToConvert, false);
@@ -263,7 +265,8 @@ private class MockDmlTest {
 	@IsTest
 	static void shouldThrowExceptionIfErrorOnDelete() {
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
-		DatabaseLayer.useMockDml()?.fail();
+		DatabaseLayer.useMockDml();
+		MockDml.shouldFail();
 
 		Test.startTest();
 		try {
@@ -280,7 +283,8 @@ private class MockDmlTest {
 	@IsTest
 	static void shouldFailSilentlyIfErrorAndNotAllOrNoneOnDelete() {
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
-		DatabaseLayer.useMockDml()?.fail();
+		DatabaseLayer.useMockDml();
+		MockDml.shouldFail();
 
 		Test.startTest();
 		List<Database.DeleteResult> results = DatabaseLayer.Dml.doDelete(leads, false);
@@ -361,7 +365,8 @@ private class MockDmlTest {
 	@IsTest
 	static void shouldThrowExceptionIfErrorOnInsert() {
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType);
-		DatabaseLayer.useMockDml()?.fail();
+		DatabaseLayer.useMockDml();
+		MockDml.shouldFail();
 
 		Test.startTest();
 		try {
@@ -378,7 +383,8 @@ private class MockDmlTest {
 	@IsTest
 	static void shouldFailSilentlyIfErrorAndNotAllOrNoneOnInsert() {
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType);
-		DatabaseLayer.useMockDml()?.fail();
+		DatabaseLayer.useMockDml();
+		MockDml.shouldFail();
 
 		Test.startTest();
 		List<Database.SaveResult> results = DatabaseLayer.Dml.doInsert(leads, false);
@@ -417,7 +423,8 @@ private class MockDmlTest {
 	@IsTest
 	static void shouldThrowExceptionIfErrorOnPublish() {
 		List<BatchApexErrorEvent> events = MockDmlTest.initRecords(BatchApexErrorEvent.SObjectType);
-		DatabaseLayer.useMockDml()?.fail();
+		DatabaseLayer.useMockDml();
+		MockDml.shouldFail();
 
 		Test.startTest();
 		DatabaseLayer.Dml.doPublish(events);
@@ -434,7 +441,8 @@ private class MockDmlTest {
 	@IsTest
 	static void shouldFailSilentlyIfErrorOnPublish() {
 		List<BatchApexErrorEvent> events = MockDmlTest.initRecords(BatchApexErrorEvent.SObjectType);
-		DatabaseLayer.useMockDml()?.fail();
+		DatabaseLayer.useMockDml();
+		MockDml.shouldFail();
 
 		Test.startTest();
 		List<Database.SaveResult> results = DatabaseLayer.Dml.doPublish(events);
@@ -476,7 +484,8 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldThrowExceptionIfErrorOnUndelete() {
-		DatabaseLayer.useMockDml()?.fail();
+		DatabaseLayer.useMockDml();
+		MockDml.shouldFail();
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
 
 		Test.startTest();
@@ -494,7 +503,8 @@ private class MockDmlTest {
 	@IsTest
 	static void shouldFailSilentlyIfErrorAndNotAllOrNoneOnUndelete() {
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
-		DatabaseLayer.useMockDml()?.fail();
+		DatabaseLayer.useMockDml();
+		MockDml.shouldFail();
 
 		Test.startTest();
 		List<Database.UndeleteResult> results = DatabaseLayer.Dml.doUndelete(leads, false);
@@ -574,7 +584,8 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldThrowExceptionIfErrorOnUpdate() {
-		DatabaseLayer.useMockDml()?.fail();
+		DatabaseLayer.useMockDml();
+		MockDml.shouldFail();
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
 
 		Test.startTest();
@@ -591,7 +602,8 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldFailSilentlyIfErrorAndNotAllOrNoneOnUpdate() {
-		DatabaseLayer.useMockDml()?.fail();
+		DatabaseLayer.useMockDml();
+		MockDml.shouldFail();
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
 
 		Test.startTest();
@@ -630,7 +642,8 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldThrowExceptionIfErrorOnUpsert() {
-		DatabaseLayer.useMockDml()?.fail();
+		DatabaseLayer.useMockDml();
+		MockDml.shouldFail();
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
 
 		Test.startTest();
@@ -647,7 +660,8 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldFailSilentlyIfErrorAndNotAllOrNoneOnUpsert() {
-		DatabaseLayer.useMockDml()?.fail();
+		DatabaseLayer.useMockDml();
+		MockDml.shouldFail();
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
 
 		Test.startTest();
@@ -668,7 +682,7 @@ private class MockDmlTest {
 		Lead testLead = (Lead) new MockRecord(Lead.SObjectType)?.withId()?.toSObject();
 		// Pre-test asserts
 		Assert.isFalse(MockDml.UPDATED.wasProcessed(testLead), 'Pre-test: Should not have been processed');
-		Assert.areEqual(null, MockDml.UPDATED.getRecord(testLead), 'Pre-test: Lead was processed');
+		Assert.areEqual(null, MockDml.UPDATED.get(testLead), 'Pre-test: Lead was processed');
 		Assert.areEqual(0, MockDml.UPDATED.getRecords(Lead.SObjectType)?.size(), 'Pre-test: Wrong # of lead updates');
 		Assert.areEqual(0, MockDml.UPDATED.getRecords(Lead.SObjectType)?.size(), 'Pre-test: Wrong # of total updates');
 		testLead.Company = 'Credicor Inc.';
@@ -679,7 +693,7 @@ private class MockDmlTest {
 
 		// Post-test asserts
 		Assert.isTrue(MockDml.UPDATED.wasProcessed(testLead), 'Lead was not processed');
-		Lead updatedLead = (Lead) MockDml.UPDATED.getRecord(testLead);
+		Lead updatedLead = (Lead) MockDml.UPDATED.get(testLead);
 		Assert.areNotEqual(null, updatedLead, 'Lead was not updated');
 		Assert.areEqual(testLead?.Company, updatedLead?.Company, 'Did not update Company');
 		Assert.areEqual(1, MockDml.UPDATED.getRecords(Lead.SObjectType)?.size(), 'Wrong # of lead updates');
@@ -694,10 +708,11 @@ private class MockDmlTest {
 	static void shouldInjectCustomFailureLogic() {
 		List<Account> accounts = MockDmlTest.initRecords(Account.SObjectType, false);
 		MockDml.ConditionalFailure failure = new MockDmlTest.ExampleFailure(
-			MockDml.Operation.DO_UPDATE,
+			Dml.Operation.DO_UPDATE,
 			Account.SObjectType
 		);
-		DatabaseLayer.useMockDml().failIf(failure);
+		DatabaseLayer.useMockDml();
+		MockDml.shouldFailIf(failure);
 
 		Test.startTest();
 		// Inserts should succeed
@@ -720,21 +735,22 @@ private class MockDmlTest {
 	static void shouldClearFailures() {
 		// The MockDml class provides a way to clear failures from an object
 		List<Lead> leads = MockDmlTest.initRecords(Lead.SObjectType, true);
-		MockDml mockDml = DatabaseLayer.useMockDml()?.fail();
+		DatabaseLayer.useMockDml();
+		MockDml.shouldFail();
 
 		Test.startTest();
 		// Since the DML object has a failure, it will throw an error when run:
 		try {
-			mockDml?.doUpdate(leads);
+			DatabaseLayer.Dml?.doUpdate(leads);
 			Assert.fail('Did not throw an error');
 		} catch (System.DmlException error) {
 			// As expected...
 		}
 
 		// Now clear the failure and try again - an error should NOT be thrown
-		mockDml?.clearFailures();
+		MockDml.shouldSucceed();
 		try {
-			mockDml?.doUpdate(leads);
+			DatabaseLayer.Dml?.doUpdate(leads);
 		} catch (System.DmlException error) {
 			Assert.fail('An error was thrown; failures were not cleared');
 		}
@@ -1018,15 +1034,15 @@ private class MockDmlTest {
 
 	// **** INNER **** //
 	public class ExampleFailure implements MockDml.ConditionalFailure {
-		private MockDml.Operation failingOperation;
+		private Dml.Operation failingOperation;
 		private SObjectType failingSObjectType;
 
-		public ExampleFailure(MockDml.Operation operation, SObjectType objectType) {
+		public ExampleFailure(Dml.Operation operation, SObjectType objectType) {
 			this.failingOperation = operation;
 			this.failingSObjectType = objectType;
 		}
 
-		public Exception checkFailure(MockDml.Operation operation, SObject record) {
+		public Exception checkFailure(Dml.Operation operation, SObject record) {
 			// Only throw an error if updating an Account
 			Boolean shouldFail =
 				operation == this.failingOperation &&

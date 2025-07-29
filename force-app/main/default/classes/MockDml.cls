@@ -6,8 +6,8 @@ public class MockDml extends Dml {
 	/**
 	 * This class mocks CRUD operations, with minimal setup required from end users.
 	 * By default, all operations will succeed. If desired, users can specify
-	 * conditions in which operations should fail, via the `fail()` method,
-	 * or the `failIf()` method and the `ConditionalLogic` interface.
+	 * conditions in which operations should fail, via the `MockDml.shouldFail` method,
+	 * or the `MockDml.shouldFailIf` method and the `ConditionalLogic` interface.
 	 **/
 
 	// **** CONSTANT **** //
@@ -98,27 +98,6 @@ public class MockDml extends Dml {
 		super(factory);
 	}
 
-	public MockDml clearFailures() {
-		// ! Deprecated - this method will be removed in a future release
-		// ! Replace all instances with the `MockDml.shouldSucceed()` static method
-		MockDml.shouldSucceed();
-		return this;
-	}
-
-	public MockDml fail() {
-		// ! Deprecated - this method will be removed in a future release
-		// ! Replace all instances with the `MockDml.shouldFail()` static method
-		MockDml.shouldFail();
-		return this;
-	}
-
-	public MockDml failIf(MockDml.ConditionalFailure failure) {
-		// ! Deprecated - this method will be removed in a future release
-		// ! Replace all instances with the `MockDml.shouldFailIf()` static method
-		MockDml.shouldFailIf(failure);
-		return this;
-	}
-
 	public override Dml.Request initRequest(Dml.Operation operation, List<Object> records) {
 		// Initialize a request object that will not actually perform DML:
 		return new MockDml.Request(operation, records);
@@ -146,12 +125,9 @@ public class MockDml extends Dml {
 		/**
 		 * This interface defines whether a DML failure should be simulated for the given record.
 		 * Its method should return an exception to be thrown in case of a DML failure, or null in case of success.
-		 * Pass objects that implement this interface to MockDml's `failIf()` method.
+		 * Pass objects that implement this interface to `MockDml.shouldFailIf` method.
 		 **/
-		// ! Deprecated - this method will be altered in a future release,
-		// ! Specifically, the `MockDml.Operation` enum will be replaced with the `Dml.Operation` enum
-		// ! For now, you can create a duplicate method in your class as an intermediary step
-		Exception checkFailure(MockDml.Operation operation, SObject record);
+		Exception checkFailure(Dml.Operation operation, SObject record);
 	}
 
 	public class Database {
@@ -174,14 +150,14 @@ public class MockDml extends Dml {
 		public Boolean resetOnRollback { get; set; }
 
 		private Database() {
-			this.converted = new MockDml.RecordHistory(MockDml.Operation.DO_CONVERT);
-			this.deleted = new MockDml.RecordHistory(MockDml.Operation.DO_DELETE);
-			this.inserted = new MockDml.RecordHistory(MockDml.Operation.DO_INSERT);
+			this.converted = new MockDml.RecordHistory(Dml.Operation.DO_CONVERT);
+			this.deleted = new MockDml.RecordHistory(Dml.Operation.DO_DELETE);
+			this.inserted = new MockDml.RecordHistory(Dml.Operation.DO_INSERT);
 			this.published = new MockDml.PlatformEventHistory();
-			this.purged = new MockDml.RecordHistory(MockDml.Operation.DO_PURGE);
-			this.undeleted = new MockDml.RecordHistory(MockDml.Operation.DO_UNDELETE);
-			this.updated = new MockDml.RecordHistory(MockDml.Operation.DO_UPDATE);
-			this.upserted = new MockDml.RecordHistory(MockDml.Operation.DO_UPSERT);
+			this.purged = new MockDml.RecordHistory(Dml.Operation.DO_PURGE);
+			this.undeleted = new MockDml.RecordHistory(Dml.Operation.DO_UNDELETE);
+			this.updated = new MockDml.RecordHistory(Dml.Operation.DO_UPDATE);
+			this.upserted = new MockDml.RecordHistory(Dml.Operation.DO_UPSERT);
 			this.resetOnRollback = true;
 		}
 
@@ -198,10 +174,10 @@ public class MockDml extends Dml {
 		 * Responsible for recording records that were processed by a given DML operation.
 		 * It provides several methods that callers can use to assert if DML actually occurred.
 		 **/
-		protected MockDml.Operation operation;
+		protected Dml.Operation operation;
 		protected Map<String, Map<String, SObject>> recordMap;
 
-		protected History(MockDml.Operation operation) {
+		protected History(Dml.Operation operation) {
 			this.operation = operation;
 			this.recordMap = new Map<String, Map<String, SObject>>();
 		}
@@ -211,14 +187,6 @@ public class MockDml extends Dml {
 		protected abstract SObject setRecordId(SObject record);
 
 		// **** PUBLIC **** //
-		public History eraseHistory() {
-			// ! Deprecated! Will be removed in a future release
-			// ! This functionality will not be supported 1:1 going forward;
-			// ! Replace usage of this method with MockDml.clearAllHistories()
-			this.recordMap?.clear();
-			return this;
-		}
-
 		public Map<SObjectType, List<SObject>> getAll() {
 			// Retrieve all records processed by the current operation, grouped by SObjectType
 			Map<SObjectType, List<SObject>> allRecords = new Map<SObjectType, List<SObject>>();
@@ -274,7 +242,7 @@ public class MockDml extends Dml {
 			recordMap?.remove(record?.Id);
 		}
 
-		protected MockDml.Operation getOperation() {
+		protected Dml.Operation getOperation() {
 			return this.operation;
 		}
 
@@ -288,10 +256,10 @@ public class MockDml extends Dml {
 			MockDml.Error dmlError = new MockDml.Error(error);
 			if (allOrNone == true) {
 				throw dmlError?.toDmlException();
-			} else if (this.operation == MockDml.Operation.DO_CONVERT) {
+			} else if (this.operation == Dml.Operation.DO_CONVERT) {
 				Lead lead = (Lead) record;
 				return new MockDml.LeadConvertResult(lead)?.addError(dmlError);
-			} else if (this.operation == MockDml.Operation.DO_INSERT) {
+			} else if (this.operation == Dml.Operation.DO_INSERT) {
 				// Note: When a record fails to be inserted, the resulting Database.SaveResult should have a null Id value
 				return new MockDml.RecordResult(record)?.clearId()?.addError(dmlError);
 			} else {
@@ -418,7 +386,7 @@ public class MockDml extends Dml {
 		}
 
 		// ** PRIVATE
-		private void checkFailures(MockDml.Operation operation, SObject record) {
+		private void checkFailures(Dml.Operation operation, SObject record) {
 			// Runs all ConditionalFailures defined the current instance against each record.
 			for (MockDml.ConditionalFailure failure : MockDml.FAILURES) {
 				Exception error = failure?.checkFailure(operation, record);
@@ -432,7 +400,7 @@ public class MockDml extends Dml {
 			// Simulates a DML operation for a single record, returning a MockDml.Result,
 			// which calling methods can de/serialize into a Database.Save/Upsert/etc. Result.
 			try {
-				MockDml.Operation operation = history?.getOperation();
+				Dml.Operation operation = history?.getOperation();
 				// Determine if the operation should fail for the specific record
 				this.checkFailures(operation, record);
 				// Simulate successful dml, return a MockDml.Result w/out errors
@@ -556,7 +524,7 @@ public class MockDml extends Dml {
 		 * Necessary since platform events' unique identifier is the `EventUuid` field - not `Id`
 		 **/
 		private PlatformEventHistory() {
-			super(MockDml.Operation.DO_PUBLISH);
+			super(Dml.Operation.DO_PUBLISH);
 		}
 
 		protected override void addRecordToMap(SObject record, Map<String, Object> records) {
@@ -580,21 +548,8 @@ public class MockDml extends Dml {
 		/**
 		 * This class is responsible for tracking DML made against most SObject types
 		 **/
-		private RecordHistory(MockDml.Operation operation) {
+		private RecordHistory(Dml.Operation operation) {
 			super(operation);
-		}
-
-		public SObject getRecord(Id recordId) {
-			// ! Deprecated! Will be removed in a future release
-			// ! Replace usage of this method with the MockDml.History's get(Id recordId) method
-			// Retrieve a specific SObject from the History tracking
-			return super.get(recordId);
-		}
-
-		public SObject getRecord(SObject record) {
-			// ! Deprecated! Will be removed in a future release
-			// ! Replace usage of this method with the MockDml.History's get(SObject record) method
-			return super.get(record);
 		}
 
 		protected override void addRecordToMap(SObject record, Map<String, Object> records) {
@@ -703,9 +658,9 @@ public class MockDml extends Dml {
 		/**
 		 * The `MockDml` class ships with one concrete implementation of the `ConditionalFailure` interface.
 		 * This one is simple -- it always returns an error to be thrown.
-		 * Callers can inject this error by calling the MockDml's `fail()` method.
+		 * Callers can inject this error by calling the `MockDml.shouldFail()` method.
 		 **/
-		public Exception checkFailure(MockDml.Operation operation, SObject record) {
+		public Exception checkFailure(Dml.Operation operation, SObject record) {
 			return new System.DmlException();
 		}
 	}
