@@ -15,6 +15,7 @@ concurrency:
 
 env:
   CHANGES_DIR: changes
+  SCRATCH_ORG_DOMAIN: apex-database-layer.com
 
 permissions:
   actions: read
@@ -91,30 +92,17 @@ jobs:
             --set-default-dev-hub \
             --username "$USERNAME"
 
-      - name: Generate Username
-        id: generate-username
-        run: |
-          # Dynamically generate a scratch org username, based on the repository
-          DATE=$(date +%y%m%d)
-          DOMAIN="${GITHUB_REPOSITORY##*/}.com"
-          USERNAME="$DATE-ci@$DOMAIN"
-          echo "domain=$DOMAIN"
-          echo "username=$USERNAME" >> "$GITHUB_OUTPUT"
-          echo "Scratch Org Username: $USERNAME"
-
       - name: Get Existing Scratch Org
         id: get-existing
         continue-on-error: true
         env:
           CLIENT_ID: ${{ secrets.SALESFORCE_CONSUMER_KEY }}
           DEV_HUB: ${{ secrets.SALESFORCE_DEVHUB_USERNAME }}
-          DOMAIN: ${{ steps.generate-username.outputs.domain }}
           JWT_KEY: ${{ secrets.SALESFORCE_JWT_KEY }}
-          USERNAME: ${{ steps.generate-username.outputs.username }}
         run: |
           # Re-use scratch orgs to prevent exceeding new scratch orgs/day limits:
           set -euo pipefail
-          QUERY="SELECT LoginUrl FROM ScratchOrgInfo WHERE SignupUsername LIKE '*$DOMAIN'"
+          QUERY="SELECT LoginUrl FROM ScratchOrgInfo WHERE SignupUsername LIKE '*$SCRATCH_ORG_DOMAIN'"
           RESPONSE=$(sf data query --target-org "$DEV_HUB" -q "$QUERY" --json 2>/dev/null || true)
           LOGIN_URL=$(echo "$RESPONSE" | jq -r '.result.records[0]?.LoginUrl // empty')
           echo "Existing Scratch Org: $LOGIN_URL"
@@ -130,10 +118,10 @@ jobs:
 
       - name: Create Scratch Org
         if: ${{ steps.get-existing.outputs.success != 'true' }}
-        env:
-          USERNAME: ${{ steps.generate-username.outputs.username }}
         run: |
           set -euo pipefail
+          DATE=$(date +%y%m%d)
+          USERNAME="$DATE-ci@$SCRATCH_ORG_DOMAIN"
           sf org create scratch \
             --definition-file config/project-scratch-def.json \
             --duration-days 1 \
@@ -142,14 +130,11 @@ jobs:
             --wait 10
 
       - name: Run Tests
-        env:
-          SCRATCH_ORG: ${{ steps.generate-username.outputs.username }}
         run: |
           sf project deploy start \
             --dry-run \
             --ignore-conflicts \
             --source-dir force-app \
-            --target-org "$SCRATCH_ORG" \
             --test-level RunLocalTests \
             --verbose \
             --wait 30
