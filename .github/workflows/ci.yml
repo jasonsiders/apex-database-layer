@@ -134,7 +134,6 @@ jobs:
           USERNAME: ${{ steps.generate-username.outputs.username }}
         run: |
           set -euo pipefail
-          sf org list --all --json
           sf org create scratch \
             --definition-file config/project-scratch-def.json \
             --duration-days 1 \
