@@ -95,7 +95,10 @@ jobs:
         id: generate-username
         run: |
           # Dynamically generate a scratch org username, based on the repository
-          USERNAME="${GITHUB_REPOSITORY##*/}-ci@${GITHUB_REPOSITORY%%/*}.com"
+          DATE=$(date +%y%m%d)
+          DOMAIN="${GITHUB_REPOSITORY##*/}.com"
+          USERNAME="$DATE-ci@$DOMAIN"
+          echo "domain=$DOMAIN"
           echo "username=$USERNAME" >> "$GITHUB_OUTPUT"
           echo "Scratch Org Username: $USERNAME"
 
@@ -105,12 +108,13 @@ jobs:
         env:
           CLIENT_ID: ${{ secrets.SALESFORCE_CONSUMER_KEY }}
           DEV_HUB: ${{ secrets.SALESFORCE_DEVHUB_USERNAME }}
+          DOMAIN: ${{ steps.generate-username.outputs.domain }}
           JWT_KEY: ${{ secrets.SALESFORCE_JWT_KEY }}
           USERNAME: ${{ steps.generate-username.outputs.username }}
         run: |
           # Re-use scratch orgs to prevent exceeding new scratch orgs/day limits:
           set -euo pipefail
-          QUERY="SELECT LoginUrl FROM ScratchOrgInfo WHERE SignupUsername = '$USERNAME'"
+          QUERY="SELECT LoginUrl FROM ScratchOrgInfo WHERE SignupUsername LIKE '*$DOMAIN'"
           RESPONSE=$(sf data query --target-org "$DEV_HUB" -q "$QUERY" --json 2>/dev/null || true)
           LOGIN_URL=$(echo "$RESPONSE" | jq -r '.result.records[0]?.LoginUrl // empty')
           echo "Existing Scratch Org: $LOGIN_URL"
