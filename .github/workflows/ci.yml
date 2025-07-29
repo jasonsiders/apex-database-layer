@@ -130,7 +130,7 @@ jobs:
           USERNAME: ${{ steps.generate-username.outputs.username }}
         run: |
           set -euo pipefail
-          echo y | sf org list --all --clean
+          echo y | sf org list --all --clean --verbose
           sf org 
           sf org create scratch \
             --definition-file config/project-scratch-def.json \
