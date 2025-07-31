@@ -16,7 +16,6 @@ concurrency:
 env:
   CHANGES_DIR: changes
   SCRATCH_ORG_DOMAIN: apex-database-layer.com
-  GH_TOKEN: ${{ github.token }}
   PR_NUMBER: ${{ github.event.pull_request.number }}
   SCAN_OUTPUTS: results.txt
   SCAN_SUMMARY: summary.md
