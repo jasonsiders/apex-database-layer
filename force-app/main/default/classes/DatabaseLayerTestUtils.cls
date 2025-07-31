@@ -1,7 +1,10 @@
-@SuppressWarnings('PMD.ApexDoc,PMD.FieldNamingConventions,PMD.UnusedLocalVariable')
+@SuppressWarnings('PMD.ApexDoc')
 @IsTest
 public class DatabaseLayerTestUtils {
+	// Note: These properties do not use traditional naming conventions to support a 'namespace-like' API
+	@SuppressWarnings('PMD.FieldNamingConventions')
 	public static final PreAndPostProcessorSpy DmlPluginSpy = new PreAndPostProcessorSpy();
+	@SuppressWarnings('PMD.FieldNamingConventions')
 	public static final PreAndPostProcessorSpy SoqlPluginSpy = new PreAndPostProcessorSpy();
 
 	public static DatabaseLayerSetting__mdt initSettings() {
@@ -28,7 +31,7 @@ public class DatabaseLayerTestUtils {
 	public class SamplePlugin implements Dml.PreAndPostProcessor, Soql.PreAndPostProcessor {
 		public void processPreDml(Dml.Request request) {
 			// Should be able to serialize the Dml.Request object:
-			String requestJson = JSON.serialize(request, true);
+			JSON.serialize(request, true);
 			DatabaseLayerTestUtils.DmlPluginSpy.numPreCalls += 1;
 		}
 
@@ -42,7 +45,7 @@ public class DatabaseLayerTestUtils {
 
 		public void processPreSoql(Soql.Request request) {
 			// Should be able to serialize the Soql.Request object:
-			String requestJson = JSON.serialize(request, true);
+			JSON.serialize(request, true);
 			DatabaseLayerTestUtils.SoqlPluginSpy.numPreCalls += 1;
 		}
 

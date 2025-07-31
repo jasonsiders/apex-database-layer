@@ -107,7 +107,7 @@ private class MockDmlTest {
 			Assert.fail('An error was not thrown for missing Lead Id');
 		} catch (System.DmlException error) {
 			// As expected...
-			caughtError = error; 
+			caughtError = error;
 		} finally {
 			Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
 		}
@@ -132,7 +132,7 @@ private class MockDmlTest {
 			Assert.fail('An error was not thrown for missing converted status');
 		} catch (System.DmlException error) {
 			// As expected...
-			caughtError = error; 
+			caughtError = error;
 		} finally {
 			Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
 		}

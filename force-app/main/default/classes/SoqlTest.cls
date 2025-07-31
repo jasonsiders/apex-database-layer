@@ -119,7 +119,7 @@ private class SoqlTest {
 			Assert.fail('Did not throw a Soql.InvalidParameterValueException for batch fetch params');
 		} catch (Soql.InvalidParameterValueException error) {
 			// As expected...
-			caughtError = error; 
+			caughtError = error;
 		}
 		Test.stopTest();
 	}
@@ -1511,7 +1511,7 @@ private class SoqlTest {
 			Assert.fail('Did not throw a System.TypeException');
 		} catch (System.TypeException error) {
 			// As expected...
-			caughtError = error; 
+			caughtError = error;
 		}
 		Test.stopTest();
 	}

@@ -81,7 +81,7 @@ private class MockSoqlTest {
 			Assert.fail('Did not throw a Soql.InvalidParameterValueException for invalid position param');
 		} catch (Soql.InvalidParameterValueException error) {
 			// As expected...
-			caughtError = error; 
+			caughtError = error;
 		}
 		Test.stopTest();
 	}
@@ -101,7 +101,7 @@ private class MockSoqlTest {
 			Assert.fail('Did not throw a Soql.InvalidParameterValueException for invalid count param');
 		} catch (Soql.InvalidParameterValueException error) {
 			// As expected...
-			caughtError = error; 
+			caughtError = error;
 		}
 		Test.stopTest();
 	}
@@ -121,7 +121,7 @@ private class MockSoqlTest {
 			Assert.fail('Did not throw a Soql.InvalidParameterValueException for fetch that exceeds upper bound');
 		} catch (Soql.InvalidParameterValueException error) {
 			// As expected...
-			caughtError = error; 
+			caughtError = error;
 		}
 		Test.stopTest();
 	}
@@ -141,7 +141,7 @@ private class MockSoqlTest {
 			Assert.fail('Did not throw a System.NullPointerException for null fetch param');
 		} catch (System.NullPointerException error) {
 			// As expected...
-			caughtError = error; 
+			caughtError = error;
 		}
 		Test.stopTest();
 	}
@@ -174,7 +174,7 @@ private class MockSoqlTest {
 					Assert.fail('Iterator did not throw a ' + System.NoSuchElementException.class);
 				} catch (System.NoSuchElementException error) {
 					// As expected...
-					caughtError = error; 
+					caughtError = error;
 				}
 			}
 		}
@@ -485,7 +485,7 @@ private class MockSoqlTest {
 			Assert.fail('Did not throw an Exception');
 		} catch (Exception error) {
 			// As expected...
-			caughtError = error; 
+			caughtError = error;
 		}
 		Test.stopTest();
 

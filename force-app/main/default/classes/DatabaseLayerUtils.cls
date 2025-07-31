@@ -1,4 +1,4 @@
-@SuppressWarnings('PMD.ApexDoc,PMD.PropertyNamingConventions')
+@SuppressWarnings('PMD.ApexDoc')
 public without sharing class DatabaseLayerUtils {
 	/**
 	 * This class contains utilities used by the framework internally
@@ -7,8 +7,13 @@ public without sharing class DatabaseLayerUtils {
 	 * This helps communicate the intent that these utils are really only designed to be used by the framework itself
 	 * Necessary since there isn't a way to *actually* enforce this, like @NamespaceAccessible for managed packages
 	 */
+
+	// Note: These properties do not use traditional naming conventions to support a 'namespace-like' API
+	@SuppressWarnings('PMD.PropertyNamingConventions')
 	public final DatabaseLayerUtils.ChildRelationships ChildRelationships { get; private set; }
+	@SuppressWarnings('PMD.PropertyNamingConventions')
 	public final DatabaseLayerUtils.MetadataSelector MetadataSelector { get; private set; }
+	@SuppressWarnings('PMD.PropertyNamingConventions')
 	public final DatabaseLayerUtils.Plugins Plugins { get; private set; }
 
 	@SuppressWarnings('PMD.EmptyStatementBlock')

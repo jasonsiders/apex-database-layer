@@ -1,6 +1,4 @@
-@SuppressWarnings(
-	'PMD.ApexDoc,PMD.AvoidBooleanMethodParameters,PMD.CognitiveComplexity,PMD.CyclomaticComplexity,PMD.EmptyStatementBlock,PMD.ExcessiveParameterList,PMD.ExcessivePublicCount,PMD.FieldNamingConventions'
-)
+@SuppressWarnings('PMD.ApexDoc,PMD.CognitiveComplexity,PMD.CyclomaticComplexity,PMD.ExcessivePublicCount')
 public inherited sharing virtual class Dml {
 	/**
 	 * This class is responsible for performing CRUD operations with the Salesforce database.
@@ -16,7 +14,7 @@ public inherited sharing virtual class Dml {
 	private static final DataSource.AsyncDeleteCallback DEFAULT_DELETE_CALLBACK = new Dml.EmptyDeleteCallback();
 	private static final DataSource.AsyncSaveCallback DEFAULT_SAVE_CALLBACK = new Dml.EmptySaveCallback();
 	private static final SObjectField PLUGIN_FIELD = DatabaseLayerSetting__mdt.DmlPreAndPostProcessor__c;
-	private static Dml.PreAndPostProcessor Plugin;
+	private static Dml.PreAndPostProcessor plugin;
 
 	public Dml(DatabaseLayer factory) {
 		// Note: Dml classes can't be constructed manually; instead, use the DatabaseLayer.Dml static property
@@ -574,6 +572,7 @@ public inherited sharing virtual class Dml {
 	}
 
 	// ** Upsert Methods
+	@SuppressWarnings('PMD.ExcessiveParameterList')
 	public List<Database.UpsertResult> doUpsert(
 		List<SObject> records,
 		SObjectField externalIdField,
@@ -627,6 +626,7 @@ public inherited sharing virtual class Dml {
 		return this.doUpsert(records, DEFAULT_ACCESS_LEVEL);
 	}
 
+	@SuppressWarnings('PMD.ExcessiveParameterList')
 	public Database.UpsertResult doUpsert(
 		SObject record,
 		SObjectField externalIdField,
@@ -745,6 +745,7 @@ public inherited sharing virtual class Dml {
 		/**
 		 *  If a callback isn't defined, doDeleteAsync() will use this class to gracefully handle callbacks
 		 **/
+		@SuppressWarnings('PMD.EmptyStatementBlock')
 		public override void processDelete(Database.DeleteResult result) {
 			// Do nothing
 		}
@@ -755,6 +756,7 @@ public inherited sharing virtual class Dml {
 		/**
 		 * If a callback isn't defined, doInsertAsync() & doUpdateAsync will use this class to gracefully handle callbacks
 		 **/
+		@SuppressWarnings('PMD.EmptyStatementBlock')
 		public override void processSave(Database.SaveResult result) {
 			// Do nothing
 		}

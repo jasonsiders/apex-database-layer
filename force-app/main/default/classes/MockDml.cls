@@ -1,6 +1,4 @@
-@SuppressWarnings(
-	'PMD.ApexDoc,PMD.AvoidBooleanMethodParameters,PMD.CognitiveComplexity,PMD.CyclomaticComplexity,PMD.ExcessiveParameterList,PMD.FieldNamingConventions,PMD.PropertyNamingConventions'
-)
+@SuppressWarnings('PMD.ApexDoc,PMD.CognitiveComplexity,PMD.CyclomaticComplexity')
 @IsTest
 public class MockDml extends Dml {
 	/**
@@ -11,49 +9,58 @@ public class MockDml extends Dml {
 	 **/
 
 	// **** CONSTANT **** //
+	public static final List<MockDml.ConditionalFailure> FAILURES;
 	public static final MockDml.SavepointHistory SAVEPOINTS;
 	private static final String EVENT_UUID_FIELD;
-	public static List<MockDml.ConditionalFailure> FAILURES;
 	private static final String MOCK_STATUS_CODE;
 
 	// **** STATIC **** //
+	@SuppressWarnings('PMD.PropertyNamingConventions')
 	public static MockDml.Database MockDatabase { get; private set; }
 
+	@SuppressWarnings('PMD.PropertyNamingConventions')
 	public static final MockDml.RecordHistory CONVERTED {
 		get {
 			return MockDml.MockDatabase?.converted;
 		}
 	}
+	@SuppressWarnings('PMD.PropertyNamingConventions')
 	public static final MockDml.RecordHistory DELETED {
 		get {
 			return MockDml.MockDatabase?.deleted;
 		}
 	}
+	@SuppressWarnings('PMD.PropertyNamingConventions')
 	public static final MockDml.RecordHistory INSERTED {
 		get {
 			return MockDml.MockDatabase?.inserted;
 		}
 	}
+	@SuppressWarnings('PMD.PropertyNamingConventions')
 	public static MockDml.PlatformEventHistory PUBLISHED {
 		get {
 			return MockDml.MockDatabase?.published;
 		}
 	}
+	@SuppressWarnings('PMD.PropertyNamingConventions')
 	public static final MockDml.RecordHistory PURGED {
 		get {
 			return MockDml.MockDatabase?.purged;
 		}
 	}
+	@SuppressWarnings('PMD.PropertyNamingConventions')
 	public static final MockDml.RecordHistory UNDELETED {
 		get {
 			return MockDml.MockDatabase?.undeleted;
 		}
 	}
+	@SuppressWarnings('PMD.PropertyNamingConventions')
 	public static final MockDml.RecordHistory UPDATED {
 		get {
 			return MockDml.MockDatabase?.updated;
 		}
 	}
+	@SuppressWarnings('PMD.PropertyNamingConventions')
 	public static final MockDml.RecordHistory UPSERTED {
 		get {
 			return MockDml.MockDatabase?.upserted;
