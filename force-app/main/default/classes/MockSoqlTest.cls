@@ -1,4 +1,4 @@
-@SuppressWarnings('PMD.ApexDoc, PMD.EmptyCatchBlock')
+@SuppressWarnings('PMD.ApexDoc,PMD.EmptyCatchBlock')
 @IsTest
 private class MockSoqlTest {
 	// **** CONSTANTS **** //

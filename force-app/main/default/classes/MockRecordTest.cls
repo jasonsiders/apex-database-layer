@@ -1,4 +1,4 @@
-@SuppressWarnings('PMD.ApexDoc, PMD.ApexUnitTestClassShouldHaveRunAs')
+@SuppressWarnings('PMD.ApexDoc,PMD.ApexUnitTestClassShouldHaveRunAs')
 @IsTest
 private class MockRecordTest {
 	@IsTest

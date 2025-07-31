@@ -1,5 +1,5 @@
 @IsTest
-@SuppressWarnings('PMD.ApexDoc, PMD.CognitiveComplexity, PMD.ExcessivePublicCount')
+@SuppressWarnings('PMD.ApexDoc,PMD.CognitiveComplexity,PMD.ExcessivePublicCount')
 public class MockRecord {
 	/**
 	 * This class uses a builder pattern to construct SObject records for the purpose of mock database operations.

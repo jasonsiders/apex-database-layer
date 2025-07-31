@@ -1,4 +1,4 @@
-@SuppressWarnings('PMD.ApexDoc, PMD.CyclomaticComplexity, PMD.EmptyCatchBlock')
+@SuppressWarnings('PMD.ApexDoc,PMD.CyclomaticComplexity,PMD.EmptyCatchBlock')
 @IsTest
 private class MockDmlTest {
 	// **** VARIABLES **** //

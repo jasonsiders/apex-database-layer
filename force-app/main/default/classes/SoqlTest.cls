@@ -1,5 +1,5 @@
 @SuppressWarnings(
-	'PMD.ApexDoc, PMD.ApexUnitTestClassShouldHaveAsserts, PMD.CyclomaticComplexity, PMD.ApexUnitTestClassShouldHaveRunAs'
+	'PMD.ApexDoc,PMD.ApexUnitTestClassShouldHaveAsserts,PMD.CyclomaticComplexity,PMD.ApexUnitTestClassShouldHaveRunAs'
 )
 @IsTest
 private class SoqlTest {

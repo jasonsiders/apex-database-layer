@@ -1,5 +1,5 @@
 @SuppressWarnings(
-	'PMD.ApexDoc, PMD.CognitiveComplexity, PMD.CyclomaticComplexity, PMD.ExcessiveClassLength, PMD.ExcessivePublicCount'
+	'PMD.ApexDoc,PMD.CognitiveComplexity,PMD.CyclomaticComplexity,PMD.ExcessiveClassLength,PMD.ExcessivePublicCount'
 )
 public inherited sharing virtual class Soql extends Soql.Builder {
 	/**

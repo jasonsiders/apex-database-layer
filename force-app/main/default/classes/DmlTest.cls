@@ -1,4 +1,4 @@
-@SuppressWarnings('PMD.ApexDoc, PMD.CyclomaticComplexity')
+@SuppressWarnings('PMD.ApexDoc,PMD.CyclomaticComplexity')
 @IsTest
 private class DmlTest {
 	// **** VARIABLES **** //
