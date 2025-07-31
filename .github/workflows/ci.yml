@@ -85,14 +85,6 @@ jobs:
             ${{ env.LFS_RESULTS }}
             ${{ env.SFCA_RESULTS }}
 
-      - name: Handle Errors
-        if: ${{ failure() && !cancelled() }}
-        uses: ./.github/actions/report-error
-        with:
-          actor: ${{ github.actor }}
-          run-id: ${{ github.run_id }}
-          token: ${{ github.token }}
-
       - name: Report Violations
         if: ${{ steps.scan.outputs.num-violations-above-threshold > 0 }}
         run: |
