@@ -620,7 +620,7 @@ public class MockDml extends Dml {
 		public String name { get; private set; }
 		public Boolean wasReleased { get; private set; }
 		public Boolean wasRolledBack { get; private set; }
-		private transient MockDml.Database savepointState;
+		private transient MockDml.Database savepointState { get; private set; }
 
 		private Savepoint(System.Savepoint savepoint, Integer index) {
 			this.index = index;

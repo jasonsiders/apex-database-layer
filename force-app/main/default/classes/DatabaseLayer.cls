@@ -5,18 +5,16 @@ public class DatabaseLayer {
 	 * Use the `Dml` and `Soql` static properties to get the correct instance of each.
 	 * Automatically inject mock versions of these classes via the `useMocks()` method.
 	 **/
-	// **** CONSTANTS **** //
 	public static final DatabaseLayerUtils UTILS;
 	private static final DatabaseLayer INSTANCE;
+
+	private Dml currentDml;
+	private SoqlProvider currentSoql;
 
 	static {
 		INSTANCE = new DatabaseLayer();
 		UTILS = new DatabaseLayerUtils(INSTANCE);
 	}
-
-	// **** MEMBER **** //
-	private Dml currentDml;
-	private SoqlProvider currentSoql;
 
 	private DatabaseLayer() {
 		this.currentDml = new Dml(this);

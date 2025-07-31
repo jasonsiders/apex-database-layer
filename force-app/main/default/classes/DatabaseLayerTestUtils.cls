@@ -1,4 +1,4 @@
-@SuppressWarnings('PMD.ApexDoc')
+@SuppressWarnings('PMD.ApexDoc,PMD.FieldNamingConventions,PMD.UnusedLocalVariable')
 @IsTest
 public class DatabaseLayerTestUtils {
 	public static final PreAndPostProcessorSpy DmlPluginSpy = new PreAndPostProcessorSpy();

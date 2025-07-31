@@ -902,7 +902,7 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		}
 	}
 
-	@SuppressWarnings('PMD.ExcessiveParameterCount')
+	@SuppressWarnings('PMD.ExcessiveParameterList')
 	public class ParentField implements Soql.Selectable {
 		// Represents a reference to a SObjectField on a parent (or multi-grandparent) object, ex., "Account.Owner.Profile.Name"
 		// SOQL supports querying fields objects up to 5 relationships away from the FROM object
@@ -1011,9 +1011,8 @@ public inherited sharing virtual class Soql extends Soql.Builder {
 		public Boolean isMockSoql { get; protected set; }
 		public Soql.Operation operation { get; private set; }
 		public Soql query { get; private set; }
-		protected transient System.AccessLevel accessLevel;
-		protected transient Map<String, Object> binds;
-		// ** Getters:
+		protected transient System.AccessLevel accessLevel { get; private set; }
+		protected transient Map<String, Object> binds { get; private set; }
 		public String queryString {
 			get {
 				return this.query?.toString();

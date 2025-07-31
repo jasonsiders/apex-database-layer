@@ -17,6 +17,7 @@ public class MockRecord {
 	private transient SObjectType objectType;
 	private transient Map<String, Object> recordValues;
 
+	@SuppressWarnings('PMD.PropertyNamingConventions')
 	public Id Id {
 		get {
 			// Mirrors standard SObject functionality; all SObject records have an Id property - even untyped!
@@ -221,8 +222,9 @@ public class MockRecord {
 	private class RelatedList {
 		// Represents a child object relationship retrieved by SOQL.
 		// This structure is required when mocking related lists on an SObject
-		// ** Members
 		private Boolean done;
+		private transient List<MockRecord> mockRecords;
+		private transient List<SObject> realRecords;
 		private List<SObject> records {
 			get {
 				return this.getRecords();
@@ -233,9 +235,6 @@ public class MockRecord {
 				return this.getSize();
 			}
 		}
-		// ** Transient
-		private transient List<MockRecord> mockRecords;
-		private transient List<SObject> realRecords;
 
 		private RelatedList() {
 			this.done = true;
