@@ -16,6 +16,12 @@ concurrency:
 env:
   CHANGES_DIR: changes
   SCRATCH_ORG_DOMAIN: apex-database-layer.com
+  GH_TOKEN: ${{ github.token }}
+  LFS_RESULTS: lightning-flow-scanner-results.json
+  PR_NUMBER: ${{ github.event.pull_request.number }}
+  SCAN_OUTPUTS: results.txt
+  SCAN_SUMMARY: summary.md
+  SFCA_RESULTS: sf-code-analyzer-results.json
 
 permissions:
   actions: read
@@ -49,21 +55,51 @@ jobs:
           echo "Changed files:"
           ls "$CHANGES_DIR"
 
-      - name: Run Salesforce Code Analyzer
+      - name: Scan
         id: scan
-        uses: forcedotcom/run-code-analyzer@v2
-        with:
-          github-token: ${{ github.token }}
-          results-artifact-name: salesforce-code-analyzer-results
-          run-arguments: "--target ${{ env.CHANGES_DIR }} --view detail --output-file sfca_results.json"
-
-      - name: Evaluate
-        if: |
-          steps.scan.outputs.exit-code > 0 ||
-          steps.scan.outputs.num-sev1-violations > 0 ||
-          steps.scan.outputs.num-sev2-violations > 0
         run: |
-          echo "🚨 sf code-analyzer detected violations that exceed the acceptable threshold."
+          # Perform the scanning logic, via a .py script that creates various artifacts:
+          export PATH="$HOME/sf/bin:$PATH"
+          python3 .github/scripts/static_analysis.py \
+            --lfs-output-file "$LFS_RESULTS" \
+            --results-file "$SCAN_OUTPUTS" \
+            --sfca-output-file "$SFCA_RESULTS" \
+            --summary-file "$SCAN_SUMMARY" \
+            --target "$CHANGES_DIR" \
+            --threshold 5
+          # Save the output variables to be referenced in later steps:
+          cat "$SCAN_OUTPUTS" >> $GITHUB_OUTPUT
+
+      - name: Summarize
+        run: |
+          # Add the .md Summary to a PR Review, and the Step Summary;
+          SUMMARY=$(cat "$SCAN_SUMMARY")
+          echo "$SUMMARY" >> "$GITHUB_STEP_SUMMARY"
+          gh pr review "$PR_NUMBER" --body "$SUMMARY" --comment
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Raw Results
+          path: |
+            ${{ env.LFS_RESULTS }}
+            ${{ env.SFCA_RESULTS }}
+
+      - name: Handle Errors
+        if: ${{ failure() && !cancelled() }}
+        uses: ./.github/actions/report-error
+        with:
+          actor: ${{ github.actor }}
+          run-id: ${{ github.run_id }}
+          token: ${{ github.token }}
+
+      - name: Report Violations
+        if: ${{ steps.scan.outputs.num-violations-above-threshold > 0 }}
+        run: |
+          # If any violations above the specified threshold, post the results to the PR and fail the check:
+          NUM_VIOLATIONS=${{ steps.scan.outputs.num-violations-above-threshold}}
+          echo "⚠️ Detected $NUM_VIOLATIONS violations that meet/exceed the set threshold. View the job summary for more details:"
+          echo "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           exit 1
 
   run-unit-tests:
