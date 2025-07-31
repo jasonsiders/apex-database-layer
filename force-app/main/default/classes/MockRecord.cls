@@ -163,8 +163,14 @@ public class MockRecord {
 	}
 
 	// **** OVERRIDES **** //
+	public Boolean equals(Object obj) {
+		// Use the underlying SObject's equals value
+		// Note: For some reason, we don't technically override this method, even though we functionally do:
+		return this.toSObject()?.equals(obj);
+	}
+
 	public override Integer hashCode() {
-		// Use the underlying SObject for hashCode purposes:
+		// Use the underlying SObject's hashCode value:
 		return this.toSObject()?.hashCode();
 	}
 

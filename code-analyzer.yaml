@@ -1,8 +1,17 @@
 engines:
+  # CPD rules can't be selectively disabled via @SuppressWarnings
+  cpd: 
+    disable_engine: true
+  # Flow rules require python; not going to require this, and no flows in this package:
   flow:
+    disable_engine: true
+  # Regex rules can't be selectively disabled via @SuppressWarnings
+  regex:
     disable_engine: true
 
 rules:
   pmd:
+    ApexDoc:
+      severity: info
     ApexUnitTestClassShouldHaveRunAs:
       severity: info

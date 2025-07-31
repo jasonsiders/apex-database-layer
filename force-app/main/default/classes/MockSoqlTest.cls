@@ -1,4 +1,4 @@
-@SuppressWarnings('PMD.ApexDoc,PMD.EmptyCatchBlock')
+@SuppressWarnings('PMD.ApexDoc,PMD.ApexUnitTestClassShouldHaveRunAs')
 @IsTest
 private class MockSoqlTest {
 	// **** CONSTANTS **** //
@@ -75,11 +75,13 @@ private class MockSoqlTest {
 		Soql.Cursor cursor = soql?.getCursor();
 
 		Test.startTest();
+		Exception caughtError;
 		try {
 			cursor?.fetch(-1, 1);
 			Assert.fail('Did not throw a Soql.InvalidParameterValueException for invalid position param');
 		} catch (Soql.InvalidParameterValueException error) {
 			// As expected...
+			caughtError = error; 
 		}
 		Test.stopTest();
 	}
@@ -93,11 +95,13 @@ private class MockSoqlTest {
 		Soql.Cursor cursor = soql?.getCursor();
 
 		Test.startTest();
+		Exception caughtError;
 		try {
 			cursor?.fetch(0, -1);
 			Assert.fail('Did not throw a Soql.InvalidParameterValueException for invalid count param');
 		} catch (Soql.InvalidParameterValueException error) {
 			// As expected...
+			caughtError = error; 
 		}
 		Test.stopTest();
 	}
@@ -111,11 +115,13 @@ private class MockSoqlTest {
 		Soql.Cursor cursor = soql?.getCursor();
 
 		Test.startTest();
+		Exception caughtError;
 		try {
 			cursor?.fetch(0, (NUM_ACCS + 1));
 			Assert.fail('Did not throw a Soql.InvalidParameterValueException for fetch that exceeds upper bound');
 		} catch (Soql.InvalidParameterValueException error) {
 			// As expected...
+			caughtError = error; 
 		}
 		Test.stopTest();
 	}
@@ -129,11 +135,13 @@ private class MockSoqlTest {
 		Soql.Cursor cursor = soql?.getCursor();
 
 		Test.startTest();
+		Exception caughtError;
 		try {
 			cursor?.fetch(0, null);
 			Assert.fail('Did not throw a System.NullPointerException for null fetch param');
 		} catch (System.NullPointerException error) {
 			// As expected...
+			caughtError = error; 
 		}
 		Test.stopTest();
 	}
@@ -160,11 +168,13 @@ private class MockSoqlTest {
 				Assert.areNotEqual(null, account, i + '/' + NUM_ACCS + ': Iterator returned null record');
 			} else {
 				Assert.areEqual(false, iterator?.hasNext(), i + '/' + NUM_ACCS + ': Iterator should not hasNext()');
+				Exception caughtError;
 				try {
 					iterator?.next();
 					Assert.fail('Iterator did not throw a ' + System.NoSuchElementException.class);
 				} catch (System.NoSuchElementException error) {
-					// As expected
+					// As expected...
+					caughtError = error; 
 				}
 			}
 		}
@@ -469,11 +479,13 @@ private class MockSoqlTest {
 		MockSoql.setGlobalMock()?.withError();
 
 		Test.startTest();
+		Exception caughtError;
 		try {
 			DatabaseLayer.Soql.newQuery(Account.SObjectType)?.toSoql()?.query();
 			Assert.fail('Did not throw an Exception');
 		} catch (Exception error) {
 			// As expected...
+			caughtError = error; 
 		}
 		Test.stopTest();
 

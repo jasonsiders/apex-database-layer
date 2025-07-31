@@ -1,3 +1,4 @@
+@SuppressWarnings('PMD.ApexDoc')
 @IsTest
 public class DatabaseLayerTestUtils {
 	public static final PreAndPostProcessorSpy DmlPluginSpy = new PreAndPostProcessorSpy();

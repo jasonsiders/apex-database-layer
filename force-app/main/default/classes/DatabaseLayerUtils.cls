@@ -1,4 +1,4 @@
-@SuppressWarnings('PMD.PropertyNamingConventions')
+@SuppressWarnings('PMD.ApexDoc,PMD.PropertyNamingConventions')
 public without sharing class DatabaseLayerUtils {
 	/**
 	 * This class contains utilities used by the framework internally
@@ -80,6 +80,7 @@ public without sharing class DatabaseLayerUtils {
 		}
 	}
 
+	@SuppressWarnings('PMD.AvoidDebugStatements')
 	public class Plugins {
 		/**
 		 * This class contains utility methods re: the plugin framework

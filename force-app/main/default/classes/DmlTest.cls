@@ -1,4 +1,4 @@
-@SuppressWarnings('PMD.ApexDoc,PMD.CyclomaticComplexity')
+@SuppressWarnings('PMD.ApexDoc,PMD.CyclomaticComplexity,PMD.ApexUnitTestClassShouldHaveRunAs')
 @IsTest
 private class DmlTest {
 	// **** VARIABLES **** //
@@ -903,12 +903,14 @@ private class DmlTest {
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();
+		Exception caughtError;
 		try {
 			// Updates will fail, since there isn't an Id set:
 			DatabaseLayer.Dml.doUpdate(account);
 			Assert.fail('Did not throw a System.DmlException');
 		} catch (System.DmlException error) {
 			// As expected...
+			caughtError = error;
 		}
 		Test.stopTest();
 

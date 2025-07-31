@@ -1,4 +1,4 @@
-@SuppressWarnings('PMD.ApexDoc,PMD.CyclomaticComplexity,PMD.EmptyCatchBlock')
+@SuppressWarnings('PMD.ApexDoc,PMD.ApexUnitTestClassShouldHaveRunAs,PMD.CyclomaticComplexity')
 @IsTest
 private class MockDmlTest {
 	// **** VARIABLES **** //
@@ -101,11 +101,13 @@ private class MockDmlTest {
 		}
 
 		Test.startTest();
+		Exception caughtError;
 		try {
 			DatabaseLayer.Dml?.doConvert(leadsToConvert);
 			Assert.fail('An error was not thrown for missing Lead Id');
 		} catch (System.DmlException error) {
-			// As expected
+			// As expected...
+			caughtError = error; 
 		} finally {
 			Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
 		}
@@ -124,11 +126,13 @@ private class MockDmlTest {
 		}
 
 		Test.startTest();
+		Exception caughtError;
 		try {
 			DatabaseLayer.Dml?.doConvert(leadsToConvert);
 			Assert.fail('An error was not thrown for missing converted status');
 		} catch (System.DmlException error) {
-			// As expected
+			// As expected...
+			caughtError = error; 
 		} finally {
 			Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
 		}
@@ -715,6 +719,7 @@ private class MockDmlTest {
 		MockDml.shouldFailIf(failure);
 
 		Test.startTest();
+		Exception caughtError;
 		// Inserts should succeed
 		try {
 			DatabaseLayer.Dml.doInsert(accounts);
@@ -727,6 +732,7 @@ private class MockDmlTest {
 			Assert.fail('Did not throw an error');
 		} catch (System.DmlException error) {
 			// As expected...
+			caughtError = error;
 		}
 		Test.stopTest();
 	}
@@ -740,11 +746,13 @@ private class MockDmlTest {
 
 		Test.startTest();
 		// Since the DML object has a failure, it will throw an error when run:
+		Exception caughtError;
 		try {
 			DatabaseLayer.Dml?.doUpdate(leads);
 			Assert.fail('Did not throw an error');
 		} catch (System.DmlException error) {
 			// As expected...
+			caughtError = error;
 		}
 
 		// Now clear the failure and try again - an error should NOT be thrown
@@ -927,12 +935,14 @@ private class MockDmlTest {
 		MockDml.shouldFail();
 
 		Test.startTest();
+		Exception caughtError;
 		try {
 			// Updates will fail, since there isn't an Id set:
 			DatabaseLayer.Dml.doUpdate(accounts);
 			Assert.fail('Did not throw a System.DmlException');
 		} catch (System.DmlException error) {
 			// As expected...
+			caughtError = error;
 		}
 		Test.stopTest();
 

@@ -1,5 +1,5 @@
 @SuppressWarnings(
-	'PMD.ApexDoc,PMD.ApexUnitTestClassShouldHaveAsserts,PMD.CyclomaticComplexity,PMD.ApexUnitTestClassShouldHaveRunAs'
+	'PMD.ApexDoc,PMD.ApexUnitTestClassShouldHaveAsserts,PMD.ApexUnitTestClassShouldHaveRunAs,PMD.CyclomaticComplexity'
 )
 @IsTest
 private class SoqlTest {
@@ -107,18 +107,19 @@ private class SoqlTest {
 		Test.stopTest();
 	}
 
-	@SuppressWarnings('PMD.EmptyCatchBlock')
 	@IsTest
 	static void shouldWrapInvalidCursorFetchErrors() {
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowLimit(1)?.toSoql();
 
 		Test.startTest();
+		Exception caughtError;
 		try {
 			// Negative parameters are not allowed!
 			soql?.getCursor()?.fetch(0, -1);
 			Assert.fail('Did not throw a Soql.InvalidParameterValueException for batch fetch params');
 		} catch (Soql.InvalidParameterValueException error) {
 			// As expected...
+			caughtError = error; 
 		}
 		Test.stopTest();
 	}
@@ -1498,18 +1499,19 @@ private class SoqlTest {
 		Assert.areEqual(builder?.toString(), result?.toString(), 'Wrong query string');
 	}
 
-	@SuppressWarnings('PMD.EmptyCatchBlock')
 	@IsTest
 	static void shouldThrowExceptionIfInvalidCasting() {
 		Soql.Builder builder = new Soql.Subquery(Case.AccountId)?.addSelect(Case.Status);
 
 		Test.startTest();
 		// Subquery is never an instance of Soql!
+		Exception caughtError;
 		try {
 			builder?.toSoql();
 			Assert.fail('Did not throw a System.TypeException');
 		} catch (System.TypeException error) {
 			// As expected...
+			caughtError = error; 
 		}
 		Test.stopTest();
 	}
@@ -1544,12 +1546,14 @@ private class SoqlTest {
 		DatabaseLayer.Soql.initPlugins();
 
 		Test.startTest();
+		Exception caughtError;
 		try {
 			// Can't query w/a null FROM object:
 			DatabaseLayer.Soql.newQuery(null)?.toSoql()?.query();
 			Assert.fail('Did not throw an Exception');
 		} catch (Exception error) {
-			// As expected
+			// As expected...
+			caughtError = error;
 		}
 		Test.stopTest();
 
