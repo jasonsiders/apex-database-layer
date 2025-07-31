@@ -8,12 +8,3 @@ engines:
   # Regex rules can't be selectively disabled via @SuppressWarnings
   regex:
     disable_engine: true
-
-rules:
-  pmd:
-    ApexDoc:
-      severity: info
-    ApexUnitTestClassShouldHaveRunAs:
-      severity: info
-    AvoidBooleanMethodParameters:
-      severity: info
