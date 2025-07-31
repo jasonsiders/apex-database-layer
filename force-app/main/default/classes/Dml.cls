@@ -779,7 +779,7 @@ public inherited sharing virtual class Dml {
 		void processDmlError(Dml.Request request, Exception error);
 	}
 
-	public virtual class Request {
+	public inherited sharing virtual class Request {
 		/**
 		 * Represents a single call to one of the above DML methods, plus all its parameters
 		 * Centralizing this information allows us to output information about the operation taking place
