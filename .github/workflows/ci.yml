@@ -17,7 +17,6 @@ env:
   CHANGES_DIR: changes
   SCRATCH_ORG_DOMAIN: apex-database-layer.com
   GH_TOKEN: ${{ github.token }}
-  LFS_RESULTS: lightning-flow-scanner-results.json
   PR_NUMBER: ${{ github.event.pull_request.number }}
   SCAN_OUTPUTS: results.txt
   SCAN_SUMMARY: summary.md
@@ -61,7 +60,6 @@ jobs:
           # Perform the scanning logic, via a .py script that creates various artifacts:
           export PATH="$HOME/sf/bin:$PATH"
           python3 .github/scripts/static_analysis.py \
-            --lfs-output-file "$LFS_RESULTS" \
             --results-file "$SCAN_OUTPUTS" \
             --sfca-output-file "$SFCA_RESULTS" \
             --summary-file "$SCAN_SUMMARY" \
@@ -82,7 +80,6 @@ jobs:
         with:
           name: Raw Results
           path: |
-            ${{ env.LFS_RESULTS }}
             ${{ env.SFCA_RESULTS }}
 
       - name: Report Violations

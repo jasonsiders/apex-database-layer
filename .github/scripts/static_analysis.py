@@ -18,8 +18,6 @@ icons = {
     4: "🟡",
     5: "⚪",
 }
-# Translate LFS severity names to SFCA severity #s
-lfs_severities = {"error": 2, "warning": 4, "note": 5}
 # Describes each severity level
 severity_descriptions = {1: "Critical", 2: "High", 3: "Medium", 4: "Low", 5: "Info"}
 # Counts the number of violations by severity level
@@ -80,12 +78,7 @@ def build_table(violations, threshold):
 def define_args():
     # Defines arguments to be used with the main program:
     parser = argparse.ArgumentParser(
-        description="Run sf code-analyzer and lightning-flow-scanner against a target directory"
-    )
-    parser.add_argument(
-        "--lfs-output-file",
-        help="Path that lightning flow scanner's raw .json results will be saved to",
-        default="lfs_results.json",
+        description="Run sf code-analyzer against a target directory"
     )
     parser.add_argument(
         "--results-file",
@@ -127,35 +120,6 @@ def get_sfca_violation_location(violation):
     return "\n".join(locations)
 
 
-def run_lfs(target, output="lfs_results.json"):
-    # Run lightning flow scanner and return an output object that can be formatted into a table:
-    cmd = ["sf", "flow", "scan", "--config", ".flow-scanner.json", "--directory", target, "--failon", "never", "--json"]
-    print("Running lightning flow scanner...\n", " ".join(cmd))
-    result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-    # Save the .json file to the specified path:
-    data = json.loads(result.stdout)
-    with open(output, "w") as f:
-        json.dump(data, f, indent=2)
-    # Iterate through the violations, use it to build an object:
-    violations = []
-    for v in data.get("result", {}).get("results", []):
-        severity_num = lfs_severities.get(v.get("severity", "note"), 5)
-        rule_name = v.get("rule", "unknown")
-        violation = {
-            "icon": icons.get(severity_num, ":white_circle:"),
-            "location": os.path.join(
-                "force-app", v.get("flowUri", "unknown").split("force-app/", 1)[-1]
-            ),
-            "message": v.get("ruleDescription"),
-            "reported_by": "lightning flow scanner",
-            "rule": f"lfs:{rule_name}",
-            "severity": severity_num,
-        }
-        violations.append(violation)
-    print(f"{len(violations)} lightning flow scanner violations")
-    return violations
-
-
 def run_sfca(target, output="sfca_results.json"):
     # Run sf code analyzer and return an output object that can be formatted into a table:
     cmd = ["sf", "code-analyzer", "run", "--output-file", output, "--target", target]
@@ -184,9 +148,7 @@ def run_sfca(target, output="sfca_results.json"):
 
 def scan(args):
     # Run the scanning tools, and output their results in a common object format:
-    lfs_violations = run_lfs(args.target, output=args.lfs_output_file)
-    sfca_violations = run_sfca(args.target, output=args.sfca_output_file)
-    all_violations = sfca_violations + lfs_violations
+    all_violations = run_sfca(args.target, output=args.sfca_output_file)
     # Sort the violations by severity, in order of most to least severe
     all_violations.sort(key=lambda v: v.get("severity", 5))
     print(f"🐞 Violations: ", json.dumps(all_violations))
