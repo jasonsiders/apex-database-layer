@@ -1,5 +1,5 @@
 @SuppressWarnings(
-	'PMD.ApexDoc,PMD.CognitiveComplexity,PMD.CyclomaticComplexity,PMD.ExcessiveParameterList,PMD.FieldNamingConventions,PMD.PropertyNamingConventions'
+	'PMD.ApexDoc,PMD.AvoidBooleanMethodParameters,PMD.CognitiveComplexity,PMD.CyclomaticComplexity,PMD.ExcessiveParameterList,PMD.FieldNamingConventions,PMD.PropertyNamingConventions'
 )
 @IsTest
 public class MockDml extends Dml {
