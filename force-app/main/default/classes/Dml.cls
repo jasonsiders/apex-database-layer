@@ -1,4 +1,6 @@
-@SuppressWarnings('PMD.ApexDoc,PMD.CognitiveComplexity,PMD.CyclomaticComplexity,PMD.ExcessivePublicCount')
+@SuppressWarnings(
+	'PMD.ApexDoc,PMD.CognitiveComplexity,PMD.CyclomaticComplexity,PMD.ExcessiveClassLength,PMD.ExcessivePublicCount'
+)
 public inherited sharing virtual class Dml {
 	/**
 	 * This class is responsible for performing CRUD operations with the Salesforce database.
@@ -33,6 +35,7 @@ public inherited sharing virtual class Dml {
 		return (List<Database.LeadConvertResult>) request?.process();
 	}
 
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
 	public List<Database.LeadConvertResult> doConvert(
 		List<Database.LeadConvert> leadsToConvert,
 		Boolean allOrNone,
@@ -55,6 +58,7 @@ public inherited sharing virtual class Dml {
 		return this.doConvert(leadsToConvert, true, level);
 	}
 
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
 	public List<Database.LeadConvertResult> doConvert(List<Database.LeadConvert> leadsToConvert, Boolean allOrNone) {
 		return this.doConvert(leadsToConvert, Dml.initDmlOptions(allOrNone));
 	}
@@ -71,6 +75,7 @@ public inherited sharing virtual class Dml {
 		return this.doConvert(new List<Database.LeadConvert>{ leadToConvert }, options, accessLevel)?.get(0);
 	}
 
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
 	public Database.LeadConvertResult doConvert(
 		Database.LeadConvert leadToConvert,
 		Boolean allOrNone,
@@ -83,6 +88,7 @@ public inherited sharing virtual class Dml {
 		return this.doConvert(new List<Database.LeadConvert>{ leadToConvert }, options)?.get(0);
 	}
 
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
 	public Database.LeadConvertResult doConvert(Database.LeadConvert leadToConvert, Boolean allOrNone) {
 		return this.doConvert(new List<Database.LeadConvert>{ leadToConvert }, allOrNone)?.get(0);
 	}
@@ -96,6 +102,7 @@ public inherited sharing virtual class Dml {
 	}
 
 	// ** Delete Methods
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
 	public List<Database.DeleteResult> doDelete(
 		List<SObject> records,
 		Boolean allOrNone,
@@ -107,6 +114,7 @@ public inherited sharing virtual class Dml {
 		return (List<Database.DeleteResult>) request?.process();
 	}
 
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
 	public List<Database.DeleteResult> doDelete(List<SObject> records, Boolean allOrNone) {
 		return this.doDelete(records, allOrNone, DEFAULT_ACCESS_LEVEL);
 	}
@@ -119,11 +127,13 @@ public inherited sharing virtual class Dml {
 		return this.doDelete(records, DEFAULT_ACCESS_LEVEL);
 	}
 
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
 	public List<Database.DeleteResult> doDelete(List<Id> recordIds, Boolean allOrNone, System.AccessLevel accessLevel) {
 		List<SObject> records = this.initRecordsFromIds(recordIds);
 		return this.doDelete(records, allOrNone, accessLevel);
 	}
 
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
 	public List<Database.DeleteResult> doDelete(List<Id> recordIds, Boolean allOrNone) {
 		return this.doDelete(recordIds, allOrNone, DEFAULT_ACCESS_LEVEL);
 	}
@@ -136,10 +146,12 @@ public inherited sharing virtual class Dml {
 		return this.doDelete(recordIds, DEFAULT_ACCESS_LEVEL);
 	}
 
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
 	public Database.DeleteResult doDelete(SObject record, Boolean allOrNone, System.AccessLevel accessLevel) {
 		return this.doDelete(new List<SObject>{ record }, allOrNone, accessLevel)?.get(0);
 	}
 
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
 	public Database.DeleteResult doDelete(SObject record, Boolean allOrNone) {
 		return this.doDelete(new List<SObject>{ record }, allOrNone)?.get(0);
 	}
@@ -152,10 +164,12 @@ public inherited sharing virtual class Dml {
 		return this.doDelete(new List<SObject>{ record })?.get(0);
 	}
 
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
 	public Database.DeleteResult doDelete(Id recordId, Boolean allOrNone, System.AccessLevel accessLevel) {
 		return this.doDelete(new List<Id>{ recordId }, allOrNone, accessLevel)?.get(0);
 	}
 
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
 	public Database.DeleteResult doDelete(Id recordId, Boolean allOrNone) {
 		return this.doDelete(new List<Id>{ recordId }, allOrNone)?.get(0);
 	}
@@ -245,6 +259,7 @@ public inherited sharing virtual class Dml {
 		return (List<Database.SaveResult>) request?.process();
 	}
 
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
 	public List<Database.SaveResult> doInsert(
 		List<SObject> records,
 		Boolean allOrNone,
@@ -257,6 +272,7 @@ public inherited sharing virtual class Dml {
 		return this.doInsert(records, options, DEFAULT_ACCESS_LEVEL);
 	}
 
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
 	public List<Database.SaveResult> doInsert(List<SObject> records, Boolean allOrNone) {
 		return this.doInsert(records, allOrNone, DEFAULT_ACCESS_LEVEL);
 	}
@@ -273,6 +289,7 @@ public inherited sharing virtual class Dml {
 		return this.doInsert(new List<SObject>{ record }, options, accessLevel)?.get(0);
 	}
 
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
 	public Database.SaveResult doInsert(SObject record, Boolean allOrNone, System.AccessLevel accessLevel) {
 		return this.doInsert(new List<SObject>{ record }, allOrNone, accessLevel)?.get(0);
 	}
@@ -281,6 +298,7 @@ public inherited sharing virtual class Dml {
 		return this.doInsert(new List<SObject>{ record }, options)?.get(0);
 	}
 
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
 	public Database.SaveResult doInsert(SObject record, Boolean allOrNone) {
 		return this.doInsert(new List<SObject>{ record }, allOrNone)?.get(0);
 	}
@@ -370,6 +388,7 @@ public inherited sharing virtual class Dml {
 	}
 
 	// ** Undelete Methods
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
 	public List<Database.UndeleteResult> doUndelete(
 		List<SObject> records,
 		Boolean allOrNone,
@@ -381,6 +400,7 @@ public inherited sharing virtual class Dml {
 		return (List<Database.UndeleteResult>) request?.process();
 	}
 
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
 	public List<Database.UndeleteResult> doUndelete(List<SObject> records, Boolean allOrNone) {
 		return this.doUndelete(records, allOrNone, DEFAULT_ACCESS_LEVEL);
 	}
@@ -393,6 +413,7 @@ public inherited sharing virtual class Dml {
 		return this.doUndelete(records, DEFAULT_ACCESS_LEVEL);
 	}
 
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
 	public List<Database.UndeleteResult> doUndelete(
 		List<Id> recordIds,
 		Boolean allOrNone,
@@ -402,6 +423,7 @@ public inherited sharing virtual class Dml {
 		return this.doUndelete(records, allOrNone, accessLevel);
 	}
 
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
 	public List<Database.UndeleteResult> doUndelete(List<Id> recordIds, Boolean allOrNone) {
 		return this.doUndelete(recordIds, allOrNone, DEFAULT_ACCESS_LEVEL);
 	}
@@ -414,10 +436,12 @@ public inherited sharing virtual class Dml {
 		return this.doUndelete(recordIds, DEFAULT_ACCESS_LEVEL);
 	}
 
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
 	public Database.UndeleteResult doUndelete(SObject record, Boolean allOrNone, System.AccessLevel accessLevel) {
 		return this.doUndelete(new List<SObject>{ record }, allOrNone, accessLevel)?.get(0);
 	}
 
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
 	public Database.UndeleteResult doUndelete(SObject record, Boolean allOrNone) {
 		return this.doUndelete(new List<SObject>{ record }, allOrNone)?.get(0);
 	}
@@ -430,10 +454,12 @@ public inherited sharing virtual class Dml {
 		return this.doUndelete(new List<SObject>{ record })?.get(0);
 	}
 
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
 	public Database.UndeleteResult doUndelete(Id recordId, Boolean allOrNone, System.AccessLevel accessLevel) {
 		return this.doUndelete(new List<Id>{ recordId }, allOrNone, accessLevel)?.get(0);
 	}
 
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
 	public Database.UndeleteResult doUndelete(Id recordId, Boolean allOrNone) {
 		return this.doUndelete(new List<Id>{ recordId }, allOrNone)?.get(0);
 	}
@@ -458,6 +484,7 @@ public inherited sharing virtual class Dml {
 		return (List<Database.SaveResult>) request?.process();
 	}
 
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
 	public List<Database.SaveResult> doUpdate(
 		List<SObject> records,
 		Boolean allOrNone,
@@ -470,6 +497,7 @@ public inherited sharing virtual class Dml {
 		return this.doUpdate(records, options, DEFAULT_ACCESS_LEVEL);
 	}
 
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
 	public List<Database.SaveResult> doUpdate(List<SObject> records, Boolean allOrNone) {
 		return this.doUpdate(records, allOrNone, DEFAULT_ACCESS_LEVEL);
 	}
@@ -486,6 +514,7 @@ public inherited sharing virtual class Dml {
 		return this.doUpdate(new List<SObject>{ record }, options, accessLevel)?.get(0);
 	}
 
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
 	public Database.SaveResult doUpdate(SObject record, Boolean allOrNone, System.AccessLevel accessLevel) {
 		return this.doUpdate(new List<SObject>{ record }, allOrNone, accessLevel)?.get(0);
 	}
@@ -494,6 +523,7 @@ public inherited sharing virtual class Dml {
 		return this.doUpdate(new List<SObject>{ record }, options)?.get(0);
 	}
 
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
 	public Database.SaveResult doUpdate(SObject record, Boolean allOrNone) {
 		return this.doUpdate(new List<SObject>{ record }, allOrNone)?.get(0);
 	}
@@ -572,7 +602,7 @@ public inherited sharing virtual class Dml {
 	}
 
 	// ** Upsert Methods
-	@SuppressWarnings('PMD.ExcessiveParameterList')
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters,PMD.ExcessiveParameterList')
 	public List<Database.UpsertResult> doUpsert(
 		List<SObject> records,
 		SObjectField externalIdField,
@@ -586,6 +616,7 @@ public inherited sharing virtual class Dml {
 		return (List<Database.UpsertResult>) request?.process();
 	}
 
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
 	public List<Database.UpsertResult> doUpsert(
 		List<SObject> records,
 		SObjectField externalIdField,
@@ -602,6 +633,7 @@ public inherited sharing virtual class Dml {
 		return this.doUpsert(records, externalIdField, true, accessLevel);
 	}
 
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
 	public List<Database.UpsertResult> doUpsert(
 		List<SObject> records,
 		Boolean allOrNone,
@@ -614,6 +646,7 @@ public inherited sharing virtual class Dml {
 		return this.doUpsert(records, externalIdField, DEFAULT_ACCESS_LEVEL);
 	}
 
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
 	public List<Database.UpsertResult> doUpsert(List<SObject> records, Boolean allOrNone) {
 		return this.doUpsert(records, allOrNone, DEFAULT_ACCESS_LEVEL);
 	}
@@ -626,7 +659,7 @@ public inherited sharing virtual class Dml {
 		return this.doUpsert(records, DEFAULT_ACCESS_LEVEL);
 	}
 
-	@SuppressWarnings('PMD.ExcessiveParameterList')
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters,PMD.ExcessiveParameterList')
 	public Database.UpsertResult doUpsert(
 		SObject record,
 		SObjectField externalIdField,
@@ -636,6 +669,7 @@ public inherited sharing virtual class Dml {
 		return this.doUpsert(new List<SObject>{ record }, externalIdField, allOrNone, accessLevel)?.get(0);
 	}
 
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
 	public Database.UpsertResult doUpsert(SObject record, SObjectField externalIdField, Boolean allOrNone) {
 		return this.doUpsert(new List<SObject>{ record }, externalIdField, allOrNone)?.get(0);
 	}
@@ -648,6 +682,7 @@ public inherited sharing virtual class Dml {
 		return this.doUpsert(new List<SObject>{ record }, externalIdField, accessLevel)?.get(0);
 	}
 
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
 	public Database.UpsertResult doUpsert(SObject record, Boolean allOrNone, System.AccessLevel accessLevel) {
 		return this.doUpsert(new List<SObject>{ record }, allOrNone, accessLevel)?.get(0);
 	}
@@ -656,6 +691,7 @@ public inherited sharing virtual class Dml {
 		return this.doUpsert(new List<SObject>{ record }, externalIdField)?.get(0);
 	}
 
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
 	public Database.UpsertResult doUpsert(SObject record, Boolean allOrNone) {
 		return this.doUpsert(new List<SObject>{ record }, allOrNone)?.get(0);
 	}

@@ -141,6 +141,9 @@ public class MockDml extends Dml {
 		/**
 		 * This class represents a mock Salesforce Database. It stores all DML Methods' corresponding History objects
 		 */
+		// Note: When this configuration flag is "true" [default],
+		// MockDml will mimic a real Database when a rollback occurs
+		public Boolean resetOnRollback;
 		public MockDml.RecordHistory converted { get; private set; }
 		public MockDml.RecordHistory deleted { get; private set; }
 		public MockDml.RecordHistory inserted { get; private set; }
@@ -149,12 +152,6 @@ public class MockDml extends Dml {
 		public MockDml.RecordHistory undeleted { get; private set; }
 		public MockDml.RecordHistory updated { get; private set; }
 		public MockDml.RecordHistory upserted { get; private set; }
-		/**
-		 * When this configuration flag is "true", MockDml will mimic a real Database when a rollback occurs
-		 * This is "false" by default, for performance reasons (heap, cpu time, etc).
-		 * Only override this if your testing use case truly warrants it!
-		 **/
-		public Boolean resetOnRollback { get; set; }
 
 		private Database() {
 			this.converted = new MockDml.RecordHistory(Dml.Operation.DO_CONVERT);
