@@ -1,6 +1,6 @@
-@SuppressWarnings('PMD.ApexDoc')
+@SuppressWarnings('PMD.ApexDoc,PMD.AvoidGlobalModifier')
 @IsTest
-public class MockSoql extends Soql {
+global class MockSoql extends Soql {
 	/**
 	 * This class mocks SOQL queries. By default, each query will return empty results.
 	 * Users can use the `setGlobalMock()` static method(s), and `setMock()` member method(s)
@@ -15,7 +15,7 @@ public class MockSoql extends Soql {
 	}
 
 	// **** STATIC **** //
-	public static MockSoql.Simulator setGlobalMock(MockSoql.Simulator simulator) {
+	global static MockSoql.Simulator setGlobalMock(MockSoql.Simulator simulator) {
 		// This method assigns the given simulator object to be run for all queries by default,
 		// unless a Soql object has a specific Simulator assigned to it
 		// Similar to using Test.setMock w/the System.HttpCalloutMock interface
@@ -23,7 +23,7 @@ public class MockSoql extends Soql {
 		return simulator;
 	}
 
-	public static MockSoql.StaticResults setGlobalMock() {
+	global static MockSoql.StaticResults setGlobalMock() {
 		// This overload instantiates a new StaticResults object, and returns it as a concrete instance
 		// to allow for a more fluent interface + method chaining w/global mocks
 		return (MockSoql.StaticResults) MockSoql.setGlobalMock(new MockSoql.StaticResults());
@@ -35,14 +35,14 @@ public class MockSoql extends Soql {
 		return new MockSoql.Request(this, operation, simulator);
 	}
 
-	public MockSoql.Simulator setMock(MockSoql.Simulator simulator) {
+	global MockSoql.Simulator setMock(MockSoql.Simulator simulator) {
 		// Call this method to inject the given Simulator object
 		// to be run whenever the current query runs, instead of the global mock
 		this.currentMock = simulator;
 		return this.currentMock;
 	}
 
-	public MockSoql.StaticResults setMock() {
+	global MockSoql.StaticResults setMock() {
 		// Call this method to inject an return a concrete instance of a new StaticResults object
 		// to be run whenever the current query runs, instead of the global mock
 		return (MockSoql.StaticResults) this.setMock(new MockSoql.StaticResults());
@@ -55,7 +55,7 @@ public class MockSoql extends Soql {
 	}
 
 	// **** INNER **** //
-	public class AggregateResult extends Soql.AggregateResult {
+	global class AggregateResult extends Soql.AggregateResult {
 		/**
 		 * Mocks the AggregateResult SObject, which cannot be manually constructed w/out performing a SOQL query
 		 * These objects are comprised of properties with a default name, unless an alias is provided.
@@ -64,17 +64,17 @@ public class MockSoql extends Soql {
 		 **/
 		private Integer numUnaliasedKeys = 0;
 
-		public AggregateResult() {
+		global AggregateResult() {
 			super(null);
 		}
 
-		public AggregateResult addParameter(String alias, Object value) {
+		global AggregateResult addParameter(String alias, Object value) {
 			this.params?.put(alias, value);
 			this.incrementAliasedKeyCount(alias);
 			return this;
 		}
 
-		public AggregateResult addParameter(Object value) {
+		global AggregateResult addParameter(Object value) {
 			// If a key is not given, assign one using the default aggregate key prefix
 			String key = AGGREGATE_KEY_PREFIX + this.numUnaliasedKeys;
 			return this.addParameter(key, value);
@@ -88,7 +88,7 @@ public class MockSoql extends Soql {
 		}
 	}
 
-	public class Cursor extends Soql.Cursor {
+	global class Cursor extends Soql.Cursor {
 		/**
 		 * Mocks the Database.Cursor object, using an underlying List<SObject> to drive its behavior
 		 **/
@@ -100,14 +100,14 @@ public class MockSoql extends Soql {
 			this.records = mockQuery?.query();
 		}
 
-		public override List<SObject> fetch(Integer position, Integer count) {
+		global override List<SObject> fetch(Integer position, Integer count) {
 			// Mocks native functionality by retrieving SObjects between the specified params from the underlying list
 			this.validateFetch(position, count);
 			// Strangely, there isn't a native List.slice method in Apex:
 			return (List<SObject>) this.slice(this.records, position, count);
 		}
 
-		public override Integer getNumRecords() {
+		global override Integer getNumRecords() {
 			return this.records?.size() ?? 0;
 		}
 
@@ -172,7 +172,7 @@ public class MockSoql extends Soql {
 		}
 	}
 
-	public class QueryLocator extends Soql.QueryLocator {
+	global class QueryLocator extends Soql.QueryLocator {
 		/**
 		 * Mocks the Database.QueryLocator object, used in batch jobs.
 		 * Note: This mock implementation has one big shortcoming.
@@ -192,16 +192,16 @@ public class MockSoql extends Soql {
 			this.records = mockQuery?.query();
 		}
 
-		public override String getQuery() {
+		global override String getQuery() {
 			return this.query;
 		}
 
-		public override System.Iterator<SObject> iterator() {
+		global override System.Iterator<SObject> iterator() {
 			return new MockSoql.QueryLocatorIterator(this.records);
 		}
 	}
 
-	public class QueryLocatorIterator implements System.Iterator<SObject> {
+	global class QueryLocatorIterator implements System.Iterator<SObject> {
 		/**
 		 * This custom iterator mocks & mirrors the Database.QueryLocatorIterator,
 		 * which is really just an Iterator<SObject> under the hood
@@ -213,11 +213,11 @@ public class MockSoql extends Soql {
 			this.records = records;
 		}
 
-		public Boolean hasNext() {
+		global Boolean hasNext() {
 			return this.index < records?.size();
 		}
 
-		public SObject next() {
+		global SObject next() {
 			if (this.hasNext() == true) {
 				return this.records[index++];
 			} else {
@@ -262,7 +262,7 @@ public class MockSoql extends Soql {
 		}
 	}
 
-	public interface Simulator {
+	global interface Simulator {
 		/**
 		 * This interface can be used to define query mocking logic.
 		 * Example implementations include:
@@ -274,7 +274,7 @@ public class MockSoql extends Soql {
 		List<Object> simulateQuery(Soql queryToMock);
 	}
 
-	public class StaticResults implements MockSoql.Simulator {
+	global class StaticResults implements MockSoql.Simulator {
 		private Exception error;
 		private List<Object> results;
 
@@ -284,23 +284,23 @@ public class MockSoql extends Soql {
 			// instead, use the StaticResults objects returned by the 0-arg setGlobalMock/setMock methods
 		}
 
-		public MockSoql.StaticResults withError(Exception error) {
+		global MockSoql.StaticResults withError(Exception error) {
 			// This method injects the given error to be thrown whenever the simulator is run
 			this.error = error;
 			return this;
 		}
 
-		public MockSoql.StaticResults withError() {
+		global MockSoql.StaticResults withError() {
 			// This method injects a generic System.QueryException to be thrown whenever the simulator is run
 			return this.withError(new System.QueryException());
 		}
 
-		public MockSoql.StaticResults withResults(List<Object> results) {
+		global MockSoql.StaticResults withResults(List<Object> results) {
 			this.results = results;
 			return this;
 		}
 
-		public List<Object> simulateQuery(Soql queryToMock) {
+		global List<Object> simulateQuery(Soql queryToMock) {
 			if (this.error != null) {
 				throw this.error;
 			}

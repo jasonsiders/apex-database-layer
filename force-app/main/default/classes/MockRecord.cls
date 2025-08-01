@@ -1,6 +1,6 @@
 @IsTest
-@SuppressWarnings('PMD.ApexDoc,PMD.CognitiveComplexity,PMD.ExcessivePublicCount')
-public class MockRecord {
+@SuppressWarnings('PMD.ApexDoc,PMD.AvoidGlobalModifier,PMD.CognitiveComplexity,PMD.ExcessivePublicCount')
+global class MockRecord {
 	/**
 	 * This class uses a builder pattern to construct SObject records for the purpose of mock database operations.
 	 * It supports the following:
@@ -18,26 +18,26 @@ public class MockRecord {
 	private transient Map<String, Object> recordValues;
 
 	@SuppressWarnings('PMD.PropertyNamingConventions')
-	public Id Id {
+	global Id Id {
 		get {
 			// Mirrors standard SObject functionality; all SObject records have an Id property - even untyped!
 			return (Id) this.get(ID_TOKEN);
 		}
 	}
 
-	public MockRecord(SObject realRecord) {
+	global MockRecord(SObject realRecord) {
 		// This constructor preserves the original values of the provided record.
 		this.objectType = realRecord?.getSObjectType();
 		this.recordValues = (Map<String, Object>) JSON.deserializeUntyped(JSON.serialize(realRecord, false));
 	}
 
-	public MockRecord(SObjectType objectType) {
+	global MockRecord(SObjectType objectType) {
 		// This constructor creates a brand new/empty SObject of the provided type.
 		this(objectType?.newSObject());
 	}
 
 	// **** STATIC **** //
-	public static Id initRecordId(SObjectType objectType) {
+	global static Id initRecordId(SObjectType objectType) {
 		// Generate a unique record Id for the given SObjectType, for mock database operations
 		String prefix = objectType?.getDescribe(Schema.SObjectDescribeOptions.DEFERRED)?.getKeyPrefix();
 		String suffix = String.valueOf(MockRecord.numMockIds++);
@@ -46,117 +46,117 @@ public class MockRecord {
 	}
 
 	// **** MEMBER **** //
-	public MockRecord addToRelatedList(Schema.ChildRelationship relationship, List<SObject> records) {
+	global MockRecord addToRelatedList(Schema.ChildRelationship relationship, List<SObject> records) {
 		// Adds to the related list used to simulate a child object retrieval in SOQL; ex., SELECT Id, (SELECT Id FROM Contacts) FROM Account LIMIT 1
 		return this.addUntypedChildRecords(relationship, records);
 	}
 
-	public MockRecord addToRelatedList(SObjectField lookupField, List<SObject> records) {
+	global MockRecord addToRelatedList(SObjectField lookupField, List<SObject> records) {
 		Schema.ChildRelationship relationship = this.getChildRelationship(lookupField);
 		return this.addToRelatedList(relationship, records);
 	}
 
-	public MockRecord addToRelatedList(Schema.ChildRelationship relationship, SObject record) {
+	global MockRecord addToRelatedList(Schema.ChildRelationship relationship, SObject record) {
 		return this.addToRelatedList(relationship, new List<SObject>{ record });
 	}
 
-	public MockRecord addToRelatedList(SObjectField lookupField, SObject record) {
+	global MockRecord addToRelatedList(SObjectField lookupField, SObject record) {
 		return this.addToRelatedList(lookupField, new List<SObject>{ record });
 	}
 
-	public MockRecord addToRelatedList(Schema.ChildRelationship relationship, List<MockRecord> mocks) {
+	global MockRecord addToRelatedList(Schema.ChildRelationship relationship, List<MockRecord> mocks) {
 		return this.addUntypedChildRecords(relationship, mocks);
 	}
 
-	public MockRecord addToRelatedList(SObjectField lookupField, List<MockRecord> records) {
+	global MockRecord addToRelatedList(SObjectField lookupField, List<MockRecord> records) {
 		Schema.ChildRelationship relationship = this.getChildRelationship(lookupField);
 		return this.addToRelatedList(relationship, records);
 	}
 
-	public MockRecord addToRelatedList(Schema.ChildRelationship relationship, MockRecord record) {
+	global MockRecord addToRelatedList(Schema.ChildRelationship relationship, MockRecord record) {
 		return this.addToRelatedList(relationship, new List<MockRecord>{ record });
 	}
 
-	public MockRecord addToRelatedList(SObjectField lookupField, MockRecord record) {
+	global MockRecord addToRelatedList(SObjectField lookupField, MockRecord record) {
 		return this.addToRelatedList(lookupField, new List<MockRecord>{ record });
 	}
 
-	public Object get(String parameterName) {
+	global Object get(String parameterName) {
 		// Retrieve the current record value for the given parameter:
 		return this.recordValues?.get(parameterName);
 	}
 
-	public Object get(SObjectField field) {
+	global Object get(SObjectField field) {
 		return this.get(field?.toString());
 	}
 
-	public SObject getLookup(SObjectField lookupField) {
+	global SObject getLookup(SObjectField lookupField) {
 		// Retrieves the lookup relationship matching the lookup field, ex., 'contact?.Owner'
 		String relationshipName = lookupField?.getDescribe()?.getRelationshipName();
 		return (SObject) this.get(relationshipName);
 	}
 
-	public List<SObject> getRelatedList(Schema.ChildRelationship relationship) {
+	global List<SObject> getRelatedList(Schema.ChildRelationship relationship) {
 		// Retrieves the underlying List<SObject> that makes up the corresponding related list, ex., 'account?.Contacts'
 		String relationshipName = relationship?.getRelationshipName();
 		MockRecord.RelatedList relatedList = (MockRecord.RelatedList) this.get(relationshipName);
 		return relatedList?.getRecords();
 	}
 
-	public List<SObject> getRelatedList(SObjectField lookupField) {
+	global List<SObject> getRelatedList(SObjectField lookupField) {
 		Schema.ChildRelationship relationship = this.getChildRelationship(lookupField);
 		return this.getRelatedList(relationship);
 	}
 
-	public MockRecord setField(Map<String, Object> incomingValues) {
+	global MockRecord setField(Map<String, Object> incomingValues) {
 		// Sets the provided field(s) to their specified values(s)
 		// If a field value is already set, it will be overwritten.
 		this.recordValues?.putAll(incomingValues);
 		return this;
 	}
 
-	public MockRecord setField(String fieldName, Object value) {
+	global MockRecord setField(String fieldName, Object value) {
 		return this.setField(new Map<String, Object>{ fieldName => value });
 	}
 
-	public MockRecord setField(SObjectField field, Object value) {
+	global MockRecord setField(SObjectField field, Object value) {
 		return this.setField(field?.toString(), value);
 	}
 
-	public MockRecord setLookup(SObjectField lookupField, SObject parent) {
+	global MockRecord setLookup(SObjectField lookupField, SObject parent) {
 		// Simulates a parent object retrieval in SOQL; ex., SELECT Id, Account.Name FROM Contact LIMIT 1
 		return this.addUntypedParentRecord(lookupField, parent);
 	}
 
-	public MockRecord setLookup(SObjectField lookupField, MockRecord parent) {
+	global MockRecord setLookup(SObjectField lookupField, MockRecord parent) {
 		return this.addUntypedParentRecord(lookupField, parent);
 	}
 
-	public MockRecord setRelatedList(Schema.ChildRelationship relationship, List<SObject> relatedRecords) {
+	global MockRecord setRelatedList(Schema.ChildRelationship relationship, List<SObject> relatedRecords) {
 		// Sets the related list used to simulate a child object retrieval in SOQL; ex., SELECT Id, (SELECT Id FROM Contacts) FROM Account LIMIT 1
 		return this.setUntypedChildRecords(relationship, relatedRecords);
 	}
 
-	public MockRecord setRelatedList(SObjectField lookupField, List<SObject> relatedRecords) {
+	global MockRecord setRelatedList(SObjectField lookupField, List<SObject> relatedRecords) {
 		Schema.ChildRelationship relationship = this.getChildRelationship(lookupField);
 		return this.setRelatedList(relationship, relatedRecords);
 	}
 
-	public MockRecord setRelatedList(Schema.ChildRelationship relationship, List<MockRecord> relatedRecords) {
+	global MockRecord setRelatedList(Schema.ChildRelationship relationship, List<MockRecord> relatedRecords) {
 		return this.setUntypedChildRecords(relationship, relatedRecords);
 	}
 
-	public MockRecord setRelatedList(SObjectField lookupField, List<MockRecord> relatedRecords) {
+	global MockRecord setRelatedList(SObjectField lookupField, List<MockRecord> relatedRecords) {
 		Schema.ChildRelationship relationship = this.getChildRelationship(lookupField);
 		return this.setRelatedList(relationship, relatedRecords);
 	}
 
-	public SObject toSObject() {
+	global SObject toSObject() {
 		// Builds the specified record
 		return (SObject) JSON.deserialize(JSON.serialize(this.recordValues, false), SObject.class);
 	}
 
-	public MockRecord withId() {
+	global MockRecord withId() {
 		// Provides a unique Id to simulate inserted records.
 		// Note: If an Id is already present, its value will NOT be overwritten.
 		Id recordId = this.Id ?? MockRecord.initRecordId(this.objectType);
@@ -164,18 +164,18 @@ public class MockRecord {
 	}
 
 	// **** OVERRIDES **** //
-	public Boolean equals(Object obj) {
+	global Boolean equals(Object obj) {
 		// Use the underlying SObject's equals value
 		// Note: For some reason, we don't technically override this method, even though we functionally do:
 		return this.toSObject()?.equals(obj);
 	}
 
-	public override Integer hashCode() {
+	global override Integer hashCode() {
 		// Use the underlying SObject's hashCode value:
 		return this.toSObject()?.hashCode();
 	}
 
-	public override String toString() {
+	global override String toString() {
 		// Use the underlying SObject for toString purposes:
 		return this.toSObject()?.toString();
 	}

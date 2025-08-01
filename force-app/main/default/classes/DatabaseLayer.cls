@@ -1,5 +1,5 @@
-@SuppressWarnings('PMD.ApexDoc')
-public class DatabaseLayer {
+@SuppressWarnings('PMD.ApexDoc,PMD.AvoidGlobalModifier')
+global class DatabaseLayer {
 	/**
 	 * Handles interactions with the Salesforce Database, via DML and SOQL.
 	 * Use the `Dml` and `Soql` static properties to get the correct instance of each.
@@ -22,16 +22,16 @@ public class DatabaseLayer {
 	}
 
 	// **** STATIC **** //
-	// These public static properties are the primary way that callers interact with the Database Layer
+	// These static properties are the primary way that callers interact with the Database Layer
 	@SuppressWarnings('PMD.PropertyNamingConventions')
-	public static Dml Dml {
+	global static Dml Dml {
 		get {
 			// Returns the current Dml instance
 			return INSTANCE?.currentDml;
 		}
 	}
 	@SuppressWarnings('PMD.PropertyNamingConventions')
-	public static SoqlProvider Soql {
+	global static SoqlProvider Soql {
 		get {
 			// Returns a new copy of the current Soql instance on each reference
 			return INSTANCE?.currentSoql;
@@ -83,7 +83,7 @@ public class DatabaseLayer {
 	}
 
 	// **** INNER **** //
-	public class SoqlProvider {
+	global class SoqlProvider {
 		/**
 		 * This class is responsible for provisioning a Soql instance of the correct type
 		 **/
@@ -95,7 +95,7 @@ public class DatabaseLayer {
 			this.initPlugins();
 		}
 
-		public Soql newQuery(SObjectType objectType) {
+		global Soql newQuery(SObjectType objectType) {
 			return (this.useMocks == true)
 				? new MockSoql(INSTANCE)?.setFrom(objectType)?.toSoql()
 				: new Soql(INSTANCE)?.setFrom(objectType)?.toSoql();
