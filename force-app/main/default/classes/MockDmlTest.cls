@@ -1043,15 +1043,29 @@ private class MockDmlTest {
 	}
 
 	// **** INNER **** //
+	/**
+	 * @description Example implementation of ConditionalFailure interface for testing DML operation failures
+	 */
 	public class ExampleFailure implements MockDml.ConditionalFailure {
 		private Dml.Operation failingOperation;
 		private SObjectType failingSObjectType;
 
+		/**
+		 * @description Constructor that configures which operation and SObject type should trigger a failure
+		 * @param operation The DML operation that should trigger a failure
+		 * @param objectType The SObject type that should trigger a failure
+		 */
 		public ExampleFailure(Dml.Operation operation, SObjectType objectType) {
 			this.failingOperation = operation;
 			this.failingSObjectType = objectType;
 		}
 
+		/**
+		 * @description Checks if the given operation and record should trigger a failure exception
+		 * @param operation The DML operation being performed
+		 * @param record The SObject record being operated on
+		 * @return Exception to throw if conditions match, null otherwise
+		 */
 		public Exception checkFailure(Dml.Operation operation, SObject record) {
 			// Only throw an error if updating an Account
 			Boolean shouldFail =

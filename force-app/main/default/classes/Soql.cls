@@ -201,6 +201,10 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	global interface Criteria {
 		// Mostly a marker interface, but also used to coerce toString()
 		// Use this to denote classes that can be used in WHERE/HAVING clauses
+		/**
+		 * @description Returns the string representation of this criteria.
+		 * @return String representation for use in SOQL clauses
+		 */
 		String toString();
 	}
 
@@ -233,6 +237,10 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	global interface Selectable {
 		// Mostly a marker interface, but also used to coerce toString()
 		// Use this to denote classes that can be used in SELECT clauses
+		/**
+		 * @description Returns the string representation of this selectable.
+		 * @return String representation for use in SELECT clauses
+		 */
 		String toString();
 	}
 
@@ -399,18 +407,57 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	 * @description Abstract base class providing fluent interface for building SOQL queries.
 	 */
 	global abstract class Builder {
+		/**
+		 * @description System access level for the query execution.
+		 */
 		global transient System.AccessLevel accessLevel { get; protected set; }
+		/**
+		 * @description Map of bind variables for parameterized queries.
+		 */
 		global Map<String, Object> binds { get; protected set; }
+		/**
+		 * @description The SObjectType name for the FROM clause.
+		 */
 		global String entity { get; protected set; }
+		/**
+		 * @description List of GROUP BY field names.
+		 */
 		global List<String> groupByClauses { get; protected set; }
+		/**
+		 * @description HAVING clause criteria for aggregate queries.
+		 */
 		global Soql.ConditionalLogic havingCriteria { get; protected set; }
+		/**
+		 * @description List of ORDER BY clauses.
+		 */
 		global List<String> orderByClauses { get; protected set; }
+		/**
+		 * @description Maximum number of rows to return (LIMIT clause).
+		 */
 		global Integer rowLimit { get; protected set; }
+		/**
+		 * @description Number of rows to skip (OFFSET clause).
+		 */
 		global Integer rowOffset { get; protected set; }
+		/**
+		 * @description Query scope (USING SCOPE clause).
+		 */
 		global Soql.Scope scope { get; protected set; }
+		/**
+		 * @description Set of SELECT clause field names.
+		 */
 		global Set<String> selectClauses { get; protected set; }
+		/**
+		 * @description Query usage type (FOR UPDATE, FOR VIEW, etc.).
+		 */
 		global Soql.Usage usage { get; protected set; }
+		/**
+		 * @description WHERE clause criteria for filtering records.
+		 */
 		global Soql.ConditionalLogic whereCriteria { get; protected set; }
+		/**
+		 * @description WITH clause for query hints (e.g., SECURITY_ENFORCED).
+		 */
 		global String withClause { get; protected set; }
 		// Read-only properties included for JSON output:
 		/**
@@ -682,6 +729,15 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			return this;
 		}
 
+		/**
+		 * @description Adds up to 5 Selectable objects to the SELECT clause.
+		 * @param field1 First Selectable object to select
+		 * @param field2 Second Selectable object to select
+		 * @param field3 Third Selectable object to select
+		 * @param field4 Fourth Selectable object to select
+		 * @param field5 Fifth Selectable object to select
+		 * @return This Builder instance for method chaining
+		 */
 		@SuppressWarnings('PMD.ExcessiveParameterList')
 		global Soql.Builder addSelect(
 			Soql.Selectable field1,
@@ -694,6 +750,14 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			return this.addSelect(new List<Soql.Selectable>{ field1, field2, field3, field4, field5 });
 		}
 
+		/**
+		 * @description Adds up to 4 Selectable objects to the SELECT clause.
+		 * @param field1 First Selectable object to select
+		 * @param field2 Second Selectable object to select
+		 * @param field3 Third Selectable object to select
+		 * @param field4 Fourth Selectable object to select
+		 * @return This Builder instance for method chaining
+		 */
 		@SuppressWarnings('PMD.ExcessiveParameterList')
 		global Soql.Builder addSelect(
 			Soql.Selectable field1,
@@ -704,14 +768,32 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			return this.addSelect(field1, field2, field3, field4, null);
 		}
 
+		/**
+		 * @description Adds up to 3 Selectable objects to the SELECT clause.
+		 * @param field1 First Selectable object to select
+		 * @param field2 Second Selectable object to select
+		 * @param field3 Third Selectable object to select
+		 * @return This Builder instance for method chaining
+		 */
 		global Soql.Builder addSelect(Soql.Selectable field1, Soql.Selectable field2, Soql.Selectable field3) {
 			return this.addSelect(field1, field2, field3, null);
 		}
 
+		/**
+		 * @description Adds 2 Selectable objects to the SELECT clause.
+		 * @param field1 First Selectable object to select
+		 * @param field2 Second Selectable object to select
+		 * @return This Builder instance for method chaining
+		 */
 		global Soql.Builder addSelect(Soql.Selectable field1, Soql.Selectable field2) {
 			return this.addSelect(field1, field2, null);
 		}
 
+		/**
+		 * @description Adds a single Selectable object to the SELECT clause.
+		 * @param field The Selectable object to select
+		 * @return This Builder instance for method chaining
+		 */
 		global Soql.Builder addSelect(Soql.Selectable field) {
 			return this.addSelect(field, null);
 		}
@@ -800,43 +882,101 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			return this.addWhere(new Soql.Condition(fieldName, operator, value));
 		}
 
+		/**
+		 * @description Adds a WHERE condition using SObjectField, operator, and value.
+		 * @param field The SObjectField to filter on
+		 * @param operator The comparison operator
+		 * @param value The value to compare against
+		 * @return This Builder instance for method chaining
+		 */
 		global Soql.Builder addWhere(SObjectField field, Soql.Operator operator, Object value) {
 			return this.addWhere(field?.toString(), operator, value);
 		}
 
+		/**
+		 * @description Adds a WHERE condition using parent field, operator, and value.
+		 * @param field The parent field to filter on
+		 * @param operator The comparison operator
+		 * @param value The value to compare against
+		 * @return This Builder instance for method chaining
+		 */
 		global Soql.Builder addWhere(Soql.ParentField field, Soql.Operator operator, Object value) {
 			return this.addWhere(field?.toString(), operator, value);
 		}
 
+		/**
+		 * @description Adds a WHERE condition using field name, operator, and inner query.
+		 * @param fieldName The field name to filter on
+		 * @param operator The comparison operator
+		 * @param innerQuery The inner query to compare against
+		 * @return This Builder instance for method chaining
+		 */
 		global Soql.Builder addWhere(String fieldName, Soql.Operator operator, Soql.InnerQuery innerQuery) {
 			// If the current `value` object is an InnerQuery, add its binds to the parent query:
 			this.addBindsFromChildQuery(innerQuery);
 			return this.addWhere(fieldName, operator, innerQuery?.toString());
 		}
 
+		/**
+		 * @description Adds a WHERE condition using SObjectField, operator, and inner query.
+		 * @param field The SObjectField to filter on
+		 * @param operator The comparison operator
+		 * @param innerQuery The inner query to compare against
+		 * @return This Builder instance for method chaining
+		 */
 		global Soql.Builder addWhere(SObjectField field, Soql.Operator operator, Soql.InnerQuery innerQuery) {
 			return this.addWhere(field?.toString(), operator, innerQuery);
 		}
 
+		/**
+		 * @description Adds a WHERE condition using field name, operator, and bind variable.
+		 * @param fieldName The field name to filter on
+		 * @param operator The comparison operator
+		 * @param binder The bind variable to compare against
+		 * @return This Builder instance for method chaining
+		 */
 		global Soql.Builder addWhere(String fieldName, Soql.Operator operator, Soql.Binder binder) {
 			// If the current `value` object is a Binder, bind the values so that callers don't need to do so manually
 			return this.addWhere(fieldName, operator, binder?.toString())?.addBind(binder);
 		}
 
+		/**
+		 * @description Adds a WHERE condition using SObjectField, operator, and bind variable.
+		 * @param field The SObjectField to filter on
+		 * @param operator The comparison operator
+		 * @param binder The bind variable to compare against
+		 * @return This Builder instance for method chaining
+		 */
 		global Soql.Builder addWhere(SObjectField field, Soql.Operator operator, Soql.Binder binder) {
 			return this.addWhere(field?.toString(), operator, binder);
 		}
 
+		/**
+		 * @description Adds a WHERE condition using parent field, operator, and bind variable.
+		 * @param field The parent field to filter on
+		 * @param operator The comparison operator
+		 * @param binder The bind variable to compare against
+		 * @return This Builder instance for method chaining
+		 */
 		global Soql.Builder addWhere(Soql.ParentField field, Soql.Operator operator, Soql.Binder binder) {
 			return this.addWhere(field?.toString(), operator, binder);
 		}
 
+		/**
+		 * @description Sets the logic type for combining WHERE conditions (AND/OR).
+		 * @param newLogicType The logic type to use for WHERE conditions
+		 * @return This Builder instance for method chaining
+		 */
 		global Soql.Builder setOuterWhereLogic(Soql.LogicType newLogicType) {
 			this.whereCriteria?.setLogicType(newLogicType);
 			return this;
 		}
 
 		// * WITH *
+		/**
+		 * @description Adds SECURITY_ENFORCED clause to the query and sets access level to SYSTEM_MODE.
+		 * @return This Builder instance for method chaining
+		 */
 		global Soql.Builder withSecurityEnforced() {
 			this.withClause = 'SECURITY_ENFORCED';
 			// Note: Cannot use the WITH SECURITY_ENFORCED clause in queries using USER_MODE access level.
@@ -845,6 +985,11 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		// * GROUP BY *
+		/**
+		 * @description Adds a field to the GROUP BY clause.
+		 * @param fieldName The field name to group by
+		 * @return This Builder instance for method chaining
+		 */
 		global Soql.Builder addGroupBy(String fieldName) {
 			// Note: GROUP BY queries should never assume an implicit "Id" in the query
 			this.deselect(ID_REFERENCE);
@@ -852,15 +997,32 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			return this;
 		}
 
+		/**
+		 * @description Adds an SObjectField to the GROUP BY clause.
+		 * @param field The SObjectField to group by
+		 * @return This Builder instance for method chaining
+		 */
 		global Soql.Builder addGroupBy(SObjectField field) {
 			return this.addGroupBy(field?.toString());
 		}
 
+		/**
+		 * @description Adds a parent field to the GROUP BY clause.
+		 * @param field The parent field to group by
+		 * @return This Builder instance for method chaining
+		 */
 		global Soql.Builder addGroupBy(Soql.ParentField field) {
 			return this.addGroupBy(field?.toString());
 		}
 
 		// * HAVING *
+		/**
+		 * @description Adds a HAVING condition using aggregation, operator, and value.
+		 * @param agg The aggregation function to filter on
+		 * @param operator The comparison operator
+		 * @param value The value to compare against
+		 * @return This Builder instance for method chaining
+		 */
 		global Soql.Builder addHaving(Soql.Aggregation agg, Soql.Operator operator, Object value) {
 			// Shorthand overload constructs the AggregateCondition for the caller
 			Soql.Condition condition = new Soql.Condition(agg?.toString(), operator, value);
@@ -868,43 +1030,86 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			return this;
 		}
 
+		/**
+		 * @description Sets the logic type for combining HAVING conditions (AND/OR).
+		 * @param newLogicType The logic type to use for HAVING conditions
+		 * @return This Builder instance for method chaining
+		 */
 		global Soql.Builder setOuterHavingLogic(Soql.LogicType newLogicType) {
 			this.havingCriteria?.setLogicType(newLogicType);
 			return this;
 		}
 
 		// * ORDER BY *
+		/**
+		 * @description Adds a sort order to the ORDER BY clause.
+		 * @param sortOrder The sort order specification
+		 * @return This Builder instance for method chaining
+		 */
 		global Soql.Builder addOrderBy(Soql.SortOrder sortOrder) {
 			this.orderByClauses?.add(sortOrder?.toString());
 			return this;
 		}
 
+		/**
+		 * @description Adds an ORDER BY clause with field name and sort direction.
+		 * @param fieldName The field name to sort by
+		 * @param direction The sort direction (ASCENDING or DESCENDING)
+		 * @return This Builder instance for method chaining
+		 */
 		global Soql.Builder addOrderBy(String fieldName, Soql.SortDirection direction) {
 			Soql.SortOrder sortOrder = new Soql.SortOrder(fieldName, direction);
 			return this.addOrderBy(sortOrder);
 		}
 
+		/**
+		 * @description Adds an ORDER BY clause with SObjectField and sort direction.
+		 * @param field The SObjectField to sort by
+		 * @param direction The sort direction (ASCENDING or DESCENDING)
+		 * @return This Builder instance for method chaining
+		 */
 		global Soql.Builder addOrderBy(SObjectField field, Soql.SortDirection direction) {
 			return this.addOrderBy(field?.toString(), direction);
 		}
 
+		/**
+		 * @description Adds an ORDER BY clause with parent field and sort direction.
+		 * @param field The parent field to sort by
+		 * @param direction The sort direction (ASCENDING or DESCENDING)
+		 * @return This Builder instance for method chaining
+		 */
 		global Soql.Builder addOrderBy(Soql.ParentField field, Soql.SortDirection direction) {
 			return this.addOrderBy(field?.toString(), direction);
 		}
 
 		// * LIMIT *
+		/**
+		 * @description Sets the LIMIT clause for maximum number of rows to return.
+		 * @param rowLimit The maximum number of rows to return
+		 * @return This Builder instance for method chaining
+		 */
 		global Soql.Builder setRowLimit(Integer rowLimit) {
 			this.rowLimit = rowLimit;
 			return this;
 		}
 
 		// * OFFSET *
+		/**
+		 * @description Sets the OFFSET clause for number of rows to skip.
+		 * @param rowOffset The number of rows to skip
+		 * @return This Builder instance for method chaining
+		 */
 		global Soql.Builder setRowOffset(Integer rowOffset) {
 			this.rowOffset = rowOffset;
 			return this;
 		}
 
 		// * USAGE *
+		/**
+		 * @description Sets the usage type for the query (FOR UPDATE, FOR VIEW, etc.).
+		 * @param usage The usage type to apply
+		 * @return This Builder instance for method chaining
+		 */
 		global Soql.Builder setUsage(Soql.Usage usage) {
 			this.usage = usage;
 			return this;
@@ -933,6 +1138,10 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 				: null;
 		}
 
+		/**
+		 * @description Builds the optional clauses of the SOQL query (WHERE, ORDER BY, etc.).
+		 * @return String containing all optional query clauses
+		 */
 		protected String getOptionalArgs() {
 			List<String> args = new List<String>();
 			for (
@@ -955,10 +1164,18 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			return String.join(args, ' ');
 		}
 
+		/**
+		 * @description Builds the SELECT clause of the SOQL query.
+		 * @return String containing the SELECT clause fields
+		 */
 		protected virtual String getSelect() {
 			return String.join(new List<String>(this.selectClauses), ', ');
 		}
 
+		/**
+		 * @description Builds the usage clause (FOR UPDATE, FOR VIEW, etc.).
+		 * @return String containing the usage clause
+		 */
 		protected virtual String getUsage() {
 			return this.usage?.toString()?.replace('_', ' ');
 		}
@@ -980,20 +1197,47 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	 * @description Represents a single condition in a WHERE or HAVING clause.
 	 */
 	global virtual class Condition implements Soql.Criteria {
+		/**
+		 * @description The field name or property being compared in this condition.
+		 */
 		global final String property { get; protected set; }
+		/**
+		 * @description The comparison operator used in this condition.
+		 */
 		global final Soql.Operator operator { get; protected set; }
+		/**
+		 * @description The value being compared against in this condition.
+		 */
 		global final Object value { get; protected set; }
 
+		/**
+		 * @description Constructor for condition with property name, operator, and value.
+		 * @param property The field name or property to compare
+		 * @param operator The comparison operator
+		 * @param value The value to compare against
+		 */
 		global Condition(String property, Soql.Operator operator, Object value) {
 			this.property = property;
 			this.operator = operator;
 			this.value = value;
 		}
 
+		/**
+		 * @description Constructor for condition with SObjectField, operator, and value.
+		 * @param field The SObjectField to compare
+		 * @param operator The comparison operator
+		 * @param value The value to compare against
+		 */
 		global Condition(SObjectField field, Soql.Operator operator, Object value) {
 			this(field?.toString(), operator, value);
 		}
 
+		/**
+		 * @description Constructor for condition with parent field, operator, and value.
+		 * @param field The parent field to compare
+		 * @param operator The comparison operator
+		 * @param value The value to compare against
+		 */
 		global Condition(Soql.ParentField field, Soql.Operator operator, Object value) {
 			this(field?.toString(), operator, value);
 		}
@@ -1059,31 +1303,73 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	 * @description Manages complex conditional logic with AND/OR operations for WHERE and HAVING clauses.
 	 */
 	global class ConditionalLogic implements Soql.Criteria {
+		/**
+		 * @description List of criteria conditions for this conditional logic.
+		 */
 		private List<Soql.Criteria> criterion = new List<Soql.Criteria>();
+		/**
+		 * @description The logic type for combining conditions (AND/OR).
+		 */
 		private Soql.LogicType logicType = Soql.LogicType.ALL_CONDITIONS;
 
+		/**
+		 * @description Adds multiple criteria conditions to this conditional logic.
+		 * @param criterion List of criteria to add
+		 * @return This ConditionalLogic instance for method chaining
+		 */
 		global ConditionalLogic addCondition(List<Soql.Criteria> criterion) {
 			this.criterion?.addAll(criterion);
 			return this;
 		}
 
+		/**
+		 * @description Adds a single criteria condition to this conditional logic.
+		 * @param criteria The criteria to add
+		 * @return This ConditionalLogic instance for method chaining
+		 */
 		global ConditionalLogic addCondition(Soql.Criteria criteria) {
 			return this.addCondition(new List<Soql.Criteria>{ criteria });
 		}
 
+		/**
+		 * @description Adds a condition using field name, operator, and value.
+		 * @param fieldName The field name to filter on
+		 * @param operator The comparison operator
+		 * @param value The value to compare against
+		 * @return This ConditionalLogic instance for method chaining
+		 */
 		global ConditionalLogic addCondition(String fieldName, Soql.Operator operator, Object value) {
 			Soql.Condition condition = new Soql.Condition(fieldName, operator, value);
 			return this.addCondition(condition);
 		}
 
+		/**
+		 * @description Adds a condition using SObjectField, operator, and value.
+		 * @param field The SObjectField to filter on
+		 * @param operator The comparison operator
+		 * @param value The value to compare against
+		 * @return This ConditionalLogic instance for method chaining
+		 */
 		global ConditionalLogic addCondition(SObjectField field, Soql.Operator operator, Object value) {
 			return this.addCondition(field?.toString(), operator, value);
 		}
 
+		/**
+		 * @description Adds a condition using parent field, operator, and value.
+		 * @param field The parent field to filter on
+		 * @param operator The comparison operator
+		 * @param value The value to compare against
+		 * @return This ConditionalLogic instance for method chaining
+		 */
 		global ConditionalLogic addCondition(Soql.ParentField field, Soql.Operator operator, Object value) {
 			return this.addCondition(field?.toString(), operator, value);
 		}
 
+		/**
+		 * @description Sets the logic type for combining conditions (AND/OR).
+		 * @param logicType The logic type to use
+		 * @return This ConditionalLogic instance for method chaining
+		 */
 		global ConditionalLogic setLogicType(Soql.LogicType logicType) {
 			this.logicType = logicType;
 			return this;
@@ -1102,11 +1388,18 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			return String.join(criteriaStrings, delimiter)?.trim();
 		}
 
+		/**
+		 * @description Gets the predicate string (AND/OR) based on the logic type.
+		 * @return The predicate string for combining conditions
+		 */
 		private String getPredicate() {
 			return (logicType == Soql.LogicType.ANY_CONDITIONS) ? 'OR' : 'AND';
 		}
 	}
 
+	/**
+	 * @description Operator for LIKE queries with wildcard patterns for contains operations.
+	 */
 	global virtual class ContainsOperator extends Soql.Operator {
 		private ContainsOperator(String token) {
 			super(token);
@@ -1127,6 +1420,12 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			this.cursor = cursor;
 		}
 
+		/**
+		 * @description Fetches records from the cursor starting at the specified position.
+		 * @param position The starting position to fetch from
+		 * @param count The number of records to fetch
+		 * @return List of SObject records fetched from the cursor
+		 */
 		global virtual List<SObject> fetch(Integer position, Integer count) {
 			try {
 				return this.cursor?.fetch(position, count);
@@ -1139,15 +1438,26 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			}
 		}
 
+		/**
+		 * @description Gets the underlying Database.Cursor instance.
+		 * @return The wrapped Database.Cursor instance
+		 */
 		global Database.Cursor getCursor() {
 			return this.cursor;
 		}
 
+		/**
+		 * @description Gets the total number of records available in the cursor.
+		 * @return The total number of records in the cursor
+		 */
 		global virtual Integer getNumRecords() {
 			return this.cursor?.getNumRecords();
 		}
 	}
 
+	/**
+	 * @description Operator for LIKE queries with wildcard patterns for ends-with operations.
+	 */
 	global class EndsWithOperator extends Soql.Operator {
 		private EndsWithOperator(String token) {
 			super(token);
@@ -1162,10 +1472,17 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	 * @description Represents a subquery for use in WHERE clauses and other contexts requiring inner queries.
 	 */
 	global virtual class InnerQuery extends Soql.Builder implements Soql.Selectable {
+		/**
+		 * @description Default constructor that removes the default Id field from SELECT.
+		 */
 		protected InnerQuery() {
 			this.deselect(ID_REFERENCE);
 		}
 
+		/**
+		 * @description Constructor that sets the FROM clause to the specified object type.
+		 * @param objectType The SObjectType to query from
+		 */
 		global InnerQuery(SObjectType objectType) {
 			this();
 			this.setFrom(objectType);
@@ -1176,6 +1493,9 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 	}
 
+	/**
+	 * @description Exception thrown when invalid parameters are provided to cursor operations.
+	 */
 	global class InvalidParameterValueException extends Exception {
 		// This class wraps System.InvalidParameterValueExceptions thrown by invalid fetch calls in Database.Cursors
 	}
@@ -1194,6 +1514,11 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			this.token = token;
 		}
 
+		/**
+		 * @description Processes a string value for use in SOQL queries by adding quotes and escaping.
+		 * @param value The string value to process
+		 * @return The processed string value with proper escaping and quotes
+		 */
 		public virtual String processStringValue(String value) {
 			return '\'' + String.escapeSingleQuotes(value) + '\'';
 		}
@@ -1203,17 +1528,33 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 	}
 
+	/**
+	 * @description Represents a reference to a field on a parent object for use in SOQL queries.
+	 */
 	@SuppressWarnings('PMD.ExcessiveParameterList')
 	global class ParentField implements Soql.Selectable {
 		// Represents a reference to a SObjectField on a parent (or multi-grandparent) object, ex., "Account.Owner.Profile.Name"
 		// SOQL supports querying fields objects up to 5 relationships away from the FROM object
 		private String value;
 
+		/**
+		 * @description Constructor that creates a parent field reference from a chain of relationship fields.
+		 * @param relationshipFieldChain List of SObjectFields representing the relationship chain
+		 */
 		global ParentField(List<SObjectField> relationshipFieldChain) {
 			relationshipFieldChain = relationshipFieldChain ?? new List<SObjectField>();
 			this.value = this.computeValue(relationshipFieldChain);
 		}
 
+		/**
+		 * @description Constructor for up to 5 relationship levels deep.
+		 * @param relationship1 First relationship field
+		 * @param relationship2 Second relationship field
+		 * @param relationship3 Third relationship field
+		 * @param relationship4 Fourth relationship field
+		 * @param relationship5 Fifth relationship field
+		 * @param field The target field
+		 */
 		global ParentField(
 			SObjectField relationship1,
 			SObjectField relationship2,
@@ -1234,6 +1575,14 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			);
 		}
 
+		/**
+		 * @description Constructor for up to 4 relationship levels deep.
+		 * @param relationship1 First relationship field
+		 * @param relationship2 Second relationship field
+		 * @param relationship3 Third relationship field
+		 * @param relationship4 Fourth relationship field
+		 * @param field The target field
+		 */
 		global ParentField(
 			SObjectField relationship1,
 			SObjectField relationship2,
@@ -1244,6 +1593,13 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			this(new List<SObjectField>{ relationship1, relationship2, relationship3, relationship4, field });
 		}
 
+		/**
+		 * @description Constructor for up to 3 relationship levels deep.
+		 * @param relationship1 First relationship field
+		 * @param relationship2 Second relationship field
+		 * @param relationship3 Third relationship field
+		 * @param field The target field
+		 */
 		global ParentField(
 			SObjectField relationship1,
 			SObjectField relationship2,
@@ -1253,10 +1609,21 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			this(new List<SObjectField>{ relationship1, relationship2, relationship3, field });
 		}
 
+		/**
+		 * @description Constructor for up to 2 relationship levels deep.
+		 * @param relationship1 First relationship field
+		 * @param relationship2 Second relationship field
+		 * @param field The target field
+		 */
 		global ParentField(SObjectField relationship1, SObjectField relationship2, SObjectField field) {
 			this(new List<SObjectField>{ relationship1, relationship2, field });
 		}
 
+		/**
+		 * @description Constructor for 1 relationship level deep.
+		 * @param relationship1 The relationship field
+		 * @param field The target field
+		 */
 		global ParentField(SObjectField relationship1, SObjectField field) {
 			this(new List<SObjectField>{ relationship1, field });
 		}
@@ -1265,6 +1632,11 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			return this.value;
 		}
 
+		/**
+		 * @description Computes the dot-notation string representation from the field chain.
+		 * @param fields List of fields in the relationship chain
+		 * @return The dot-notation field reference string
+		 */
 		private String computeValue(List<SObjectField> fields) {
 			// Generate the String reference to the parent field:
 			List<String> components = new List<String>();
@@ -1295,14 +1667,26 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			this.locator = locator;
 		}
 
+		/**
+		 * @description Gets the underlying Database.QueryLocator instance.
+		 * @return The wrapped Database.QueryLocator instance
+		 */
 		global virtual Database.QueryLocator getLocator() {
 			return this.locator;
 		}
 
+		/**
+		 * @description Gets the SOQL query string from the query locator.
+		 * @return The SOQL query string
+		 */
 		global virtual String getQuery() {
 			return this.locator?.getQuery();
 		}
 
+		/**
+		 * @description Gets an iterator for processing records in the query locator.
+		 * @return Iterator for processing SObject records
+		 */
 		global virtual System.Iterator<SObject> iterator() {
 			return (System.Iterator<SObject>) this.locator?.iterator();
 		}
@@ -1312,11 +1696,23 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	 * @description Encapsulates a single SOQL operation with all its parameters and execution logic.
 	 */
 	global inherited sharing virtual class Request {
+		/**
+		 * @description Indicates whether this request is using mock SOQL behavior.
+		 */
 		global Boolean isMockSoql { get; protected set; }
+		/**
+		 * @description The type of SOQL operation being performed.
+		 */
 		global Soql.Operation operation { get; private set; }
+		/**
+		 * @description The Soql query instance being executed.
+		 */
 		global Soql query { get; private set; }
 		protected transient System.AccessLevel accessLevel { get; private set; }
 		protected transient Map<String, Object> binds { get; private set; }
+		/**
+		 * @description The SOQL query string representation.
+		 */
 		global String queryString {
 			get {
 				return this.query?.toString();
@@ -1331,6 +1727,10 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			this.query = query;
 		}
 
+		/**
+		 * @description Processes the SOQL request with pre/post processing and error handling.
+		 * @return The result of the SOQL operation
+		 */
 		public Object process() {
 			try {
 				DatabaseLayer.Soql.Plugin?.processPreSoql(this);
@@ -1345,6 +1745,10 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			}
 		}
 
+		/**
+		 * @description Performs the appropriate query operation based on the operation type.
+		 * @return The result of the query operation
+		 */
 		protected Object performQueryOperation() {
 			if (this.operation == Soql.Operation.AGGREGATE_QUERY) {
 				return this.doAggregateQuery();
@@ -1359,6 +1763,10 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			}
 		}
 
+		/**
+		 * @description Executes an aggregate query and wraps results in AggregateResult objects.
+		 * @return List of wrapped aggregate results
+		 */
 		protected virtual List<Soql.AggregateResult> doAggregateQuery() {
 			List<Schema.AggregateResult> results = (List<Schema.AggregateResult>) this.doQuery();
 			List<Soql.AggregateResult> wrappers = new List<Soql.AggregateResult>();
@@ -1369,6 +1777,10 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			return wrappers;
 		}
 
+		/**
+		 * @description Executes a COUNT query and returns the number of matching records.
+		 * @return Integer count of matching records
+		 */
 		protected virtual Integer doCountQuery() {
 			// Note: A count query must not contain any fields, other than COUNT() aggregation
 			// Avoid errors and simplify query construction by handling this in a temporary copy of the current query
@@ -1377,11 +1789,19 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			return Database.countQueryWithBinds(this.queryString, this.binds, this.accessLevel);
 		}
 
+		/**
+		 * @description Executes the query and returns a cursor for result processing.
+		 * @return Soql.Cursor wrapper for the query results
+		 */
 		protected virtual Soql.Cursor doGetCursor() {
 			Database.Cursor cursor = Database.getCursorWithBinds(this.queryString, this.binds, this.accessLevel);
 			return new Soql.Cursor(cursor);
 		}
 
+		/**
+		 * @description Executes the query and returns a query locator for batch processing.
+		 * @return Soql.QueryLocator wrapper for batch processing
+		 */
 		protected virtual Soql.QueryLocator doGetQueryLocator() {
 			Database.QueryLocator locator = Database.getQueryLocatorWithBinds(
 				this.queryString,
@@ -1391,25 +1811,47 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			return new Soql.QueryLocator(locator);
 		}
 
+		/**
+		 * @description Executes the basic SOQL query and returns matching records.
+		 * @return List of SObject records matching the query criteria
+		 */
 		protected virtual Object doQuery() {
 			return Database.queryWithBinds(this.queryString, this.binds, this.accessLevel);
 		}
 	}
 
+	/**
+	 * @description Represents an ORDER BY clause specification with field names, sort direction, and null ordering.
+	 */
 	global class SortOrder {
 		private List<String> fieldNames = new List<String>();
 		private Soql.SortDirection direction = Soql.SortDirection.ASCENDING;
 		private Soql.NullOrder nullOrder = Soql.NullOrder.NULLS_LAST;
 
+		/**
+		 * @description Constructor for sort order with multiple field names.
+		 * @param fieldNames List of field names to sort by
+		 * @param direction The sort direction (ASCENDING or DESCENDING)
+		 */
 		global SortOrder(List<String> fieldNames, Soql.SortDirection direction) {
 			this.fieldNames = fieldNames;
 			this.direction = direction;
 		}
 
+		/**
+		 * @description Constructor for sort order with a single field name.
+		 * @param fieldName The field name to sort by
+		 * @param direction The sort direction (ASCENDING or DESCENDING)
+		 */
 		global SortOrder(String fieldName, Soql.SortDirection direction) {
 			this(new List<String>{ fieldName }, direction);
 		}
 
+		/**
+		 * @description Constructor for sort order with multiple SObjectFields.
+		 * @param fields List of SObjectFields to sort by
+		 * @param direction The sort direction (ASCENDING or DESCENDING)
+		 */
 		global SortOrder(List<SObjectField> fields, Soql.SortDirection direction) {
 			for (SObjectField field : fields) {
 				this.fieldNames?.add(field?.toString());
@@ -1417,10 +1859,20 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			this.direction = direction;
 		}
 
+		/**
+		 * @description Constructor for sort order with a single SObjectField.
+		 * @param field The SObjectField to sort by
+		 * @param direction The sort direction (ASCENDING or DESCENDING)
+		 */
 		global SortOrder(SObjectField field, Soql.SortDirection direction) {
 			this(new List<SObjectField>{ field }, direction);
 		}
 
+		/**
+		 * @description Constructor for sort order with multiple parent fields.
+		 * @param fields List of parent fields to sort by
+		 * @param direction The sort direction (ASCENDING or DESCENDING)
+		 */
 		global SortOrder(List<Soql.ParentField> fields, Soql.SortDirection direction) {
 			for (Soql.ParentField field : fields) {
 				this.fieldNames?.add(field?.toString());
@@ -1428,10 +1880,20 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			this.direction = direction;
 		}
 
+		/**
+		 * @description Constructor for sort order with a single parent field.
+		 * @param field The parent field to sort by
+		 * @param direction The sort direction (ASCENDING or DESCENDING)
+		 */
 		global SortOrder(Soql.ParentField field, Soql.SortDirection direction) {
 			this(new List<Soql.ParentField>{ field }, direction);
 		}
 
+		/**
+		 * @description Sets the null ordering for the sort order.
+		 * @param nullOrder The null ordering (NULLS_FIRST or NULLS_LAST)
+		 * @return This SortOrder instance for method chaining
+		 */
 		global SortOrder setNullOrder(Soql.NullOrder nullOrder) {
 			this.nullOrder = nullOrder;
 			return this;
@@ -1451,6 +1913,9 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 	}
 
+	/**
+	 * @description Operator for LIKE queries with wildcard patterns for starts-with operations.
+	 */
 	global class StartsWithOperator extends Soql.Operator {
 		private StartsWithOperator(String token) {
 			super(token);
@@ -1461,18 +1926,33 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 	}
 
+	/**
+	 * @description Represents a subquery for use in SELECT clauses, using child relationship names.
+	 */
 	global class Subquery extends Soql.InnerQuery {
 		private String relationshipName;
 
+		/**
+		 * @description Constructor that creates a subquery from a child relationship.
+		 * @param relationship The child relationship to query
+		 */
 		global Subquery(Schema.ChildRelationship relationship) {
 			this.addSelect(ID_REFERENCE);
 			this.relationshipName = relationship?.getRelationshipName();
 		}
 
+		/**
+		 * @description Constructor that creates a subquery from a lookup field on the child object.
+		 * @param lookupFieldOnChildObject The lookup field on the child object
+		 */
 		global Subquery(SObjectField lookupFieldOnChildObject) {
 			this(DatabaseLayer.Utils.ChildRelationships.getChildRelationshipFrom(lookupFieldOnChildObject));
 		}
 
+		/**
+		 * @description Gets the FROM clause using the child relationship name.
+		 * @return The child relationship name for the FROM clause
+		 */
 		global override String getFrom() {
 			return this.relationshipName;
 		}

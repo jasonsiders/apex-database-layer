@@ -11,51 +11,78 @@ global class MockDml extends Dml {
 	private static final String MOCK_STATUS_CODE;
 
 	// **** STATIC **** //
+	/**
+	 * @description Mock database instance for tracking DML operations.
+	 */
 	@SuppressWarnings('PMD.PropertyNamingConventions')
 	global static MockDml.Database MockDatabase { get; private set; }
 
+	/**
+	 * @description History of all lead conversion operations.
+	 */
 	@SuppressWarnings('PMD.PropertyNamingConventions')
 	global static final MockDml.RecordHistory CONVERTED {
 		get {
 			return MockDml.MockDatabase?.converted;
 		}
 	}
+	/**
+	 * @description History of all delete operations.
+	 */
 	@SuppressWarnings('PMD.PropertyNamingConventions')
 	global static final MockDml.RecordHistory DELETED {
 		get {
 			return MockDml.MockDatabase?.deleted;
 		}
 	}
+	/**
+	 * @description History of all insert operations.
+	 */
 	@SuppressWarnings('PMD.PropertyNamingConventions')
 	global static final MockDml.RecordHistory INSERTED {
 		get {
 			return MockDml.MockDatabase?.inserted;
 		}
 	}
+	/**
+	 * @description History of all platform event publish operations.
+	 */
 	@SuppressWarnings('PMD.PropertyNamingConventions')
 	global static MockDml.PlatformEventHistory PUBLISHED {
 		get {
 			return MockDml.MockDatabase?.published;
 		}
 	}
+	/**
+	 * @description History of all recycle bin purge operations.
+	 */
 	@SuppressWarnings('PMD.PropertyNamingConventions')
 	global static final MockDml.RecordHistory PURGED {
 		get {
 			return MockDml.MockDatabase?.purged;
 		}
 	}
+	/**
+	 * @description History of all undelete operations.
+	 */
 	@SuppressWarnings('PMD.PropertyNamingConventions')
 	global static final MockDml.RecordHistory UNDELETED {
 		get {
 			return MockDml.MockDatabase?.undeleted;
 		}
 	}
+	/**
+	 * @description History of all update operations.
+	 */
 	@SuppressWarnings('PMD.PropertyNamingConventions')
 	global static final MockDml.RecordHistory UPDATED {
 		get {
 			return MockDml.MockDatabase?.updated;
 		}
 	}
+	/**
+	 * @description History of all upsert operations.
+	 */
 	@SuppressWarnings('PMD.PropertyNamingConventions')
 	global static final MockDml.RecordHistory UPSERTED {
 		get {
@@ -153,14 +180,41 @@ global class MockDml extends Dml {
 	global class Database {
 		// Note: When this configuration flag is "true" [default],
 		// MockDml will mimic a real Database when a rollback occurs
+		/**
+		 * @description Whether to reset mock database state on rollback operations.
+		 */
 		global Boolean resetOnRollback;
+		/**
+		 * @description History of lead conversion operations.
+		 */
 		global MockDml.RecordHistory converted { get; private set; }
+		/**
+		 * @description History of delete operations.
+		 */
 		global MockDml.RecordHistory deleted { get; private set; }
+		/**
+		 * @description History of insert operations.
+		 */
 		global MockDml.RecordHistory inserted { get; private set; }
+		/**
+		 * @description History of platform event publish operations.
+		 */
 		global MockDml.PlatformEventHistory published { get; private set; }
+		/**
+		 * @description History of recycle bin purge operations.
+		 */
 		global MockDml.RecordHistory purged { get; private set; }
+		/**
+		 * @description History of undelete operations.
+		 */
 		global MockDml.RecordHistory undeleted { get; private set; }
+		/**
+		 * @description History of update operations.
+		 */
 		global MockDml.RecordHistory updated { get; private set; }
+		/**
+		 * @description History of upsert operations.
+		 */
 		global MockDml.RecordHistory upserted { get; private set; }
 
 		private Database() {

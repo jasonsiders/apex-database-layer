@@ -570,6 +570,11 @@ private class MockSoqlTest {
 
 	// **** INNER **** //
 	private class CustomTaskQueryLogic implements MockSoql.Simulator {
+		/**
+		 * @description Simulates a query that returns Task records based on previously inserted Contact records
+		 * @param queryToMock The SOQL query being mocked
+		 * @return List of Task objects based on inserted Contact records
+		 */
 		public List<Object> simulateQuery(Soql queryToMock) {
 			// For each inserted contact, return a Task
 			List<Task> results = new List<Task>();
@@ -591,6 +596,11 @@ private class MockSoqlTest {
 		// This example returns a different list of records, depending on the from entity
 		// You can use this in conjunction with MockSoql.setGlobalMock to dynamically inject query results into multiple soql objects,
 		// without needing to directly asssign each their own unique simulator object
+		/**
+		 * @description Dynamically simulates query results based on the SObject type being queried
+		 * @param queryToMock The SOQL query being mocked
+		 * @return List of mock records based on the queried SObject type
+		 */
 		public List<Object> simulateQuery(Soql queryToMock) {
 			String entity = queryToMock?.entity;
 			if (entity == Account.SObjectType.toString()) {
@@ -615,6 +625,12 @@ private class MockSoqlTest {
 		public Integer numRecords;
 		public String profileName;
 
+		/**
+		 * @description Wraps profile name and record count data for testing purposes
+		 * @param profileName The profile name to wrap
+		 * @param numRecords The number of records to wrap
+		 * @return This SampleWrapper instance for method chaining
+		 */
 		public SampleWrapper wrap(String profileName, Integer numRecords) {
 			this.profileName = profileName;
 			this.numRecords = numRecords;

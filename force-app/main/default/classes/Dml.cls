@@ -1657,6 +1657,9 @@ global inherited sharing virtual class Dml {
 		// ** Getters
 		// These properties are read-only, and are used for JSON/output purposes,
 		// ex., since some of the main class properties are not JSON-serializable
+		/**
+		 * @description Whether all operations must succeed or all fail.
+		 */
 		global transient Boolean allOrNone {
 			get {
 				// Is not actually stored as a value; mirrors the DmlOptions' OptAllOrNone value
