@@ -49,37 +49,84 @@ global class MockRecord {
 	}
 
 	// **** MEMBER **** //
+	/**
+	 * @description Adds multiple records to a related list for SOQL simulation.
+	 * @param relationship The child relationship to add records to
+	 * @param records List of SObject records to add
+	 * @return This MockRecord instance for method chaining
+	 */
 	global MockRecord addToRelatedList(Schema.ChildRelationship relationship, List<SObject> records) {
-		// Adds to the related list used to simulate a child object retrieval in SOQL; ex., SELECT Id, (SELECT Id FROM Contacts) FROM Account LIMIT 1
 		return this.addUntypedChildRecords(relationship, records);
 	}
 
+	/**
+	 * @description Adds multiple records to a related list using a lookup field.
+	 * @param lookupField The lookup field that defines the relationship
+	 * @param records List of SObject records to add
+	 * @return This MockRecord instance for method chaining
+	 */
 	global MockRecord addToRelatedList(SObjectField lookupField, List<SObject> records) {
 		Schema.ChildRelationship relationship = this.getChildRelationship(lookupField);
 		return this.addToRelatedList(relationship, records);
 	}
 
+	/**
+	 * @description Adds a single record to a related list for SOQL simulation.
+	 * @param relationship The child relationship to add the record to
+	 * @param record The SObject record to add
+	 * @return This MockRecord instance for method chaining
+	 */
 	global MockRecord addToRelatedList(Schema.ChildRelationship relationship, SObject record) {
 		return this.addToRelatedList(relationship, new List<SObject>{ record });
 	}
 
+	/**
+	 * @description Adds a single record to a related list using a lookup field.
+	 * @param lookupField The lookup field that defines the relationship
+	 * @param record The SObject record to add
+	 * @return This MockRecord instance for method chaining
+	 */
 	global MockRecord addToRelatedList(SObjectField lookupField, SObject record) {
 		return this.addToRelatedList(lookupField, new List<SObject>{ record });
 	}
 
+	/**
+	 * @description Adds multiple MockRecord instances to a related list.
+	 * @param relationship The child relationship to add records to
+	 * @param mocks List of MockRecord instances to add
+	 * @return This MockRecord instance for method chaining
+	 */
 	global MockRecord addToRelatedList(Schema.ChildRelationship relationship, List<MockRecord> mocks) {
 		return this.addUntypedChildRecords(relationship, mocks);
 	}
 
+	/**
+	 * @description Adds multiple MockRecord instances to a related list using a lookup field.
+	 * @param lookupField The lookup field that defines the relationship
+	 * @param records List of MockRecord instances to add
+	 * @return This MockRecord instance for method chaining
+	 */
 	global MockRecord addToRelatedList(SObjectField lookupField, List<MockRecord> records) {
 		Schema.ChildRelationship relationship = this.getChildRelationship(lookupField);
 		return this.addToRelatedList(relationship, records);
 	}
 
+	/**
+	 * @description Adds a single MockRecord instance to a related list.
+	 * @param relationship The child relationship to add the record to
+	 * @param record The MockRecord instance to add
+	 * @return This MockRecord instance for method chaining
+	 */
 	global MockRecord addToRelatedList(Schema.ChildRelationship relationship, MockRecord record) {
 		return this.addToRelatedList(relationship, new List<MockRecord>{ record });
 	}
 
+	/**
+	 * @description Adds a single MockRecord instance to a related list using a lookup field.
+	 * @param lookupField The lookup field that defines the relationship
+	 * @param record The MockRecord instance to add
+	 * @return This MockRecord instance for method chaining
+	 */
 	global MockRecord addToRelatedList(SObjectField lookupField, MockRecord record) {
 		return this.addToRelatedList(lookupField, new List<MockRecord>{ record });
 	}
@@ -112,13 +159,22 @@ global class MockRecord {
 		return (SObject) this.get(relationshipName);
 	}
 
+	/**
+	 * @description Retrieves the related list for the specified child relationship.
+	 * @param relationship The child relationship to retrieve records for
+	 * @return List of SObject records in the related list
+	 */
 	global List<SObject> getRelatedList(Schema.ChildRelationship relationship) {
-		// Retrieves the underlying List<SObject> that makes up the corresponding related list, ex., 'account?.Contacts'
 		String relationshipName = relationship?.getRelationshipName();
 		MockRecord.RelatedList relatedList = (MockRecord.RelatedList) this.get(relationshipName);
 		return relatedList?.getRecords();
 	}
 
+	/**
+	 * @description Retrieves the related list for the specified lookup field.
+	 * @param lookupField The lookup field that defines the relationship
+	 * @return List of SObject records in the related list
+	 */
 	global List<SObject> getRelatedList(SObjectField lookupField) {
 		Schema.ChildRelationship relationship = this.getChildRelationship(lookupField);
 		return this.getRelatedList(relationship);

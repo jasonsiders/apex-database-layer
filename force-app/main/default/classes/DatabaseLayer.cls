@@ -102,6 +102,9 @@ global class DatabaseLayer {
 	 * @description Factory class responsible for provisioning SOQL instances with proper configuration and plugin support.
 	 */
 	global class SoqlProvider {
+		/**
+		 * @description The currently configured SOQL plugin for pre/post processing
+		 */
 		public Soql.PreAndPostProcessor plugin { get; private set; }
 		private Boolean useMocks { get; private set; }
 

@@ -111,10 +111,19 @@ public without sharing class DatabaseLayerUtils {
 		// Note: In the future, consider upgrading this to use actual System.Cache.
 		private Map<SObjectField, Schema.ChildRelationship> relationshipMap;
 
+		/**
+		 * @description Constructor that initializes the cached relationships for the specified object type.
+		 * @param objectType The SObject type to cache relationships for
+		 */
 		public CachedDescribe(SObjectType objectType) {
 			this.mapRelationships(objectType);
 		}
 
+		/**
+		 * @description Retrieves the cached child relationship for the specified field.
+		 * @param field The SObjectField to get the relationship for
+		 * @return The corresponding Schema.ChildRelationship or null if not found
+		 */
 		public Schema.ChildRelationship get(SObjectField field) {
 			return this.relationshipMap?.get(field);
 		}

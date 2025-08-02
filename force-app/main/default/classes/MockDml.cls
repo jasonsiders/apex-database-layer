@@ -591,13 +591,21 @@ global class MockDml extends Dml {
 			return this.savepointMap?.values();
 		}
 
+		/**
+		 * @description Retrieves a MockDml.Savepoint by its index.
+		 * @param index The index of the savepoint to retrieve
+		 * @return The MockDml.Savepoint at the specified index
+		 */
 		global MockDml.Savepoint get(Integer index) {
-			// Retrieves a MockDml.Savepoint by its index:
 			return this.savepointMap?.get(index);
 		}
 
+		/**
+		 * @description Retrieves a System.Savepoint's MockDml.Savepoint wrapper.
+		 * @param savepoint The System.Savepoint to get the wrapper for
+		 * @return The corresponding MockDml.Savepoint wrapper
+		 */
 		global MockDml.Savepoint get(System.Savepoint savepoint) {
-			// Retrieves a System.Savepoint's MockDml.Savepoint wrapper:
 			Integer index = this.getIndexFrom(savepoint);
 			return this.get(index);
 		}

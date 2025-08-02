@@ -35,6 +35,9 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		this();
 	}
 
+	/**
+	 * @description Protected constructor for Soql instance initialization.
+	 */
 	protected Soql() {
 		super();
 	}
@@ -240,24 +243,47 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		private String innerFieldName;
 		private Function function;
 
+		/**
+		 * @description Constructor for aggregation with function and field name.
+		 * @param function The aggregation function to apply
+		 * @param innerFieldName The field name to aggregate
+		 */
 		global Aggregation(Soql.Function function, String innerFieldName) {
 			this.alias = '';
 			this.innerFieldName = innerFieldName;
 			this.function = function;
 		}
 
+		/**
+		 * @description Constructor for aggregation with function and SObjectField.
+		 * @param function The aggregation function to apply
+		 * @param field The SObjectField to aggregate
+		 */
 		global Aggregation(Soql.Function function, SObjectField field) {
 			this(function, field?.toString());
 		}
 
+		/**
+		 * @description Constructor for aggregation with function and parent field.
+		 * @param function The aggregation function to apply
+		 * @param field The parent field to aggregate
+		 */
 		global Aggregation(Soql.Function function, Soql.ParentField field) {
 			this(function, field?.toString());
 		}
 
+		/**
+		 * @description Constructor for aggregation with only function.
+		 * @param function The aggregation function to apply
+		 */
 		global Aggregation(Soql.Function function) {
 			this(function, '');
 		}
 
+		/**
+		 * @description Returns the aggregation as a formatted SOQL string.
+		 * @return The aggregation formatted for SOQL queries
+		 */
 		global override String toString() {
 			String formatted = String.format(
 				'{0}({1}) {2}',
@@ -266,6 +292,11 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			return formatted?.trim();
 		}
 
+		/**
+		 * @description Sets an alias for the aggregation result.
+		 * @param alias The alias to use for this aggregation
+		 * @return This Aggregation instance for method chaining
+		 */
 		global Soql.Aggregation withAlias(String alias) {
 			this.alias = alias;
 			return this;
