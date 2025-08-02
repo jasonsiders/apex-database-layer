@@ -12,7 +12,8 @@ global inherited sharing virtual class Dml {
 	private static Dml.PreAndPostProcessor plugin;
 
 	/**
-	 * @description Constructor for Dml instance. Note: Should not be called directly - use DatabaseLayer.Dml property instead.
+	 * @description Constructor for Dml instance.
+	 * Note: Should not be called directly - use DatabaseLayer.Dml property instead.
 	 * @param factory The DatabaseLayer factory instance
 	 */
 	public Dml(DatabaseLayer factory) {

@@ -297,12 +297,12 @@ global class MockRecord {
 	// **** OVERRIDES **** //
 	/**
 	 * @description Compares this MockRecord with another object for equality.
+	 * Overrides the standard equals() method by delegating to the underlying SObject's equals implementation.
+	 * Note: While this functionally overrides the equals() method, we don't technically override it
 	 * @param obj The object to compare with
 	 * @return True if the objects are equal, false otherwise
 	 */
 	global Boolean equals(Object obj) {
-		// Use the underlying SObject's equals value
-		// Note: For some reason, we don't technically override this method, even though we functionally do:
 		return this.toSObject()?.equals(obj);
 	}
 

@@ -195,7 +195,9 @@ global class MockSoql extends Soql {
 	}
 
 	/**
-	 * @description Mock implementation of Database.QueryLocator for batch processing simulation.
+	 * @description Mock implementation of Database.QueryLocator for testing batch processing operations.
+	 * Provides controllable query locator behavior without requiring actual database queries.
+	 * Used primarily in unit tests to simulate batch job scenarios.
 	 */
 	global class QueryLocator extends Soql.QueryLocator {
 		private String query;

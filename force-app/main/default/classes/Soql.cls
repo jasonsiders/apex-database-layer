@@ -5,7 +5,6 @@
 	'PMD.AvoidGlobalModifier,PMD.CognitiveComplexity,PMD.CyclomaticComplexity,PMD.ExcessiveClassLength,PMD.ExcessivePublicCount'
 )
 global inherited sharing virtual class Soql extends Soql.Builder {
-	// These operators are frequently used in WHERE clauses
 	global static final Operator EQUALS = new Soql.Operator('=');
 	global static final Operator NOT_EQUALS = new Soql.Operator('!=');
 	global static final Operator IN_COLLECTION = new Soql.Operator('IN');
@@ -127,6 +126,9 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	}
 
 	// **** ENUMS *** //
+	/**
+	 * @description SOQL aggregate and date functions available for use in SELECT clauses.
+	 */
 	global enum Function {
 		AVG,
 		CALENDAR_MONTH,
@@ -150,16 +152,25 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		WEEK_IN_YEAR
 	}
 
+	/**
+	 * @description Logical operators for combining criteria in WHERE clauses.
+	 */
 	global enum LogicType {
 		ALL_CONDITIONS,
 		ANY_CONDITIONS
 	}
 
+	/**
+	 * @description Null ordering options for ORDER BY clauses.
+	 */
 	global enum NullOrder {
 		NULLS_FIRST,
 		NULLS_LAST
 	}
 
+	/**
+	 * @description Types of SOQL operations that can be performed.
+	 */
 	global enum Operation {
 		AGGREGATE_QUERY,
 		COUNT_QUERY,
@@ -168,6 +179,9 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		QUERY
 	}
 
+	/**
+	 * @description Row locking scopes for FOR UPDATE clauses.
+	 */
 	global enum Scope {
 		// https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_select_using_scope.htm
 		DELEGATED,
@@ -179,11 +193,17 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		TEAM
 	}
 
+	/**
+	 * @description Sort directions for ORDER BY clauses.
+	 */
 	global enum SortDirection {
 		ASCENDING,
 		DESCENDING
 	}
 
+	/**
+	 * @description Usage types for FOR VIEW and FOR UPDATE clauses.
+	 */
 	global enum Usage {
 		// https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_select_for_view.htm
 		// https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_select_for_reference.htm
@@ -196,11 +216,9 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 
 	// **** INTERFACE **** //
 	/**
-	 * @description Interface for objects that can be used in WHERE and HAVING clauses.
+	 * @description Marker interface for criteria that can be used in WHERE/HAVING clauses.
 	 */
 	global interface Criteria {
-		// Mostly a marker interface, but also used to coerce toString()
-		// Use this to denote classes that can be used in WHERE/HAVING clauses
 		/**
 		 * @description Returns the string representation of this criteria.
 		 * @return String representation for use in SOQL clauses
@@ -232,11 +250,9 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	}
 
 	/**
-	 * @description Interface for objects that can be used in SELECT clauses.
+	 * @description Marker interface for objects that can be used in SELECT clauses.
 	 */
 	global interface Selectable {
-		// Mostly a marker interface, but also used to coerce toString()
-		// Use this to denote classes that can be used in SELECT clauses
 		/**
 		 * @description Returns the string representation of this selectable.
 		 * @return String representation for use in SELECT clauses
@@ -412,7 +428,8 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		global transient System.AccessLevel accessLevel { get; protected set; }
 		/**
-		 * @description Map of bind variables for parameterized queries.
+		 * @description Map containing bind variable name-value pairs for parameterized SOQL queries.
+		 * Keys are variable names (without ':' prefix), values are the bound objects.
 		 */
 		global Map<String, Object> binds { get; protected set; }
 		/**
@@ -464,7 +481,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @description Serializable representation of the access level.
 		 */
 		private String accessLevelName {
-			// System.AccessLevel isn't serializable,
+			// Note: System.AccessLevel isn't serializable,
 			// and it does not have an enum name() property,
 			// and toString() does not output its name either:
 			get {
@@ -588,7 +605,6 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			return this;
 		}
 
-		// NOTE: With the advent of PR #49, we should consider making the string-based SELECT methods protected
 		/**
 		 * @description Adds a field to the SELECT clause with an alias.
 		 * @param fieldName The field name to select
@@ -645,7 +661,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		/**
-		 * @description Adds up to 5 SObjectFields to the SELECT clause.
+		 * @description Adds 5 SObjectFields to the SELECT clause.
 		 * @param field1 First SObjectField to select
 		 * @param field2 Second SObjectField to select
 		 * @param field3 Third SObjectField to select
@@ -661,12 +677,12 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			SObjectField field4,
 			SObjectField field5
 		) {
-			// Currently supporting up to 5 SObjectFields per addSelect call:
+			// Currently supporting 5 SObjectFields per addSelect call:
 			return this.addSelect(new List<SObjectField>{ field1, field2, field3, field4, field5 });
 		}
 
 		/**
-		 * @description Adds up to 4 SObjectFields to the SELECT clause.
+		 * @description Adds 4 SObjectFields to the SELECT clause.
 		 * @param field1 First SObjectField to select
 		 * @param field2 Second SObjectField to select
 		 * @param field3 Third SObjectField to select
@@ -684,7 +700,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		/**
-		 * @description Adds up to 3 SObjectFields to the SELECT clause.
+		 * @description Adds 3 SObjectFields to the SELECT clause.
 		 * @param field1 First SObjectField to select
 		 * @param field2 Second SObjectField to select
 		 * @param field3 Third SObjectField to select
@@ -730,7 +746,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		/**
-		 * @description Adds up to 5 Selectable objects to the SELECT clause.
+		 * @description Adds 5 Selectable objects to the SELECT clause.
 		 * @param field1 First Selectable object to select
 		 * @param field2 Second Selectable object to select
 		 * @param field3 Third Selectable object to select
@@ -746,12 +762,12 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			Soql.Selectable field4,
 			Soql.Selectable field5
 		) {
-			// Currently supporting up to 5 selectables per addSelect call:
+			// Currently supporting 5 selectables per addSelect call:
 			return this.addSelect(new List<Soql.Selectable>{ field1, field2, field3, field4, field5 });
 		}
 
 		/**
-		 * @description Adds up to 4 Selectable objects to the SELECT clause.
+		 * @description Adds 4 Selectable objects to the SELECT clause.
 		 * @param field1 First Selectable object to select
 		 * @param field2 Second Selectable object to select
 		 * @param field3 Third Selectable object to select
@@ -769,7 +785,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		/**
-		 * @description Adds up to 3 Selectable objects to the SELECT clause.
+		 * @description Adds 3 Selectable objects to the SELECT clause.
 		 * @param field1 First Selectable object to select
 		 * @param field2 Second Selectable object to select
 		 * @param field3 Third Selectable object to select
@@ -1547,7 +1563,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		/**
-		 * @description Constructor for up to 5 relationship levels deep.
+		 * @description Constructor for 5 relationship levels deep.
 		 * @param relationship1 First relationship field
 		 * @param relationship2 Second relationship field
 		 * @param relationship3 Third relationship field
@@ -1576,7 +1592,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		/**
-		 * @description Constructor for up to 4 relationship levels deep.
+		 * @description Constructor for 4 relationship levels deep.
 		 * @param relationship1 First relationship field
 		 * @param relationship2 Second relationship field
 		 * @param relationship3 Third relationship field
@@ -1594,7 +1610,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		/**
-		 * @description Constructor for up to 3 relationship levels deep.
+		 * @description Constructor for 3 relationship levels deep.
 		 * @param relationship1 First relationship field
 		 * @param relationship2 Second relationship field
 		 * @param relationship3 Third relationship field
@@ -1610,7 +1626,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		/**
-		 * @description Constructor for up to 2 relationship levels deep.
+		 * @description Constructor for 2 relationship levels deep.
 		 * @param relationship1 First relationship field
 		 * @param relationship2 Second relationship field
 		 * @param field The target field

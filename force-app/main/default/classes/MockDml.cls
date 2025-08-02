@@ -178,12 +178,11 @@ global class MockDml extends Dml {
 	 * @description Represents a mock Salesforce database that tracks all DML operations and their history.
 	 */
 	global class Database {
-		// Note: When this configuration flag is "true" [default],
-		// MockDml will mimic a real Database when a rollback occurs
 		/**
 		 * @description Whether to reset mock database state on rollback operations.
+		 * When this configuration flag is true (default), MockDml will mimic a real Database when a rollback occurs.
 		 */
-		global Boolean resetOnRollback;
+		global Boolean resetOnRollback { get; set; }
 		/**
 		 * @description History of lead conversion operations.
 		 */
@@ -231,6 +230,9 @@ global class MockDml extends Dml {
 
 		/**
 		 * @description Creates a snapshot of the current mock database state.
+		 * Note: This operation uses JSON serialization/deserialization for deep copying,
+		 * which may be expensive for large datasets. Consider the resetOnRollback flag setting
+		 * when using this in performance-critical scenarios.
 		 * @return A deep copy of the current database state
 		 */
 		global Database snapshot() {

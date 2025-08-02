@@ -15,6 +15,7 @@ public without sharing class DatabaseLayerUtils {
 	public final DatabaseLayerUtils.MetadataSelector MetadataSelector { get; private set; }
 	/**
 	 * @description Utility for managing plugin implementations.
+	 * Note: Plugins are loaded dynamically based on custom metadata configuration.
 	 */
 	@SuppressWarnings('PMD.PropertyNamingConventions')
 	public final DatabaseLayerUtils.Plugins Plugins { get; private set; }
@@ -33,6 +34,7 @@ public without sharing class DatabaseLayerUtils {
 	// **** INNER **** //
 	/**
 	 * @description Utility for retrieving and caching Schema.ChildRelationship objects from SObjectFields.
+	 * Provides efficient access to relationship metadata with built-in caching for performance.
 	 */
 	public class ChildRelationships {
 		private Map<SObjectType, DatabaseLayerUtils.CachedDescribe> describes;

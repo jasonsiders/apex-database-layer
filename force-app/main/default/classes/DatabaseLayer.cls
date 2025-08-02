@@ -108,6 +108,11 @@ global class DatabaseLayer {
 		public Soql.PreAndPostProcessor plugin { get; private set; }
 		private Boolean useMocks { get; private set; }
 
+		/**
+		 * @description Initializes a new SOQL provider instance with default configuration.
+		 * Sets up plugins and configures for real database operations by default.
+		 * @param factory The parent DatabaseLayer factory instance
+		 */
 		private SoqlProvider(DatabaseLayer factory) {
 			this.useMocks = false;
 			this.initPlugins();
