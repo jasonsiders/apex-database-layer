@@ -1,29 +1,31 @@
+/**
+ * @description Handles all DML operations with the Salesforce database. Provides a mockable interface for CRUD operations, plugins, and comprehensive parameter support.
+ */
 @SuppressWarnings(
-	'PMD.ApexDoc,PMD.AvoidGlobalModifier,PMD.CognitiveComplexity,PMD.CyclomaticComplexity,PMD.ExcessiveClassLength,PMD.ExcessivePublicCount'
+	'PMD.AvoidGlobalModifier,PMD.CognitiveComplexity,PMD.CyclomaticComplexity,PMD.ExcessiveClassLength,PMD.ExcessivePublicCount'
 )
 global inherited sharing virtual class Dml {
-	/**
-	 * This class is responsible for performing CRUD operations with the Salesforce database.
-	 * While the apex language allows developers to directly interact with the database,
-	 * use of these methods does not facilitate mocking.
-	 * Use this class instead of the DML keywords [`insert`, `update`, `delete`, etc],
-	 * or the corresponding Database methods [ex., `Database.insert()`].
-	 * Each of this class's methods eventually ties back to an underlying `Database` method,
-	 * ex., `new Dml().doInsert()` -> `Database.insert()`.
-	 * Use the included `MockDml` class to perform Mock DML
-	 **/
 	private static final System.AccessLevel DEFAULT_ACCESS_LEVEL = System.AccessLevel.USER_MODE;
 	private static final DataSource.AsyncDeleteCallback DEFAULT_DELETE_CALLBACK = new Dml.EmptyDeleteCallback();
 	private static final DataSource.AsyncSaveCallback DEFAULT_SAVE_CALLBACK = new Dml.EmptySaveCallback();
 	private static final SObjectField PLUGIN_FIELD = DatabaseLayerSetting__mdt.DmlPreAndPostProcessor__c;
 	private static Dml.PreAndPostProcessor plugin;
 
+	/**
+	 * @description Constructor for Dml instance. Note: Should not be called directly - use DatabaseLayer.Dml property instead.
+	 * @param factory The DatabaseLayer factory instance
+	 */
 	public Dml(DatabaseLayer factory) {
-		// Note: Dml classes can't be constructed manually; instead, use the DatabaseLayer.Dml static property
 		this.initPlugins();
 	}
 
-	// ** Convert Methods
+	/**
+	 * @description Converts leads using the specified options and access level.
+	 * @param leadsToConvert List of Database.LeadConvert objects to process
+	 * @param options DML options for the conversion operation
+	 * @param accessLevel System access level for the operation
+	 * @return List of Database.LeadConvertResult objects
+	 */
 	global List<Database.LeadConvertResult> doConvert(
 		List<Database.LeadConvert> leadsToConvert,
 		Database.DmlOptions options,
@@ -35,6 +37,13 @@ global inherited sharing virtual class Dml {
 		return (List<Database.LeadConvertResult>) request?.process();
 	}
 
+	/**
+	 * @description Converts leads using the specified all-or-none setting and access level.
+	 * @param leadsToConvert List of Database.LeadConvert objects to process
+	 * @param allOrNone Whether all operations must succeed or all fail
+	 * @param accessLevel System access level for the operation
+	 * @return List of Database.LeadConvertResult objects
+	 */
 	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
 	global List<Database.LeadConvertResult> doConvert(
 		List<Database.LeadConvert> leadsToConvert,
@@ -44,6 +53,12 @@ global inherited sharing virtual class Dml {
 		return this.doConvert(leadsToConvert, Dml.initDmlOptions(allOrNone), accessLevel);
 	}
 
+	/**
+	 * @description Converts leads using the specified options and default access level.
+	 * @param leadsToConvert List of Database.LeadConvert objects to process
+	 * @param options DML options for the conversion operation
+	 * @return List of Database.LeadConvertResult objects
+	 */
 	global List<Database.LeadConvertResult> doConvert(
 		List<Database.LeadConvert> leadsToConvert,
 		Database.DmlOptions options
@@ -742,9 +757,14 @@ global inherited sharing virtual class Dml {
 	}
 
 	// **** PRIVATE **** //
+	/**
+	 * @description Initializes a DML request object for the specified operation.
+	 * @param operation The DML operation to perform
+	 * @param records List of records to operate on
+	 * @return A configured Dml.Request object
+	 */
 	@TestVisible
 	protected virtual Dml.Request initRequest(Dml.Operation operation, List<Object> records) {
-		// Initialize a Dml.Request; mocks can override this method to return their own implementation which does not perform DML
 		return new Dml.Request(operation, records);
 	}
 
@@ -758,14 +778,12 @@ global inherited sharing virtual class Dml {
 		return records;
 	}
 
+	/**
+	 * @description Initializes DML plugins based on custom metadata configuration.
+	 */
 	@TestVisible
 	private void initPlugins() {
-		// Initializes plugins based on the related custom metadata record
-		// In production use cases, this will only happen once per transaction
-		// In @IsTest uses cases, this happens every time the caller switches from Dml/MockDml
-		// Test callers can also call this method directly to recalculate the plugins after injecting mock metadata:
 		Dml.Plugin = (Dml.PreAndPostProcessor) DatabaseLayer.Utils?.Plugins?.initPlugin(PLUGIN_FIELD);
-		// ... may add more plugins here in the future!
 	}
 
 	// **** STATIC **** //
@@ -776,22 +794,22 @@ global inherited sharing virtual class Dml {
 	}
 
 	// **** INNER **** //
+	/**
+	 * @description Default callback implementation for async delete operations when no callback is specified.
+	 */
 	@TestVisible
 	private class EmptyDeleteCallback extends DataSource.AsyncDeleteCallback {
-		/**
-		 *  If a callback isn't defined, doDeleteAsync() will use this class to gracefully handle callbacks
-		 **/
 		@SuppressWarnings('PMD.EmptyStatementBlock')
 		public override void processDelete(Database.DeleteResult result) {
 			// Do nothing
 		}
 	}
 
+	/**
+	 * @description Default callback implementation for async save operations when no callback is specified.
+	 */
 	@TestVisible
 	private class EmptySaveCallback extends DataSource.AsyncSaveCallback {
-		/**
-		 * If a callback isn't defined, doInsertAsync() & doUpdateAsync will use this class to gracefully handle callbacks
-		 **/
 		@SuppressWarnings('PMD.EmptyStatementBlock')
 		public override void processSave(Database.SaveResult result) {
 			// Do nothing
@@ -815,11 +833,10 @@ global inherited sharing virtual class Dml {
 		void processDmlError(Dml.Request request, Exception error);
 	}
 
+	/**
+	 * @description Encapsulates a single DML operation with all its parameters and execution logic.
+	 */
 	global inherited sharing virtual class Request {
-		/**
-		 * Represents a single call to one of the above DML methods, plus all its parameters
-		 * Centralizing this information allows us to output information about the operation taking place
-		 */
 		// ** Always Required:
 		global Dml.Operation operation { get; protected set; }
 		// ** Conditionally Required:

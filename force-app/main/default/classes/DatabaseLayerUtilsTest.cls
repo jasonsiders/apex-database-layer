@@ -1,4 +1,4 @@
-@SuppressWarnings('PMD.ApexDoc,PMD.ApexUnitTestClassShouldHaveRunAs')
+@SuppressWarnings('PMD.ApexUnitTestClassShouldHaveRunAs')
 @IsTest
 private class DatabaseLayerUtilsTest {
 	@IsTest

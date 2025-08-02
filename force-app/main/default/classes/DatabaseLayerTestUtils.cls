@@ -1,4 +1,6 @@
-@SuppressWarnings('PMD.ApexDoc')
+/**
+ * @description Test utility class providing common functionality and spy implementations for framework testing.
+ */
 @IsTest
 public class DatabaseLayerTestUtils {
 	// Note: These properties do not use traditional naming conventions to support a 'namespace-like' API
@@ -7,15 +9,20 @@ public class DatabaseLayerTestUtils {
 	@SuppressWarnings('PMD.FieldNamingConventions')
 	public static final PreAndPostProcessorSpy SoqlPluginSpy = new PreAndPostProcessorSpy();
 
+	/**
+	 * @description Creates a mock DatabaseLayerSetting__mdt for testing and injects it into the metadata selector.
+	 * @return The created test settings object
+	 */
 	public static DatabaseLayerSetting__mdt initSettings() {
-		// Initialize a DatabaseLayerSetting__mdt settings object,
-		// and override the metadata selector's logic to return this object instead of what's in the org:
 		DatabaseLayerSetting__mdt setting = new DatabaseLayerSetting__mdt();
 		DatabaseLayer.Utils.MetadataSelector.settings = new List<DatabaseLayerSetting__mdt>{ setting };
 		return setting;
 	}
 
 	// **** INNER **** //
+	/**
+	 * @description Spy implementation for tracking plugin method invocations during testing.
+	 */
 	public class PreAndPostProcessorSpy {
 		public Integer numPreCalls { get; private set; }
 		public Integer numPostCalls { get; private set; }
@@ -28,6 +35,9 @@ public class DatabaseLayerTestUtils {
 		}
 	}
 
+	/**
+	 * @description Sample plugin implementation for testing both DML and SOQL processing hooks.
+	 */
 	public class SamplePlugin implements Dml.PreAndPostProcessor, Soql.PreAndPostProcessor {
 		public void processPreDml(Dml.Request request) {
 			// Should be able to serialize the Dml.Request object:

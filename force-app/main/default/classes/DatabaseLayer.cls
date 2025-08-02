@@ -1,10 +1,8 @@
-@SuppressWarnings('PMD.ApexDoc,PMD.AvoidGlobalModifier')
+/**
+ * @description Main entry point for the Apex Database Layer library. Provides singleton access to DML and SOQL providers with integrated mocking capabilities.
+ */
+@SuppressWarnings('PMD.AvoidGlobalModifier')
 global class DatabaseLayer {
-	/**
-	 * Handles interactions with the Salesforce Database, via DML and SOQL.
-	 * Use the `Dml` and `Soql` static properties to get the correct instance of each.
-	 * Automatically inject mock versions of these classes via the `useMocks()` method.
-	 **/
 	public static final DatabaseLayerUtils UTILS;
 	private static final DatabaseLayer INSTANCE;
 
@@ -22,71 +20,88 @@ global class DatabaseLayer {
 	}
 
 	// **** STATIC **** //
-	// These static properties are the primary way that callers interact with the Database Layer
+	/**
+	 * @description Primary access point for DML operations. Returns the currently configured DML provider instance.
+	 * @return Current DML provider (real or mock based on configuration)
+	 */
 	@SuppressWarnings('PMD.PropertyNamingConventions')
 	global static Dml Dml {
 		get {
-			// Returns the current Dml instance
 			return INSTANCE?.currentDml;
 		}
 	}
+	/**
+	 * @description Primary access point for SOQL operations. Returns the currently configured SOQL provider instance.
+	 * @return Current SOQL provider (real or mock based on configuration)
+	 */
 	@SuppressWarnings('PMD.PropertyNamingConventions')
 	global static SoqlProvider Soql {
 		get {
-			// Returns a new copy of the current Soql instance on each reference
 			return INSTANCE?.currentSoql;
 		}
 	}
 
+	/**
+	 * @description Switches the DML provider to use mock implementation for testing.
+	 * @return The mock DML instance that was configured
+	 */
 	@TestVisible
 	private static MockDml useMockDml() {
-		// Replace the current Dml instances with mocks of these types
-		// Subsuquent calls to DatabaseLayer.Dml will now return mocks
 		INSTANCE.currentDml = new MockDml(INSTANCE);
 		return (MockDml) INSTANCE.currentDml;
 	}
 
+	/**
+	 * @description Switches the SOQL provider to use mock implementation for testing.
+	 * @return The SOQL provider configured for mocking
+	 */
 	@TestVisible
 	private static SoqlProvider useMockSoql() {
-		// Replace the current Dml instances with mocks of these types
-		// Subsuquent calls to DatabaseLayer.Soql will now return mocks
 		return INSTANCE.currentSoql?.useMocks(true);
 	}
 
+	/**
+	 * @description Switches both DML and SOQL providers to use mock implementations for testing.
+	 */
 	@TestVisible
 	private static void useMocks() {
-		// Use mock data for both DML and SOQL operations going forward.
 		DatabaseLayer.useMockDml();
 		DatabaseLayer.useMockSoql();
 	}
 
+	/**
+	 * @description Switches the DML provider back to real database operations.
+	 * @return The real DML instance that was configured
+	 */
 	@TestVisible
 	private static Dml useRealDml() {
-		// Replace the current Dml instances with the real/non-mock versions of these types
-		// Subsuquent calls to DatabaseLayer.Dml will now return these versions.
 		INSTANCE.currentDml = new Dml(INSTANCE);
 		return INSTANCE.currentDml;
 	}
 
+	/**
+	 * @description Switches the SOQL provider back to real database operations.
+	 * @return The SOQL provider configured for real operations
+	 */
 	@TestVisible
 	private static SoqlProvider useRealSoql() {
-		// Replace the current Dml instances with real/non-mock versions of these types
-		// Subsuquent calls to DatabaseLayer.Soql will now return these versions.
 		return INSTANCE.currentSoql?.useMocks(false);
 	}
 
+	/**
+	 * @description Switches both DML and SOQL providers back to real database operations.
+	 */
 	@TestVisible
 	private static void useRealData() {
-		// Use real data for both DML and SOQL operations going forward.
 		DatabaseLayer.useRealDml();
 		DatabaseLayer.useRealSoql();
 	}
 
 	// **** INNER **** //
+	/**
+	 * @description Factory class responsible for provisioning SOQL instances with proper configuration and plugin support.
+	 */
 	global class SoqlProvider {
-		/**
-		 * This class is responsible for provisioning a Soql instance of the correct type
-		 **/
 		public Soql.PreAndPostProcessor plugin { get; private set; }
 		private Boolean useMocks { get; private set; }
 
@@ -95,18 +110,22 @@ global class DatabaseLayer {
 			this.initPlugins();
 		}
 
+		/**
+		 * @description Creates a new SOQL query builder for the specified SObject type.
+		 * @param objectType The SObject type to query
+		 * @return A configured SOQL builder instance (real or mock based on current configuration)
+		 */
 		global Soql newQuery(SObjectType objectType) {
 			return (this.useMocks == true)
 				? new MockSoql(INSTANCE)?.setFrom(objectType)?.toSoql()
 				: new Soql(INSTANCE)?.setFrom(objectType)?.toSoql();
 		}
 
+		/**
+		 * @description Initializes SOQL plugins based on custom metadata configuration.
+		 */
 		@TestVisible
 		private void initPlugins() {
-			// Initializes plugins based on the related custom metadata record
-			// In production use cases, this will only happen once per transaction
-			// In @IsTest uses cases, this happens every time the caller switches from Soql/MockSoql
-			// Test callers can also call this method directly to recalculate the plugins after injecting mock metadata:
 			SObjectField field = DatabaseLayerSetting__mdt.SoqlPreAndPostProcessor__c;
 			this.plugin = (Soql.PreAndPostProcessor) DatabaseLayer.Utils?.Plugins?.initPlugin(field);
 		}

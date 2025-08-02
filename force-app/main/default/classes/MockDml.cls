@@ -1,13 +1,9 @@
-@SuppressWarnings('PMD.ApexDoc,PMD.AvoidGlobalModifier,PMD.CognitiveComplexity,PMD.CyclomaticComplexity')
+/**
+ * @description Mock implementation of DML operations for testing. Provides comprehensive mocking capabilities with configurable success/failure scenarios and operation history tracking.
+ */
+@SuppressWarnings('PMD.AvoidGlobalModifier,PMD.CognitiveComplexity,PMD.CyclomaticComplexity')
 @IsTest
 global class MockDml extends Dml {
-	/**
-	 * This class mocks CRUD operations, with minimal setup required from end users.
-	 * By default, all operations will succeed. If desired, users can specify
-	 * conditions in which operations should fail, via the `MockDml.shouldFail` method,
-	 * or the `MockDml.shouldFailIf` method and the `ConditionalLogic` interface.
-	 **/
-
 	// **** CONSTANT **** //
 	global static final List<MockDml.ConditionalFailure> FAILURES;
 	global static final MockDml.SavepointHistory SAVEPOINTS;
@@ -75,32 +71,42 @@ global class MockDml extends Dml {
 		MockDatabase = new MockDml.Database();
 	}
 
+	/**
+	 * @description Resets all DML operation histories to their original state.
+	 */
 	global static void eraseAllHistories() {
-		// Reset all of the history objects to their original state
-		// Useful for isolating the actual changes being tested, ie., after test setup
 		MockDml.MockDatabase = new MockDml.Database();
 	}
 
+	/**
+	 * @description Configures all DML operations to fail.
+	 */
 	global static void shouldFail() {
-		// Adds a BaseFailure the list of failures - all DML operations will now fail.
 		MockDml.shouldSucceed();
 		MockDml.ConditionalFailure failure = new MockDml.BaseFailure();
 		MockDml.shouldFailIf(failure);
 	}
 
+	/**
+	 * @description Adds a conditional failure rule to the mock DML operations.
+	 * @param failure The conditional failure implementation that determines when operations should fail
+	 */
 	global static void shouldFailIf(MockDml.ConditionalFailure failure) {
-		// Adds the ConditionalFailure object to a list of failures.
-		// The ConditionalLogic interface defines if/when an error should be thrown during a DML operation.
-		// Each dml operation will iterate through the list of failures and call its interface method for each record.
 		MockDml.FAILURES?.add(failure);
 	}
 
+	/**
+	 * @description Clears all failure conditions, allowing all DML operations to succeed.
+	 */
 	global static void shouldSucceed() {
-		// Clears the list of failures - all mock DML operations should now succeed.
 		MockDml.FAILURES?.clear();
 	}
 
 	// **** MEMBER **** //
+	/**
+	 * @description Constructor for MockDml instance.
+	 * @param factory The DatabaseLayer factory instance
+	 */
 	public MockDml(DatabaseLayer factory) {
 		super(factory);
 	}
@@ -128,19 +134,23 @@ global class MockDml extends Dml {
 	}
 
 	// **** INNER: PUBLIC **** //
+	/**
+	 * @description Interface for defining conditional DML failure logic.
+	 */
 	global interface ConditionalFailure {
 		/**
-		 * This interface defines whether a DML failure should be simulated for the given record.
-		 * Its method should return an exception to be thrown in case of a DML failure, or null in case of success.
-		 * Pass objects that implement this interface to `MockDml.shouldFailIf` method.
-		 **/
+		 * @description Determines whether a DML operation should fail for a specific record.
+		 * @param operation The DML operation being performed
+		 * @param record The record being processed
+		 * @return Exception to throw if operation should fail, null if it should succeed
+		 */
 		Exception checkFailure(Dml.Operation operation, SObject record);
 	}
 
+	/**
+	 * @description Represents a mock Salesforce database that tracks all DML operations and their history.
+	 */
 	global class Database {
-		/**
-		 * This class represents a mock Salesforce Database. It stores all DML Methods' corresponding History objects
-		 */
 		// Note: When this configuration flag is "true" [default],
 		// MockDml will mimic a real Database when a rollback occurs
 		global Boolean resetOnRollback;
@@ -165,19 +175,19 @@ global class MockDml extends Dml {
 			this.resetOnRollback = true;
 		}
 
+		/**
+		 * @description Creates a snapshot of the current mock database state.
+		 * @return A deep copy of the current database state
+		 */
 		global Database snapshot() {
-			// Captures the state of the mock database at the current point in time
-			// Note: Object.clone() retains the original reference, must use serialization to keep the snapshot separate:
-			// https://salesforce.stackexchange.com/questions/162765/object-clone-does-not-work-as-expected
 			return (MockDml.Database) JSON.deserialize(JSON.serialize(this), MockDml.Database.class);
 		}
 	}
 
+	/**
+	 * @description Base class for tracking DML operation history and providing assertion capabilities.
+	 */
 	global abstract class History {
-		/**
-		 * Responsible for recording records that were processed by a given DML operation.
-		 * It provides several methods that callers can use to assert if DML actually occurred.
-		 **/
 		protected Dml.Operation operation;
 		protected Map<String, Map<String, SObject>> recordMap;
 
@@ -296,12 +306,10 @@ global class MockDml extends Dml {
 		DO_UPSERT
 	}
 
+	/**
+	 * @description Mock implementation of DML request that simulates database operations without actual DML.
+	 */
 	public class Request extends Dml.Request {
-		/**
-		 * Contains overrides for each DML operation, and is responsible for mocking DML
-		 * An instance of this class (instead of the super type)
-		 * is initialized via the overridden `initRequest` method
-		 */
 		private Request(Dml.Operation operation, List<Object> records) {
 			super(operation, records);
 			this.isMockDml = true;
@@ -521,11 +529,10 @@ global class MockDml extends Dml {
 		}
 	}
 
+	/**
+	 * @description Specialized history tracking for platform events, which use EventUuid instead of Id.
+	 */
 	global virtual class PlatformEventHistory extends MockDml.History {
-		/**
-		 * This class tracks platform events that were mock published.
-		 * Necessary since platform events' unique identifier is the `EventUuid` field - not `Id`
-		 **/
 		private PlatformEventHistory() {
 			super(Dml.Operation.DO_PUBLISH);
 		}
@@ -547,10 +554,10 @@ global class MockDml extends Dml {
 		}
 	}
 
+	/**
+	 * @description Standard history tracking for regular SObject records using Id field.
+	 */
 	global virtual class RecordHistory extends MockDml.History {
-		/**
-		 * This class is responsible for tracking DML made against most SObject types
-		 **/
 		private RecordHistory(Dml.Operation operation) {
 			super(operation);
 		}
@@ -569,11 +576,10 @@ global class MockDml extends Dml {
 		}
 	}
 
+	/**
+	 * @description Manages mock savepoint history and provides access to savepoint information.
+	 */
 	global class SavepointHistory {
-		/**
-		 * This class maintains a map of MockDml.Savepoints,
-		 * and provides methods to easily get a particular savepoint by their index or by the object itself
-		 */
 		private Map<Integer, MockDml.Savepoint> savepointMap;
 
 		private SavepointHistory() {

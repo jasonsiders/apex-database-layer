@@ -1,16 +1,9 @@
+/**
+ * @description Builder pattern class for constructing mock SObject records with comprehensive field, relationship, and Id generation support for testing.
+ */
 @IsTest
-@SuppressWarnings('PMD.ApexDoc,PMD.AvoidGlobalModifier,PMD.CognitiveComplexity,PMD.ExcessivePublicCount')
+@SuppressWarnings('PMD.AvoidGlobalModifier,PMD.CognitiveComplexity,PMD.ExcessivePublicCount')
 global class MockRecord {
-	/**
-	 * This class uses a builder pattern to construct SObject records for the purpose of mock database operations.
-	 * It supports the following:
-	 * - Setting "normal" fields (like Account.Name)
-	 * - Setting read-only fields (like Account.CreatedDate)
-	 * - Setting lookup relationships (like Account.Owner & Account.OwnerId)
-	 * - Setting child relationships (like Account.Contacts)
-	 * - Generating mock Ids, to simulate inserted records
-	 * Once your MockRecord is ready to build, call `toSObject()` and cast the output to an SObject variable.
-	 **/
 	private static final String ID_TOKEN = 'Id';
 	private static Integer numMockIds = 0;
 
@@ -25,20 +18,30 @@ global class MockRecord {
 		}
 	}
 
+	/**
+	 * @description Constructor that creates a MockRecord from an existing SObject, preserving all field values.
+	 * @param realRecord The existing SObject to copy values from
+	 */
 	global MockRecord(SObject realRecord) {
-		// This constructor preserves the original values of the provided record.
 		this.objectType = realRecord?.getSObjectType();
 		this.recordValues = (Map<String, Object>) JSON.deserializeUntyped(JSON.serialize(realRecord, false));
 	}
 
+	/**
+	 * @description Constructor that creates an empty MockRecord for the specified SObject type.
+	 * @param objectType The SObjectType to create a mock record for
+	 */
 	global MockRecord(SObjectType objectType) {
-		// This constructor creates a brand new/empty SObject of the provided type.
 		this(objectType?.newSObject());
 	}
 
 	// **** STATIC **** //
+	/**
+	 * @description Generates a unique mock record Id for the specified SObject type.
+	 * @param objectType The SObjectType to generate an Id for
+	 * @return A unique mock Id following Salesforce Id format
+	 */
 	global static Id initRecordId(SObjectType objectType) {
-		// Generate a unique record Id for the given SObjectType, for mock database operations
 		String prefix = objectType?.getDescribe(Schema.SObjectDescribeOptions.DEFERRED)?.getKeyPrefix();
 		String suffix = String.valueOf(MockRecord.numMockIds++);
 		String mid = 0?.toString()?.repeat(15 - suffix?.length());
@@ -81,17 +84,30 @@ global class MockRecord {
 		return this.addToRelatedList(lookupField, new List<MockRecord>{ record });
 	}
 
+	/**
+	 * @description Retrieves the value of the specified field.
+	 * @param parameterName The field name to retrieve
+	 * @return The current value of the field
+	 */
 	global Object get(String parameterName) {
-		// Retrieve the current record value for the given parameter:
 		return this.recordValues?.get(parameterName);
 	}
 
+	/**
+	 * @description Retrieves the value of the specified SObjectField.
+	 * @param field The SObjectField to retrieve
+	 * @return The current value of the field
+	 */
 	global Object get(SObjectField field) {
 		return this.get(field?.toString());
 	}
 
+	/**
+	 * @description Retrieves the parent record for the specified lookup field.
+	 * @param lookupField The lookup field to retrieve the parent for
+	 * @return The parent SObject record
+	 */
 	global SObject getLookup(SObjectField lookupField) {
-		// Retrieves the lookup relationship matching the lookup field, ex., 'contact?.Owner'
 		String relationshipName = lookupField?.getDescribe()?.getRelationshipName();
 		return (SObject) this.get(relationshipName);
 	}
@@ -108,17 +124,32 @@ global class MockRecord {
 		return this.getRelatedList(relationship);
 	}
 
+	/**
+	 * @description Sets multiple field values at once.
+	 * @param incomingValues Map of field names to values
+	 * @return This MockRecord instance for method chaining
+	 */
 	global MockRecord setField(Map<String, Object> incomingValues) {
-		// Sets the provided field(s) to their specified values(s)
-		// If a field value is already set, it will be overwritten.
 		this.recordValues?.putAll(incomingValues);
 		return this;
 	}
 
+	/**
+	 * @description Sets a single field value.
+	 * @param fieldName The field name to set
+	 * @param value The value to set
+	 * @return This MockRecord instance for method chaining
+	 */
 	global MockRecord setField(String fieldName, Object value) {
 		return this.setField(new Map<String, Object>{ fieldName => value });
 	}
 
+	/**
+	 * @description Sets a field value using SObjectField reference.
+	 * @param field The SObjectField to set
+	 * @param value The value to set
+	 * @return This MockRecord instance for method chaining
+	 */
 	global MockRecord setField(SObjectField field, Object value) {
 		return this.setField(field?.toString(), value);
 	}
@@ -151,14 +182,19 @@ global class MockRecord {
 		return this.setRelatedList(relationship, relatedRecords);
 	}
 
+	/**
+	 * @description Converts the MockRecord to an actual SObject instance.
+	 * @return The built SObject with all configured field values
+	 */
 	global SObject toSObject() {
-		// Builds the specified record
 		return (SObject) JSON.deserialize(JSON.serialize(this.recordValues, false), SObject.class);
 	}
 
+	/**
+	 * @description Generates and sets a unique Id for this record if one doesn't already exist.
+	 * @return This MockRecord instance for method chaining
+	 */
 	global MockRecord withId() {
-		// Provides a unique Id to simulate inserted records.
-		// Note: If an Id is already present, its value will NOT be overwritten.
 		Id recordId = this.Id ?? MockRecord.initRecordId(this.objectType);
 		return this.setField(ID_TOKEN, recordId);
 	}

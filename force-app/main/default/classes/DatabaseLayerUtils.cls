@@ -1,13 +1,7 @@
-@SuppressWarnings('PMD.ApexDoc')
+/**
+ * @description Internal utility class providing framework-specific functionality in a pseudo-namespace pattern.
+ */
 public without sharing class DatabaseLayerUtils {
-	/**
-	 * This class contains utilities used by the framework internally
-	 * It uses a factory pattern to enforce access in a pseudo-namespace fashion;
-	 * Ex., DatabaseLayer.Utils.MetadataSelector.get()
-	 * This helps communicate the intent that these utils are really only designed to be used by the framework itself
-	 * Necessary since there isn't a way to *actually* enforce this, like @NamespaceAccessible for managed packages
-	 */
-
 	// Note: These properties do not use traditional naming conventions to support a 'namespace-like' API
 	@SuppressWarnings('PMD.PropertyNamingConventions')
 	public final DatabaseLayerUtils.ChildRelationships ChildRelationships { get; private set; }
@@ -16,44 +10,45 @@ public without sharing class DatabaseLayerUtils {
 	@SuppressWarnings('PMD.PropertyNamingConventions')
 	public final DatabaseLayerUtils.Plugins Plugins { get; private set; }
 
+	/**
+	 * @description Constructor that initializes all utility sub-components.
+	 * @param factory The DatabaseLayer factory instance
+	 */
 	@SuppressWarnings('PMD.EmptyStatementBlock')
 	public DatabaseLayerUtils(DatabaseLayer factory) {
-		// The utility class can't be manually constructed outside of this package
-		// Necessary in the absence of @NamespaceAccessible-like annotation for unlocked packages
 		this.ChildRelationships = new DatabaseLayerUtils.ChildRelationships();
 		this.MetadataSelector = new DatabaseLayerUtils.MetadataSelector();
 		this.Plugins = new DatabaseLayerUtils.Plugins();
 	}
 
 	// **** INNER **** //
+	/**
+	 * @description Utility for retrieving and caching Schema.ChildRelationship objects from SObjectFields.
+	 */
 	public class ChildRelationships {
-		/**
-		 * This class makes it easier to retrieve Schema.ChildRelationship objects from their linked SObjectField.
-		 * Unlike SObjectTypes/SObjectFields, ChildRelationships do not have a declarable token, ex. Account.Contacts.
-		 * Callers typically have to perform expensive & verbose describe operations to retrieve this object.
-		 * Using this utility, callers can retrieve a relationship object with a single line, ex:
-		 * `Schema.ChildRelationship rel = DatabaseLayer.Utils.ChildRelationships.getChildRelationshipFrom(Contact.AccountId);`
-		 * As an added bonus, the relationship information for the lookup field's referenceTo object is cached,
-		 * so that successive calls to the same object do not take the same processing time.
-		 **/
 		private Map<SObjectType, DatabaseLayerUtils.CachedDescribe> describes;
 
 		private ChildRelationships() {
 			this.describes = new Map<SObjectType, DatabaseLayerUtils.CachedDescribe>();
 		}
 
+		/**
+		 * @description Retrieves the child relationship for a lookup field on a specific parent object type.
+		 * @param lookupField The lookup field to find the relationship for
+		 * @param referenceTo The parent SObject type
+		 * @return The corresponding Schema.ChildRelationship
+		 */
 		public Schema.ChildRelationship getChildRelationshipFrom(SObjectField lookupField, SObjectType referenceTo) {
-			// Returns the Schema.ChildRelationshp on the referenceTo SObjectType, that the provided lookupField points to.
-			// Ex., getChildRelationshipFrom(Task.WhoId, Lead.SObjectType) -> Lead.Tasks
 			return this.getDescribeFromCache(referenceTo)?.get(lookupField);
 		}
 
+		/**
+		 * @description Retrieves the child relationship for a non-polymorphic lookup field.
+		 * @param lookupField The lookup field to find the relationship for
+		 * @return The corresponding Schema.ChildRelationship
+		 */
 		public Schema.ChildRelationship getChildRelationshipFrom(SObjectField lookupField) {
-			// Overload that uses the first SObjectType in the getReferenceTo() list to find the child relationship.
-			// Use this overload when you know the field in question is not polymorphic; ex., Contact.AccountId.
 			List<SObjectType> references = lookupField?.getDescribe()?.getReferenceTo();
-			// Note: the Schema.getReferenceTo() method returns a List<SObjectType>, not a single SObjectType.
-			// Typically, a field is only be related to a single SObjectType; excluding polymorphic fields (ie, Task.WhatId).
 			SObjectType referenceTo = references?.isEmpty() == false ? references?.get(0) : null;
 			return this.getChildRelationshipFrom(lookupField, referenceTo);
 		}
@@ -68,30 +63,34 @@ public without sharing class DatabaseLayerUtils {
 		}
 	}
 
+	/**
+	 * @description Utility for retrieving DatabaseLayerSetting__mdt configuration records.
+	 */
 	public class MetadataSelector {
-		/**
-		 * This utility class is used to retrieve DatabaseLayerSetting__mdt settings from the org.
-		 * It also provides a seam for mock settings to be injected.
-		 * Note: The framework will *always* use the first defined record;
-		 * There is a validation rule which helps enforce only 1x DatabaseLayerSetting__mdt per org
-		 */
 		@TestVisible
 		private List<DatabaseLayerSetting__mdt> settings;
 
+		/**
+		 * @description Retrieves the first DatabaseLayerSetting__mdt record from the org.
+		 * @return The configuration record, or null if none exists
+		 */
 		public DatabaseLayerSetting__mdt get() {
-			// Retrieve the first/default settings record; if none defined, returns null
 			this.settings = this.settings ?? DatabaseLayerSetting__mdt.getAll()?.values();
 			return this.settings?.isEmpty() == false ? this.settings?.get(0) : null;
 		}
 	}
 
+	/**
+	 * @description Utility for managing and initializing plugin implementations.
+	 */
 	@SuppressWarnings('PMD.AvoidDebugStatements')
 	public class Plugins {
 		/**
-		 * This class contains utility methods re: the plugin framework
+		 * @description Initializes a plugin instance based on custom metadata configuration.
+		 * @param field The SObjectField on DatabaseLayerSetting__mdt containing the plugin class name
+		 * @return The instantiated plugin object, or null if initialization fails
 		 */
 		public Object initPlugin(SObjectField field) {
-			// Constructs a new object of a type listed in the field on the CMDT using Type.forName:
 			String className;
 			try {
 				className = (String) DatabaseLayer.Utils.MetadataSelector.get()?.get(field);

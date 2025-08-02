@@ -1,4 +1,4 @@
-@SuppressWarnings('PMD.ApexDoc,PMD.ApexUnitTestClassShouldHaveRunAs,PMD.CyclomaticComplexity')
+@SuppressWarnings('PMD.ApexUnitTestClassShouldHaveRunAs,PMD.CyclomaticComplexity')
 @IsTest
 private class MockDmlTest {
 	// **** VARIABLES **** //

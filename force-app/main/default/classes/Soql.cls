@@ -1,17 +1,10 @@
+/**
+ * @description Handles all SOQL query operations with the Salesforce database. Provides a mockable, fluent query builder interface with comprehensive operator support and plugin capabilities.
+ */
 @SuppressWarnings(
-	'PMD.ApexDoc,PMD.AvoidGlobalModifier,PMD.CognitiveComplexity,PMD.CyclomaticComplexity,PMD.ExcessiveClassLength,PMD.ExcessivePublicCount'
+	'PMD.AvoidGlobalModifier,PMD.CognitiveComplexity,PMD.CyclomaticComplexity,PMD.ExcessiveClassLength,PMD.ExcessivePublicCount'
 )
 global inherited sharing virtual class Soql extends Soql.Builder {
-	/**
-	 * This class is responsible for performing query operations with the Salesforce database.
-	 * While apex allows developers an inline method to directly perform queries against the database,
-	 * use of these methods does not facilitate mocking, which can result in slower test times.
-	 * Use this class instead of inline SOQL.
-	 * Each of this class's methods eventually ties back to an underlying `Database` method,
-	 * ex., `query()` -> `Database.query()`.
-	 * To mock this instance, use the included `MockSoql` class, or use your own class which extends `Soql`.
-	 **/
-
 	// These operators are frequently used in WHERE clauses
 	global static final Operator EQUALS = new Soql.Operator('=');
 	global static final Operator NOT_EQUALS = new Soql.Operator('!=');
@@ -34,6 +27,10 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	// Member Properties:
 	global String identifier { get; private set; }
 
+	/**
+	 * @description Constructor for Soql instance with DatabaseLayer factory.
+	 * @param factory The DatabaseLayer factory instance
+	 */
 	public Soql(DatabaseLayer factory) {
 		this();
 	}
@@ -42,61 +39,83 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		super();
 	}
 
+	/**
+	 * @description Executes an aggregate query and returns mockable AggregateResult wrappers.
+	 * @return List of Soql.AggregateResult objects wrapping Schema.AggregateResult
+	 */
 	global List<Soql.AggregateResult> aggregateQuery() {
-		// Call this method for aggregate queries, when not casting to a specific Type.
-		// Note: Since the Schema.AggregateResult class cannot be mocked via traditional means,
-		// this method returns a decorator object. See the "AggregateResult" inner class.
 		return (List<Soql.AggregateResult>) this.initRequest(Soql.Operation.AGGREGATE_QUERY)?.process();
 	}
 
+	/**
+	 * @description Executes a COUNT() query and returns the number of matching records.
+	 * @return Integer count of matching records
+	 */
 	global Integer countQuery() {
-		// Returns the results of a SOQL COUNT() query:
 		return (Integer) this.initRequest(Soql.Operation.COUNT_QUERY)?.process();
 	}
 
+	/**
+	 * @description Returns query results as a mockable Cursor wrapper.
+	 * @return Soql.Cursor object wrapping Database.Cursor
+	 */
 	global Soql.Cursor getCursor() {
-		// Returns the query results as a Soql.Cursor object
-		// This type wraps a Database.Cursor, which cannot be mocked
 		return (Soql.Cursor) this.initRequest(Soql.Operation.GET_CURSOR)?.process();
 	}
 
+	/**
+	 * @description Returns query results as a mockable QueryLocator wrapper for batch processing.
+	 * @return Soql.QueryLocator object wrapping Database.QueryLocator
+	 */
 	global Soql.QueryLocator getQueryLocator() {
-		// Returns the query results as a Soql.QueryLocator object
-		// This type wraps a Database.QueryLocator, which cannot be mocked
 		return (Soql.QueryLocator) this.initRequest(Soql.Operation.GET_QUERY_LOCATOR)?.process();
 	}
 
+	/**
+	 * @description Executes the SOQL query and returns matching records.
+	 * @return List of SObject records matching the query criteria
+	 */
 	global List<SObject> query() {
-		// Perform a standard SOQL query, returning a List<SObject>:
 		return (List<SObject>) this.initRequest(Soql.Operation.QUERY)?.process();
 	}
 
+	/**
+	 * @description Executes the query and deserializes results to the specified type.
+	 * @param returnType The type to deserialize query results into
+	 * @return Query results deserialized as the specified type
+	 */
 	global Object query(Type returnType) {
-		// Return the query results as an instance of the returnType
-		// Mostly useful for returning Aggregate Query results as a wrapper type
 		Object result = this.initRequest(Soql.Operation.QUERY)?.process();
 		return JSON.deserialize(JSON.serialize(result), returnType);
 	}
 
+	/**
+	 * @description Executes the query and returns only the first matching record.
+	 * @return First SObject matching the query criteria, or null if no matches
+	 */
 	global SObject queryFirst() {
-		// Returns the first result of the query, or null if no results returned
-		// Facilitates & simplifies assigning query results to a single SObject
-		// Temporarily set a LIMIT 1
 		Integer originalLimit = this.rowLimit;
 		this.setRowLimit(1);
-		// Retrieve the query results - should be either 0 or 1
 		List<SObject> results = this.query();
-		// Now revert to the original row limit
 		this.setRowLimit(originalLimit);
 		return results?.isEmpty() == false ? results?.get(0) : null;
 	}
 
+	/**
+	 * @description Sets an identifier for this query that can be referenced in mocks.
+	 * @param identifier Unique identifier for this query instance
+	 * @return This Soql instance for method chaining
+	 */
 	global Soql setQueryIdentifier(String identifier) {
-		// Use this method to give a name/identifier value that can be referenced in mocks
 		this.identifier = identifier;
 		return this;
 	}
 
+	/**
+	 * @description Initializes a SOQL request object for the specified operation.
+	 * @param operation The SOQL operation to perform
+	 * @return A configured Soql.Request object
+	 */
 	protected virtual Soql.Request initRequest(Soql.Operation operation) {
 		return new Soql.Request(this, operation);
 	}
@@ -189,18 +208,33 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	}
 
 	// **** INNER **** //
+	/**
+	 * @description Mockable wrapper for Schema.AggregateResult that enables testing of aggregate queries.
+	 */
 	global virtual class AggregateResult {
 		protected Map<String, Object> params;
 
+		/**
+		 * @description Constructor that wraps a Schema.AggregateResult.
+		 * @param result The Schema.AggregateResult to wrap
+		 */
 		protected AggregateResult(Schema.AggregateResult result) {
 			this.params = result?.getPopulatedFieldsAsMap() ?? new Map<String, Object>();
 		}
 
+		/**
+		 * @description Retrieves the value for the specified field or alias.
+		 * @param key The field name or alias to retrieve
+		 * @return The value associated with the key
+		 */
 		global Object get(String key) {
 			return this.params?.get(key);
 		}
 	}
 
+	/**
+	 * @description Represents an aggregate function in a SOQL query (COUNT, SUM, AVG, etc.).
+	 */
 	global class Aggregation implements Soql.Selectable {
 		private String alias;
 		private String innerFieldName;
@@ -238,6 +272,9 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 	}
 
+	/**
+	 * @description Represents a bind variable for parameterized SOQL queries.
+	 */
 	global class Binder {
 		global String key { get; private set; }
 		global Object value { get; private set; }
@@ -269,6 +306,9 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 	}
 
+	/**
+	 * @description Abstract base class providing fluent interface for building SOQL queries.
+	 */
 	global abstract class Builder {
 		global transient System.AccessLevel accessLevel { get; protected set; }
 		global Map<String, Object> binds { get; protected set; }
@@ -687,6 +727,9 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 	}
 
+	/**
+	 * @description Represents a single condition in a WHERE or HAVING clause.
+	 */
 	global virtual class Condition implements Soql.Criteria {
 		global final String property { get; protected set; }
 		global final Soql.Operator operator { get; protected set; }
@@ -763,6 +806,9 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 	}
 
+	/**
+	 * @description Manages complex conditional logic with AND/OR operations for WHERE and HAVING clauses.
+	 */
 	global class ConditionalLogic implements Soql.Criteria {
 		private List<Soql.Criteria> criterion = new List<Soql.Criteria>();
 		private Soql.LogicType logicType = Soql.LogicType.ALL_CONDITIONS;
@@ -822,10 +868,10 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 	}
 
+	/**
+	 * @description Mockable wrapper for Database.Cursor that enables testing of cursor-based queries.
+	 */
 	global virtual class Cursor {
-		// Decorates a Database.Cursor so that it can be mocked
-		// These objects can't be manually constructed;
-		// they *can* be serialized, but their query details can't be this way
 		protected Database.Cursor cursor;
 
 		protected Cursor(Database.Cursor cursor) {
@@ -863,9 +909,10 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 	}
 
+	/**
+	 * @description Represents a subquery for use in WHERE clauses and other contexts requiring inner queries.
+	 */
 	global virtual class InnerQuery extends Soql.Builder implements Soql.Selectable {
-		// Inner queries must contain a single key field, and this is typically not the Id
-		// ex., `SELECT AccountId FROM Case WHERE X`
 		protected InnerQuery() {
 			this.deselect(ID_REFERENCE);
 		}
@@ -884,12 +931,17 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		// This class wraps System.InvalidParameterValueExceptions thrown by invalid fetch calls in Database.Cursors
 	}
 
+	/**
+	 * @description Base class for SOQL operators (=, !=, LIKE, IN, etc.) with string value processing.
+	 */
 	global virtual class Operator {
 		private String token;
 
+		/**
+		 * @description Constructor for operator with specified token.
+		 * @param token The SOQL operator token (=, !=, LIKE, etc.)
+		 */
 		protected Operator(String token) {
-			// Callers shouldn't construct an Operator object directly;
-			// Instead, refer to the static final types listed in this file
 			this.token = token;
 		}
 
@@ -984,10 +1036,10 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 	}
 
+	/**
+	 * @description Mockable wrapper for Database.QueryLocator that enables testing of batch processing queries.
+	 */
 	global virtual class QueryLocator {
-		// Decorates a Database.QueryLocator, so that it can be mocked.
-		// These objects can't be serialized, or mocked by other means.
-		// See MockSoql.QueryLocator for the mock implementation of this object.
 		private Database.QueryLocator locator;
 
 		protected QueryLocator(Database.QueryLocator locator) {
@@ -1007,6 +1059,9 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 	}
 
+	/**
+	 * @description Encapsulates a single SOQL operation with all its parameters and execution logic.
+	 */
 	global inherited sharing virtual class Request {
 		global Boolean isMockSoql { get; protected set; }
 		global Soql.Operation operation { get; private set; }
