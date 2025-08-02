@@ -310,11 +310,20 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		global String key { get; private set; }
 		global Object value { get; private set; }
 
+		/**
+		 * @description Constructor for bind variable with key and value.
+		 * @param key The bind variable key
+		 * @param value The bind variable value
+		 */
 		global Binder(String key, Object value) {
 			this.key = key;
 			this.setValue(value);
 		}
 
+		/**
+		 * @description Constructor for bind variable with key only.
+		 * @param key The bind variable key
+		 */
 		global Binder(String key) {
 			this(key, null);
 		}
