@@ -24,8 +24,17 @@ public class DatabaseLayerTestUtils {
 	 * @description Spy implementation for tracking plugin method invocations during testing.
 	 */
 	public class PreAndPostProcessorSpy {
+		/**
+		 * @description Number of times the pre-processing method was called.
+		 */
 		public Integer numPreCalls { get; private set; }
+		/**
+		 * @description Number of times the post-processing method was called.
+		 */
 		public Integer numPostCalls { get; private set; }
+		/**
+		 * @description Number of times the error processing method was called.
+		 */
 		public Integer numErrorCalls { get; private set; }
 
 		private PreAndPostProcessorSpy() {

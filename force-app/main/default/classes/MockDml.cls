@@ -197,9 +197,23 @@ global class MockDml extends Dml {
 		}
 
 		// **** ABSTRACT **** //
+		/**
+		 * @description Adds a record to the internal record map for tracking.
+		 * @param record The record to add
+		 * @param records The map to add the record to
+		 */
 		global abstract void addRecordToMap(SObject record, Map<String, Object> records);
+		/**
+		 * @description Sets or generates an ID for the record.
+		 * @param record The record to set ID for
+		 * @return The record with ID set
+		 */
 		global abstract SObject setRecordId(SObject record);
 
+		/**
+		 * @description Retrieves all records processed by the current operation, grouped by SObjectType.
+		 * @return Map of SObjectType to List of processed records
+		 */
 		global Map<SObjectType, List<SObject>> getAll() {
 			// Retrieve all records processed by the current operation, grouped by SObjectType
 			Map<SObjectType, List<SObject>> allRecords = new Map<SObjectType, List<SObject>>();
@@ -211,38 +225,75 @@ global class MockDml extends Dml {
 			return allRecords;
 		}
 
+		/**
+		 * @description Retrieves all records of the specified SObjectType.
+		 * @param objectType The SObjectType to retrieve records for
+		 * @return List of records for the specified type
+		 */
 		global List<SObject> getRecords(SObjectType objectType) {
 			// Retrieves all records of the specified SObjectType
 			return this.getRecordMap(objectType)?.values();
 		}
 
+		/**
+		 * @description Retrieves a specific record by SObjectType and ID/UUID.
+		 * @param objectType The SObjectType of the record
+		 * @param idOrUuuid The record ID or UUID (for platform events)
+		 * @return The matching record or null if not found
+		 */
 		global SObject get(SObjectType objectType, String idOrUuuid) {
 			// Retrieves a specific record that was processed
 			// Use this method with platform events, who have a UUID but not a traditional Record ID with a reference to the SObjectType
 			return this.getRecordMap(objectType)?.get(idOrUuuid);
 		}
 
+		/**
+		 * @description Retrieves a specific record by ID.
+		 * @param recordId The record ID to retrieve
+		 * @return The matching record or null if not found
+		 */
 		global SObject get(Id recordId) {
 			// Retrieves a specific record that was processed
 			SObjectType objectType = recordId?.getSObjectType();
 			return this.get(objectType, recordId);
 		}
 
+		/**
+		 * @description Retrieves a specific record by SObject reference.
+		 * @param record The SObject to find (uses its Id)
+		 * @return The matching record or null if not found
+		 */
 		global SObject get(SObject record) {
 			return this.get(record?.Id);
 		}
 
+		/**
+		 * @description Checks if a record was processed for DML by SObjectType and ID/UUID.
+		 * @param objectType The SObjectType of the record
+		 * @param idOrUuid The record ID or UUID
+		 * @return True if the record was processed, false otherwise
+		 */
 		global Boolean wasProcessed(SObjectType objectType, String idOrUuid) {
 			// Returns true if the record was processed for DML, else returns false
 			return this.get(objectType, idOrUuid) != null;
 		}
 
+		/**
+		 * @description Checks if a record was processed for DML by ID.
+		 * @param recordId The record ID to check
+		 * @return True if the record was processed, false otherwise
+		 */
 		global Boolean wasProcessed(Id recordId) {
 			// Returns true if the record was processed for DML, else returns false
 			SObjectType objectType = recordId?.getSObjectType();
 			return this.wasProcessed(objectType, recordId);
 		}
 
+		/**
+		 * @description Checks if a record was processed for DML by SObject reference.
+		 * @param record The SObject to check (uses its Id)
+		 * @return True if the record was processed, false otherwise
+		 */
 		global Boolean wasProcessed(SObject record) {
 			return this.wasProcessed(record?.Id);
 		}
@@ -586,6 +637,10 @@ global class MockDml extends Dml {
 			this.savepointMap = new Map<Integer, MockDml.Savepoint>();
 		}
 
+		/**
+		 * @description Returns all registered MockDml.Savepoints.
+		 * @return List of all MockDml.Savepoint objects
+		 */
 		global List<MockDml.Savepoint> getAll() {
 			// Returns all registered MockDml.Savepoints:
 			return this.savepointMap?.values();
@@ -626,6 +681,9 @@ global class MockDml extends Dml {
 		}
 	}
 
+	/**
+	 * @description Decorates a System.Savepoint object with mock database state management.
+	 */
 	global class Savepoint {
 		/**
 		 * This class decorates a System.Savepoint object
@@ -633,9 +691,21 @@ global class MockDml extends Dml {
 		 * This also stores a shallow copy of the mock database at the time the savepoint was generated,
 		 * in the event of a rollback, the mock database will be reverted back to this point
 		 */
+		/**
+		 * @description The index of this savepoint in the transaction.
+		 */
 		global Integer index { get; private set; }
+		/**
+		 * @description The name of this savepoint.
+		 */
 		global String name { get; private set; }
+		/**
+		 * @description Whether this savepoint was released.
+		 */
 		global Boolean wasReleased { get; private set; }
+		/**
+		 * @description Whether this savepoint was rolled back.
+		 */
 		global Boolean wasRolledBack { get; private set; }
 		private transient MockDml.Database savepointState { get; private set; }
 
@@ -671,17 +741,29 @@ global class MockDml extends Dml {
 	}
 
 	// **** INNER: PRIVATE **** //
+	/**
+	 * @description Default failure implementation that always fails operations.
+	 */
 	private class BaseFailure implements MockDml.ConditionalFailure {
 		/**
 		 * The `MockDml` class ships with one concrete implementation of the `ConditionalFailure` interface.
 		 * This one is simple -- it always returns an error to be thrown.
 		 * Callers can inject this error by calling the `MockDml.shouldFail()` method.
 		 **/
+		/**
+		 * @description Always returns a DML exception to simulate failure.
+		 * @param operation The DML operation (unused)
+		 * @param record The record being processed (unused)
+		 * @return A DmlException to be thrown
+		 */
 		public Exception checkFailure(Dml.Operation operation, SObject record) {
 			return new System.DmlException();
 		}
 	}
 
+	/**
+	 * @description Mocks the Database.Error class for testing DML failures.
+	 */
 	private class Error {
 		/**
 		 *  Mocks the `Database.Error` class, since this type cannot be manually constructed.
@@ -712,6 +794,9 @@ global class MockDml extends Dml {
 		}
 	}
 
+	/**
+	 * @description Mocks Database.LeadConvertResult for lead conversion operations.
+	 */
 	private virtual class LeadConvertResult extends MockDml.Result {
 		/**
 		 * Mocks `Database.LeadConvertResult` objects
@@ -743,6 +828,9 @@ global class MockDml extends Dml {
 		}
 	}
 
+	/**
+	 * @description Mocks standard Database result types (SaveResult, DeleteResult, etc.).
+	 */
 	private virtual class RecordResult extends MockDml.Result {
 		/**
 		 * Mocks most Database result types; ex., `Database.SaveResult`, `Database.DeleteResult`, etc.
@@ -772,6 +860,9 @@ global class MockDml extends Dml {
 		}
 	}
 
+	/**
+	 * @description Abstract base class for all Database result mock objects.
+	 */
 	private abstract class Result {
 		/**
 		 * Abstract type which serves as the building block for mocking all Database result classes.
@@ -779,6 +870,9 @@ global class MockDml extends Dml {
 		 * All types share two parameters: errors and success
 		 **/
 		protected List<MockDml.Error> errors = new List<MockDml.Error>();
+		/**
+		 * @description Whether the operation succeeded (no errors).
+		 */
 		protected Boolean success {
 			get {
 				return this.errors?.isEmpty() != false;

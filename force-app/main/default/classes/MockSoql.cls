@@ -72,16 +72,30 @@ global class MockSoql extends Soql {
 	global class AggregateResult extends Soql.AggregateResult {
 		private Integer numUnaliasedKeys = 0;
 
+		/**
+		 * @description Constructor for empty MockSoql.AggregateResult.
+		 */
 		global AggregateResult() {
 			super(null);
 		}
 
+		/**
+		 * @description Adds a parameter with a specific alias to the aggregate result.
+		 * @param alias The alias for the parameter
+		 * @param value The value of the parameter
+		 * @return This AggregateResult instance for method chaining
+		 */
 		global AggregateResult addParameter(String alias, Object value) {
 			this.params?.put(alias, value);
 			this.incrementAliasedKeyCount(alias);
 			return this;
 		}
 
+		/**
+		 * @description Adds a parameter with an auto-generated alias to the aggregate result.
+		 * @param value The value of the parameter
+		 * @return This AggregateResult instance for method chaining
+		 */
 		global AggregateResult addParameter(Object value) {
 			// If a key is not given, assign one using the default aggregate key prefix
 			String key = AGGREGATE_KEY_PREFIX + this.numUnaliasedKeys;
@@ -213,10 +227,19 @@ global class MockSoql extends Soql {
 			this.records = records;
 		}
 
+		/**
+		 * @description Checks if there are more records to iterate over.
+		 * @return True if there are more records, false otherwise
+		 */
 		global Boolean hasNext() {
 			return this.index < records?.size();
 		}
 
+		/**
+		 * @description Returns the next record in the iteration.
+		 * @return The next SObject record
+		 * @throws System.NoSuchElementException If no more elements exist
+		 */
 		global SObject next() {
 			if (this.hasNext() == true) {
 				return this.records[index++];
@@ -227,6 +250,9 @@ global class MockSoql extends Soql {
 		}
 	}
 
+	/**
+	 * @description Mock SOQL request implementation that uses simulators to return predefined results.
+	 */
 	public class Request extends Soql.Request {
 		private transient MockSoql.Simulator simulator;
 

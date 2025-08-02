@@ -3,10 +3,19 @@
  */
 public without sharing class DatabaseLayerUtils {
 	// Note: These properties do not use traditional naming conventions to support a 'namespace-like' API
+	/**
+	 * @description Utility for managing Schema.ChildRelationship objects.
+	 */
 	@SuppressWarnings('PMD.PropertyNamingConventions')
 	public final DatabaseLayerUtils.ChildRelationships ChildRelationships { get; private set; }
+	/**
+	 * @description Utility for retrieving DatabaseLayerSetting__mdt configuration records.
+	 */
 	@SuppressWarnings('PMD.PropertyNamingConventions')
 	public final DatabaseLayerUtils.MetadataSelector MetadataSelector { get; private set; }
+	/**
+	 * @description Utility for managing plugin implementations.
+	 */
 	@SuppressWarnings('PMD.PropertyNamingConventions')
 	public final DatabaseLayerUtils.Plugins Plugins { get; private set; }
 

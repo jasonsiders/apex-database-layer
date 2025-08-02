@@ -11,6 +11,9 @@ global class MockRecord {
 	private transient Map<String, Object> recordValues;
 
 	@SuppressWarnings('PMD.PropertyNamingConventions')
+	/**
+	 * @description The Id property of this mock record, mirroring standard SObject functionality.
+	 */
 	global Id Id {
 		get {
 			// Mirrors standard SObject functionality; all SObject records have an Id property - even untyped!
@@ -210,29 +213,65 @@ global class MockRecord {
 		return this.setField(field?.toString(), value);
 	}
 
+	/**
+	 * @description Sets a parent lookup relationship using an SObject.
+	 * @param lookupField The lookup field that defines the relationship
+	 * @param parent The parent SObject to associate
+	 * @return This MockRecord instance for method chaining
+	 */
 	global MockRecord setLookup(SObjectField lookupField, SObject parent) {
 		// Simulates a parent object retrieval in SOQL; ex., SELECT Id, Account.Name FROM Contact LIMIT 1
 		return this.addUntypedParentRecord(lookupField, parent);
 	}
 
+	/**
+	 * @description Sets a parent lookup relationship using a MockRecord.
+	 * @param lookupField The lookup field that defines the relationship
+	 * @param parent The parent MockRecord to associate
+	 * @return This MockRecord instance for method chaining
+	 */
 	global MockRecord setLookup(SObjectField lookupField, MockRecord parent) {
 		return this.addUntypedParentRecord(lookupField, parent);
 	}
 
+	/**
+	 * @description Sets a related list using SObjects and a child relationship.
+	 * @param relationship The child relationship to set records for
+	 * @param relatedRecords List of SObjects for the related list
+	 * @return This MockRecord instance for method chaining
+	 */
 	global MockRecord setRelatedList(Schema.ChildRelationship relationship, List<SObject> relatedRecords) {
 		// Sets the related list used to simulate a child object retrieval in SOQL; ex., SELECT Id, (SELECT Id FROM Contacts) FROM Account LIMIT 1
 		return this.setUntypedChildRecords(relationship, relatedRecords);
 	}
 
+	/**
+	 * @description Sets a related list using SObjects and a lookup field.
+	 * @param lookupField The lookup field that defines the relationship
+	 * @param relatedRecords List of SObjects for the related list
+	 * @return This MockRecord instance for method chaining
+	 */
 	global MockRecord setRelatedList(SObjectField lookupField, List<SObject> relatedRecords) {
 		Schema.ChildRelationship relationship = this.getChildRelationship(lookupField);
 		return this.setRelatedList(relationship, relatedRecords);
 	}
 
+	/**
+	 * @description Sets a related list using MockRecords and a child relationship.
+	 * @param relationship The child relationship to set records for
+	 * @param relatedRecords List of MockRecords for the related list
+	 * @return This MockRecord instance for method chaining
+	 */
 	global MockRecord setRelatedList(Schema.ChildRelationship relationship, List<MockRecord> relatedRecords) {
 		return this.setUntypedChildRecords(relationship, relatedRecords);
 	}
 
+	/**
+	 * @description Sets a related list using MockRecords and a lookup field.
+	 * @param lookupField The lookup field that defines the relationship
+	 * @param relatedRecords List of MockRecords for the related list
+	 * @return This MockRecord instance for method chaining
+	 */
 	global MockRecord setRelatedList(SObjectField lookupField, List<MockRecord> relatedRecords) {
 		Schema.ChildRelationship relationship = this.getChildRelationship(lookupField);
 		return this.setRelatedList(relationship, relatedRecords);
@@ -256,6 +295,11 @@ global class MockRecord {
 	}
 
 	// **** OVERRIDES **** //
+	/**
+	 * @description Compares this MockRecord with another object for equality.
+	 * @param obj The object to compare with
+	 * @return True if the objects are equal, false otherwise
+	 */
 	global Boolean equals(Object obj) {
 		// Use the underlying SObject's equals value
 		// Note: For some reason, we don't technically override this method, even though we functionally do:
