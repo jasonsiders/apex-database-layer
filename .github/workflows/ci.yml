@@ -25,10 +25,38 @@ env:
 permissions:
   actions: read
   contents: read
+  id-token: write
   issues: write
   pull-requests: write
 
 jobs:
+  claude-review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Code Review
+        id: claude-review
+        uses: anthropics/claude-code-action@beta
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          direct_prompt: |
+            Please review this pull request and provide feedback on:
+            - Code quality and best practices
+            - Potential bugs or issues
+            - Performance considerations
+            - Security concerns
+            - Test coverage
+
   scan:
     name: Run Static Analysis
     if: ${{ '! github.event.pull_request.draft' }}
