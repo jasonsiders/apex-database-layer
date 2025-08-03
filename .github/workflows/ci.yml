@@ -191,12 +191,23 @@ jobs:
       - name: Run Tests
         run: |
           sf project deploy start \
+            --coverage-formatters json-summary \
             --dry-run \
             --ignore-conflicts \
             --source-dir force-app \
             --test-level RunLocalTests \
             --verbose \
             --wait 30
+
+      - name: Check Code Coverage
+        run: |
+          # Parse the JSON coverage summary file to extract overall coverage percentage
+          COVERAGE_PERCENT=$(cat coverage/coverage/coverage-summary.json | jq -r '.total.lines.pct')
+          echo "Code coverage: ${COVERAGE_PERCENT}%"
+          if [ "$COVERAGE_PERCENT" != "100" ]; then
+            echo "❌ Code coverage is ${COVERAGE_PERCENT}%, but 100% is required"
+            exit 1
+          fi
 
       - name: Post Authenticate Devhub
         if: ${{ always() }}
