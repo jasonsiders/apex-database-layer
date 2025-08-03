@@ -3,8 +3,8 @@
 		{
 			"path": "force-app",
 			"default": true,
-			"package": "apex-database-layer",
-			"versionName": "ver 3.0.0"
+			"versionName": "v3.0.0",
+			"versionNumber": "3.0.0.NEXT"
 		}
 	],
 	"name": "apex-database-layer",
@@ -12,9 +12,7 @@
 	"sfdcLoginUrl": "https://login.salesforce.com",
 	"sourceApiVersion": "64.0",
 	"packageAliases": {
-		"apex-database-layer-managed": "",
-		"apex-database-layer-unlocked": "0HoDn000000kAONKA2",
-		"apex-database-layer-managed@latest": "",
-		"apex-database-layer-unlocked@latest": ""
+		"apex-database-layer-managed": "0HoDn0000010wCnKAI",
+		"apex-database-layer-unlocked": "0HoDn000000kAONKA2"
 	}
 }

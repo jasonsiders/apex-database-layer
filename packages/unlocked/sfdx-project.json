@@ -4,7 +4,7 @@
 			"path": "force-app",
 			"default": true,
 			"package": "apex-database-layer-unlocked",
-			"versionName": "ver 3.0.0",
+			"versionName": "v3.0.0",
 			"versionNumber": "3.0.0.NEXT",
 			"versionDescription": "Removing deprecated methods, introducing managed package"
 		}
