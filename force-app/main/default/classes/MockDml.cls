@@ -1,60 +1,90 @@
-@SuppressWarnings(
-	'PMD.ApexDoc, PMD.CognitiveComplexity, PMD.CyclomaticComplexity, PMD.ExcessiveParameterList, PMD.FieldNamingConventions, PMD.PropertyNamingConventions'
-)
+/**
+ * @description Mock implementation of DML operations for testing. Provides comprehensive mocking capabilities with configurable success/failure scenarios and operation history tracking.
+ */
+@SuppressWarnings('PMD.AvoidGlobalModifier,PMD.CognitiveComplexity,PMD.CyclomaticComplexity')
 @IsTest
-public class MockDml extends Dml {
-	/**
-	 * This class mocks CRUD operations, with minimal setup required from end users.
-	 * By default, all operations will succeed. If desired, users can specify
-	 * conditions in which operations should fail, via the `fail()` method,
-	 * or the `failIf()` method and the `ConditionalLogic` interface.
-	 **/
-
+global class MockDml extends Dml {
 	// **** CONSTANT **** //
-	public static final MockDml.SavepointHistory SAVEPOINTS;
+	global static final List<MockDml.ConditionalFailure> FAILURES;
+	global static final MockDml.SavepointHistory SAVEPOINTS;
 	private static final String EVENT_UUID_FIELD;
-	public static List<MockDml.ConditionalFailure> FAILURES;
 	private static final String MOCK_STATUS_CODE;
 
 	// **** STATIC **** //
-	public static MockDml.Database MockDatabase { get; private set; }
+	/**
+	 * @description Mock database instance for tracking DML operations.
+	 */
+	@SuppressWarnings('PMD.PropertyNamingConventions')
+	global static MockDml.Database MockDatabase { get; private set; }
 
-	public static final MockDml.RecordHistory CONVERTED {
+	/**
+	 * @description History of all lead conversion operations.
+	 */
+	@SuppressWarnings('PMD.PropertyNamingConventions')
+	global static final MockDml.RecordHistory CONVERTED {
 		get {
 			return MockDml.MockDatabase?.converted;
 		}
 	}
-	public static final MockDml.RecordHistory DELETED {
+	/**
+	 * @description History of all delete operations.
+	 */
+	@SuppressWarnings('PMD.PropertyNamingConventions')
+	global static final MockDml.RecordHistory DELETED {
 		get {
 			return MockDml.MockDatabase?.deleted;
 		}
 	}
-	public static final MockDml.RecordHistory INSERTED {
+	/**
+	 * @description History of all insert operations.
+	 */
+	@SuppressWarnings('PMD.PropertyNamingConventions')
+	global static final MockDml.RecordHistory INSERTED {
 		get {
 			return MockDml.MockDatabase?.inserted;
 		}
 	}
-	public static MockDml.PlatformEventHistory PUBLISHED {
+	/**
+	 * @description History of all platform event publish operations.
+	 */
+	@SuppressWarnings('PMD.PropertyNamingConventions')
+	global static MockDml.PlatformEventHistory PUBLISHED {
 		get {
 			return MockDml.MockDatabase?.published;
 		}
 	}
-	public static final MockDml.RecordHistory PURGED {
+	/**
+	 * @description History of all recycle bin purge operations.
+	 */
+	@SuppressWarnings('PMD.PropertyNamingConventions')
+	global static final MockDml.RecordHistory PURGED {
 		get {
 			return MockDml.MockDatabase?.purged;
 		}
 	}
-	public static final MockDml.RecordHistory UNDELETED {
+	/**
+	 * @description History of all undelete operations.
+	 */
+	@SuppressWarnings('PMD.PropertyNamingConventions')
+	global static final MockDml.RecordHistory UNDELETED {
 		get {
 			return MockDml.MockDatabase?.undeleted;
 		}
 	}
-	public static final MockDml.RecordHistory UPDATED {
+	/**
+	 * @description History of all update operations.
+	 */
+	@SuppressWarnings('PMD.PropertyNamingConventions')
+	global static final MockDml.RecordHistory UPDATED {
 		get {
 			return MockDml.MockDatabase?.updated;
 		}
 	}
-	public static final MockDml.RecordHistory UPSERTED {
+	/**
+	 * @description History of all upsert operations.
+	 */
+	@SuppressWarnings('PMD.PropertyNamingConventions')
+	global static final MockDml.RecordHistory UPSERTED {
 		get {
 			return MockDml.MockDatabase?.upserted;
 		}
@@ -68,55 +98,44 @@ public class MockDml extends Dml {
 		MockDatabase = new MockDml.Database();
 	}
 
-	public static void eraseAllHistories() {
-		// Reset all of the history objects to their original state
-		// Useful for isolating the actual changes being tested, ie., after test setup
+	/**
+	 * @description Resets all DML operation histories to their original state.
+	 */
+	global static void eraseAllHistories() {
 		MockDml.MockDatabase = new MockDml.Database();
 	}
 
-	public static void shouldFail() {
-		// Adds a BaseFailure the list of failures - all DML operations will now fail.
+	/**
+	 * @description Configures all DML operations to fail.
+	 */
+	global static void shouldFail() {
 		MockDml.shouldSucceed();
 		MockDml.ConditionalFailure failure = new MockDml.BaseFailure();
 		MockDml.shouldFailIf(failure);
 	}
 
-	public static void shouldFailIf(MockDml.ConditionalFailure failure) {
-		// Adds the ConditionalFailure object to a list of failures.
-		// The ConditionalLogic interface defines if/when an error should be thrown during a DML operation.
-		// Each dml operation will iterate through the list of failures and call its interface method for each record.
+	/**
+	 * @description Adds a conditional failure rule to the mock DML operations.
+	 * @param failure The conditional failure implementation that determines when operations should fail
+	 */
+	global static void shouldFailIf(MockDml.ConditionalFailure failure) {
 		MockDml.FAILURES?.add(failure);
 	}
 
-	public static void shouldSucceed() {
-		// Clears the list of failures - all mock DML operations should now succeed.
+	/**
+	 * @description Clears all failure conditions, allowing all DML operations to succeed.
+	 */
+	global static void shouldSucceed() {
 		MockDml.FAILURES?.clear();
 	}
 
 	// **** MEMBER **** //
+	/**
+	 * @description Constructor for MockDml instance.
+	 * @param factory The DatabaseLayer factory instance
+	 */
 	public MockDml(DatabaseLayer factory) {
 		super(factory);
-	}
-
-	public MockDml clearFailures() {
-		// ! Deprecated - this method will be removed in a future release
-		// ! Replace all instances with the `MockDml.shouldSucceed()` static method
-		MockDml.shouldSucceed();
-		return this;
-	}
-
-	public MockDml fail() {
-		// ! Deprecated - this method will be removed in a future release
-		// ! Replace all instances with the `MockDml.shouldFail()` static method
-		MockDml.shouldFail();
-		return this;
-	}
-
-	public MockDml failIf(MockDml.ConditionalFailure failure) {
-		// ! Deprecated - this method will be removed in a future release
-		// ! Replace all instances with the `MockDml.shouldFailIf()` static method
-		MockDml.shouldFailIf(failure);
-		return this;
 	}
 
 	public override Dml.Request initRequest(Dml.Operation operation, List<Object> records) {
@@ -142,84 +161,117 @@ public class MockDml extends Dml {
 	}
 
 	// **** INNER: PUBLIC **** //
-	public interface ConditionalFailure {
+	/**
+	 * @description Interface for defining conditional DML failure logic.
+	 */
+	global interface ConditionalFailure {
 		/**
-		 * This interface defines whether a DML failure should be simulated for the given record.
-		 * Its method should return an exception to be thrown in case of a DML failure, or null in case of success.
-		 * Pass objects that implement this interface to MockDml's `failIf()` method.
-		 **/
-		// ! Deprecated - this method will be altered in a future release,
-		// ! Specifically, the `MockDml.Operation` enum will be replaced with the `Dml.Operation` enum
-		// ! For now, you can create a duplicate method in your class as an intermediary step
-		Exception checkFailure(MockDml.Operation operation, SObject record);
+		 * @description Determines whether a DML operation should fail for a specific record.
+		 * @param operation The DML operation being performed
+		 * @param record The record being processed
+		 * @return Exception to throw if operation should fail, null if it should succeed
+		 */
+		Exception checkFailure(Dml.Operation operation, SObject record);
 	}
 
-	public class Database {
+	/**
+	 * @description Represents a mock Salesforce database that tracks all DML operations and their history.
+	 */
+	global class Database {
 		/**
-		 * This class represents a mock Salesforce Database. It stores all DML Methods' corresponding History objects
+		 * @description Whether to reset mock database state on rollback operations.
+		 * When this configuration flag is true (default), MockDml will mimic a real Database when a rollback occurs.
 		 */
-		public MockDml.RecordHistory converted { get; private set; }
-		public MockDml.RecordHistory deleted { get; private set; }
-		public MockDml.RecordHistory inserted { get; private set; }
-		public MockDml.PlatformEventHistory published { get; private set; }
-		public MockDml.RecordHistory purged { get; private set; }
-		public MockDml.RecordHistory undeleted { get; private set; }
-		public MockDml.RecordHistory updated { get; private set; }
-		public MockDml.RecordHistory upserted { get; private set; }
+		@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
+		global Boolean resetOnRollback { get; set; }
 		/**
-		 * When this configuration flag is "true", MockDml will mimic a real Database when a rollback occurs
-		 * This is "false" by default, for performance reasons (heap, cpu time, etc).
-		 * Only override this if your testing use case truly warrants it!
-		 **/
-		public Boolean resetOnRollback { get; set; }
+		 * @description History of lead conversion operations.
+		 */
+		global MockDml.RecordHistory converted { get; private set; }
+		/**
+		 * @description History of delete operations.
+		 */
+		global MockDml.RecordHistory deleted { get; private set; }
+		/**
+		 * @description History of insert operations.
+		 */
+		global MockDml.RecordHistory inserted { get; private set; }
+		/**
+		 * @description History of platform event publish operations.
+		 */
+		global MockDml.PlatformEventHistory published { get; private set; }
+		/**
+		 * @description History of recycle bin purge operations.
+		 */
+		global MockDml.RecordHistory purged { get; private set; }
+		/**
+		 * @description History of undelete operations.
+		 */
+		global MockDml.RecordHistory undeleted { get; private set; }
+		/**
+		 * @description History of update operations.
+		 */
+		global MockDml.RecordHistory updated { get; private set; }
+		/**
+		 * @description History of upsert operations.
+		 */
+		global MockDml.RecordHistory upserted { get; private set; }
 
 		private Database() {
-			this.converted = new MockDml.RecordHistory(MockDml.Operation.DO_CONVERT);
-			this.deleted = new MockDml.RecordHistory(MockDml.Operation.DO_DELETE);
-			this.inserted = new MockDml.RecordHistory(MockDml.Operation.DO_INSERT);
+			this.converted = new MockDml.RecordHistory(Dml.Operation.DO_CONVERT);
+			this.deleted = new MockDml.RecordHistory(Dml.Operation.DO_DELETE);
+			this.inserted = new MockDml.RecordHistory(Dml.Operation.DO_INSERT);
 			this.published = new MockDml.PlatformEventHistory();
-			this.purged = new MockDml.RecordHistory(MockDml.Operation.DO_PURGE);
-			this.undeleted = new MockDml.RecordHistory(MockDml.Operation.DO_UNDELETE);
-			this.updated = new MockDml.RecordHistory(MockDml.Operation.DO_UPDATE);
-			this.upserted = new MockDml.RecordHistory(MockDml.Operation.DO_UPSERT);
+			this.purged = new MockDml.RecordHistory(Dml.Operation.DO_PURGE);
+			this.undeleted = new MockDml.RecordHistory(Dml.Operation.DO_UNDELETE);
+			this.updated = new MockDml.RecordHistory(Dml.Operation.DO_UPDATE);
+			this.upserted = new MockDml.RecordHistory(Dml.Operation.DO_UPSERT);
 			this.resetOnRollback = true;
 		}
 
-		public Database snapshot() {
-			// Captures the state of the mock database at the current point in time
-			// Note: Object.clone() retains the original reference, must use serialization to keep the snapshot separate:
-			// https://salesforce.stackexchange.com/questions/162765/object-clone-does-not-work-as-expected
+		/**
+		 * @description Creates a snapshot of the current mock database state.
+		 * Note: This operation uses JSON serialization/deserialization for deep copying,
+		 * which may be expensive for large datasets. Consider the resetOnRollback flag setting
+		 * when using this in performance-critical scenarios.
+		 * @return A deep copy of the current database state
+		 */
+		global Database snapshot() {
 			return (MockDml.Database) JSON.deserialize(JSON.serialize(this), MockDml.Database.class);
 		}
 	}
 
-	public abstract class History {
-		/**
-		 * Responsible for recording records that were processed by a given DML operation.
-		 * It provides several methods that callers can use to assert if DML actually occurred.
-		 **/
-		protected MockDml.Operation operation;
+	/**
+	 * @description Base class for tracking DML operation history and providing assertion capabilities.
+	 */
+	global abstract class History {
+		protected Dml.Operation operation;
 		protected Map<String, Map<String, SObject>> recordMap;
 
-		protected History(MockDml.Operation operation) {
+		protected History(Dml.Operation operation) {
 			this.operation = operation;
 			this.recordMap = new Map<String, Map<String, SObject>>();
 		}
 
 		// **** ABSTRACT **** //
-		protected abstract void addRecordToMap(SObject record, Map<String, Object> records);
-		protected abstract SObject setRecordId(SObject record);
+		/**
+		 * @description Adds a record to the internal record map for tracking.
+		 * @param record The record to add
+		 * @param records The map to add the record to
+		 */
+		global abstract void addRecordToMap(SObject record, Map<String, Object> records);
+		/**
+		 * @description Sets or generates an ID for the record.
+		 * @param record The record to set ID for
+		 * @return The record with ID set
+		 */
+		global abstract SObject setRecordId(SObject record);
 
-		// **** PUBLIC **** //
-		public History eraseHistory() {
-			// ! Deprecated! Will be removed in a future release
-			// ! This functionality will not be supported 1:1 going forward;
-			// ! Replace usage of this method with MockDml.clearAllHistories()
-			this.recordMap?.clear();
-			return this;
-		}
-
-		public Map<SObjectType, List<SObject>> getAll() {
+		/**
+		 * @description Retrieves all records processed by the current operation, grouped by SObjectType.
+		 * @return Map of SObjectType to List of processed records
+		 */
+		global Map<SObjectType, List<SObject>> getAll() {
 			// Retrieve all records processed by the current operation, grouped by SObjectType
 			Map<SObjectType, List<SObject>> allRecords = new Map<SObjectType, List<SObject>>();
 			for (String objectApiName : this.recordMap?.keySet()) {
@@ -230,39 +282,76 @@ public class MockDml extends Dml {
 			return allRecords;
 		}
 
-		public List<SObject> getRecords(SObjectType objectType) {
+		/**
+		 * @description Retrieves all records of the specified SObjectType.
+		 * @param objectType The SObjectType to retrieve records for
+		 * @return List of records for the specified type
+		 */
+		global List<SObject> getRecords(SObjectType objectType) {
 			// Retrieves all records of the specified SObjectType
 			return this.getRecordMap(objectType)?.values();
 		}
 
-		public SObject get(SObjectType objectType, String idOrUuuid) {
+		/**
+		 * @description Retrieves a specific record by SObjectType and ID/UUID.
+		 * @param objectType The SObjectType of the record
+		 * @param idOrUuuid The record ID or UUID (for platform events)
+		 * @return The matching record or null if not found
+		 */
+		global SObject get(SObjectType objectType, String idOrUuuid) {
 			// Retrieves a specific record that was processed
 			// Use this method with platform events, who have a UUID but not a traditional Record ID with a reference to the SObjectType
 			return this.getRecordMap(objectType)?.get(idOrUuuid);
 		}
 
-		public SObject get(Id recordId) {
+		/**
+		 * @description Retrieves a specific record by ID.
+		 * @param recordId The record ID to retrieve
+		 * @return The matching record or null if not found
+		 */
+		global SObject get(Id recordId) {
 			// Retrieves a specific record that was processed
 			SObjectType objectType = recordId?.getSObjectType();
 			return this.get(objectType, recordId);
 		}
 
-		public SObject get(SObject record) {
+		/**
+		 * @description Retrieves a specific record by SObject reference.
+		 * @param record The SObject to find (uses its Id)
+		 * @return The matching record or null if not found
+		 */
+		global SObject get(SObject record) {
 			return this.get(record?.Id);
 		}
 
-		public Boolean wasProcessed(SObjectType objectType, String idOrUuid) {
+		/**
+		 * @description Checks if a record was processed for DML by SObjectType and ID/UUID.
+		 * @param objectType The SObjectType of the record
+		 * @param idOrUuid The record ID or UUID
+		 * @return True if the record was processed, false otherwise
+		 */
+		global Boolean wasProcessed(SObjectType objectType, String idOrUuid) {
 			// Returns true if the record was processed for DML, else returns false
 			return this.get(objectType, idOrUuid) != null;
 		}
 
-		public Boolean wasProcessed(Id recordId) {
+		/**
+		 * @description Checks if a record was processed for DML by ID.
+		 * @param recordId The record ID to check
+		 * @return True if the record was processed, false otherwise
+		 */
+		global Boolean wasProcessed(Id recordId) {
 			// Returns true if the record was processed for DML, else returns false
 			SObjectType objectType = recordId?.getSObjectType();
 			return this.wasProcessed(objectType, recordId);
 		}
 
-		public Boolean wasProcessed(SObject record) {
+		/**
+		 * @description Checks if a record was processed for DML by SObject reference.
+		 * @param record The SObject to check (uses its Id)
+		 * @return True if the record was processed, false otherwise
+		 */
+		global Boolean wasProcessed(SObject record) {
 			return this.wasProcessed(record?.Id);
 		}
 
@@ -274,7 +363,7 @@ public class MockDml extends Dml {
 			recordMap?.remove(record?.Id);
 		}
 
-		protected MockDml.Operation getOperation() {
+		protected Dml.Operation getOperation() {
 			return this.operation;
 		}
 
@@ -288,10 +377,10 @@ public class MockDml extends Dml {
 			MockDml.Error dmlError = new MockDml.Error(error);
 			if (allOrNone == true) {
 				throw dmlError?.toDmlException();
-			} else if (this.operation == MockDml.Operation.DO_CONVERT) {
+			} else if (this.operation == Dml.Operation.DO_CONVERT) {
 				Lead lead = (Lead) record;
 				return new MockDml.LeadConvertResult(lead)?.addError(dmlError);
-			} else if (this.operation == MockDml.Operation.DO_INSERT) {
+			} else if (this.operation == Dml.Operation.DO_INSERT) {
 				// Note: When a record fails to be inserted, the resulting Database.SaveResult should have a null Id value
 				return new MockDml.RecordResult(record)?.clearId()?.addError(dmlError);
 			} else {
@@ -325,12 +414,10 @@ public class MockDml extends Dml {
 		DO_UPSERT
 	}
 
+	/**
+	 * @description Mock implementation of DML request that simulates database operations without actual DML.
+	 */
 	public class Request extends Dml.Request {
-		/**
-		 * Contains overrides for each DML operation, and is responsible for mocking DML
-		 * An instance of this class (instead of the super type)
-		 * is initialized via the overridden `initRequest` method
-		 */
 		private Request(Dml.Operation operation, List<Object> records) {
 			super(operation, records);
 			this.isMockDml = true;
@@ -418,7 +505,7 @@ public class MockDml extends Dml {
 		}
 
 		// ** PRIVATE
-		private void checkFailures(MockDml.Operation operation, SObject record) {
+		private void checkFailures(Dml.Operation operation, SObject record) {
 			// Runs all ConditionalFailures defined the current instance against each record.
 			for (MockDml.ConditionalFailure failure : MockDml.FAILURES) {
 				Exception error = failure?.checkFailure(operation, record);
@@ -432,7 +519,7 @@ public class MockDml extends Dml {
 			// Simulates a DML operation for a single record, returning a MockDml.Result,
 			// which calling methods can de/serialize into a Database.Save/Upsert/etc. Result.
 			try {
-				MockDml.Operation operation = history?.getOperation();
+				Dml.Operation operation = history?.getOperation();
 				// Determine if the operation should fail for the specific record
 				this.checkFailures(operation, record);
 				// Simulate successful dml, return a MockDml.Result w/out errors
@@ -550,21 +637,20 @@ public class MockDml extends Dml {
 		}
 	}
 
-	public virtual class PlatformEventHistory extends MockDml.History {
-		/**
-		 * This class tracks platform events that were mock published.
-		 * Necessary since platform events' unique identifier is the `EventUuid` field - not `Id`
-		 **/
+	/**
+	 * @description Specialized history tracking for platform events, which use EventUuid instead of Id.
+	 */
+	global virtual class PlatformEventHistory extends MockDml.History {
 		private PlatformEventHistory() {
-			super(MockDml.Operation.DO_PUBLISH);
+			super(Dml.Operation.DO_PUBLISH);
 		}
 
-		protected override void addRecordToMap(SObject record, Map<String, Object> records) {
+		global override void addRecordToMap(SObject record, Map<String, Object> records) {
 			String uuid = this.getUuid(record);
 			records?.put(uuid, record);
 		}
 
-		protected override SObject setRecordId(SObject record) {
+		global override SObject setRecordId(SObject record) {
 			// Note: Platform Events technically have an Id field, but it's not writeable, nor is it transformed after publish.
 			// Instead, the platform populates the "EventUuid" field with a unique identifier
 			// It's better to refer to platform events by their EventUuid value, which is unique.
@@ -576,32 +662,19 @@ public class MockDml extends Dml {
 		}
 	}
 
-	public virtual class RecordHistory extends MockDml.History {
-		/**
-		 * This class is responsible for tracking DML made against most SObject types
-		 **/
-		private RecordHistory(MockDml.Operation operation) {
+	/**
+	 * @description Standard history tracking for regular SObject records using Id field.
+	 */
+	global virtual class RecordHistory extends MockDml.History {
+		private RecordHistory(Dml.Operation operation) {
 			super(operation);
 		}
 
-		public SObject getRecord(Id recordId) {
-			// ! Deprecated! Will be removed in a future release
-			// ! Replace usage of this method with the MockDml.History's get(Id recordId) method
-			// Retrieve a specific SObject from the History tracking
-			return super.get(recordId);
-		}
-
-		public SObject getRecord(SObject record) {
-			// ! Deprecated! Will be removed in a future release
-			// ! Replace usage of this method with the MockDml.History's get(SObject record) method
-			return super.get(record);
-		}
-
-		protected override void addRecordToMap(SObject record, Map<String, Object> records) {
+		global override void addRecordToMap(SObject record, Map<String, Object> records) {
 			records?.put(record?.Id, record);
 		}
 
-		protected override SObject setRecordId(SObject record) {
+		global override SObject setRecordId(SObject record) {
 			// If the record does not have an Id value, generate a mock one
 			if (record?.Id == null) {
 				SObjectType objectType = record?.getSObjectType();
@@ -611,29 +684,40 @@ public class MockDml extends Dml {
 		}
 	}
 
-	public class SavepointHistory {
-		/**
-		 * This class maintains a map of MockDml.Savepoints,
-		 * and provides methods to easily get a particular savepoint by their index or by the object itself
-		 */
+	/**
+	 * @description Manages mock savepoint history and provides access to savepoint information.
+	 */
+	global class SavepointHistory {
 		private Map<Integer, MockDml.Savepoint> savepointMap;
 
 		private SavepointHistory() {
 			this.savepointMap = new Map<Integer, MockDml.Savepoint>();
 		}
 
-		public List<MockDml.Savepoint> getAll() {
+		/**
+		 * @description Returns all registered MockDml.Savepoints.
+		 * @return List of all MockDml.Savepoint objects
+		 */
+		global List<MockDml.Savepoint> getAll() {
 			// Returns all registered MockDml.Savepoints:
 			return this.savepointMap?.values();
 		}
 
-		public MockDml.Savepoint get(Integer index) {
-			// Retrieves a MockDml.Savepoint by its index:
+		/**
+		 * @description Retrieves a MockDml.Savepoint by its index.
+		 * @param index The index of the savepoint to retrieve
+		 * @return The MockDml.Savepoint at the specified index
+		 */
+		global MockDml.Savepoint get(Integer index) {
 			return this.savepointMap?.get(index);
 		}
 
-		public MockDml.Savepoint get(System.Savepoint savepoint) {
-			// Retrieves a System.Savepoint's MockDml.Savepoint wrapper:
+		/**
+		 * @description Retrieves a System.Savepoint's MockDml.Savepoint wrapper.
+		 * @param savepoint The System.Savepoint to get the wrapper for
+		 * @return The corresponding MockDml.Savepoint wrapper
+		 */
+		global MockDml.Savepoint get(System.Savepoint savepoint) {
 			Integer index = this.getIndexFrom(savepoint);
 			return this.get(index);
 		}
@@ -654,18 +738,33 @@ public class MockDml extends Dml {
 		}
 	}
 
-	public class Savepoint {
+	/**
+	 * @description Decorates a System.Savepoint object with mock database state management.
+	 */
+	global class Savepoint {
 		/**
 		 * This class decorates a System.Savepoint object
 		 * Test callers can use the class's methods to determine if the savepoint was saved, released, or rolled back
 		 * This also stores a shallow copy of the mock database at the time the savepoint was generated,
 		 * in the event of a rollback, the mock database will be reverted back to this point
 		 */
-		public Integer index { get; private set; }
-		public String name { get; private set; }
-		public Boolean wasReleased { get; private set; }
-		public Boolean wasRolledBack { get; private set; }
-		private transient MockDml.Database savepointState;
+		/**
+		 * @description The index of this savepoint in the transaction.
+		 */
+		global Integer index { get; private set; }
+		/**
+		 * @description The name of this savepoint.
+		 */
+		global String name { get; private set; }
+		/**
+		 * @description Whether this savepoint was released.
+		 */
+		global Boolean wasReleased { get; private set; }
+		/**
+		 * @description Whether this savepoint was rolled back.
+		 */
+		global Boolean wasRolledBack { get; private set; }
+		private transient MockDml.Database savepointState { get; private set; }
 
 		private Savepoint(System.Savepoint savepoint, Integer index) {
 			this.index = index;
@@ -699,17 +798,29 @@ public class MockDml extends Dml {
 	}
 
 	// **** INNER: PRIVATE **** //
+	/**
+	 * @description Default failure implementation that always fails operations.
+	 */
 	private class BaseFailure implements MockDml.ConditionalFailure {
 		/**
 		 * The `MockDml` class ships with one concrete implementation of the `ConditionalFailure` interface.
 		 * This one is simple -- it always returns an error to be thrown.
-		 * Callers can inject this error by calling the MockDml's `fail()` method.
+		 * Callers can inject this error by calling the `MockDml.shouldFail()` method.
 		 **/
-		public Exception checkFailure(MockDml.Operation operation, SObject record) {
+		/**
+		 * @description Always returns a DML exception to simulate failure.
+		 * @param operation The DML operation (unused)
+		 * @param record The record being processed (unused)
+		 * @return A DmlException to be thrown
+		 */
+		public Exception checkFailure(Dml.Operation operation, SObject record) {
 			return new System.DmlException();
 		}
 	}
 
+	/**
+	 * @description Mocks the Database.Error class for testing DML failures.
+	 */
 	private class Error {
 		/**
 		 *  Mocks the `Database.Error` class, since this type cannot be manually constructed.
@@ -740,6 +851,9 @@ public class MockDml extends Dml {
 		}
 	}
 
+	/**
+	 * @description Mocks Database.LeadConvertResult for lead conversion operations.
+	 */
 	private virtual class LeadConvertResult extends MockDml.Result {
 		/**
 		 * Mocks `Database.LeadConvertResult` objects
@@ -771,6 +885,9 @@ public class MockDml extends Dml {
 		}
 	}
 
+	/**
+	 * @description Mocks standard Database result types (SaveResult, DeleteResult, etc.).
+	 */
 	private virtual class RecordResult extends MockDml.Result {
 		/**
 		 * Mocks most Database result types; ex., `Database.SaveResult`, `Database.DeleteResult`, etc.
@@ -800,6 +917,9 @@ public class MockDml extends Dml {
 		}
 	}
 
+	/**
+	 * @description Abstract base class for all Database result mock objects.
+	 */
 	private abstract class Result {
 		/**
 		 * Abstract type which serves as the building block for mocking all Database result classes.
@@ -807,6 +927,9 @@ public class MockDml extends Dml {
 		 * All types share two parameters: errors and success
 		 **/
 		protected List<MockDml.Error> errors = new List<MockDml.Error>();
+		/**
+		 * @description Whether the operation succeeded (no errors).
+		 */
 		protected Boolean success {
 			get {
 				return this.errors?.isEmpty() != false;

@@ -1,5 +1,5 @@
 @SuppressWarnings(
-	'PMD.ApexDoc, PMD.ApexUnitTestClassShouldHaveAsserts, PMD.CyclomaticComplexity, PMD.ApexUnitTestClassShouldHaveRunAs'
+	'PMD.ApexUnitTestClassShouldHaveAsserts,PMD.ApexUnitTestClassShouldHaveRunAs,PMD.CyclomaticComplexity'
 )
 @IsTest
 private class SoqlTest {
@@ -107,18 +107,19 @@ private class SoqlTest {
 		Test.stopTest();
 	}
 
-	@SuppressWarnings('PMD.EmptyCatchBlock')
 	@IsTest
 	static void shouldWrapInvalidCursorFetchErrors() {
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowLimit(1)?.toSoql();
 
 		Test.startTest();
+		Exception caughtError;
 		try {
 			// Negative parameters are not allowed!
 			soql?.getCursor()?.fetch(0, -1);
 			Assert.fail('Did not throw a Soql.InvalidParameterValueException for batch fetch params');
 		} catch (Soql.InvalidParameterValueException error) {
 			// As expected...
+			caughtError = error;
 		}
 		Test.stopTest();
 	}
@@ -209,7 +210,7 @@ private class SoqlTest {
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
 			?.addSelect(profile, 'profileName')
 			?.addSelect(count)
-			?.groupBy(profile)
+			?.addGroupBy(profile)
 			?.toSoql();
 
 		Test.startTest();
@@ -227,7 +228,7 @@ private class SoqlTest {
 	@IsTest
 	static void shouldSetAccessLevel() {
 		System.AccessLevel level = System.AccessLevel.SYSTEM_MODE;
-		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)?.defineAccess(level)?.toSoql();
+		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)?.setAccessLevel(level)?.toSoql();
 		Assert.areEqual(level, soql?.accessLevel, 'Did not set access level');
 	}
 
@@ -299,7 +300,7 @@ private class SoqlTest {
 	static void shouldSelectFieldWithAlias() {
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
 			?.addSelect(User.ProfileId, 'profile')
-			?.groupBy(User.ProfileId)
+			?.addGroupBy(User.ProfileId)
 			?.toSoql();
 		String expected = 'SELECT ProfileId profile FROM User GROUP BY ProfileId';
 
@@ -313,7 +314,7 @@ private class SoqlTest {
 		Soql.ParentField field = new Soql.ParentField(Account.OwnerId, User.ProfileId);
 		Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)
 			?.addSelect(field, 'profile')
-			?.groupBy(field)
+			?.addGroupBy(field)
 			?.toSoql();
 		String expected = 'SELECT Owner.ProfileId profile FROM Account GROUP BY Owner.ProfileId';
 
@@ -555,7 +556,7 @@ private class SoqlTest {
 	@IsTest
 	static void shouldSetQueryScope() {
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
-			?.usingScope(Soql.Scope.EVERYTHING)
+			?.setScope(Soql.Scope.EVERYTHING)
 			?.setRowLimit(1)
 			?.toSoql();
 		String expected = 'SELECT Id FROM User USING SCOPE EVERYTHING LIMIT 1';
@@ -654,7 +655,7 @@ private class SoqlTest {
 	static void shouldGroupByField() {
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
 			?.addSelect(User.ProfileId)
-			?.groupBy(User.ProfileId)
+			?.addGroupBy(User.ProfileId)
 			?.toSoql();
 		String expected = 'SELECT ProfileId FROM User GROUP BY ProfileId';
 
@@ -668,7 +669,7 @@ private class SoqlTest {
 		Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id);
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
 			?.addSelect(User.ProfileId)
-			?.groupBy(User.ProfileId)
+			?.addGroupBy(User.ProfileId)
 			?.addHaving(count, Soql.GREATER_THAN, 1)
 			?.toSoql();
 		String expected = 'SELECT ProfileId FROM User GROUP BY ProfileId HAVING COUNT(Id) > 1';
@@ -683,7 +684,7 @@ private class SoqlTest {
 		Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id);
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
 			?.addSelect(User.ProfileId)
-			?.groupBy(User.ProfileId)
+			?.addGroupBy(User.ProfileId)
 			?.addHaving(count, Soql.GREATER_THAN, 1)
 			?.addHaving(count, Soql.LESS_OR_EQUAL, 100)
 			?.toSoql();
@@ -699,7 +700,7 @@ private class SoqlTest {
 		Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id);
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
 			?.addSelect(User.ProfileId)
-			?.groupBy(User.ProfileId)
+			?.addGroupBy(User.ProfileId)
 			?.addHaving(count, Soql.GREATER_THAN, 1)
 			?.addHaving(count, Soql.LESS_OR_EQUAL, 100)
 			?.setOuterHavingLogic(Soql.LogicType.ANY_CONDITIONS)
@@ -714,7 +715,7 @@ private class SoqlTest {
 	@IsTest
 	static void shouldSetOrderByClause() {
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
-			?.orderBy(User.CreatedDate, Soql.SortDirection.DESCENDING)
+			?.addOrderBy(User.CreatedDate, Soql.SortDirection.DESCENDING)
 			?.setRowLimit(1)
 			?.toSoql();
 		String expected = 'SELECT Id FROM User ORDER BY CreatedDate DESC NULLS LAST LIMIT 1';
@@ -728,7 +729,7 @@ private class SoqlTest {
 	static void shouldSetOrderByClauseWithParentField() {
 		Soql.ParentField field = new Soql.ParentField(Account.OwnerId, User.CreatedDate);
 		Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)
-			?.orderBy(field, Soql.SortDirection.DESCENDING)
+			?.addOrderBy(field, Soql.SortDirection.DESCENDING)
 			?.setRowLimit(1)
 			?.toSoql();
 		String expected = 'SELECT Id FROM Account ORDER BY Owner.CreatedDate DESC NULLS LAST LIMIT 1';
@@ -741,8 +742,8 @@ private class SoqlTest {
 	@IsTest
 	static void shouldSupportMultipleOrderByClauses() {
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
-			?.orderBy(new Soql.ParentField(User.ProfileId, Profile.Name), Soql.SortDirection.ASCENDING)
-			?.orderBy(User.CreatedDate, Soql.SortDirection.DESCENDING)
+			?.addOrderBy(new Soql.ParentField(User.ProfileId, Profile.Name), Soql.SortDirection.ASCENDING)
+			?.addOrderBy(User.CreatedDate, Soql.SortDirection.DESCENDING)
 			?.setRowLimit(1)
 			?.toSoql();
 		String expected = 'SELECT Id FROM User ORDER BY Profile.Name ASC NULLS LAST, CreatedDate DESC NULLS LAST LIMIT 1';
@@ -793,7 +794,7 @@ private class SoqlTest {
 			?.addSelect(User.Email)
 			?.addWhere(User.IsActive, Soql.EQUALS, true)
 			?.addWhere(new Soql.ParentField(User.ProfileId, Profile.Name), Soql.EQUALS, 'System Administrator')
-			?.orderBy(User.CreatedDate, Soql.SortDirection.ASCENDING)
+			?.addOrderBy(User.CreatedDate, Soql.SortDirection.ASCENDING)
 			?.setRowLimit(1)
 			?.toSoql();
 		String expected =
@@ -816,7 +817,7 @@ private class SoqlTest {
 			?.addSelect(User.Email)
 			?.addWhere(User.IsActive, Soql.EQUALS, true)
 			?.addWhere(new Soql.ParentField(User.ProfileId, Profile.Name), Soql.EQUALS, 'System Administrator')
-			?.orderBy(User.CreatedDate, Soql.SortDirection.ASCENDING)
+			?.addOrderBy(User.CreatedDate, Soql.SortDirection.ASCENDING)
 			?.setRowLimit(1)
 			?.toSoql();
 		// Callers may have a need to reset the same query object
@@ -1498,18 +1499,19 @@ private class SoqlTest {
 		Assert.areEqual(builder?.toString(), result?.toString(), 'Wrong query string');
 	}
 
-	@SuppressWarnings('PMD.EmptyCatchBlock')
 	@IsTest
 	static void shouldThrowExceptionIfInvalidCasting() {
 		Soql.Builder builder = new Soql.Subquery(Case.AccountId)?.addSelect(Case.Status);
 
 		Test.startTest();
 		// Subquery is never an instance of Soql!
+		Exception caughtError;
 		try {
 			builder?.toSoql();
 			Assert.fail('Did not throw a System.TypeException');
 		} catch (System.TypeException error) {
 			// As expected...
+			caughtError = error;
 		}
 		Test.stopTest();
 	}
@@ -1544,12 +1546,14 @@ private class SoqlTest {
 		DatabaseLayer.Soql.initPlugins();
 
 		Test.startTest();
+		Exception caughtError;
 		try {
 			// Can't query w/a null FROM object:
 			DatabaseLayer.Soql.newQuery(null)?.toSoql()?.query();
 			Assert.fail('Did not throw an Exception');
 		} catch (Exception error) {
-			// As expected
+			// As expected...
+			caughtError = error;
 		}
 		Test.stopTest();
 

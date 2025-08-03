@@ -1,30 +1,33 @@
+/**
+ * @description Handles all DML operations with the Salesforce database. Provides a mockable interface for CRUD operations, plugins, and comprehensive parameter support.
+ */
 @SuppressWarnings(
-	'PMD.ApexDoc, PMD.CognitiveComplexity, PMD.CyclomaticComplexity, PMD.EmptyStatementBlock, PMD.ExcessiveParameterList, PMD.ExcessivePublicCount'
+	'PMD.AvoidGlobalModifier,PMD.CognitiveComplexity,PMD.CyclomaticComplexity,PMD.ExcessiveClassLength,PMD.ExcessivePublicCount'
 )
-public inherited sharing virtual class Dml {
-	/**
-	 * This class is responsible for performing CRUD operations with the Salesforce database.
-	 * While the apex language allows developers to directly interact with the database,
-	 * use of these methods does not facilitate mocking.
-	 * Use this class instead of the DML keywords [`insert`, `update`, `delete`, etc],
-	 * or the corresponding Database methods [ex., `Database.insert()`].
-	 * Each of this class's methods eventually ties back to an underlying `Database` method,
-	 * ex., `new Dml().doInsert()` -> `Database.insert()`.
-	 * Use the included `MockDml` class to perform Mock DML
-	 **/
+global inherited sharing virtual class Dml {
 	private static final System.AccessLevel DEFAULT_ACCESS_LEVEL = System.AccessLevel.USER_MODE;
 	private static final DataSource.AsyncDeleteCallback DEFAULT_DELETE_CALLBACK = new Dml.EmptyDeleteCallback();
 	private static final DataSource.AsyncSaveCallback DEFAULT_SAVE_CALLBACK = new Dml.EmptySaveCallback();
 	private static final SObjectField PLUGIN_FIELD = DatabaseLayerSetting__mdt.DmlPreAndPostProcessor__c;
-	private static Dml.PreAndPostProcessor Plugin;
+	private static Dml.PreAndPostProcessor plugin;
 
+	/**
+	 * @description Constructor for Dml instance.
+	 * Note: Should not be called directly - use DatabaseLayer.Dml property instead.
+	 * @param factory The DatabaseLayer factory instance
+	 */
 	public Dml(DatabaseLayer factory) {
-		// Note: Dml classes can't be constructed manually; instead, use the DatabaseLayer.Dml static property
 		this.initPlugins();
 	}
 
-	// ** Convert Methods
-	public List<Database.LeadConvertResult> doConvert(
+	/**
+	 * @description Converts leads using the specified options and access level.
+	 * @param leadsToConvert List of Database.LeadConvert objects to process
+	 * @param options DML options for the conversion operation
+	 * @param accessLevel System access level for the operation
+	 * @return List of Database.LeadConvertResult objects
+	 */
+	global List<Database.LeadConvertResult> doConvert(
 		List<Database.LeadConvert> leadsToConvert,
 		Database.DmlOptions options,
 		System.AccessLevel accessLevel
@@ -35,7 +38,15 @@ public inherited sharing virtual class Dml {
 		return (List<Database.LeadConvertResult>) request?.process();
 	}
 
-	public List<Database.LeadConvertResult> doConvert(
+	/**
+	 * @description Converts leads using the specified all-or-none setting and access level.
+	 * @param leadsToConvert List of Database.LeadConvert objects to process
+	 * @param allOrNone Whether all operations must succeed or all fail
+	 * @param accessLevel System access level for the operation
+	 * @return List of Database.LeadConvertResult objects
+	 */
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
+	global List<Database.LeadConvertResult> doConvert(
 		List<Database.LeadConvert> leadsToConvert,
 		Boolean allOrNone,
 		System.AccessLevel accessLevel
@@ -43,29 +54,60 @@ public inherited sharing virtual class Dml {
 		return this.doConvert(leadsToConvert, Dml.initDmlOptions(allOrNone), accessLevel);
 	}
 
-	public List<Database.LeadConvertResult> doConvert(
+	/**
+	 * @description Converts leads using the specified options and default access level.
+	 * @param leadsToConvert List of Database.LeadConvert objects to process
+	 * @param options DML options for the conversion operation
+	 * @return List of Database.LeadConvertResult objects
+	 */
+	global List<Database.LeadConvertResult> doConvert(
 		List<Database.LeadConvert> leadsToConvert,
 		Database.DmlOptions options
 	) {
 		return this.doConvert(leadsToConvert, options, DEFAULT_ACCESS_LEVEL);
 	}
 
-	public List<Database.LeadConvertResult> doConvert(
+	/**
+	 * @description Converts leads using the specified access level and default all-or-none setting.
+	 * @param leadsToConvert List of Database.LeadConvert objects to process
+	 * @param level System access level for the operation
+	 * @return List of Database.LeadConvertResult objects
+	 */
+	global List<Database.LeadConvertResult> doConvert(
 		List<Database.LeadConvert> leadsToConvert,
 		System.AccessLevel level
 	) {
 		return this.doConvert(leadsToConvert, true, level);
 	}
 
-	public List<Database.LeadConvertResult> doConvert(List<Database.LeadConvert> leadsToConvert, Boolean allOrNone) {
+	/**
+	 * @description Converts leads using the specified all-or-none setting and default access level.
+	 * @param leadsToConvert List of Database.LeadConvert objects to process
+	 * @param allOrNone Whether all operations must succeed or all fail
+	 * @return List of Database.LeadConvertResult objects
+	 */
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
+	global List<Database.LeadConvertResult> doConvert(List<Database.LeadConvert> leadsToConvert, Boolean allOrNone) {
 		return this.doConvert(leadsToConvert, Dml.initDmlOptions(allOrNone));
 	}
 
-	public List<Database.LeadConvertResult> doConvert(List<Database.LeadConvert> leadsToConvert) {
+	/**
+	 * @description Converts leads using default settings (all-or-none true, user mode access).
+	 * @param leadsToConvert List of Database.LeadConvert objects to process
+	 * @return List of Database.LeadConvertResult objects
+	 */
+	global List<Database.LeadConvertResult> doConvert(List<Database.LeadConvert> leadsToConvert) {
 		return this.doConvert(leadsToConvert, true);
 	}
 
-	public Database.LeadConvertResult doConvert(
+	/**
+	 * @description Converts a single lead using the specified options and access level.
+	 * @param leadToConvert Database.LeadConvert object to process
+	 * @param options DML options for the conversion operation
+	 * @param accessLevel System access level for the operation
+	 * @return Database.LeadConvertResult object
+	 */
+	global Database.LeadConvertResult doConvert(
 		Database.LeadConvert leadToConvert,
 		Database.DmlOptions options,
 		System.AccessLevel accessLevel
@@ -73,7 +115,15 @@ public inherited sharing virtual class Dml {
 		return this.doConvert(new List<Database.LeadConvert>{ leadToConvert }, options, accessLevel)?.get(0);
 	}
 
-	public Database.LeadConvertResult doConvert(
+	/**
+	 * @description Converts a single lead using the specified all-or-none setting and access level.
+	 * @param leadToConvert Database.LeadConvert object to process
+	 * @param allOrNone Whether all operations must succeed or all fail
+	 * @param accessLevel System access level for the operation
+	 * @return Database.LeadConvertResult object
+	 */
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
+	global Database.LeadConvertResult doConvert(
 		Database.LeadConvert leadToConvert,
 		Boolean allOrNone,
 		System.AccessLevel accessLevel
@@ -81,24 +131,56 @@ public inherited sharing virtual class Dml {
 		return this.doConvert(new List<Database.LeadConvert>{ leadToConvert }, allOrNone, accessLevel)?.get(0);
 	}
 
-	public Database.LeadConvertResult doConvert(Database.LeadConvert leadToConvert, Database.DmlOptions options) {
+	/**
+	 * @description Converts a single lead using the specified options and default access level.
+	 * @param leadToConvert Database.LeadConvert object to process
+	 * @param options DML options for the conversion operation
+	 * @return Database.LeadConvertResult object
+	 */
+	global Database.LeadConvertResult doConvert(Database.LeadConvert leadToConvert, Database.DmlOptions options) {
 		return this.doConvert(new List<Database.LeadConvert>{ leadToConvert }, options)?.get(0);
 	}
 
-	public Database.LeadConvertResult doConvert(Database.LeadConvert leadToConvert, Boolean allOrNone) {
+	/**
+	 * @description Converts a single lead using the specified all-or-none setting and default access level.
+	 * @param leadToConvert Database.LeadConvert object to process
+	 * @param allOrNone Whether all operations must succeed or all fail
+	 * @return Database.LeadConvertResult object
+	 */
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
+	global Database.LeadConvertResult doConvert(Database.LeadConvert leadToConvert, Boolean allOrNone) {
 		return this.doConvert(new List<Database.LeadConvert>{ leadToConvert }, allOrNone)?.get(0);
 	}
 
-	public Database.LeadConvertResult doConvert(Database.LeadConvert leadToConvert, System.AccessLevel level) {
+	/**
+	 * @description Converts a single lead using the specified access level and default all-or-none setting.
+	 * @param leadToConvert Database.LeadConvert object to process
+	 * @param level System access level for the operation
+	 * @return Database.LeadConvertResult object
+	 */
+	global Database.LeadConvertResult doConvert(Database.LeadConvert leadToConvert, System.AccessLevel level) {
 		return this.doConvert(new List<Database.LeadConvert>{ leadToConvert }, level)?.get(0);
 	}
 
-	public Database.LeadConvertResult doConvert(Database.LeadConvert leadToConvert) {
+	/**
+	 * @description Converts a single lead using default settings (all-or-none true, user mode access).
+	 * @param leadToConvert Database.LeadConvert object to process
+	 * @return Database.LeadConvertResult object
+	 */
+	global Database.LeadConvertResult doConvert(Database.LeadConvert leadToConvert) {
 		return this.doConvert(new List<Database.LeadConvert>{ leadToConvert })?.get(0);
 	}
 
 	// ** Delete Methods
-	public List<Database.DeleteResult> doDelete(
+	/**
+	 * @description Deletes a list of records using the specified all-or-none setting and access level.
+	 * @param records List of SObject records to delete
+	 * @param allOrNone Whether all operations must succeed or all fail
+	 * @param accessLevel System access level for the operation
+	 * @return List of Database.DeleteResult objects
+	 */
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
+	global List<Database.DeleteResult> doDelete(
 		List<SObject> records,
 		Boolean allOrNone,
 		System.AccessLevel accessLevel
@@ -109,69 +191,172 @@ public inherited sharing virtual class Dml {
 		return (List<Database.DeleteResult>) request?.process();
 	}
 
-	public List<Database.DeleteResult> doDelete(List<SObject> records, Boolean allOrNone) {
+	/**
+	 * @description Deletes a list of records using the specified all-or-none setting and default access level.
+	 * @param records List of SObject records to delete
+	 * @param allOrNone Whether all operations must succeed or all fail
+	 * @return List of Database.DeleteResult objects
+	 */
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
+	global List<Database.DeleteResult> doDelete(List<SObject> records, Boolean allOrNone) {
 		return this.doDelete(records, allOrNone, DEFAULT_ACCESS_LEVEL);
 	}
 
-	public List<Database.DeleteResult> doDelete(List<SObject> records, System.AccessLevel accessLevel) {
+	/**
+	 * @description Deletes a list of records using the specified access level and default all-or-none setting.
+	 * @param records List of SObject records to delete
+	 * @param accessLevel System access level for the operation
+	 * @return List of Database.DeleteResult objects
+	 */
+	global List<Database.DeleteResult> doDelete(List<SObject> records, System.AccessLevel accessLevel) {
 		return this.doDelete(records, true, accessLevel);
 	}
 
-	public List<Database.DeleteResult> doDelete(List<SObject> records) {
+	/**
+	 * @description Deletes a list of records using default settings (all-or-none true, user mode access).
+	 * @param records List of SObject records to delete
+	 * @return List of Database.DeleteResult objects
+	 */
+	global List<Database.DeleteResult> doDelete(List<SObject> records) {
 		return this.doDelete(records, DEFAULT_ACCESS_LEVEL);
 	}
 
-	public List<Database.DeleteResult> doDelete(List<Id> recordIds, Boolean allOrNone, System.AccessLevel accessLevel) {
+	/**
+	 * @description Deletes records by IDs using the specified all-or-none setting and access level.
+	 * @param recordIds List of record IDs to delete
+	 * @param allOrNone Whether all operations must succeed or all fail
+	 * @param accessLevel System access level for the operation
+	 * @return List of Database.DeleteResult objects
+	 */
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
+	global List<Database.DeleteResult> doDelete(List<Id> recordIds, Boolean allOrNone, System.AccessLevel accessLevel) {
 		List<SObject> records = this.initRecordsFromIds(recordIds);
 		return this.doDelete(records, allOrNone, accessLevel);
 	}
 
-	public List<Database.DeleteResult> doDelete(List<Id> recordIds, Boolean allOrNone) {
+	/**
+	 * @description Deletes records by IDs using the specified all-or-none setting and default access level.
+	 * @param recordIds List of record IDs to delete
+	 * @param allOrNone Whether all operations must succeed or all fail
+	 * @return List of Database.DeleteResult objects
+	 */
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
+	global List<Database.DeleteResult> doDelete(List<Id> recordIds, Boolean allOrNone) {
 		return this.doDelete(recordIds, allOrNone, DEFAULT_ACCESS_LEVEL);
 	}
 
-	public List<Database.DeleteResult> doDelete(List<Id> recordIds, System.AccessLevel accessLevel) {
+	/**
+	 * @description Deletes records by IDs using the specified access level and default all-or-none setting.
+	 * @param recordIds List of record IDs to delete
+	 * @param accessLevel System access level for the operation
+	 * @return List of Database.DeleteResult objects
+	 */
+	global List<Database.DeleteResult> doDelete(List<Id> recordIds, System.AccessLevel accessLevel) {
 		return this.doDelete(recordIds, true, accessLevel);
 	}
 
-	public List<Database.DeleteResult> doDelete(List<Id> recordIds) {
+	/**
+	 * @description Deletes records by IDs using default settings (all-or-none true, user mode access).
+	 * @param recordIds List of record IDs to delete
+	 * @return List of Database.DeleteResult objects
+	 */
+	global List<Database.DeleteResult> doDelete(List<Id> recordIds) {
 		return this.doDelete(recordIds, DEFAULT_ACCESS_LEVEL);
 	}
 
-	public Database.DeleteResult doDelete(SObject record, Boolean allOrNone, System.AccessLevel accessLevel) {
+	/**
+	 * @description Deletes a single record using the specified all-or-none setting and access level.
+	 * @param record SObject record to delete
+	 * @param allOrNone Whether all operations must succeed or all fail
+	 * @param accessLevel System access level for the operation
+	 * @return Database.DeleteResult object
+	 */
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
+	global Database.DeleteResult doDelete(SObject record, Boolean allOrNone, System.AccessLevel accessLevel) {
 		return this.doDelete(new List<SObject>{ record }, allOrNone, accessLevel)?.get(0);
 	}
 
-	public Database.DeleteResult doDelete(SObject record, Boolean allOrNone) {
+	/**
+	 * @description Deletes a single record using the specified all-or-none setting and default access level.
+	 * @param record SObject record to delete
+	 * @param allOrNone Whether all operations must succeed or all fail
+	 * @return Database.DeleteResult object
+	 */
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
+	global Database.DeleteResult doDelete(SObject record, Boolean allOrNone) {
 		return this.doDelete(new List<SObject>{ record }, allOrNone)?.get(0);
 	}
 
-	public Database.DeleteResult doDelete(SObject record, System.AccessLevel accessLevel) {
+	/**
+	 * @description Deletes a single record using the specified access level and default all-or-none setting.
+	 * @param record SObject record to delete
+	 * @param accessLevel System access level for the operation
+	 * @return Database.DeleteResult object
+	 */
+	global Database.DeleteResult doDelete(SObject record, System.AccessLevel accessLevel) {
 		return this.doDelete(new List<SObject>{ record }, accessLevel)?.get(0);
 	}
 
-	public Database.DeleteResult doDelete(SObject record) {
+	/**
+	 * @description Deletes a single record using default settings (all-or-none true, user mode access).
+	 * @param record SObject record to delete
+	 * @return Database.DeleteResult object
+	 */
+	global Database.DeleteResult doDelete(SObject record) {
 		return this.doDelete(new List<SObject>{ record })?.get(0);
 	}
 
-	public Database.DeleteResult doDelete(Id recordId, Boolean allOrNone, System.AccessLevel accessLevel) {
+	/**
+	 * @description Deletes a single record by ID using the specified all-or-none setting and access level.
+	 * @param recordId ID of the record to delete
+	 * @param allOrNone Whether all operations must succeed or all fail
+	 * @param accessLevel System access level for the operation
+	 * @return Database.DeleteResult object
+	 */
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
+	global Database.DeleteResult doDelete(Id recordId, Boolean allOrNone, System.AccessLevel accessLevel) {
 		return this.doDelete(new List<Id>{ recordId }, allOrNone, accessLevel)?.get(0);
 	}
 
-	public Database.DeleteResult doDelete(Id recordId, Boolean allOrNone) {
+	/**
+	 * @description Deletes a single record by ID using the specified all-or-none setting and default access level.
+	 * @param recordId ID of the record to delete
+	 * @param allOrNone Whether all operations must succeed or all fail
+	 * @return Database.DeleteResult object
+	 */
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
+	global Database.DeleteResult doDelete(Id recordId, Boolean allOrNone) {
 		return this.doDelete(new List<Id>{ recordId }, allOrNone)?.get(0);
 	}
 
-	public Database.DeleteResult doDelete(Id recordId, System.AccessLevel accessLevel) {
+	/**
+	 * @description Deletes a single record by ID using the specified access level and default all-or-none setting.
+	 * @param recordId ID of the record to delete
+	 * @param accessLevel System access level for the operation
+	 * @return Database.DeleteResult object
+	 */
+	global Database.DeleteResult doDelete(Id recordId, System.AccessLevel accessLevel) {
 		return this.doDelete(new List<Id>{ recordId }, accessLevel)?.get(0);
 	}
 
-	public Database.DeleteResult doDelete(Id recordId) {
+	/**
+	 * @description Deletes a single record by ID using default settings (all-or-none true, user mode access).
+	 * @param recordId ID of the record to delete
+	 * @return Database.DeleteResult object
+	 */
+	global Database.DeleteResult doDelete(Id recordId) {
 		return this.doDelete(new List<Id>{ recordId })?.get(0);
 	}
 
 	// ** DeleteAsync Methods
-	public List<Database.DeleteResult> doDeleteAsync(
+	/**
+	 * @description Asynchronously deletes a list of records using the specified callback and access level.
+	 * @param records List of SObject records to delete
+	 * @param callback Callback to handle async delete results
+	 * @param accessLevel System access level for the operation
+	 * @return List of Database.DeleteResult objects
+	 */
+	global List<Database.DeleteResult> doDeleteAsync(
 		List<SObject> records,
 		DataSource.AsyncDeleteCallback callback,
 		System.AccessLevel accessLevel
@@ -183,19 +368,43 @@ public inherited sharing virtual class Dml {
 		return (List<Database.DeleteResult>) request?.process();
 	}
 
-	public List<Database.DeleteResult> doDeleteAsync(List<SObject> records, DataSource.AsyncDeleteCallback callback) {
+	/**
+	 * @description Asynchronously deletes a list of records using the specified callback and default access level.
+	 * @param records List of SObject records to delete
+	 * @param callback Callback to handle async delete results
+	 * @return List of Database.DeleteResult objects
+	 */
+	global List<Database.DeleteResult> doDeleteAsync(List<SObject> records, DataSource.AsyncDeleteCallback callback) {
 		return this.doDeleteAsync(records, callback, DEFAULT_ACCESS_LEVEL);
 	}
 
-	public List<Database.DeleteResult> doDeleteAsync(List<SObject> records, System.AccessLevel accessLevel) {
+	/**
+	 * @description Asynchronously deletes a list of records using the specified access level and default callback.
+	 * @param records List of SObject records to delete
+	 * @param accessLevel System access level for the operation
+	 * @return List of Database.DeleteResult objects
+	 */
+	global List<Database.DeleteResult> doDeleteAsync(List<SObject> records, System.AccessLevel accessLevel) {
 		return this.doDeleteAsync(records, DEFAULT_DELETE_CALLBACK, accessLevel);
 	}
 
-	public List<Database.DeleteResult> doDeleteAsync(List<SObject> records) {
+	/**
+	 * @description Asynchronously deletes a list of records using default settings (default callback, user mode access).
+	 * @param records List of SObject records to delete
+	 * @return List of Database.DeleteResult objects
+	 */
+	global List<Database.DeleteResult> doDeleteAsync(List<SObject> records) {
 		return this.doDeleteAsync(records, DEFAULT_ACCESS_LEVEL);
 	}
 
-	public Database.DeleteResult doDeleteAsync(
+	/**
+	 * @description Asynchronously deletes a single record using the specified callback and access level.
+	 * @param record SObject record to delete
+	 * @param callback Callback to handle async delete results
+	 * @param accessLevel System access level for the operation
+	 * @return Database.DeleteResult object
+	 */
+	global Database.DeleteResult doDeleteAsync(
 		SObject record,
 		DataSource.AsyncDeleteCallback callback,
 		System.AccessLevel accessLevel
@@ -203,40 +412,86 @@ public inherited sharing virtual class Dml {
 		return this.doDeleteAsync(new List<SObject>{ record }, callback, accessLevel)?.get(0);
 	}
 
-	public Database.DeleteResult doDeleteAsync(SObject record, DataSource.AsyncDeleteCallback callback) {
+	/**
+	 * @description Asynchronously deletes a single record using the specified callback and default access level.
+	 * @param record SObject record to delete
+	 * @param callback Callback to handle async delete results
+	 * @return Database.DeleteResult object
+	 */
+	global Database.DeleteResult doDeleteAsync(SObject record, DataSource.AsyncDeleteCallback callback) {
 		return this.doDeleteAsync(new List<SObject>{ record }, callback)?.get(0);
 	}
 
-	public Database.DeleteResult doDeleteAsync(SObject record, System.AccessLevel accessLevel) {
+	/**
+	 * @description Asynchronously deletes a single record using the specified access level and default callback.
+	 * @param record SObject record to delete
+	 * @param accessLevel System access level for the operation
+	 * @return Database.DeleteResult object
+	 */
+	global Database.DeleteResult doDeleteAsync(SObject record, System.AccessLevel accessLevel) {
 		return this.doDeleteAsync(new List<SObject>{ record }, accessLevel)?.get(0);
 	}
 
-	public Database.DeleteResult doDeleteAsync(SObject record) {
+	/**
+	 * @description Asynchronously deletes a single record using default settings (default callback, user mode access).
+	 * @param record SObject record to delete
+	 * @return Database.DeleteResult object
+	 */
+	global Database.DeleteResult doDeleteAsync(SObject record) {
 		return this.doDeleteAsync(new List<SObject>{ record })?.get(0);
 	}
 
 	// ** DeleteImmediate Methods
-	public List<Database.DeleteResult> doDeleteImmediate(List<SObject> records, System.AccessLevel accessLevel) {
+	/**
+	 * @description Immediately deletes a list of records using the specified access level.
+	 * @param records List of SObject records to delete
+	 * @param accessLevel System access level for the operation
+	 * @return List of Database.DeleteResult objects
+	 */
+	global List<Database.DeleteResult> doDeleteImmediate(List<SObject> records, System.AccessLevel accessLevel) {
 		Dml.Request request = this.initRequest(Dml.Operation.DO_DELETE, records);
 		request.accessLevel = accessLevel;
 		request.isOperationImmediate = true;
 		return (List<Database.DeleteResult>) request?.process();
 	}
 
-	public List<Database.DeleteResult> doDeleteImmediate(List<SObject> records) {
+	/**
+	 * @description Immediately deletes a list of records using default access level (user mode).
+	 * @param records List of SObject records to delete
+	 * @return List of Database.DeleteResult objects
+	 */
+	global List<Database.DeleteResult> doDeleteImmediate(List<SObject> records) {
 		return this.doDeleteImmediate(records, DEFAULT_ACCESS_LEVEL);
 	}
 
-	public Database.DeleteResult doDeleteImmediate(SObject record, System.AccessLevel accessLevel) {
+	/**
+	 * @description Immediately deletes a single record using the specified access level.
+	 * @param record SObject record to delete
+	 * @param accessLevel System access level for the operation
+	 * @return Database.DeleteResult object
+	 */
+	global Database.DeleteResult doDeleteImmediate(SObject record, System.AccessLevel accessLevel) {
 		return this.doDeleteImmediate(new List<SObject>{ record }, accessLevel)?.get(0);
 	}
 
-	public Database.DeleteResult doDeleteImmediate(SObject record) {
+	/**
+	 * @description Immediately deletes a single record using default access level (user mode).
+	 * @param record SObject record to delete
+	 * @return Database.DeleteResult object
+	 */
+	global Database.DeleteResult doDeleteImmediate(SObject record) {
 		return this.doDeleteImmediate(new List<SObject>{ record })?.get(0);
 	}
 
 	// ** Insert Methods
-	public List<Database.SaveResult> doInsert(
+	/**
+	 * @description Inserts a list of records using the specified options and access level.
+	 * @param records List of SObject records to insert
+	 * @param options DML options for the insert operation
+	 * @param accessLevel System access level for the operation
+	 * @return List of Database.SaveResult objects
+	 */
+	global List<Database.SaveResult> doInsert(
 		List<SObject> records,
 		Database.DmlOptions options,
 		System.AccessLevel accessLevel
@@ -247,7 +502,15 @@ public inherited sharing virtual class Dml {
 		return (List<Database.SaveResult>) request?.process();
 	}
 
-	public List<Database.SaveResult> doInsert(
+	/**
+	 * @description Inserts a list of records using the specified all-or-none setting and access level.
+	 * @param records List of SObject records to insert
+	 * @param allOrNone Whether all operations must succeed or all fail
+	 * @param accessLevel System access level for the operation
+	 * @return List of Database.SaveResult objects
+	 */
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
+	global List<Database.SaveResult> doInsert(
 		List<SObject> records,
 		Boolean allOrNone,
 		System.AccessLevel accessLevel
@@ -255,48 +518,118 @@ public inherited sharing virtual class Dml {
 		return this.doInsert(records, Dml.initDmlOptions(allOrNone), accessLevel);
 	}
 
-	public List<Database.SaveResult> doInsert(List<SObject> records, Database.DmlOptions options) {
+	/**
+	 * @description Inserts a list of records using the specified options and default access level.
+	 * @param records List of SObject records to insert
+	 * @param options DML options for the insert operation
+	 * @return List of Database.SaveResult objects
+	 */
+	global List<Database.SaveResult> doInsert(List<SObject> records, Database.DmlOptions options) {
 		return this.doInsert(records, options, DEFAULT_ACCESS_LEVEL);
 	}
 
-	public List<Database.SaveResult> doInsert(List<SObject> records, Boolean allOrNone) {
+	/**
+	 * @description Inserts a list of records using the specified all-or-none setting and default access level.
+	 * @param records List of SObject records to insert
+	 * @param allOrNone Whether all operations must succeed or all fail
+	 * @return List of Database.SaveResult objects
+	 */
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
+	global List<Database.SaveResult> doInsert(List<SObject> records, Boolean allOrNone) {
 		return this.doInsert(records, allOrNone, DEFAULT_ACCESS_LEVEL);
 	}
 
-	public List<Database.SaveResult> doInsert(List<SObject> records, System.AccessLevel accessLevel) {
+	/**
+	 * @description Inserts a list of records using the specified access level and default all-or-none setting.
+	 * @param records List of SObject records to insert
+	 * @param accessLevel System access level for the operation
+	 * @return List of Database.SaveResult objects
+	 */
+	global List<Database.SaveResult> doInsert(List<SObject> records, System.AccessLevel accessLevel) {
 		return this.doInsert(records, true, accessLevel);
 	}
 
-	public List<Database.SaveResult> doInsert(List<SObject> records) {
+	/**
+	 * @description Inserts a list of records using default settings (all-or-none true, user mode access).
+	 * @param records List of SObject records to insert
+	 * @return List of Database.SaveResult objects
+	 */
+	global List<Database.SaveResult> doInsert(List<SObject> records) {
 		return this.doInsert(records, DEFAULT_ACCESS_LEVEL);
 	}
 
-	public Database.SaveResult doInsert(SObject record, Database.DmlOptions options, System.AccessLevel accessLevel) {
+	/**
+	 * @description Inserts a single record using the specified options and access level.
+	 * @param record SObject record to insert
+	 * @param options DML options for the insert operation
+	 * @param accessLevel System access level for the operation
+	 * @return Database.SaveResult object
+	 */
+	global Database.SaveResult doInsert(SObject record, Database.DmlOptions options, System.AccessLevel accessLevel) {
 		return this.doInsert(new List<SObject>{ record }, options, accessLevel)?.get(0);
 	}
 
-	public Database.SaveResult doInsert(SObject record, Boolean allOrNone, System.AccessLevel accessLevel) {
+	/**
+	 * @description Inserts a single record using the specified all-or-none setting and access level.
+	 * @param record SObject record to insert
+	 * @param allOrNone Whether all operations must succeed or all fail
+	 * @param accessLevel System access level for the operation
+	 * @return Database.SaveResult object
+	 */
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
+	global Database.SaveResult doInsert(SObject record, Boolean allOrNone, System.AccessLevel accessLevel) {
 		return this.doInsert(new List<SObject>{ record }, allOrNone, accessLevel)?.get(0);
 	}
 
-	public Database.SaveResult doInsert(SObject record, Database.DmlOptions options) {
+	/**
+	 * @description Inserts a single record using the specified options and default access level.
+	 * @param record SObject record to insert
+	 * @param options DML options for the insert operation
+	 * @return Database.SaveResult object
+	 */
+	global Database.SaveResult doInsert(SObject record, Database.DmlOptions options) {
 		return this.doInsert(new List<SObject>{ record }, options)?.get(0);
 	}
 
-	public Database.SaveResult doInsert(SObject record, Boolean allOrNone) {
+	/**
+	 * @description Inserts a single record using the specified all-or-none setting and default access level.
+	 * @param record SObject record to insert
+	 * @param allOrNone Whether all operations must succeed or all fail
+	 * @return Database.SaveResult object
+	 */
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
+	global Database.SaveResult doInsert(SObject record, Boolean allOrNone) {
 		return this.doInsert(new List<SObject>{ record }, allOrNone)?.get(0);
 	}
 
-	public Database.SaveResult doInsert(SObject record, System.AccessLevel accessLevel) {
+	/**
+	 * @description Inserts a single record using the specified access level and default all-or-none setting.
+	 * @param record SObject record to insert
+	 * @param accessLevel System access level for the operation
+	 * @return Database.SaveResult object
+	 */
+	global Database.SaveResult doInsert(SObject record, System.AccessLevel accessLevel) {
 		return this.doInsert(new List<SObject>{ record }, accessLevel)?.get(0);
 	}
 
-	public Database.SaveResult doInsert(SObject record) {
+	/**
+	 * @description Inserts a single record using default settings (all-or-none true, user mode access).
+	 * @param record SObject record to insert
+	 * @return Database.SaveResult object
+	 */
+	global Database.SaveResult doInsert(SObject record) {
 		return this.doInsert(new List<SObject>{ record })?.get(0);
 	}
 
 	// ** InsertAsync Methods
-	public List<Database.SaveResult> doInsertAsync(
+	/**
+	 * @description Asynchronously inserts a list of records using the specified callback and access level.
+	 * @param records List of SObject records to insert
+	 * @param callback Callback to handle async save results
+	 * @param accessLevel System access level for the operation
+	 * @return List of Database.SaveResult objects
+	 */
+	global List<Database.SaveResult> doInsertAsync(
 		List<SObject> records,
 		DataSource.AsyncSaveCallback callback,
 		System.AccessLevel accessLevel
@@ -308,19 +641,43 @@ public inherited sharing virtual class Dml {
 		return (List<Database.SaveResult>) request?.process();
 	}
 
-	public List<Database.SaveResult> doInsertAsync(List<SObject> records, DataSource.AsyncSaveCallback callback) {
+	/**
+	 * @description Asynchronously inserts a list of records using the specified callback and default access level.
+	 * @param records List of SObject records to insert
+	 * @param callback Callback to handle async save results
+	 * @return List of Database.SaveResult objects
+	 */
+	global List<Database.SaveResult> doInsertAsync(List<SObject> records, DataSource.AsyncSaveCallback callback) {
 		return this.doInsertAsync(records, callback, DEFAULT_ACCESS_LEVEL);
 	}
 
-	public List<Database.SaveResult> doInsertAsync(List<SObject> records, System.AccessLevel accessLevel) {
+	/**
+	 * @description Asynchronously inserts a list of records using the specified access level and default callback.
+	 * @param records List of SObject records to insert
+	 * @param accessLevel System access level for the operation
+	 * @return List of Database.SaveResult objects
+	 */
+	global List<Database.SaveResult> doInsertAsync(List<SObject> records, System.AccessLevel accessLevel) {
 		return this.doInsertAsync(records, DEFAULT_SAVE_CALLBACK, accessLevel);
 	}
 
-	public List<Database.SaveResult> doInsertAsync(List<SObject> records) {
+	/**
+	 * @description Asynchronously inserts a list of records using default settings (default callback, user mode access).
+	 * @param records List of SObject records to insert
+	 * @return List of Database.SaveResult objects
+	 */
+	global List<Database.SaveResult> doInsertAsync(List<SObject> records) {
 		return this.doInsertAsync(records, DEFAULT_ACCESS_LEVEL);
 	}
 
-	public Database.SaveResult doInsertAsync(
+	/**
+	 * @description Asynchronously inserts a single record using the specified callback and access level.
+	 * @param record SObject record to insert
+	 * @param callback Callback to handle async save results
+	 * @param accessLevel System access level for the operation
+	 * @return Database.SaveResult object
+	 */
+	global Database.SaveResult doInsertAsync(
 		SObject record,
 		DataSource.AsyncSaveCallback callback,
 		System.AccessLevel accessLevel
@@ -328,51 +685,108 @@ public inherited sharing virtual class Dml {
 		return this.doInsertAsync(new List<SObject>{ record }, callback, accessLevel)?.get(0);
 	}
 
-	public Database.SaveResult doInsertAsync(SObject record, DataSource.AsyncSaveCallback callback) {
+	/**
+	 * @description Asynchronously inserts a single record using the specified callback and default access level.
+	 * @param record SObject record to insert
+	 * @param callback Callback to handle async save results
+	 * @return Database.SaveResult object
+	 */
+	global Database.SaveResult doInsertAsync(SObject record, DataSource.AsyncSaveCallback callback) {
 		return this.doInsertAsync(new List<SObject>{ record }, callback)?.get(0);
 	}
 
-	public Database.SaveResult doInsertAsync(SObject record, System.AccessLevel accessLevel) {
+	/**
+	 * @description Asynchronously inserts a single record using the specified access level and default callback.
+	 * @param record SObject record to insert
+	 * @param accessLevel System access level for the operation
+	 * @return Database.SaveResult object
+	 */
+	global Database.SaveResult doInsertAsync(SObject record, System.AccessLevel accessLevel) {
 		return this.doInsertAsync(new List<SObject>{ record }, accessLevel)?.get(0);
 	}
 
-	public Database.SaveResult doInsertAsync(SObject record) {
+	/**
+	 * @description Asynchronously inserts a single record using default settings (default callback, user mode access).
+	 * @param record SObject record to insert
+	 * @return Database.SaveResult object
+	 */
+	global Database.SaveResult doInsertAsync(SObject record) {
 		return this.doInsertAsync(new List<SObject>{ record })?.get(0);
 	}
 
 	// ** InsertImmediate Methods
-	public List<Database.SaveResult> doInsertImmediate(List<SObject> records, System.AccessLevel accessLevel) {
+	/**
+	 * @description Immediately inserts a list of records using the specified access level.
+	 * @param records List of SObject records to insert
+	 * @param accessLevel System access level for the operation
+	 * @return List of Database.SaveResult objects
+	 */
+	global List<Database.SaveResult> doInsertImmediate(List<SObject> records, System.AccessLevel accessLevel) {
 		Dml.Request request = this.initRequest(Dml.Operation.DO_INSERT, records);
 		request.accessLevel = accessLevel;
 		request.isOperationImmediate = true;
 		return (List<Database.SaveResult>) request?.process();
 	}
 
-	public List<Database.SaveResult> doInsertImmediate(List<SObject> records) {
+	/**
+	 * @description Immediately inserts a list of records using default access level (user mode).
+	 * @param records List of SObject records to insert
+	 * @return List of Database.SaveResult objects
+	 */
+	global List<Database.SaveResult> doInsertImmediate(List<SObject> records) {
 		return this.doInsertImmediate(records, DEFAULT_ACCESS_LEVEL);
 	}
 
-	public Database.SaveResult doInsertImmediate(SObject record, System.AccessLevel accessLevel) {
+	/**
+	 * @description Immediately inserts a single record using the specified access level.
+	 * @param record SObject record to insert
+	 * @param accessLevel System access level for the operation
+	 * @return Database.SaveResult object
+	 */
+	global Database.SaveResult doInsertImmediate(SObject record, System.AccessLevel accessLevel) {
 		return this.doInsertImmediate(new List<SObject>{ record }, accessLevel)?.get(0);
 	}
 
-	public Database.SaveResult doInsertImmediate(SObject record) {
+	/**
+	 * @description Immediately inserts a single record using default access level (user mode).
+	 * @param record SObject record to insert
+	 * @return Database.SaveResult object
+	 */
+	global Database.SaveResult doInsertImmediate(SObject record) {
 		return this.doInsertImmediate(new List<SObject>{ record })?.get(0);
 	}
 
 	// ** Publish Methods
-	public List<Database.SaveResult> doPublish(List<SObject> events) {
+	/**
+	 * @description Publishes a list of platform events.
+	 * @param events List of platform event SObjects to publish
+	 * @return List of Database.SaveResult objects
+	 */
+	global List<Database.SaveResult> doPublish(List<SObject> events) {
 		// Callback: "An Apex class that implements the EventPublishFailureCallback Interface or EventPublishSuccessCallback Interface."
 		// https://developer.salesforce.com/docs/atlas.en-us.apexref.meta/apexref/apex_class_System_eventbus.htm#apex_System_eventbus_publish_4
 		return (List<Database.SaveResult>) this.initRequest(Dml.Operation.DO_PUBLISH, events)?.process();
 	}
 
-	public Database.SaveResult doPublish(SObject event) {
+	/**
+	 * @description Publishes a single platform event.
+	 * @param event Platform event SObject to publish
+	 * @return Database.SaveResult object
+	 */
+	global Database.SaveResult doPublish(SObject event) {
 		return this.doPublish(new List<SObject>{ event })?.get(0);
 	}
 
 	// ** Undelete Methods
-	public List<Database.UndeleteResult> doUndelete(
+	/**
+	 * @description Undeletes a list of records using the specified all-or-none setting and access level.
+	 * @param records List of SObject records to undelete
+	 * @param allOrNone Whether all operations must succeed or all fail
+	 * @param accessLevel System access level for the operation
+	 * @return List of Database.UndeleteResult objects
+	 */
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
+	global List<Database.UndeleteResult> doUndelete(
 		List<SObject> records,
 		Boolean allOrNone,
 		System.AccessLevel accessLevel
@@ -383,19 +797,45 @@ public inherited sharing virtual class Dml {
 		return (List<Database.UndeleteResult>) request?.process();
 	}
 
-	public List<Database.UndeleteResult> doUndelete(List<SObject> records, Boolean allOrNone) {
+	/**
+	 * @description Undeletes a list of records using the specified all-or-none setting and default access level.
+	 * @param records List of SObject records to undelete
+	 * @param allOrNone Whether all operations must succeed or all fail
+	 * @return List of Database.UndeleteResult objects
+	 */
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
+	global List<Database.UndeleteResult> doUndelete(List<SObject> records, Boolean allOrNone) {
 		return this.doUndelete(records, allOrNone, DEFAULT_ACCESS_LEVEL);
 	}
 
-	public List<Database.UndeleteResult> doUndelete(List<SObject> records, System.AccessLevel accessLevel) {
+	/**
+	 * @description Undeletes a list of records using the specified access level and default all-or-none setting.
+	 * @param records List of SObject records to undelete
+	 * @param accessLevel System access level for the operation
+	 * @return List of Database.UndeleteResult objects
+	 */
+	global List<Database.UndeleteResult> doUndelete(List<SObject> records, System.AccessLevel accessLevel) {
 		return this.doUndelete(records, true, accessLevel);
 	}
 
-	public List<Database.UndeleteResult> doUndelete(List<SObject> records) {
+	/**
+	 * @description Undeletes a list of records using default settings (all-or-none true, user mode access).
+	 * @param records List of SObject records to undelete
+	 * @return List of Database.UndeleteResult objects
+	 */
+	global List<Database.UndeleteResult> doUndelete(List<SObject> records) {
 		return this.doUndelete(records, DEFAULT_ACCESS_LEVEL);
 	}
 
-	public List<Database.UndeleteResult> doUndelete(
+	/**
+	 * @description Undeletes records by IDs using the specified all-or-none setting and access level.
+	 * @param recordIds List of record IDs to undelete
+	 * @param allOrNone Whether all operations must succeed or all fail
+	 * @param accessLevel System access level for the operation
+	 * @return List of Database.UndeleteResult objects
+	 */
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
+	global List<Database.UndeleteResult> doUndelete(
 		List<Id> recordIds,
 		Boolean allOrNone,
 		System.AccessLevel accessLevel
@@ -404,52 +844,129 @@ public inherited sharing virtual class Dml {
 		return this.doUndelete(records, allOrNone, accessLevel);
 	}
 
-	public List<Database.UndeleteResult> doUndelete(List<Id> recordIds, Boolean allOrNone) {
+	/**
+	 * @description Undeletes records by IDs using the specified all-or-none setting and default access level.
+	 * @param recordIds List of record IDs to undelete
+	 * @param allOrNone Whether all operations must succeed or all fail
+	 * @return List of Database.UndeleteResult objects
+	 */
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
+	global List<Database.UndeleteResult> doUndelete(List<Id> recordIds, Boolean allOrNone) {
 		return this.doUndelete(recordIds, allOrNone, DEFAULT_ACCESS_LEVEL);
 	}
 
-	public List<Database.UndeleteResult> doUndelete(List<Id> recordIds, System.AccessLevel accessLevel) {
+	/**
+	 * @description Undeletes records by IDs using the specified access level and default all-or-none setting.
+	 * @param recordIds List of record IDs to undelete
+	 * @param accessLevel System access level for the operation
+	 * @return List of Database.UndeleteResult objects
+	 */
+	global List<Database.UndeleteResult> doUndelete(List<Id> recordIds, System.AccessLevel accessLevel) {
 		return this.doUndelete(recordIds, true, accessLevel);
 	}
 
-	public List<Database.UndeleteResult> doUndelete(List<Id> recordIds) {
+	/**
+	 * @description Undeletes records by IDs using default settings (all-or-none true, user mode access).
+	 * @param recordIds List of record IDs to undelete
+	 * @return List of Database.UndeleteResult objects
+	 */
+	global List<Database.UndeleteResult> doUndelete(List<Id> recordIds) {
 		return this.doUndelete(recordIds, DEFAULT_ACCESS_LEVEL);
 	}
 
-	public Database.UndeleteResult doUndelete(SObject record, Boolean allOrNone, System.AccessLevel accessLevel) {
+	/**
+	 * @description Undeletes a single record using the specified all-or-none setting and access level.
+	 * @param record SObject record to undelete
+	 * @param allOrNone Whether all operations must succeed or all fail
+	 * @param accessLevel System access level for the operation
+	 * @return Database.UndeleteResult object
+	 */
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
+	global Database.UndeleteResult doUndelete(SObject record, Boolean allOrNone, System.AccessLevel accessLevel) {
 		return this.doUndelete(new List<SObject>{ record }, allOrNone, accessLevel)?.get(0);
 	}
 
-	public Database.UndeleteResult doUndelete(SObject record, Boolean allOrNone) {
+	/**
+	 * @description Undeletes a single record using the specified all-or-none setting and default access level.
+	 * @param record SObject record to undelete
+	 * @param allOrNone Whether all operations must succeed or all fail
+	 * @return Database.UndeleteResult object
+	 */
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
+	global Database.UndeleteResult doUndelete(SObject record, Boolean allOrNone) {
 		return this.doUndelete(new List<SObject>{ record }, allOrNone)?.get(0);
 	}
 
-	public Database.UndeleteResult doUndelete(SObject record, System.AccessLevel accessLevel) {
+	/**
+	 * @description Undeletes a single record using the specified access level and default all-or-none setting.
+	 * @param record SObject record to undelete
+	 * @param accessLevel System access level for the operation
+	 * @return Database.UndeleteResult object
+	 */
+	global Database.UndeleteResult doUndelete(SObject record, System.AccessLevel accessLevel) {
 		return this.doUndelete(new List<SObject>{ record }, accessLevel)?.get(0);
 	}
 
-	public Database.UndeleteResult doUndelete(SObject record) {
+	/**
+	 * @description Undeletes a single record using default settings (all-or-none true, user mode access).
+	 * @param record SObject record to undelete
+	 * @return Database.UndeleteResult object
+	 */
+	global Database.UndeleteResult doUndelete(SObject record) {
 		return this.doUndelete(new List<SObject>{ record })?.get(0);
 	}
 
-	public Database.UndeleteResult doUndelete(Id recordId, Boolean allOrNone, System.AccessLevel accessLevel) {
+	/**
+	 * @description Undeletes a single record by ID using the specified all-or-none setting and access level.
+	 * @param recordId ID of the record to undelete
+	 * @param allOrNone Whether all operations must succeed or all fail
+	 * @param accessLevel System access level for the operation
+	 * @return Database.UndeleteResult object
+	 */
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
+	global Database.UndeleteResult doUndelete(Id recordId, Boolean allOrNone, System.AccessLevel accessLevel) {
 		return this.doUndelete(new List<Id>{ recordId }, allOrNone, accessLevel)?.get(0);
 	}
 
-	public Database.UndeleteResult doUndelete(Id recordId, Boolean allOrNone) {
+	/**
+	 * @description Undeletes a single record by ID using the specified all-or-none setting and default access level.
+	 * @param recordId ID of the record to undelete
+	 * @param allOrNone Whether all operations must succeed or all fail
+	 * @return Database.UndeleteResult object
+	 */
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
+	global Database.UndeleteResult doUndelete(Id recordId, Boolean allOrNone) {
 		return this.doUndelete(new List<Id>{ recordId }, allOrNone)?.get(0);
 	}
 
-	public Database.UndeleteResult doUndelete(Id recordId, System.AccessLevel accessLevel) {
+	/**
+	 * @description Undeletes a single record by ID using the specified access level and default all-or-none setting.
+	 * @param recordId ID of the record to undelete
+	 * @param accessLevel System access level for the operation
+	 * @return Database.UndeleteResult object
+	 */
+	global Database.UndeleteResult doUndelete(Id recordId, System.AccessLevel accessLevel) {
 		return this.doUndelete(new List<Id>{ recordId }, accessLevel)?.get(0);
 	}
 
-	public Database.UndeleteResult doUndelete(Id recordId) {
+	/**
+	 * @description Undeletes a single record by ID using default settings (all-or-none true, user mode access).
+	 * @param recordId ID of the record to undelete
+	 * @return Database.UndeleteResult object
+	 */
+	global Database.UndeleteResult doUndelete(Id recordId) {
 		return this.doUndelete(new List<Id>{ recordId })?.get(0);
 	}
 
 	// ** Update Methods
-	public List<Database.SaveResult> doUpdate(
+	/**
+	 * @description Updates a list of records using the specified options and access level.
+	 * @param records List of SObject records to update
+	 * @param options DML options for the update operation
+	 * @param accessLevel System access level for the operation
+	 * @return List of Database.SaveResult objects
+	 */
+	global List<Database.SaveResult> doUpdate(
 		List<SObject> records,
 		Database.DmlOptions options,
 		System.AccessLevel accessLevel
@@ -460,7 +977,15 @@ public inherited sharing virtual class Dml {
 		return (List<Database.SaveResult>) request?.process();
 	}
 
-	public List<Database.SaveResult> doUpdate(
+	/**
+	 * @description Updates a list of records using the specified all-or-none setting and access level.
+	 * @param records List of SObject records to update
+	 * @param allOrNone Whether all operations must succeed or all fail
+	 * @param accessLevel System access level for the operation
+	 * @return List of Database.SaveResult objects
+	 */
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
+	global List<Database.SaveResult> doUpdate(
 		List<SObject> records,
 		Boolean allOrNone,
 		System.AccessLevel accessLevel
@@ -468,48 +993,118 @@ public inherited sharing virtual class Dml {
 		return this.doUpdate(records, Dml.initDmlOptions(allOrNone), accessLevel);
 	}
 
-	public List<Database.SaveResult> doUpdate(List<SObject> records, Database.DmlOptions options) {
+	/**
+	 * @description Updates a list of records using the specified options and default access level.
+	 * @param records List of SObject records to update
+	 * @param options DML options for the update operation
+	 * @return List of Database.SaveResult objects
+	 */
+	global List<Database.SaveResult> doUpdate(List<SObject> records, Database.DmlOptions options) {
 		return this.doUpdate(records, options, DEFAULT_ACCESS_LEVEL);
 	}
 
-	public List<Database.SaveResult> doUpdate(List<SObject> records, Boolean allOrNone) {
+	/**
+	 * @description Updates a list of records using the specified all-or-none setting and default access level.
+	 * @param records List of SObject records to update
+	 * @param allOrNone Whether all operations must succeed or all fail
+	 * @return List of Database.SaveResult objects
+	 */
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
+	global List<Database.SaveResult> doUpdate(List<SObject> records, Boolean allOrNone) {
 		return this.doUpdate(records, allOrNone, DEFAULT_ACCESS_LEVEL);
 	}
 
-	public List<Database.SaveResult> doUpdate(List<SObject> records, System.AccessLevel accessLevel) {
+	/**
+	 * @description Updates a list of records using the specified access level and default all-or-none setting.
+	 * @param records List of SObject records to update
+	 * @param accessLevel System access level for the operation
+	 * @return List of Database.SaveResult objects
+	 */
+	global List<Database.SaveResult> doUpdate(List<SObject> records, System.AccessLevel accessLevel) {
 		return this.doUpdate(records, true, accessLevel);
 	}
 
-	public List<Database.SaveResult> doUpdate(List<SObject> records) {
+	/**
+	 * @description Updates a list of records using default settings (all-or-none true, user mode access).
+	 * @param records List of SObject records to update
+	 * @return List of Database.SaveResult objects
+	 */
+	global List<Database.SaveResult> doUpdate(List<SObject> records) {
 		return this.doUpdate(records, DEFAULT_ACCESS_LEVEL);
 	}
 
-	public Database.SaveResult doUpdate(SObject record, Database.DmlOptions options, System.AccessLevel accessLevel) {
+	/**
+	 * @description Updates a single record using the specified options and access level.
+	 * @param record SObject record to update
+	 * @param options DML options for the update operation
+	 * @param accessLevel System access level for the operation
+	 * @return Database.SaveResult object
+	 */
+	global Database.SaveResult doUpdate(SObject record, Database.DmlOptions options, System.AccessLevel accessLevel) {
 		return this.doUpdate(new List<SObject>{ record }, options, accessLevel)?.get(0);
 	}
 
-	public Database.SaveResult doUpdate(SObject record, Boolean allOrNone, System.AccessLevel accessLevel) {
+	/**
+	 * @description Updates a single record using the specified all-or-none setting and access level.
+	 * @param record SObject record to update
+	 * @param allOrNone Whether all operations must succeed or all fail
+	 * @param accessLevel System access level for the operation
+	 * @return Database.SaveResult object
+	 */
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
+	global Database.SaveResult doUpdate(SObject record, Boolean allOrNone, System.AccessLevel accessLevel) {
 		return this.doUpdate(new List<SObject>{ record }, allOrNone, accessLevel)?.get(0);
 	}
 
-	public Database.SaveResult doUpdate(SObject record, Database.DmlOptions options) {
+	/**
+	 * @description Updates a single record using the specified options and default access level.
+	 * @param record SObject record to update
+	 * @param options DML options for the update operation
+	 * @return Database.SaveResult object
+	 */
+	global Database.SaveResult doUpdate(SObject record, Database.DmlOptions options) {
 		return this.doUpdate(new List<SObject>{ record }, options)?.get(0);
 	}
 
-	public Database.SaveResult doUpdate(SObject record, Boolean allOrNone) {
+	/**
+	 * @description Updates a single record using the specified all-or-none setting and default access level.
+	 * @param record SObject record to update
+	 * @param allOrNone Whether all operations must succeed or all fail
+	 * @return Database.SaveResult object
+	 */
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
+	global Database.SaveResult doUpdate(SObject record, Boolean allOrNone) {
 		return this.doUpdate(new List<SObject>{ record }, allOrNone)?.get(0);
 	}
 
-	public Database.SaveResult doUpdate(SObject record, System.AccessLevel accessLevel) {
+	/**
+	 * @description Updates a single record using the specified access level and default all-or-none setting.
+	 * @param record SObject record to update
+	 * @param accessLevel System access level for the operation
+	 * @return Database.SaveResult object
+	 */
+	global Database.SaveResult doUpdate(SObject record, System.AccessLevel accessLevel) {
 		return this.doUpdate(new List<SObject>{ record }, accessLevel)?.get(0);
 	}
 
-	public Database.SaveResult doUpdate(SObject record) {
+	/**
+	 * @description Updates a single record using default settings (all-or-none true, user mode access).
+	 * @param record SObject record to update
+	 * @return Database.SaveResult object
+	 */
+	global Database.SaveResult doUpdate(SObject record) {
 		return this.doUpdate(new List<SObject>{ record })?.get(0);
 	}
 
 	// ** UpdateAsync Methods
-	public List<Database.SaveResult> doUpdateAsync(
+	/**
+	 * @description Asynchronously updates a list of records using the specified callback and access level.
+	 * @param records List of SObject records to update
+	 * @param callback Callback to handle async save results
+	 * @param accessLevel System access level for the operation
+	 * @return List of Database.SaveResult objects
+	 */
+	global List<Database.SaveResult> doUpdateAsync(
 		List<SObject> records,
 		DataSource.AsyncSaveCallback callback,
 		System.AccessLevel accessLevel
@@ -521,19 +1116,43 @@ public inherited sharing virtual class Dml {
 		return (List<Database.SaveResult>) request?.process();
 	}
 
-	public List<Database.SaveResult> doUpdateAsync(List<SObject> records, DataSource.AsyncSaveCallback callback) {
+	/**
+	 * @description Asynchronously updates a list of records using the specified callback and default access level.
+	 * @param records List of SObject records to update
+	 * @param callback Callback to handle async save results
+	 * @return List of Database.SaveResult objects
+	 */
+	global List<Database.SaveResult> doUpdateAsync(List<SObject> records, DataSource.AsyncSaveCallback callback) {
 		return this.doUpdateAsync(records, callback, DEFAULT_ACCESS_LEVEL);
 	}
 
-	public List<Database.SaveResult> doUpdateAsync(List<SObject> records, System.AccessLevel accessLevel) {
+	/**
+	 * @description Asynchronously updates a list of records using the specified access level and default callback.
+	 * @param records List of SObject records to update
+	 * @param accessLevel System access level for the operation
+	 * @return List of Database.SaveResult objects
+	 */
+	global List<Database.SaveResult> doUpdateAsync(List<SObject> records, System.AccessLevel accessLevel) {
 		return this.doUpdateAsync(records, DEFAULT_SAVE_CALLBACK, accessLevel);
 	}
 
-	public List<Database.SaveResult> doUpdateAsync(List<SObject> records) {
+	/**
+	 * @description Asynchronously updates a list of records using default settings (default callback, user mode access).
+	 * @param records List of SObject records to update
+	 * @return List of Database.SaveResult objects
+	 */
+	global List<Database.SaveResult> doUpdateAsync(List<SObject> records) {
 		return this.doUpdateAsync(records, DEFAULT_ACCESS_LEVEL);
 	}
 
-	public Database.SaveResult doUpdateAsync(
+	/**
+	 * @description Asynchronously updates a single record using the specified callback and access level.
+	 * @param record SObject record to update
+	 * @param callback Callback to handle async save results
+	 * @param accessLevel System access level for the operation
+	 * @return Database.SaveResult object
+	 */
+	global Database.SaveResult doUpdateAsync(
 		SObject record,
 		DataSource.AsyncSaveCallback callback,
 		System.AccessLevel accessLevel
@@ -541,40 +1160,88 @@ public inherited sharing virtual class Dml {
 		return this.doUpdateAsync(new List<SObject>{ record }, callback, accessLevel)?.get(0);
 	}
 
-	public Database.SaveResult doUpdateAsync(SObject record, DataSource.AsyncSaveCallback callback) {
+	/**
+	 * @description Asynchronously updates a single record using the specified callback and default access level.
+	 * @param record SObject record to update
+	 * @param callback Callback to handle async save results
+	 * @return Database.SaveResult object
+	 */
+	global Database.SaveResult doUpdateAsync(SObject record, DataSource.AsyncSaveCallback callback) {
 		return this.doUpdateAsync(new List<SObject>{ record }, callback)?.get(0);
 	}
 
-	public Database.SaveResult doUpdateAsync(SObject record, System.AccessLevel accessLevel) {
+	/**
+	 * @description Asynchronously updates a single record using the specified access level and default callback.
+	 * @param record SObject record to update
+	 * @param accessLevel System access level for the operation
+	 * @return Database.SaveResult object
+	 */
+	global Database.SaveResult doUpdateAsync(SObject record, System.AccessLevel accessLevel) {
 		return this.doUpdateAsync(new List<SObject>{ record }, accessLevel)?.get(0);
 	}
 
-	public Database.SaveResult doUpdateAsync(SObject record) {
+	/**
+	 * @description Asynchronously updates a single record using default settings (default callback, user mode access).
+	 * @param record SObject record to update
+	 * @return Database.SaveResult object
+	 */
+	global Database.SaveResult doUpdateAsync(SObject record) {
 		return this.doUpdateAsync(new List<SObject>{ record })?.get(0);
 	}
 
 	// ** UpdateImmediate Methods
-	public List<Database.SaveResult> doUpdateImmediate(List<SObject> records, System.AccessLevel accessLevel) {
+	/**
+	 * @description Immediately updates a list of records using the specified access level.
+	 * @param records List of SObject records to update
+	 * @param accessLevel System access level for the operation
+	 * @return List of Database.SaveResult objects
+	 */
+	global List<Database.SaveResult> doUpdateImmediate(List<SObject> records, System.AccessLevel accessLevel) {
 		Dml.Request request = this.initRequest(Dml.Operation.DO_UPDATE, records);
 		request.accessLevel = accessLevel;
 		request.isOperationImmediate = true;
 		return (List<Database.SaveResult>) request?.process();
 	}
 
-	public List<Database.SaveResult> doUpdateImmediate(List<SObject> records) {
+	/**
+	 * @description Immediately updates a list of records using default access level (user mode).
+	 * @param records List of SObject records to update
+	 * @return List of Database.SaveResult objects
+	 */
+	global List<Database.SaveResult> doUpdateImmediate(List<SObject> records) {
 		return this.doUpdateImmediate(records, DEFAULT_ACCESS_LEVEL);
 	}
 
-	public Database.SaveResult doUpdateImmediate(SObject record, System.AccessLevel accessLevel) {
+	/**
+	 * @description Immediately updates a single record using the specified access level.
+	 * @param record SObject record to update
+	 * @param accessLevel System access level for the operation
+	 * @return Database.SaveResult object
+	 */
+	global Database.SaveResult doUpdateImmediate(SObject record, System.AccessLevel accessLevel) {
 		return this.doUpdateImmediate(new List<SObject>{ record }, accessLevel)?.get(0);
 	}
 
-	public Database.SaveResult doUpdateImmediate(SObject record) {
+	/**
+	 * @description Immediately updates a single record using default access level (user mode).
+	 * @param record SObject record to update
+	 * @return Database.SaveResult object
+	 */
+	global Database.SaveResult doUpdateImmediate(SObject record) {
 		return this.doUpdateImmediate(new List<SObject>{ record })?.get(0);
 	}
 
 	// ** Upsert Methods
-	public List<Database.UpsertResult> doUpsert(
+	/**
+	 * @description Upserts a list of records using the specified external ID field, all-or-none setting, and access level.
+	 * @param records List of SObject records to upsert
+	 * @param externalIdField External ID field to use for matching existing records
+	 * @param allOrNone Whether all operations must succeed or all fail
+	 * @param accessLevel System access level for the operation
+	 * @return List of Database.UpsertResult objects
+	 */
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters,PMD.ExcessiveParameterList')
+	global List<Database.UpsertResult> doUpsert(
 		List<SObject> records,
 		SObjectField externalIdField,
 		Boolean allOrNone,
@@ -587,7 +1254,15 @@ public inherited sharing virtual class Dml {
 		return (List<Database.UpsertResult>) request?.process();
 	}
 
-	public List<Database.UpsertResult> doUpsert(
+	/**
+	 * @description Upserts a list of records using the specified external ID field, all-or-none setting, and default access level.
+	 * @param records List of SObject records to upsert
+	 * @param externalIdField External ID field to use for matching existing records
+	 * @param allOrNone Whether all operations must succeed or all fail
+	 * @return List of Database.UpsertResult objects
+	 */
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
+	global List<Database.UpsertResult> doUpsert(
 		List<SObject> records,
 		SObjectField externalIdField,
 		Boolean allOrNone
@@ -595,7 +1270,14 @@ public inherited sharing virtual class Dml {
 		return this.doUpsert(records, externalIdField, allOrNone, DEFAULT_ACCESS_LEVEL);
 	}
 
-	public List<Database.UpsertResult> doUpsert(
+	/**
+	 * @description Upserts a list of records using the specified external ID field, access level, and default all-or-none setting.
+	 * @param records List of SObject records to upsert
+	 * @param externalIdField External ID field to use for matching existing records
+	 * @param accessLevel System access level for the operation
+	 * @return List of Database.UpsertResult objects
+	 */
+	global List<Database.UpsertResult> doUpsert(
 		List<SObject> records,
 		SObjectField externalIdField,
 		System.AccessLevel accessLevel
@@ -603,7 +1285,15 @@ public inherited sharing virtual class Dml {
 		return this.doUpsert(records, externalIdField, true, accessLevel);
 	}
 
-	public List<Database.UpsertResult> doUpsert(
+	/**
+	 * @description Upserts a list of records using the specified all-or-none setting and access level.
+	 * @param records List of SObject records to upsert
+	 * @param allOrNone Whether all operations must succeed or all fail
+	 * @param accessLevel System access level for the operation
+	 * @return List of Database.UpsertResult objects
+	 */
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
+	global List<Database.UpsertResult> doUpsert(
 		List<SObject> records,
 		Boolean allOrNone,
 		System.AccessLevel accessLevel
@@ -611,23 +1301,56 @@ public inherited sharing virtual class Dml {
 		return this.doUpsert(records, null, allOrNone, accessLevel);
 	}
 
-	public List<Database.UpsertResult> doUpsert(List<SObject> records, SObjectField externalIdField) {
+	/**
+	 * @description Upserts a list of records using the specified external ID field and default settings.
+	 * @param records List of SObject records to upsert
+	 * @param externalIdField External ID field to use for matching existing records
+	 * @return List of Database.UpsertResult objects
+	 */
+	global List<Database.UpsertResult> doUpsert(List<SObject> records, SObjectField externalIdField) {
 		return this.doUpsert(records, externalIdField, DEFAULT_ACCESS_LEVEL);
 	}
 
-	public List<Database.UpsertResult> doUpsert(List<SObject> records, Boolean allOrNone) {
+	/**
+	 * @description Upserts a list of records using the specified all-or-none setting and default settings.
+	 * @param records List of SObject records to upsert
+	 * @param allOrNone Whether all operations must succeed or all fail
+	 * @return List of Database.UpsertResult objects
+	 */
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
+	global List<Database.UpsertResult> doUpsert(List<SObject> records, Boolean allOrNone) {
 		return this.doUpsert(records, allOrNone, DEFAULT_ACCESS_LEVEL);
 	}
 
-	public List<Database.UpsertResult> doUpsert(List<SObject> records, System.AccessLevel accessLevel) {
+	/**
+	 * @description Upserts a list of records using the specified access level and default settings.
+	 * @param records List of SObject records to upsert
+	 * @param accessLevel System access level for the operation
+	 * @return List of Database.UpsertResult objects
+	 */
+	global List<Database.UpsertResult> doUpsert(List<SObject> records, System.AccessLevel accessLevel) {
 		return this.doUpsert(records, true, accessLevel);
 	}
 
-	public List<Database.UpsertResult> doUpsert(List<SObject> records) {
+	/**
+	 * @description Upserts a list of records using default settings (all-or-none true, user mode access).
+	 * @param records List of SObject records to upsert
+	 * @return List of Database.UpsertResult objects
+	 */
+	global List<Database.UpsertResult> doUpsert(List<SObject> records) {
 		return this.doUpsert(records, DEFAULT_ACCESS_LEVEL);
 	}
 
-	public Database.UpsertResult doUpsert(
+	/**
+	 * @description Upserts a single record using the specified external ID field, all-or-none setting, and access level.
+	 * @param record SObject record to upsert
+	 * @param externalIdField External ID field to use for matching existing records
+	 * @param allOrNone Whether all operations must succeed or all fail
+	 * @param accessLevel System access level for the operation
+	 * @return Database.UpsertResult object
+	 */
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters,PMD.ExcessiveParameterList')
+	global Database.UpsertResult doUpsert(
 		SObject record,
 		SObjectField externalIdField,
 		Boolean allOrNone,
@@ -636,11 +1359,26 @@ public inherited sharing virtual class Dml {
 		return this.doUpsert(new List<SObject>{ record }, externalIdField, allOrNone, accessLevel)?.get(0);
 	}
 
-	public Database.UpsertResult doUpsert(SObject record, SObjectField externalIdField, Boolean allOrNone) {
+	/**
+	 * @description Upserts a single record using the specified external ID field, all-or-none setting, and default access level.
+	 * @param record SObject record to upsert
+	 * @param externalIdField External ID field to use for matching existing records
+	 * @param allOrNone Whether all operations must succeed or all fail
+	 * @return Database.UpsertResult object
+	 */
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
+	global Database.UpsertResult doUpsert(SObject record, SObjectField externalIdField, Boolean allOrNone) {
 		return this.doUpsert(new List<SObject>{ record }, externalIdField, allOrNone)?.get(0);
 	}
 
-	public Database.UpsertResult doUpsert(
+	/**
+	 * @description Upserts a single record using the specified external ID field, access level, and default all-or-none setting.
+	 * @param record SObject record to upsert
+	 * @param externalIdField External ID field to use for matching existing records
+	 * @param accessLevel System access level for the operation
+	 * @return Database.UpsertResult object
+	 */
+	global Database.UpsertResult doUpsert(
 		SObject record,
 		SObjectField externalIdField,
 		System.AccessLevel accessLevel
@@ -648,42 +1386,94 @@ public inherited sharing virtual class Dml {
 		return this.doUpsert(new List<SObject>{ record }, externalIdField, accessLevel)?.get(0);
 	}
 
-	public Database.UpsertResult doUpsert(SObject record, Boolean allOrNone, System.AccessLevel accessLevel) {
+	/**
+	 * @description Upserts a single record using the specified all-or-none setting and access level.
+	 * @param record SObject record to upsert
+	 * @param allOrNone Whether all operations must succeed or all fail
+	 * @param accessLevel System access level for the operation
+	 * @return Database.UpsertResult object
+	 */
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
+	global Database.UpsertResult doUpsert(SObject record, Boolean allOrNone, System.AccessLevel accessLevel) {
 		return this.doUpsert(new List<SObject>{ record }, allOrNone, accessLevel)?.get(0);
 	}
 
-	public Database.UpsertResult doUpsert(SObject record, SObjectField externalIdField) {
+	/**
+	 * @description Upserts a single record using the specified external ID field and default settings.
+	 * @param record SObject record to upsert
+	 * @param externalIdField External ID field to use for matching existing records
+	 * @return Database.UpsertResult object
+	 */
+	global Database.UpsertResult doUpsert(SObject record, SObjectField externalIdField) {
 		return this.doUpsert(new List<SObject>{ record }, externalIdField)?.get(0);
 	}
 
-	public Database.UpsertResult doUpsert(SObject record, Boolean allOrNone) {
+	/**
+	 * @description Upserts a single record using the specified all-or-none setting and default settings.
+	 * @param record SObject record to upsert
+	 * @param allOrNone Whether all operations must succeed or all fail
+	 * @return Database.UpsertResult object
+	 */
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
+	global Database.UpsertResult doUpsert(SObject record, Boolean allOrNone) {
 		return this.doUpsert(new List<SObject>{ record }, allOrNone)?.get(0);
 	}
 
-	public Database.UpsertResult doUpsert(SObject record, System.AccessLevel accessLevel) {
+	/**
+	 * @description Upserts a single record using the specified access level and default settings.
+	 * @param record SObject record to upsert
+	 * @param accessLevel System access level for the operation
+	 * @return Database.UpsertResult object
+	 */
+	global Database.UpsertResult doUpsert(SObject record, System.AccessLevel accessLevel) {
 		return this.doUpsert(new List<SObject>{ record }, accessLevel)?.get(0);
 	}
 
-	public Database.UpsertResult doUpsert(SObject record) {
+	/**
+	 * @description Upserts a single record using default settings (all-or-none true, user mode access).
+	 * @param record SObject record to upsert
+	 * @return Database.UpsertResult object
+	 */
+	global Database.UpsertResult doUpsert(SObject record) {
 		return this.doUpsert(new List<SObject>{ record })?.get(0);
 	}
 
 	// ** EmptyRecycleBin Methods
-	public List<Database.EmptyRecycleBinResult> emptyRecycleBin(List<SObject> records) {
+	/**
+	 * @description Permanently deletes records from the recycle bin.
+	 * @param records List of SObject records to permanently delete
+	 * @return List of Database.EmptyRecycleBinResult objects
+	 */
+	global List<Database.EmptyRecycleBinResult> emptyRecycleBin(List<SObject> records) {
 		Dml.Request request = this.initRequest(Dml.Operation.DO_PURGE, records);
 		return (List<Database.EmptyRecycleBinResult>) request?.process();
 	}
 
-	public List<Database.EmptyRecycleBinResult> emptyRecycleBin(List<Id> recordIds) {
+	/**
+	 * @description Permanently deletes records from the recycle bin by record IDs.
+	 * @param recordIds List of record IDs to permanently delete
+	 * @return List of Database.EmptyRecycleBinResult objects
+	 */
+	global List<Database.EmptyRecycleBinResult> emptyRecycleBin(List<Id> recordIds) {
 		List<SObject> records = this.initRecordsFromIds(recordIds);
 		return this.emptyRecycleBin(records);
 	}
 
-	public Database.EmptyRecycleBinResult emptyRecycleBin(SObject record) {
+	/**
+	 * @description Permanently deletes a single record from the recycle bin.
+	 * @param record SObject record to permanently delete
+	 * @return Database.EmptyRecycleBinResult object
+	 */
+	global Database.EmptyRecycleBinResult emptyRecycleBin(SObject record) {
 		return this.emptyRecycleBin(new List<SObject>{ record })?.get(0);
 	}
 
-	public Database.EmptyRecycleBinResult emptyRecycleBin(Id recordId) {
+	/**
+	 * @description Permanently deletes a single record from the recycle bin by record ID.
+	 * @param recordId ID of the record to permanently delete
+	 * @return Database.EmptyRecycleBinResult object
+	 */
+	global Database.EmptyRecycleBinResult emptyRecycleBin(Id recordId) {
 		return this.emptyRecycleBin(new List<Id>{ recordId })?.get(0);
 	}
 
@@ -693,22 +1483,39 @@ public inherited sharing virtual class Dml {
 	 * The benefit of calling these methods is largely to gain access to MockDml methods
 	 * to assert if/which savepoints were set, rolled back, released, etc.
 	 */
-	public virtual void releaseSavepoint(System.Savepoint savepoint) {
+	/**
+	 * @description Releases a savepoint, making it no longer available for rollback.
+	 * @param savepoint The savepoint to release
+	 */
+	global virtual void releaseSavepoint(System.Savepoint savepoint) {
 		Database.releaseSavepoint(savepoint);
 	}
 
-	public virtual void rollback(System.Savepoint savepoint) {
+	/**
+	 * @description Rolls back the database to the specified savepoint.
+	 * @param savepoint The savepoint to roll back to
+	 */
+	global virtual void rollback(System.Savepoint savepoint) {
 		Database.rollback(savepoint);
 	}
 
-	public virtual System.Savepoint setSavepoint() {
+	/**
+	 * @description Creates a savepoint that can be used for rollback operations.
+	 * @return System.Savepoint object representing the current database state
+	 */
+	global virtual System.Savepoint setSavepoint() {
 		return Database.setSavepoint();
 	}
 
 	// **** PRIVATE **** //
+	/**
+	 * @description Initializes a DML request object for the specified operation.
+	 * @param operation The DML operation to perform
+	 * @param records List of records to operate on
+	 * @return A configured Dml.Request object
+	 */
 	@TestVisible
 	protected virtual Dml.Request initRequest(Dml.Operation operation, List<Object> records) {
-		// Initialize a Dml.Request; mocks can override this method to return their own implementation which does not perform DML
 		return new Dml.Request(operation, records);
 	}
 
@@ -722,14 +1529,12 @@ public inherited sharing virtual class Dml {
 		return records;
 	}
 
+	/**
+	 * @description Initializes DML plugins based on custom metadata configuration.
+	 */
 	@TestVisible
 	private void initPlugins() {
-		// Initializes plugins based on the related custom metadata record
-		// In production use cases, this will only happen once per transaction
-		// In @IsTest uses cases, this happens every time the caller switches from Dml/MockDml
-		// Test callers can also call this method directly to recalculate the plugins after injecting mock metadata:
 		Dml.Plugin = (Dml.PreAndPostProcessor) DatabaseLayer.Utils?.Plugins?.initPlugin(PLUGIN_FIELD);
-		// ... may add more plugins here in the future!
 	}
 
 	// **** STATIC **** //
@@ -740,27 +1545,32 @@ public inherited sharing virtual class Dml {
 	}
 
 	// **** INNER **** //
+	/**
+	 * @description Default callback implementation for async delete operations when no callback is specified.
+	 */
 	@TestVisible
 	private class EmptyDeleteCallback extends DataSource.AsyncDeleteCallback {
-		/**
-		 *  If a callback isn't defined, doDeleteAsync() will use this class to gracefully handle callbacks
-		 **/
+		@SuppressWarnings('PMD.EmptyStatementBlock')
 		public override void processDelete(Database.DeleteResult result) {
 			// Do nothing
 		}
 	}
 
+	/**
+	 * @description Default callback implementation for async save operations when no callback is specified.
+	 */
 	@TestVisible
 	private class EmptySaveCallback extends DataSource.AsyncSaveCallback {
-		/**
-		 * If a callback isn't defined, doInsertAsync() & doUpdateAsync will use this class to gracefully handle callbacks
-		 **/
+		@SuppressWarnings('PMD.EmptyStatementBlock')
 		public override void processSave(Database.SaveResult result) {
 			// Do nothing
 		}
 	}
 
-	public enum Operation {
+	/**
+	 * @description Enumeration of all supported DML operations.
+	 */
+	global enum Operation {
 		DO_CONVERT,
 		DO_DELETE,
 		DO_INSERT,
@@ -771,42 +1581,87 @@ public inherited sharing virtual class Dml {
 		DO_UPSERT
 	}
 
-	public interface PreAndPostProcessor {
+	/**
+	 * @description Interface for plugins that process DML operations before and after execution.
+	 */
+	global interface PreAndPostProcessor {
+		/**
+		 * @description Called before executing a DML operation.
+		 * @param request The DML request to be processed
+		 */
 		void processPreDml(Dml.Request request);
+		/**
+		 * @description Called after successfully executing a DML operation.
+		 * @param request The DML request that was processed
+		 * @param databaseResults The results returned from the DML operation
+		 */
 		void processPostDml(Dml.Request request, List<Object> databaseResults);
+		/**
+		 * @description Called when a DML operation encounters an error.
+		 * @param request The DML request that encountered an error
+		 * @param error The exception that was thrown
+		 */
 		void processDmlError(Dml.Request request, Exception error);
 	}
 
-	public virtual class Request {
-		/**
-		 * Represents a single call to one of the above DML methods, plus all its parameters
-		 * Centralizing this information allows us to output information about the operation taking place
-		 */
+	/**
+	 * @description Encapsulates a single DML operation with all its parameters and execution logic.
+	 */
+	global inherited sharing virtual class Request {
 		// ** Always Required:
-		public Dml.Operation operation { get; protected set; }
+		/**
+		 * @description The DML operation to be performed.
+		 */
+		global Dml.Operation operation { get; protected set; }
 		// ** Conditionally Required:
-		public transient List<SObject> records { get; protected set; }
-		public transient List<Database.LeadConvert> leadsToConvert { get; protected set; }
+		/**
+		 * @description List of SObject records to operate on (for most operations).
+		 */
+		global transient List<SObject> records { get; protected set; }
+		/**
+		 * @description List of lead conversion objects (for convert operations only).
+		 */
+		global transient List<Database.LeadConvert> leadsToConvert { get; protected set; }
 		// ** Optional Parameters:
-		public transient System.AccessLevel accessLevel { get; protected set; }
-		public transient DataSource.AsyncDeleteCallback asyncDeleteCallback { get; protected set; }
-		public transient DataSource.AsyncSaveCallback asyncSaveCallback { get; protected set; }
-		public transient SObjectField externalIdField { get; protected set; }
-		public Boolean isMockDml { get; protected set; }
-		public Boolean isOperationAsync { get; protected set; }
-		public Boolean isOperationImmediate { get; protected set; }
-		public Database.DmlOptions options { get; protected set; }
+		/**
+		 * @description System access level for the operation (USER_MODE or SYSTEM_MODE).
+		 */
+		global transient System.AccessLevel accessLevel { get; protected set; }
+		/**
+		 * @description Callback for asynchronous delete operations.
+		 */
+		global transient DataSource.AsyncDeleteCallback asyncDeleteCallback { get; protected set; }
+		/**
+		 * @description Callback for asynchronous save operations.
+		 */
+		global transient DataSource.AsyncSaveCallback asyncSaveCallback { get; protected set; }
+		/**
+		 * @description External ID field for upsert operations.
+		 */
+		global transient SObjectField externalIdField { get; protected set; }
+		/**
+		 * @description Whether this request is being executed by mock DML.
+		 */
+		global Boolean isMockDml { get; protected set; }
+		/**
+		 * @description Whether this operation should be executed asynchronously.
+		 */
+		global Boolean isOperationAsync { get; protected set; }
+		/**
+		 * @description Whether this operation should be executed immediately.
+		 */
+		global Boolean isOperationImmediate { get; protected set; }
+		/**
+		 * @description DML options for the operation.
+		 */
+		global Database.DmlOptions options { get; protected set; }
 		// ** Getters
 		// These properties are read-only, and are used for JSON/output purposes,
 		// ex., since some of the main class properties are not JSON-serializable
-		public String accessLevelName {
-			// System.AccessLevel is not JSON serializable
-			// Unlike other enums, it does not have a name() property, and toString() does not output its name either:
-			get {
-				return (this.accessLevel == System.AccessLevel.SYSTEM_MODE) ? 'SYSTEM_MODE' : 'USER_MODE';
-			}
-		}
-		public transient Boolean allOrNone {
+		/**
+		 * @description Whether all operations must succeed or all fail.
+		 */
+		global transient Boolean allOrNone {
 			get {
 				// Is not actually stored as a value; mirrors the DmlOptions' OptAllOrNone value
 				this.options = this.options ?? Dml.initDmlOptions(true);
@@ -817,36 +1672,50 @@ public inherited sharing virtual class Dml {
 				this.options.OptAllOrNone = value;
 			}
 		}
-		public String deleteCallback {
+		/**
+		 * @description The number of records being operated on.
+		 */
+		global Integer numRecords {
+			// Output the number of records being operated on:
+			get {
+				return this.getNumRecords();
+			}
+		}
+
+		/**
+		 * @description The name of the SObjectType being operated on.
+		 */
+		global String sObjectType {
+			// Output the name of the SObjectType being operated on, if known:
+			get {
+				return this.getSObjectTypeName();
+			}
+		}
+		private String accessLevelName {
+			// System.AccessLevel is not JSON serializable
+			// Unlike other enums, it does not have a name() property, and toString() does not output its name either:
+			get {
+				return (this.accessLevel == System.AccessLevel.SYSTEM_MODE) ? 'SYSTEM_MODE' : 'USER_MODE';
+			}
+		}
+		private String deleteCallback {
 			// The DataSource.AsyncDeleteCallback may/may not be serializable, based on its implementation
 			// Prevent serialization errors by outputting the raw toString() value for logs:
 			get {
 				return String.valueOf(this.asyncDeleteCallback);
 			}
 		}
-		public String externalIdFieldName {
+		private String externalIdFieldName {
 			// SObjectFields are not JSON-serializable
 			get {
 				return this.externalIdField?.toString();
 			}
 		}
-		public Integer numRecords {
-			// Output the number of records being operated on:
-			get {
-				return this.getNumRecords();
-			}
-		}
-		public String saveCallback {
+		private String saveCallback {
 			// The DataSource.AsyncSaveCallback may/may not be serializable, based on its implementation
 			// Prevent serialization errors by outputting the raw toString() value for logs:
 			get {
 				return String.valueOf(this.asyncSaveCallback);
-			}
-		}
-		public String sObjectType {
-			// Output the name of the SObjectType being operated on, if known:
-			get {
-				return this.getSObjectTypeName();
 			}
 		}
 
