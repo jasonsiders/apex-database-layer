@@ -1,4 +1,4 @@
-@SuppressWarnings('PMD.ApexDoc, PMD.EmptyCatchBlock')
+@SuppressWarnings('PMD.ApexUnitTestClassShouldHaveRunAs,PMD.CyclomaticComplexity')
 @IsTest
 private class MockSoqlTest {
 	// **** CONSTANTS **** //
@@ -75,11 +75,13 @@ private class MockSoqlTest {
 		Soql.Cursor cursor = soql?.getCursor();
 
 		Test.startTest();
+		Exception caughtError;
 		try {
 			cursor?.fetch(-1, 1);
 			Assert.fail('Did not throw a Soql.InvalidParameterValueException for invalid position param');
 		} catch (Soql.InvalidParameterValueException error) {
 			// As expected...
+			caughtError = error;
 		}
 		Test.stopTest();
 	}
@@ -93,11 +95,13 @@ private class MockSoqlTest {
 		Soql.Cursor cursor = soql?.getCursor();
 
 		Test.startTest();
+		Exception caughtError;
 		try {
 			cursor?.fetch(0, -1);
 			Assert.fail('Did not throw a Soql.InvalidParameterValueException for invalid count param');
 		} catch (Soql.InvalidParameterValueException error) {
 			// As expected...
+			caughtError = error;
 		}
 		Test.stopTest();
 	}
@@ -111,11 +115,13 @@ private class MockSoqlTest {
 		Soql.Cursor cursor = soql?.getCursor();
 
 		Test.startTest();
+		Exception caughtError;
 		try {
 			cursor?.fetch(0, (NUM_ACCS + 1));
 			Assert.fail('Did not throw a Soql.InvalidParameterValueException for fetch that exceeds upper bound');
 		} catch (Soql.InvalidParameterValueException error) {
 			// As expected...
+			caughtError = error;
 		}
 		Test.stopTest();
 	}
@@ -129,11 +135,13 @@ private class MockSoqlTest {
 		Soql.Cursor cursor = soql?.getCursor();
 
 		Test.startTest();
+		Exception caughtError;
 		try {
 			cursor?.fetch(0, null);
 			Assert.fail('Did not throw a System.NullPointerException for null fetch param');
 		} catch (System.NullPointerException error) {
 			// As expected...
+			caughtError = error;
 		}
 		Test.stopTest();
 	}
@@ -160,11 +168,13 @@ private class MockSoqlTest {
 				Assert.areNotEqual(null, account, i + '/' + NUM_ACCS + ': Iterator returned null record');
 			} else {
 				Assert.areEqual(false, iterator?.hasNext(), i + '/' + NUM_ACCS + ': Iterator should not hasNext()');
+				Exception caughtError;
 				try {
 					iterator?.next();
 					Assert.fail('Iterator did not throw a ' + System.NoSuchElementException.class);
 				} catch (System.NoSuchElementException error) {
-					// As expected
+					// As expected...
+					caughtError = error;
 				}
 			}
 		}
@@ -230,7 +240,7 @@ private class MockSoqlTest {
 			?.newQuery(User.SObjectType)
 			?.addSelect(new Soql.ParentField(User.ProfileId, Profile.Name))
 			?.addSelect(count)
-			?.groupBy(new Soql.ParentField(User.ProfileId, Profile.Name));
+			?.addGroupBy(new Soql.ParentField(User.ProfileId, Profile.Name));
 		// Inject results into the query
 		MockSoql.AggregateResult mockResult1 = new MockSoql.AggregateResult()
 			?.addParameter('Foo Profile')
@@ -266,7 +276,7 @@ private class MockSoqlTest {
 			?.newQuery(User.SObjectType)
 			?.addSelect(new Soql.ParentField(User.ProfileId, Profile.Name))
 			?.addSelect(count)
-			?.groupBy(new Soql.ParentField(User.ProfileId, Profile.Name));
+			?.addGroupBy(new Soql.ParentField(User.ProfileId, Profile.Name));
 		// Inject an error
 		soql?.setMock()?.withError();
 
@@ -289,7 +299,7 @@ private class MockSoqlTest {
 			?.newQuery(User.SObjectType)
 			?.addSelect(new Soql.ParentField(User.ProfileId, Profile.Name))
 			?.addSelect(count)
-			?.groupBy(new Soql.ParentField(User.ProfileId, Profile.Name));
+			?.addGroupBy(new Soql.ParentField(User.ProfileId, Profile.Name));
 		// Inject results
 		MockSoqlTest.SampleWrapper mockResult1 = new MockSoqlTest.SampleWrapper()?.wrap('Foo Profile', 123);
 		MockSoqlTest.SampleWrapper mockResult2 = new MockSoqlTest.SampleWrapper()?.wrap('Bar Profile', 45);
@@ -320,7 +330,7 @@ private class MockSoqlTest {
 			?.newQuery(User.SObjectType)
 			?.addSelect(new Soql.ParentField(User.ProfileId, Profile.Name))
 			?.addSelect(count)
-			?.groupBy(new Soql.ParentField(User.ProfileId, Profile.Name));
+			?.addGroupBy(new Soql.ParentField(User.ProfileId, Profile.Name));
 		// Inject an error
 		soql?.setMock()?.withError(new System.TypeException());
 
@@ -469,11 +479,13 @@ private class MockSoqlTest {
 		MockSoql.setGlobalMock()?.withError();
 
 		Test.startTest();
+		Exception caughtError;
 		try {
 			DatabaseLayer.Soql.newQuery(Account.SObjectType)?.toSoql()?.query();
 			Assert.fail('Did not throw an Exception');
 		} catch (Exception error) {
 			// As expected...
+			caughtError = error;
 		}
 		Test.stopTest();
 
@@ -558,6 +570,11 @@ private class MockSoqlTest {
 
 	// **** INNER **** //
 	private class CustomTaskQueryLogic implements MockSoql.Simulator {
+		/**
+		 * @description Simulates a query that returns Task records based on previously inserted Contact records
+		 * @param queryToMock The SOQL query being mocked
+		 * @return List of Task objects based on inserted Contact records
+		 */
 		public List<Object> simulateQuery(Soql queryToMock) {
 			// For each inserted contact, return a Task
 			List<Task> results = new List<Task>();
@@ -579,6 +596,11 @@ private class MockSoqlTest {
 		// This example returns a different list of records, depending on the from entity
 		// You can use this in conjunction with MockSoql.setGlobalMock to dynamically inject query results into multiple soql objects,
 		// without needing to directly asssign each their own unique simulator object
+		/**
+		 * @description Dynamically simulates query results based on the SObject type being queried
+		 * @param queryToMock The SOQL query being mocked
+		 * @return List of mock records based on the queried SObject type
+		 */
 		public List<Object> simulateQuery(Soql queryToMock) {
 			String entity = queryToMock?.entity;
 			if (entity == Account.SObjectType.toString()) {
@@ -603,6 +625,12 @@ private class MockSoqlTest {
 		public Integer numRecords;
 		public String profileName;
 
+		/**
+		 * @description Wraps profile name and record count data for testing purposes
+		 * @param profileName The profile name to wrap
+		 * @param numRecords The number of records to wrap
+		 * @return This SampleWrapper instance for method chaining
+		 */
 		public SampleWrapper wrap(String profileName, Integer numRecords) {
 			this.profileName = profileName;
 			this.numRecords = numRecords;

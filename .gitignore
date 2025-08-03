@@ -50,3 +50,6 @@ $RECYCLE.BIN/
 # Unrelated Metadata
 force-app/main/default/objectTranslations/**
 force-app/main/default/profiles/**
+
+# Agents
+CLAUDE.md
