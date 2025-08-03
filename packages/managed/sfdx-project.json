@@ -3,32 +3,15 @@
 		{
 			"path": "force-app",
 			"default": true,
-			"package": "apex-database-layer",
-			"versionName": "ver 2.5.1",
-			"versionNumber": "2.5.1.NEXT",
-			"versionDescription": "New Soql.PreAndPostProcessor Plugin"
+			"package": "apex-database-layer-managed",
+			"versionName": "ver 3.0.0",
+			"versionNumber": "3.0.0.NEXT",
+			"versionDescription": "Removing deprecated methods, introducing managed package"
 		}
 	],
-	"name": "apex-database-layer",
-	"namespace": "",
+	"name": "apex-database-layer-managed",
+	"namespace": "apxsp",
 	"sfdcLoginUrl": "https://login.salesforce.com",
 	"sourceApiVersion": "64.0",
-	"packageAliases": {
-		"apex-database-layer": "0HoDn000000kAONKA2",
-		"apex-database-layer@0.1.0-1": "04tDn0000006z4LIAQ",
-		"apex-database-layer@1.0.0-2": "04tDn0000011O0pIAE",
-		"apex-database-layer@2.0.0-1": "04tDn0000011OKyIAM",
-		"apex-database-layer@2.1.0-1": "04tDn0000011OPVIA2",
-		"apex-database-layer@2.2.0-1": "04tDn0000011OQJIA2",
-		"apex-database-layer@2.2.1-1": "04tDn0000011OQYIA2",
-		"apex-database-layer@2.2.2-1": "04tDn0000011OQdIAM",
-		"apex-database-layer@2.3.0-1": "04tDn0000011OQsIAM",
-		"apex-database-layer@2.4.0-1": "04tDn0000011OR7IAM",
-		"apex-database-layer@2.4.1-1": "04tDn0000011ORHIA2",
-		"apex-database-layer@2.4.2-2": "04tDn0000011ORbIAM",
-		"apex-database-layer@2.4.3-1": "04tDn0000011ORgIAM",
-		"apex-database-layer@2.4.4-1": "04tDn0000011ORvIAM",
-		"apex-database-layer@2.5.0-2": "04tDn0000011OS5IAM",
-		"apex-database-layer@2.5.1-1": "04tDn0000011OSAIA2"
-	}
+	"packageAliases": {}
 }
