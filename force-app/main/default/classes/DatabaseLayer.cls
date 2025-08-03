@@ -131,6 +131,9 @@ global class DatabaseLayer {
 
 		/**
 		 * @description Initializes SOQL plugins based on custom metadata configuration.
+		 * Note: In production use cases, this will only happen once per transaction
+		 * In @IsTest uses cases, this happens every time the caller switches from Soql/MockSoql
+		 * Test callers can also call this method directly to recalculate the plugins after injecting mock metadata:
 		 */
 		@TestVisible
 		private void initPlugins() {

@@ -182,6 +182,7 @@ global class MockDml extends Dml {
 		 * @description Whether to reset mock database state on rollback operations.
 		 * When this configuration flag is true (default), MockDml will mimic a real Database when a rollback occurs.
 		 */
+		@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
 		global Boolean resetOnRollback { get; set; }
 		/**
 		 * @description History of lead conversion operations.

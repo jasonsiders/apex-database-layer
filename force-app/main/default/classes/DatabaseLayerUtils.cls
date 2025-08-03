@@ -21,7 +21,7 @@ public without sharing class DatabaseLayerUtils {
 	public final DatabaseLayerUtils.Plugins Plugins { get; private set; }
 
 	/**
-	 * @description Constructor that initializes all utility sub-components.
+	 * @description Constructor that initializes all utility sub-components
 	 * @param factory The DatabaseLayer factory instance
 	 */
 	@SuppressWarnings('PMD.EmptyStatementBlock')
@@ -60,6 +60,8 @@ public without sharing class DatabaseLayerUtils {
 		 */
 		public Schema.ChildRelationship getChildRelationshipFrom(SObjectField lookupField) {
 			List<SObjectType> references = lookupField?.getDescribe()?.getReferenceTo();
+			// Note: the Schema.getReferenceTo() method returns a List<SObjectType>, not a single SObjectType.
+			// Typically, a field is only be related to a single SObjectType; excluding polymorphic fields (ie, Task.WhatId).
 			SObjectType referenceTo = references?.isEmpty() == false ? references?.get(0) : null;
 			return this.getChildRelationshipFrom(lookupField, referenceTo);
 		}

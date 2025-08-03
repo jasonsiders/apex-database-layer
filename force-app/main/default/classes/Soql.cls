@@ -424,7 +424,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	 */
 	global abstract class Builder {
 		/**
-		 * @description System access level for the query execution.
+		 * @description The configured access level for the query execution.
 		 */
 		global transient System.AccessLevel accessLevel { get; protected set; }
 		/**
@@ -481,9 +481,8 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @description Serializable representation of the access level.
 		 */
 		private String accessLevelName {
-			// Note: System.AccessLevel isn't serializable,
-			// and it does not have an enum name() property,
-			// and toString() does not output its name either:
+			// Note: System.AccessLevel is a weird enum - it isn't serializable,
+			// it does not have an enum name() property, and toString() does not output its name either:
 			get {
 				return (this.accessLevel == System.AccessLevel.SYSTEM_MODE) ? 'SYSTEM_MODE' : 'USER_MODE';
 			}
@@ -1546,11 +1545,10 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 
 	/**
 	 * @description Represents a reference to a field on a parent object for use in SOQL queries.
+	 * SOQL supports querying fields objects up to 5 relationships away from the FROM object
 	 */
 	@SuppressWarnings('PMD.ExcessiveParameterList')
 	global class ParentField implements Soql.Selectable {
-		// Represents a reference to a SObjectField on a parent (or multi-grandparent) object, ex., "Account.Owner.Profile.Name"
-		// SOQL supports querying fields objects up to 5 relationships away from the FROM object
 		private String value;
 
 		/**
