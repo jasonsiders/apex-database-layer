@@ -4,8 +4,9 @@ on:
   workflow_call:
     inputs:
       package:
-        description: Package Directory
-        required: true
+        description: Package Directory ("managed" or "unlocked")
+        default: "unlocked"
+        required: false
         type: string
       version:
         description: Version Number (#.#.#)
@@ -14,8 +15,9 @@ on:
   workflow_dispatch:
     inputs:
       package:
-        description: Package Directory
-        required: true
+        description: Package Directory ("managed" or "unlocked")
+        default: "unlocked"
+        required: false
       version:
         description: Version Number (#.#.#)
         required: false
@@ -32,9 +34,10 @@ jobs:
         shell: bash
         run: |
           # Swap the sfdx-project.json file for the one listed in the package directory
+          pwd
           mkdir -p tmp
           mv sfdx-project.json tmp/
-          cp "${{ inputs.package }}/sfdx-project.json" .
+          cp "packages/${{ inputs.package }}/sfdx-project.json" .
 
       - name: Get Version Number
         id: get-version
@@ -106,7 +109,7 @@ jobs:
         shell: bash
         run: |
           # Relocate root & package's project files back to their original location
-          cp sfdx-project.json "${{ inputs.package }}/" 
+          cp sfdx-project.json "packages/${{ inputs.package }}/" 
           mv tmp/sfdx-project.json .         
           rm -rf tmp/
 
