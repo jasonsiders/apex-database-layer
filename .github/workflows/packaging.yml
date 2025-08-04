@@ -25,6 +25,8 @@ on:
 jobs:
   create-package-version:
     name: Create Package Version
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
