@@ -168,9 +168,12 @@ jobs:
           mv tmp/sfdx-project.json .         
           rm -rf tmp/
 
+      - name: Pull Latest Changes
+        shell: bash
+        run: git pull origin
+
       - name: Tag & Commit Changes
         uses: "stefanzweifel/git-auto-commit-action@v6"
         with:
           commit_message: "Packaged new ${{ inputs.package }} version ${{ steps.get-version.outputs.version-name }}"
-          push_options: '--force-with-lease'
           skip_dirty_check: true
