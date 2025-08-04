@@ -57,6 +57,11 @@ jobs:
       - name: Switch Package Context
         shell: bash
         run: |
+          # Validate package directory and sfdx-project.json file exist
+          if [[ ! -f "packages/${{ inputs.package }}/sfdx-project.json" ]]; then
+            echo "ERROR: 'packages/${{ inputs.package }}/sfdx-project.json' not found"
+            exit 1
+          fi
           # Swap the sfdx-project.json file for the one listed in the package directory
           mkdir -p tmp
           mv sfdx-project.json tmp/
