@@ -132,6 +132,8 @@ jobs:
             echo "sf package install --package $UNLOCKED_ID --wait 20"
             echo "\`\`\`"
             echo ""
+            echo "---"
+            echo ""
           } > release_body.md
 
           # Set as output for next step
