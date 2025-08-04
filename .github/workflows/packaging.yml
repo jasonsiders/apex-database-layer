@@ -129,15 +129,13 @@ jobs:
           PACKAGE_ALIAS=$(jq -r '.packageDirectories[] | select(.default == true) | .package' sfdx-project.json)
           echo "Creating package version for: $PACKAGE_ALIAS..."
           # Create package version and capture both stdout and stderr
+          # TODO: Remove --skip-validation, and add back --code-coverage
           if RESULT=$(sf package version create \
-            # TODO: Add back code coverage
-            # --code-coverage \
+            --skip-validation \
             --installation-key-bypass \
             --json \
             --package "$PACKAGE_ALIAS" \
             --post-install-url "$WIKI_URL" \
-            # TODO: Remove this temporary flag!
-            --skip-validation \
             --wait 29 2>&1); then
             # Success - extract version ID
             VERSION_ID=$(echo "$RESULT" | jq -r '.result.SubscriberPackageVersionId')
