@@ -32,6 +32,7 @@ on:
         description: Version Number (#.#.#)  
         required: false
         type: string
+      # TODO: Flip default to back 'false'
       skip-validation:
         description: Skip validation and code coverage checks
         default: true
