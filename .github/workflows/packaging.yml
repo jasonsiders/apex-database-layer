@@ -126,8 +126,9 @@ jobs:
         shell: bash
         run: |
           # Get package alias from sfdx-project.json
+          set -euo pipefail
           PACKAGE_ALIAS=$(jq -r '.packageDirectories[] | select(.default == true) | .package' sfdx-project.json)
-          echo "Creating package version for: $PACKAGE_ALIAS"
+          echo "Creating package version for: $PACKAGE_ALIAS..."
           # Create package version and capture JSON output
           RESULT=$(sf package version create \
             --code-coverage \
