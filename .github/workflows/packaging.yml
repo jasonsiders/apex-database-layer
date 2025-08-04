@@ -32,17 +32,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Node
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
 
-      - name: Install Dependencies
+      - name: Setup NPM
         shell: bash
         run: npm ci
 
-      - name: Install SF CLI
+      - name: Setup SF CLI
         uses: ./.github/actions/setup-sf-cli
 
       - name: Switch Package Context
