@@ -12,6 +12,11 @@ on:
         description: Version Number (#.#.#)
         required: false
         type: string
+      skip-validation:
+        description: Skip validation and code coverage checks
+        default: false
+        required: false
+        type: boolean
     outputs:
       version-id:
         description: "Package Version ID"
@@ -24,9 +29,14 @@ on:
         required: false
         type: string
       version:
-        description: Version Number (#.#.#)
+        description: Version Number (#.#.#)  
         required: false
         type: string
+      skip-validation:
+        description: Skip validation and code coverage checks
+        default: false
+        required: false
+        type: boolean
 
 jobs:
   create-package-version:
@@ -127,11 +137,10 @@ jobs:
         run: |
           set -euo pipefail
           PACKAGE_ALIAS=$(jq -r '.packageDirectories[] | select(.default == true) | .package' sfdx-project.json)
+          VALIDATION_FLAG=$([[ "${{ inputs.skip-validation }}" == "true" ]] && echo "skip-validation" || echo "code-coverage")
           echo "Creating package version for: $PACKAGE_ALIAS..."
-          # Create package version and capture both stdout and stderr
-          # TODO: Remove --skip-validation, and add back --code-coverage
           if RESULT=$(sf package version create \
-            --skip-validation \
+            --"$VALIDATION_FLAG" \
             --installation-key-bypass \
             --json \
             --package "$PACKAGE_ALIAS" \
