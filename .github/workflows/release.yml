@@ -23,8 +23,6 @@ jobs:
     name: Versioning
     outputs:
       version-number: ${{ steps.determine-version.outputs.version-number }}
-    permissions:
-      contents: write
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -84,6 +82,8 @@ jobs:
   create-managed-package-version:
     name: Create Managed Package Version
     needs: versioning
+    permissions:
+      contents: write
     uses: ./.github/workflows/packaging.yml
     secrets: inherit
     with:
@@ -93,6 +93,8 @@ jobs:
   create-unlocked-package-version:
     name: Create Unlocked Package Version
     needs: [versioning, create-managed-package-version]
+    permissions:
+      contents: write
     uses: ./.github/workflows/packaging.yml
     secrets: inherit
     with:
