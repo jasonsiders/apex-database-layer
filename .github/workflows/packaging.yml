@@ -29,6 +29,8 @@ jobs:
       contents: write
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    outputs:
+      version-id: ${{ steps.create-package.outputs.version-id }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -37,7 +39,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
-          cache: 'npm'
+          cache: "npm"
 
       - name: Setup NPM
         shell: bash
@@ -106,19 +108,32 @@ jobs:
           trap 'rm -f server.key' EXIT
 
       - name: Create New Package Version
+        id: create-package
         env:
           VERSION_NUMBER: ${{ steps.get-version.outputs.version-number }}
+          WIKI_URL: "https://github.com/jasonsiders/apex-database-layer/wiki"
         shell: bash
         run: |
           # Get package alias from sfdx-project.json
           PACKAGE_ALIAS=$(jq -r '.packageDirectories[] | select(.default == true) | .package' sfdx-project.json)
           echo "Creating package version for: $PACKAGE_ALIAS"
-          sf package version create \
+          # Create package version and capture JSON output
+          RESULT=$(sf package version create \
             --code-coverage \
             --installation-key-bypass \
+            --json \
             --package "$PACKAGE_ALIAS" \
-            --version-number "$VERSION_NUMBER" \
-            --wait 29
+            --post-install-url "$WIKI_URL" \
+            --wait 29)
+          echo "$RESULT"
+          # Extract SubscriberPackageVersionId from JSON response
+          VERSION_ID=$(echo "$RESULT" | jq -r '.result.SubscriberPackageVersionId')
+          echo "Package Version ID: $VERSION_ID"
+          echo "version-id=$VERSION_ID" >> "$GITHUB_OUTPUT"
+          if [[ -z "$VERSION_ID" || "$VERSION_ID" == "null" ]]; then
+            echo "ERROR: Missing Package Version ID"
+            exit 1
+          fi
 
       - name: Run Prettier
         shell: bash
