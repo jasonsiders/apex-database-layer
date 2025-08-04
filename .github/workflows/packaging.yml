@@ -115,11 +115,9 @@ jobs:
       - name: Run Prettier
         shell: bash
         run: |
-          # Packaging causes project file's formatting to be overwritten
-          # Before committing, re-run prettier on these files:
-          npm install prettier
-          prettier -w sfdx-project.json
-          prettier -w tmp/sfdx-project.json
+          # Run Prettier on sfdx-project.json files, since packaging overwrites spacing:
+          npx prettier -w sfdx-project.json
+          npx prettier -w tmp/sfdx-project.json
 
       - name: Cleanup
         shell: bash
