@@ -67,15 +67,18 @@ jobs:
             VERSION_NUMBER="${INPUT_VERSION}.NEXT"
             echo "Using specified version number: $VERSION_NUMBER"
           fi
+          # Create version name by removing .NEXT suffix
+          VERSION_NAME="v${VERSION_NUMBER%.NEXT}"
           echo "version-number=$VERSION_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "version-name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
 
-      - name: Update Version Number
+      - name: Update Package Version
         shell: bash
         env:
           VERSION_NUMBER: ${{ steps.get-version.outputs.version-number }}
+          VERSION_NAME: ${{ steps.get-version.outputs.version-name }}
         run: |
           # Update the version number/name in both project files:
-          VERSION_NAME="v$VERSION_NUMBER"
           # Update the package file
           jq --arg vn "$VERSION_NUMBER" --arg vnm "$VERSION_NAME" \
             '.packageDirectories[0].versionNumber = $vn | .packageDirectories[0].versionName = $vnm' \
@@ -136,5 +139,4 @@ jobs:
       - name: Tag & Commit Changes
         uses: "stefanzweifel/git-auto-commit-action@v6"
         with:
-          commit_message: "Packaged new ${{ inputs.package }} version v${{ steps.get-version.outputs.version-number }}"
-          tagging_message: "v${{ steps.get-version.outputs.version-number }}"
+          commit_message: "Packaged new ${{ inputs.package }} version v${{ steps.get-version.outputs.version-name }}"
