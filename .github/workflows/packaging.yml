@@ -129,21 +129,44 @@ jobs:
           set -euo pipefail
           PACKAGE_ALIAS=$(jq -r '.packageDirectories[] | select(.default == true) | .package' sfdx-project.json)
           echo "Creating package version for: $PACKAGE_ALIAS..."
-          # Create package version and capture JSON output
-          RESULT=$(sf package version create \
+          
+          # Debug: Show authentication status
+          echo "Checking authentication status..."
+          sf org list --json || echo "No orgs found"
+          
+          # Debug: Show package details
+          echo "Package details:"
+          sf package list --json | jq '.result[] | select(.Name == "'"$PACKAGE_ALIAS"'")'
+          
+          # Create package version and capture JSON output with better error handling
+          echo "Attempting to create package version..."
+          if RESULT=$(sf package version create \
             --code-coverage \
             --installation-key-bypass \
             --json \
             --package "$PACKAGE_ALIAS" \
             --post-install-url "$WIKI_URL" \
-            --wait 29)
-          echo "$RESULT"
-          # Extract SubscriberPackageVersionId from JSON response
-          VERSION_ID=$(echo "$RESULT" | jq -r '.result.SubscriberPackageVersionId')
-          echo "Package Version ID: $VERSION_ID"
-          echo "version-id=$VERSION_ID" >> "$GITHUB_OUTPUT"
-          if [[ -z "$VERSION_ID" || "$VERSION_ID" == "null" ]]; then
-            echo "ERROR: Missing Package Version ID"
+            --wait 29 2>&1); then
+            echo "Success! Package version creation output:"
+            echo "$RESULT"
+            # Extract SubscriberPackageVersionId from JSON response
+            VERSION_ID=$(echo "$RESULT" | jq -r '.result.SubscriberPackageVersionId')
+            echo "Package Version ID: $VERSION_ID"
+            echo "version-id=$VERSION_ID" >> "$GITHUB_OUTPUT"
+            if [[ -z "$VERSION_ID" || "$VERSION_ID" == "null" ]]; then
+              echo "ERROR: Missing Package Version ID in successful response"
+              echo "Full response: $RESULT"
+              exit 1
+            fi
+          else
+            echo "ERROR: Package version creation failed!"
+            echo "Full error output:"
+            echo "$RESULT"
+            # Try to parse JSON error if available
+            if echo "$RESULT" | jq . > /dev/null 2>&1; then
+              echo "Parsed error details:"
+              echo "$RESULT" | jq -r '.message // .error // .'
+            fi
             exit 1
           fi
 
