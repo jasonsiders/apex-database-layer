@@ -111,7 +111,7 @@ jobs:
         run: |
           # Packaging causes project file's formatting to be overwritten
           # Before committing, re-run prettier on these files:
-          npm i prettier
+          npm install prettier
           prettier -w sfdx-project.json
           prettier -w tmp/sfdx-project.json
 
