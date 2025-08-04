@@ -135,6 +135,8 @@ jobs:
             --json \
             --package "$PACKAGE_ALIAS" \
             --post-install-url "$WIKI_URL" \
+            # TODO: Remove this temporary flag!
+            --skip-validation \
             --wait 29 2>&1); then
             # Success - extract version ID
             VERSION_ID=$(echo "$RESULT" | jq -r '.result.SubscriberPackageVersionId')
