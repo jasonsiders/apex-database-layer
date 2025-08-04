@@ -4,12 +4,12 @@
 			"path": "force-app",
 			"default": true,
 			"package": "apex-database-layer-unlocked",
-			"versionName": "v2.5.2",
-			"versionNumber": "2.5.2.NEXT",
-			"versionDescription": "Removing deprecated methods, introducing managed package"
+			"versionName": "v3.0.0",
+			"versionNumber": "3.0.0.NEXT",
+			"versionDescription": "Introducing managed package"
 		}
 	],
-	"name": "apex-database-layer-unlocked",
+	"name": "Apex Database Layer (Unlocked)",
 	"namespace": "",
 	"sfdcLoginUrl": "https://login.salesforce.com",
 	"sourceApiVersion": "64.0",

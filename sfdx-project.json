@@ -3,8 +3,8 @@
 		{
 			"path": "force-app",
 			"default": true,
-			"versionName": "v2.5.2",
-			"versionNumber": "2.5.2.NEXT"
+			"versionName": "v3.0.0",
+			"versionNumber": "3.0.0.NEXT"
 		}
 	],
 	"name": "apex-database-layer",
