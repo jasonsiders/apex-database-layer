@@ -5,7 +5,7 @@ on:
     inputs:
       package:
         description: Package Directory ("managed" or "unlocked")
-        default: "unlocked"
+        default: unlocked
         required: false
         type: string
       version:
@@ -16,21 +16,23 @@ on:
     inputs:
       package:
         description: Package Directory ("managed" or "unlocked")
-        default: "unlocked"
+        default: unlocked
         required: false
+        type: string
       version:
         description: Version Number (#.#.#)
         required: false
+        type: string
 
 jobs:
   create-package-version:
     name: Create Package Version
+    outputs:
+      version-id: ${{ steps.create-package.outputs.version-id }}
     permissions:
       contents: write
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    outputs:
-      version-id: ${{ steps.create-package.outputs.version-id }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4

@@ -7,6 +7,11 @@ on:
     paths:
       - force-app
   workflow_dispatch:
+    inputs:
+      version:
+        description:  Version Number (#.#.#)
+        required: false
+        type: string
 
 concurrency:
   # Queue releases to prevent version collisions - don't cancel, let them run sequentially
@@ -27,6 +32,7 @@ jobs:
           fetch-depth: 2
 
       - name: Did sfdx-project.json Change?
+        if: ${{ github.event_name == 'push' }}
         id: check-changes
         run: |
           # Check if sfdx-project.json was modified in the latest commit
@@ -41,11 +47,11 @@ jobs:
       - name: Determine Version
         id: determine-version
         run: |
-          # Get current version from sfdx-project.json (without .NEXT)
+          # Get current version from sfdx-project.json:
           CURRENT_VERSION=$(jq -r '.packageDirectories[] | select(.default == true) | .versionNumber' sfdx-project.json | sed 's/\.NEXT$//')
           echo "Current version: $CURRENT_VERSION"
-          if [[ "${{ steps.check-changes.outputs.changed }}" == "false" ]]; then
-            # Increment patch version (e.g., 2.5.1 -> 2.5.2)
+          if [[ "${{ github.event_name }}" == "push" && "${{ steps.check-changes.outputs.changed }}" == "false" ]]; then
+            # 1. On push AND sfdx-project.json was NOT updated - increment the version
             IFS='.' read -ra VERSION_PARTS <<< "$CURRENT_VERSION"
             MAJOR=${VERSION_PARTS[0]}
             MINOR=${VERSION_PARTS[1]}
@@ -53,8 +59,12 @@ jobs:
             NEW_PATCH=$((PATCH + 1))
             NEW_VERSION="$MAJOR.$MINOR.$NEW_PATCH"
             echo "Auto-incremented version to: $NEW_VERSION"
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ inputs.version }}" ]]; then
+            # 2. On workflow dispatch & a version input is provided - use the version input
+            NEW_VERSION="${{ inputs.version }}"
+            echo "Using input version: $NEW_VERSION"
           else
-            # Use current version as-is
+            # 3. Else - use the existing version number
             NEW_VERSION="$CURRENT_VERSION"
             echo "Using current version: $NEW_VERSION"
           fi
@@ -71,7 +81,7 @@ jobs:
 
   create-unlocked-package-version:
     name: Create Unlocked Package Version
-    needs: versioning
+    needs: [versioning, create-managed-package-version]
     uses: ./.github/workflows/packaging.yml
     secrets: inherit
     with:
@@ -81,6 +91,7 @@ jobs:
   create-release:
     name: Create Release
     needs: [versioning, create-managed-package-version, create-unlocked-package-version]
+    if: ${{ success() && needs.create-managed-package-version.outputs.version-id != '' && needs.create-unlocked-package-version.outputs.version-id != '' }}
     permissions:
       contents: write
     runs-on: ubuntu-latest
