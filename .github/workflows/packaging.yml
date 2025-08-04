@@ -34,7 +34,6 @@ jobs:
         shell: bash
         run: |
           # Swap the sfdx-project.json file for the one listed in the package directory
-          pwd
           mkdir -p tmp
           mv sfdx-project.json tmp/
           cp "packages/${{ inputs.package }}/sfdx-project.json" .
