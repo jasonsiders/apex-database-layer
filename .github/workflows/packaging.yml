@@ -138,14 +138,9 @@ jobs:
           set -euo pipefail
           PACKAGE_ALIAS=$(jq -r '.packageDirectories[] | select(.default == true) | .package' sfdx-project.json)
           VALIDATION_FLAG=$([[ "${{ inputs.skip-validation }}" == "true" ]] && echo "skip-validation" || echo "code-coverage")
-          echo "Creating package version for: $PACKAGE_ALIAS..."
-          if RESULT=$(sf package version create \
-            --"$VALIDATION_FLAG" \
-            --installation-key-bypass \
-            --json \
-            --package "$PACKAGE_ALIAS" \
-            --post-install-url "$WIKI_URL" \
-            --wait 29 2>&1); then
+          COMMAND="sf package version create --$VALIDATION_FLAG --installation-key-bypass --json --package \"$PACKAGE_ALIAS\" --post-install-url \"$WIKI_URL\" --wait 29"
+          echo "$COMMAND"
+          if RESULT=$(eval "$COMMAND" 2>&1); then
             # Success - extract version ID
             VERSION_ID=$(echo "$RESULT" | jq -r '.result.SubscriberPackageVersionId')
             echo "Package Version ID: $VERSION_ID"
