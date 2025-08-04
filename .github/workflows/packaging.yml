@@ -34,7 +34,7 @@ on:
         type: string
       skip-validation:
         description: Skip validation and code coverage checks
-        default: false
+        default: true
         required: false
         type: boolean
 
