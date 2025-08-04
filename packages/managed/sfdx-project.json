@@ -4,8 +4,8 @@
 			"path": "force-app",
 			"default": true,
 			"package": "apex-database-layer-managed",
-			"versionName": "v1.0.0",
-			"versionNumber": "1.0.0.NEXT",
+			"versionName": "v3.0.0",
+			"versionNumber": "3.0.0.NEXT",
 			"versionDescription": "Introducing managed package"
 		}
 	],
@@ -15,6 +15,7 @@
 	"sourceApiVersion": "64.0",
 	"packageAliases": {
 		"apex-database-layer-managed": "0HoDn0000010wCnKAI",
-		"apex-database-layer-managed@1.0.0-1": "04tDn0000011OTDIA2"
+		"apex-database-layer-managed@1.0.0-1": "04tDn0000011OTDIA2",
+		"apex-database-layer-managed@3.0.0-1": "04tDn0000011OTIIA2"
 	}
 }
