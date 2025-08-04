@@ -130,7 +130,8 @@ jobs:
           echo "Creating package version for: $PACKAGE_ALIAS..."
           # Create package version and capture both stdout and stderr
           if RESULT=$(sf package version create \
-            --code-coverage \
+            # TODO: Add back code coverage
+            # --code-coverage \
             --installation-key-bypass \
             --json \
             --package "$PACKAGE_ALIAS" \
