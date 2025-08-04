@@ -106,12 +106,14 @@ jobs:
             --version-number "$VERSION_NUMBER" \
             --wait 29
 
-      # Note: Packaging updates sfdx-project.json, but the formatting is often non-compliant
-      # This action updates the changed project files to their original format
       - name: Run Prettier
-        uses: creyD/prettier_action@v4.6
-        with:
-          prettier_options: --write **/*.{json}
+        shell: bash
+        run: |
+          # Packaging causes project file's formatting to be overwritten
+          # Before committing, re-run prettier on these files:
+          npm i prettier
+          prettier -w sfdx-project.json
+          prettier -w tmp/sfdx-project.json
 
       - name: Cleanup
         shell: bash
