@@ -1,43 +1,46 @@
 name: Packaging
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "force-app/**"
+  workflow_call:
+    inputs:
+      package:
+        description: Package Directory
+        required: true
+        type: string
+      version:
+        description: Version Number (#.#.#)
+        required: false
+        type: string
   workflow_dispatch:
     inputs:
-      version-number:
-        description: "Version Number (#.#.#): Do not include the 'v'"
+      package:
+        description: Package Directory
+        required: true
+      version:
+        description: Version Number (#.#.#)
         required: false
 
-concurrency:
-  group: packaging-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
-env:
-  PACKAGE_ALIAS: "apex-database-layer"
-
 jobs:
-  create-unlocked-package:
-    name: Create Unlocked Package Version
-    permissions:
-      contents: write
+  create-package-version:
+    name:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ github.token }}
+
+      - name: Switch Package Context
+        shell: bash
+        run: |
+          # Swap the sfdx-project.json file for the one listed in the package directory:
+          # - 1. Create a tmp/ directory
+          # - 2. Move the existing sfdx-project.json file into the tmp/ directory
+          # - 3. Move the specified ${{ inputs.package }} directory's sfdx-project.json file into the project root
 
       - name: Get Version Number
         id: get-version
         env:
-          INPUT_VERSION: ${{ inputs.version-number }}
+          INPUT_VERSION: ${{ inputs.version }}
+        shell: bash
         run: |
           # If an input version number isn't set, use the current version defined in sfdx-project.json:
           if [[ -z "$INPUT_VERSION" ]]; then
@@ -49,6 +52,16 @@ jobs:
           fi
           echo "version-number=$VERSION_NUMBER" >> "$GITHUB_OUTPUT"
 
+      - name: Increment Version Number
+        shell: bash
+        env:
+          VERSION_NUMBER: ${{ steps.get-version.outputs.version-number }}
+        run: |
+          # Update the version number/name on both tmp/sfdx-project.json and sfdx-project.json:
+          VERSION_NAME="v$VERSION_NUMBER"
+          # - 1. Update the version number/name on sfdx-project.json
+          # - 2. Update the version number/name on tmp/sfdx-project.json
+
       - name: Setup SF CLI
         uses: ./.github/actions/setup-sf-cli
 
@@ -57,6 +70,7 @@ jobs:
           CLIENT_ID: ${{ secrets.SALESFORCE_CONSUMER_KEY }}
           JWT_KEY: ${{ secrets.SALESFORCE_JWT_KEY }}
           USERNAME: ${{ secrets.SALESFORCE_DEVHUB_USERNAME }}
+        shell: bash
         run: |
           set -euo pipefail
           echo "${JWT_KEY}" > server.key
@@ -70,6 +84,7 @@ jobs:
       - name: Create New Package Version
         env:
           VERSION_NUMBER: ${{ steps.get-version.outputs.version-number }}
+        shell: bash
         run: |
           sf package version create \
             --code-coverage \
@@ -77,6 +92,14 @@ jobs:
             --package "$PACKAGE_ALIAS" \
             --version-number "$VERSION_NUMBER" \
             --wait 29
+
+      - name: Cleanup
+        shell: bash
+        run: |
+          # Relocate root & package's project files back to their original location
+          # - 1. Move the root's sfdx-project.json back to the directory specified in ${{ inputs.package }}
+          # - 2. Move tmp/sfdx-project.json back to the root
+          # - 3. Delete the tmp/ directory, and any other temporary files created by this process
 
       - name: Tag & Commit Changes
         uses: "stefanzweifel/git-auto-commit-action@v6"
