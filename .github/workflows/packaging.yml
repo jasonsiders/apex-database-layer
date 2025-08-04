@@ -54,6 +54,22 @@ jobs:
       - name: Setup SF CLI
         uses: ./.github/actions/setup-sf-cli
 
+      - name: Authenticate Devhub
+        env:
+          CLIENT_ID: ${{ secrets.SALESFORCE_CONSUMER_KEY }}
+          JWT_KEY: ${{ secrets.SALESFORCE_JWT_KEY }}
+          USERNAME: ${{ secrets.SALESFORCE_DEVHUB_USERNAME }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "${JWT_KEY}" > server.key
+          sf org login jwt \
+            --client-id "$CLIENT_ID" \
+            --jwt-key-file server.key \
+            --set-default-dev-hub \
+            --username "$USERNAME"
+          trap 'rm -f server.key' EXIT
+
       - name: Switch Package Context
         shell: bash
         run: |
@@ -101,22 +117,6 @@ jobs:
           jq --arg vn "$VERSION_NUMBER" --arg vnm "$VERSION_NAME" \
             '.packageDirectories[0].versionNumber = $vn | .packageDirectories[0].versionName = $vnm' \
             tmp/sfdx-project.json > tmp/sfdx-project.json.tmp && mv tmp/sfdx-project.json.tmp tmp/sfdx-project.json
-
-      - name: Authenticate Devhub
-        env:
-          CLIENT_ID: ${{ secrets.SALESFORCE_CONSUMER_KEY }}
-          JWT_KEY: ${{ secrets.SALESFORCE_JWT_KEY }}
-          USERNAME: ${{ secrets.SALESFORCE_DEVHUB_USERNAME }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "${JWT_KEY}" > server.key
-          sf org login jwt \
-            --client-id "$CLIENT_ID" \
-            --jwt-key-file server.key \
-            --set-default-dev-hub \
-            --username "$USERNAME"
-          trap 'rm -f server.key' EXIT
 
       - name: Create New Package Version
         id: create-package
