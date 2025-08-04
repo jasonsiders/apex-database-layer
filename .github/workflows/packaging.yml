@@ -98,6 +98,9 @@ jobs:
           trap 'rm -f server.key' EXIT
 
       - name: Create New Package Version
+        if: |
+          # TODO: Remove this when the limit is lifted
+          ${{ '0' == '1' }}
         env:
           VERSION_NUMBER: ${{ steps.get-version.outputs.version-number }}
         shell: bash
