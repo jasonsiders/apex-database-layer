@@ -4,7 +4,7 @@
 			"path": "force-app",
 			"default": true,
 			"versionName": "v3.0.0",
-			"versionNumber": "3.0.0.NEXT"
+			"versionNumber": "2.5.1.NEXT"
 		}
 	],
 	"name": "apex-database-layer",
