@@ -139,4 +139,4 @@ jobs:
       - name: Tag & Commit Changes
         uses: "stefanzweifel/git-auto-commit-action@v6"
         with:
-          commit_message: "Packaged new ${{ inputs.package }} version v${{ steps.get-version.outputs.version-name }}"
+          commit_message: "Packaged new ${{ inputs.package }} version ${{ steps.get-version.outputs.version-name }}"
