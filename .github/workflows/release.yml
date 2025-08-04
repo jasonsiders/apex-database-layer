@@ -1,4 +1,4 @@
-name: Release New Version
+name: Release
 
 on:
   push:
@@ -82,6 +82,8 @@ jobs:
   create-managed-package-version:
     name: Create Managed Package Version
     needs: versioning
+    permissions:
+      contents: write
     uses: ./.github/workflows/packaging.yml
     secrets: inherit
     with:
@@ -91,6 +93,8 @@ jobs:
   create-unlocked-package-version:
     name: Create Unlocked Package Version
     needs: [versioning, create-managed-package-version]
+    permissions:
+      contents: write
     uses: ./.github/workflows/packaging.yml
     secrets: inherit
     with:
@@ -127,6 +131,8 @@ jobs:
             echo "\`\`\`bash"
             echo "sf package install --package $UNLOCKED_ID --wait 20"
             echo "\`\`\`"
+            echo ""
+            echo "---"
             echo ""
           } > release_body.md
 
