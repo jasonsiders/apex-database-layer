@@ -6,7 +6,7 @@
 			"package": "apex-database-layer-unlocked",
 			"versionName": "v3.0.0",
 			"versionNumber": "3.0.0.NEXT",
-			"versionDescription": "Introducing managed package"
+			"versionDescription": ""
 		}
 	],
 	"name": "Apex Database Layer (Unlocked)",
@@ -29,8 +29,6 @@
 		"apex-database-layer-unlocked@2.4.3-1": "04tDn0000011ORgIAM",
 		"apex-database-layer-unlocked@2.4.4-1": "04tDn0000011ORvIAM",
 		"apex-database-layer-unlocked@2.5.0-2": "04tDn0000011OS5IAM",
-		"apex-database-layer-unlocked@2.5.1-1": "04tDn0000011OSAIA2",
-		"apex-database-layer-unlocked@3.0.0-10": "04tDn0000011OTwIAM",
-		"apex-database-layer-unlocked@3.0.0-11": "04tDn0000011OU6IAM"
+		"apex-database-layer-unlocked@2.5.1-1": "04tDn0000011OSAIA2"
 	}
 }

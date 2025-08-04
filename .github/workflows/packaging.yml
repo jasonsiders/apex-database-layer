@@ -138,8 +138,6 @@ jobs:
           set -euo pipefail
           PACKAGE_ALIAS=$(jq -r '.packageDirectories[] | select(.default == true) | .package' sfdx-project.json)
           VALIDATION_FLAG=$([[ "${{ inputs.skip-validation }}" == "true" ]] && echo "skip-validation" || echo "code-coverage")
-          # TODO: Temporary -- always skip validation
-          VALIDATION_FLAG="skip-validation"
           COMMAND="sf package version create --$VALIDATION_FLAG --installation-key-bypass --json --package \"$PACKAGE_ALIAS\" --post-install-url \"$WIKI_URL\" --wait 29"
           echo "$COMMAND"
           if RESULT=$(eval "$COMMAND" 2>&1); then
