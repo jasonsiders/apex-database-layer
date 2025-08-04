@@ -97,10 +97,9 @@ jobs:
             --username "$USERNAME"
           trap 'rm -f server.key' EXIT
 
+      # TODO: Remove this if statement when the limit is lifted
       - name: Create New Package Version
-        if: |
-          # TODO: Remove this when the limit is lifted
-          ${{ '0' == '1' }}
+        if: ${{ false }}
         env:
           VERSION_NUMBER: ${{ steps.get-version.outputs.version-number }}
         shell: bash
