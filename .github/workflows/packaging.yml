@@ -1,43 +1,77 @@
 name: Packaging
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "force-app/**"
+  workflow_call:
+    inputs:
+      package:
+        description: Package Directory ("managed" or "unlocked")
+        default: unlocked
+        required: false
+        type: string
+      version:
+        description: Version Number (#.#.#)
+        required: false
+        type: string
+    outputs:
+      version-id:
+        description: "Package Version ID"
+        value: ${{ jobs.create-package-version.outputs.version-id }}
   workflow_dispatch:
     inputs:
-      version-number:
-        description: "Version Number (#.#.#): Do not include the 'v'"
+      package:
+        description: Package Directory ("managed" or "unlocked")
+        default: unlocked
         required: false
-
-concurrency:
-  group: packaging-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
-env:
-  PACKAGE_ALIAS: "apex-database-layer"
+        type: string
+      version:
+        description: Version Number (#.#.#)
+        required: false
+        type: string
 
 jobs:
-  create-unlocked-package:
-    name: Create Unlocked Package Version
+  create-package-version:
+    name: Create Package Version
+    outputs:
+      version-id: ${{ steps.create-package.outputs.version-id }}
     permissions:
       contents: write
     runs-on: ubuntu-latest
     timeout-minutes: 30
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          fetch-depth: 0
-          token: ${{ github.token }}
+          node-version: lts/*
+          cache: "npm"
+
+      - name: Setup NPM
+        shell: bash
+        run: npm ci
+
+      - name: Setup SF CLI
+        uses: ./.github/actions/setup-sf-cli
+
+      - name: Switch Package Context
+        shell: bash
+        run: |
+          # Validate package directory and sfdx-project.json file exist
+          if [[ ! -f "packages/${{ inputs.package }}/sfdx-project.json" ]]; then
+            echo "ERROR: 'packages/${{ inputs.package }}/sfdx-project.json' not found"
+            exit 1
+          fi
+          # Swap the sfdx-project.json file for the one listed in the package directory
+          mkdir -p tmp
+          mv sfdx-project.json tmp/
+          cp "packages/${{ inputs.package }}/sfdx-project.json" .
 
       - name: Get Version Number
         id: get-version
         env:
-          INPUT_VERSION: ${{ inputs.version-number }}
+          INPUT_VERSION: ${{ inputs.version }}
+        shell: bash
         run: |
           # If an input version number isn't set, use the current version defined in sfdx-project.json:
           if [[ -z "$INPUT_VERSION" ]]; then
@@ -47,16 +81,33 @@ jobs:
             VERSION_NUMBER="${INPUT_VERSION}.NEXT"
             echo "Using specified version number: $VERSION_NUMBER"
           fi
+          # Create version name by removing .NEXT suffix
+          VERSION_NAME="v${VERSION_NUMBER%.NEXT}"
           echo "version-number=$VERSION_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "version-name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
 
-      - name: Setup SF CLI
-        uses: ./.github/actions/setup-sf-cli
+      - name: Update Package Version
+        shell: bash
+        env:
+          VERSION_NUMBER: ${{ steps.get-version.outputs.version-number }}
+          VERSION_NAME: ${{ steps.get-version.outputs.version-name }}
+        run: |
+          # Update the version number/name in both project files:
+          # Update the package file
+          jq --arg vn "$VERSION_NUMBER" --arg vnm "$VERSION_NAME" \
+            '.packageDirectories[0].versionNumber = $vn | .packageDirectories[0].versionName = $vnm' \
+            sfdx-project.json > sfdx-project.json.tmp && mv sfdx-project.json.tmp sfdx-project.json
+          # Update version in the original root file
+          jq --arg vn "$VERSION_NUMBER" --arg vnm "$VERSION_NAME" \
+            '.packageDirectories[0].versionNumber = $vn | .packageDirectories[0].versionName = $vnm' \
+            tmp/sfdx-project.json > tmp/sfdx-project.json.tmp && mv tmp/sfdx-project.json.tmp tmp/sfdx-project.json
 
       - name: Authenticate Devhub
         env:
           CLIENT_ID: ${{ secrets.SALESFORCE_CONSUMER_KEY }}
           JWT_KEY: ${{ secrets.SALESFORCE_JWT_KEY }}
           USERNAME: ${{ secrets.SALESFORCE_DEVHUB_USERNAME }}
+        shell: bash
         run: |
           set -euo pipefail
           echo "${JWT_KEY}" > server.key
@@ -68,18 +119,49 @@ jobs:
           trap 'rm -f server.key' EXIT
 
       - name: Create New Package Version
+        id: create-package
         env:
           VERSION_NUMBER: ${{ steps.get-version.outputs.version-number }}
+          WIKI_URL: "https://github.com/jasonsiders/apex-database-layer/wiki"
+        shell: bash
         run: |
-          sf package version create \
+          # Get package alias from sfdx-project.json
+          PACKAGE_ALIAS=$(jq -r '.packageDirectories[] | select(.default == true) | .package' sfdx-project.json)
+          echo "Creating package version for: $PACKAGE_ALIAS"
+          # Create package version and capture JSON output
+          RESULT=$(sf package version create \
             --code-coverage \
             --installation-key-bypass \
+            --json \
             --package "$PACKAGE_ALIAS" \
-            --version-number "$VERSION_NUMBER" \
-            --wait 29
+            --post-install-url "$WIKI_URL" \
+            --wait 29)
+          echo "$RESULT"
+          # Extract SubscriberPackageVersionId from JSON response
+          VERSION_ID=$(echo "$RESULT" | jq -r '.result.SubscriberPackageVersionId')
+          echo "Package Version ID: $VERSION_ID"
+          echo "version-id=$VERSION_ID" >> "$GITHUB_OUTPUT"
+          if [[ -z "$VERSION_ID" || "$VERSION_ID" == "null" ]]; then
+            echo "ERROR: Missing Package Version ID"
+            exit 1
+          fi
+
+      - name: Run Prettier
+        shell: bash
+        run: |
+          # Run Prettier on sfdx-project.json files, since packaging overwrites spacing:
+          npx prettier -w sfdx-project.json
+          npx prettier -w tmp/sfdx-project.json
+
+      - name: Cleanup
+        shell: bash
+        run: |
+          # Relocate root & package's project files back to their original location
+          cp sfdx-project.json "packages/${{ inputs.package }}/" 
+          mv tmp/sfdx-project.json .         
+          rm -rf tmp/
 
       - name: Tag & Commit Changes
         uses: "stefanzweifel/git-auto-commit-action@v6"
         with:
-          commit_message: "Requested new package version v${{ steps.get-version.outputs.version-number }}"
-          tagging_message: "v${{ steps.get-version.outputs.version-number }}"
+          commit_message: "Packaged new ${{ inputs.package }} version ${{ steps.get-version.outputs.version-name }}"
