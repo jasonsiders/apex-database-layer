@@ -12,6 +12,10 @@ on:
         description: Version Number (#.#.#)
         required: false
         type: string
+    outputs:
+      version-id:
+        description: "Package Version ID"
+        value: ${{ jobs.create-package-version.outputs.version-id }}
   workflow_dispatch:
     inputs:
       package:

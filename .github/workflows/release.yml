@@ -70,6 +70,15 @@ jobs:
           fi
           echo "version-number=$NEW_VERSION" >> "$GITHUB_OUTPUT"
 
+      - name: Validate Package Version
+        env:
+          VERSION: ${{ steps.determine-version.outputs.version-number }}
+        run: |
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "ERROR: Version '$VERSION' is not valid semver format. Expected 'MAJOR.MINOR.PATCH'"
+            exit 1
+          fi
+
   create-managed-package-version:
     name: Create Managed Package Version
     needs: versioning
