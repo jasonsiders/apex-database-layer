@@ -1,4 +1,4 @@
-name: Release New Version
+name: Release
 
 on:
   push:
@@ -23,6 +23,8 @@ jobs:
     name: Versioning
     outputs:
       version-number: ${{ steps.determine-version.outputs.version-number }}
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
