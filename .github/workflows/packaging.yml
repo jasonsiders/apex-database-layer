@@ -22,7 +22,7 @@ on:
 
 jobs:
   create-package-version:
-    name:
+    name: Create Package Version
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -31,10 +31,10 @@ jobs:
       - name: Switch Package Context
         shell: bash
         run: |
-          # TODO: Swap the sfdx-project.json file for the one listed in the package directory:
-          # - 1. Create a tmp/ directory
-          # - 2. Move the existing sfdx-project.json file into the tmp/ directory
-          # - 3. Move the specified ${{ inputs.package }} directory's sfdx-project.json file into the project root
+          # Swap the sfdx-project.json file for the one listed in the package directory
+          mkdir -p tmp
+          mv sfdx-project.json tmp/
+          cp "${{ inputs.package }}/sfdx-project.json" .
 
       - name: Get Version Number
         id: get-version
@@ -57,10 +57,16 @@ jobs:
         env:
           VERSION_NUMBER: ${{ steps.get-version.outputs.version-number }}
         run: |
-          # TODO: Update the version number/name on both tmp/sfdx-project.json and sfdx-project.json:
+          # Update the version number/name in both project files:
           VERSION_NAME="v$VERSION_NUMBER"
-          # - 1. Update the version number/name on sfdx-project.json
-          # - 2. Update the version number/name on tmp/sfdx-project.json
+          # Update the package file
+          jq --arg vn "$VERSION_NUMBER" --arg vnm "$VERSION_NAME" \
+            '.packageDirectories[0].versionNumber = $vn | .packageDirectories[0].versionName = $vnm' \
+            sfdx-project.json > sfdx-project.json.tmp && mv sfdx-project.json.tmp sfdx-project.json
+          # Update version in the original root file
+          jq --arg vn "$VERSION_NUMBER" --arg vnm "$VERSION_NAME" \
+            '.packageDirectories[0].versionNumber = $vn | .packageDirectories[0].versionName = $vnm' \
+            tmp/sfdx-project.json > tmp/sfdx-project.json.tmp && mv tmp/sfdx-project.json.tmp tmp/sfdx-project.json
 
       - name: Setup SF CLI
         uses: ./.github/actions/setup-sf-cli
@@ -86,6 +92,9 @@ jobs:
           VERSION_NUMBER: ${{ steps.get-version.outputs.version-number }}
         shell: bash
         run: |
+          # Get package alias from sfdx-project.json
+          PACKAGE_ALIAS=$(jq -r '.packageDirectories[] | select(.default == true) | .package' sfdx-project.json)
+          echo "Creating package version for: $PACKAGE_ALIAS"
           sf package version create \
             --code-coverage \
             --installation-key-bypass \
@@ -96,10 +105,10 @@ jobs:
       - name: Cleanup
         shell: bash
         run: |
-          # TODO: Relocate root & package's project files back to their original location
-          # - 1. Move the root's sfdx-project.json back to the directory specified in ${{ inputs.package }}
-          # - 2. Move tmp/sfdx-project.json back to the root
-          # - 3. Delete the tmp/ directory, and any other temporary files created by this process
+          # Relocate root & package's project files back to their original location
+          cp sfdx-project.json "${{ inputs.package }}/" 
+          mv tmp/sfdx-project.json .         
+          rm -rf tmp/
 
       - name: Tag & Commit Changes
         uses: "stefanzweifel/git-auto-commit-action@v6"
