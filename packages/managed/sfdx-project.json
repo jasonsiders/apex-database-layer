@@ -6,7 +6,8 @@
 			"package": "apex-database-layer-managed",
 			"versionName": "v3.0.0",
 			"versionNumber": "3.0.0.NEXT",
-			"versionDescription": ""
+			"versionDescription": "",
+			"ancestorVersion": "HIGHEST"
 		}
 	],
 	"name": "Apex Database Layer (Managed)",
