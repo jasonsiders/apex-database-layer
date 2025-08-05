@@ -20,7 +20,12 @@ Best of all, the framework is built 100% on the Salesforce platform, using stand
 
 ## Installation
 
-`apex-database-layer` is available for free as an unlocked package. You can find the latest or past versions in the [Releases](https://github.com/jasonsiders/apex-database-layer/releases) tab.
+`apex-database-layer` is available for free. It can be downloaded in one of two flavors:
+
+- As an _unlocked_ package with no namespace
+- As a _managed_ package, using the `apxsp` namespace
+
+You can find the latest or past versions in the [Releases](https://github.com/jasonsiders/apex-database-layer/releases) tab.
 
 Use the following command to install the package in your environment:
 
