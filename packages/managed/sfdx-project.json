@@ -4,8 +4,8 @@
 			"path": "force-app",
 			"default": true,
 			"package": "apex-database-layer-managed",
-			"versionName": "v3.0.0",
-			"versionNumber": "3.0.0.NEXT",
+			"versionName": "v3.1.0",
+			"versionNumber": "3.1.0.NEXT",
 			"versionDescription": "",
 			"ancestorVersion": "HIGHEST"
 		}
@@ -16,6 +16,7 @@
 	"sourceApiVersion": "64.0",
 	"packageAliases": {
 		"apex-database-layer-managed": "0HoDn0000010wCnKAI",
-		"apex-database-layer-managed@3.0.0-9": "04tDn0000011OULIA2"
+		"apex-database-layer-managed@3.0.0-9": "04tDn0000011OULIA2",
+		"apex-database-layer-managed@3.1.0-3": "04tDn0000011OUfIAM"
 	}
 }
