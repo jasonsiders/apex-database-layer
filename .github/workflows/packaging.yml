@@ -29,7 +29,7 @@ on:
         required: false
         type: string
       version:
-        description: Version Number (#.#.#)  
+        description: Version Number (#.#.#)
         required: false
         type: string
       skip-validation:
