@@ -63,7 +63,7 @@ Once this is done, you can instantly decouple your `Dml` and `Soql` operations f
 DatabaseLayer.useMocks();
 ```
 
-In apex tests, you can easily [generate test records](./Generating-Test-Records.md) for use in mocks, that would otherwise require extensive database operations:
+In apex tests, you can easily [generate test records](./Generating-Test-Records) for use in mocks, that would otherwise require extensive database operations:
 
 ```apex
 // This operation takes ~2ms; would require 4 separate DML operations otherwise:
