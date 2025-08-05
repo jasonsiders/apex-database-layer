@@ -9,11 +9,11 @@ Apex Database Layer was designed to be feature-rich, yet easy to use, closely mi
 You get the following out of the box:
 
 - Support for all standard `Database` class DML & SOQL operations
-- Easily mock [DML operations](./Mocking-DML-Operations) and [SOQL queries](./Mocking-SOQL-Queries).
-- A [Query framework](./The-Soql-Class) that enables strongly-typed, yet dynamic SOQL queries.
-- Easily [generate test records](./Generating-Test-Records) without using DML or SOQL.
-- [Switch between real & mock database operations](./The-DatabaseLayer-Class#useMocks) in Apex Tests, with a single line of code
-- An optional [Plugin Framework](./The-Plugin-Framework) allows you to fine-tune the platform to your exact use case.
+- Easily mock [DML operations](https://github.com/jasonsiders/apex-database-layer/wiki/Mocking-DML-Operations) and [SOQL queries](https://github.com/jasonsiders/apex-database-layer/wiki/Mocking-SOQL-Queries).
+- A [Query framework](https://github.com/jasonsiders/apex-database-layer/wiki/The-Soql-Class) that enables strongly-typed, yet dynamic SOQL queries.
+- Easily [generate test records](https://github.com/jasonsiders/apex-database-layer/wiki/Generating-Test-Records) without using DML or SOQL.
+- [Switch between real & mock database operations](https://github.com/jasonsiders/apex-database-layer/wiki/The-DatabaseLayer-Class#useMocks) in Apex Tests, with a single line of code
+- An optional [Plugin Framework](https://github.com/jasonsiders/apex-database-layer/wiki/The-Plugin-Framework) allows you to fine-tune the platform to your exact use case.
 - Simplicity: The framework uses just a couple of Apex classes (and a custom metadata type, to support Plugins).
 
 Best of all, the framework is built 100% on the Salesforce platform, using standard Salesforce technology. It's open source, and free, and it always will be.
@@ -35,7 +35,7 @@ sf package install --package {{package_version_id}} --wait 10
 
 ## Usage
 
-Once intalled, use [`DatabaseLayer.Dml`](./Performing-DML-Operations) for all of your DML operations:
+Once intalled, use [`DatabaseLayer.Dml`](https://github.com/jasonsiders/apex-database-layer/wiki/Performing-DML-Operations) for all of your DML operations:
 
 ```apex
 // Don't use these standard apex DML methods:
@@ -45,7 +45,7 @@ Database.insert(account);
 DatabaseLayer.Dml.doInsert(account);
 ```
 
-Use [`DatabaseLayer.Soql`](./Performing-SOQL-Queries) for all of your SOQL queries:
+Use [`DatabaseLayer.Soql`](https://github.com/jasonsiders/apex-database-layer/wiki/Performing-SOQL-Queries) for all of your SOQL queries:
 
 ```apex
 List<Account> accounts = (List<Account>) DatabaseLayer.Soql.newQuery(Account.SObjectType)
@@ -57,13 +57,13 @@ List<Account> accounts = (List<Account>) DatabaseLayer.Soql.newQuery(Account.SOb
   ?.query();
 ```
 
-Once this is done, you can instantly decouple your `Dml` and `Soql` operations from the Salesforce database in apex tests, with just a [single line of code](./The-DatabaseLayer-Class#useMocks):
+Once this is done, you can instantly decouple your `Dml` and `Soql` operations from the Salesforce database in apex tests, with just a [single line of code](https://github.com/jasonsiders/apex-database-layer/wiki/The-DatabaseLayer-Class#useMocks):
 
 ```apex
 DatabaseLayer.useMocks();
 ```
 
-In apex tests, you can easily [generate test records](./Generating-Test-Records) for use in mocks, that would otherwise require extensive database operations:
+In apex tests, you can easily [generate test records](https://github.com/jasonsiders/apex-database-layer/wiki/Generating-Test-Records) for use in mocks, that would otherwise require extensive database operations:
 
 ```apex
 // This operation takes ~2ms; would require 4 separate DML operations otherwise:
