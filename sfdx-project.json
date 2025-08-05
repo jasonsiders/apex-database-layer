@@ -3,19 +3,16 @@
 		{
 			"path": "force-app",
 			"default": true,
-			"package": "apex-database-layer-managed",
-			"versionName": "v3.1.0",
-			"versionNumber": "3.1.0.NEXT",
-			"versionDescription": "",
-			"ancestorVersion": "HIGHEST"
+			"versionName": "v3.0.0",
+			"versionNumber": "3.0.0.NEXT"
 		}
 	],
-	"name": "Apex Database Layer (Managed)",
-	"namespace": "apxsp",
+	"name": "apex-database-layer",
+	"namespace": "",
 	"sfdcLoginUrl": "https://login.salesforce.com",
 	"sourceApiVersion": "64.0",
 	"packageAliases": {
 		"apex-database-layer-managed": "0HoDn0000010wCnKAI",
-		"apex-database-layer-managed@3.0.0-9": "04tDn0000011OULIA2"
+		"apex-database-layer-unlocked": "0HoDn000000kAONKA2"
 	}
 }
