@@ -1,8 +1,9 @@
 /**
  * @description Test utility class providing common functionality and spy implementations for framework testing.
  */
+@SuppressWarnings('PMD.AvoidGlobalModifier')
 @IsTest
-public class DatabaseLayerTestUtils {
+global class DatabaseLayerTestUtils {
 	// Note: These properties do not use traditional naming conventions to support a 'namespace-like' API
 	@SuppressWarnings('PMD.FieldNamingConventions')
 	public static final PreAndPostProcessorSpy DmlPluginSpy = new PreAndPostProcessorSpy();
@@ -11,12 +12,22 @@ public class DatabaseLayerTestUtils {
 
 	/**
 	 * @description Creates a mock DatabaseLayerSetting__mdt for testing and injects it into the metadata selector.
+	 * @param setting The custom metadata record being injected.
 	 * @return The created test settings object
 	 */
-	public static DatabaseLayerSetting__mdt initSettings() {
-		DatabaseLayerSetting__mdt setting = new DatabaseLayerSetting__mdt();
+	global static DatabaseLayerSetting__mdt initSettings(DatabaseLayerSetting__mdt setting) {
 		DatabaseLayer.Utils.MetadataSelector.settings = new List<DatabaseLayerSetting__mdt>{ setting };
+		DatabaseLayer.Dml.initPlugins();
+		DatabaseLayer.Soql.initPlugins();
 		return setting;
+	}
+
+	/**
+	 * @description Creates an empty DatabaseLayerSetting__mdt for testing and injects it into the metadata selector.
+	 * @return The created test settings object
+	 */
+	global static DatabaseLayerSetting__mdt initSettings() {
+		return DatabaseLayerTestUtils.initSettings(new DatabaseLayerSetting__mdt());
 	}
 
 	// **** INNER **** //
