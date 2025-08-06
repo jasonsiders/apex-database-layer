@@ -10,7 +10,7 @@
 		{
 			"versionName": "v1.0.0",
 			"versionNumber": "1.0.0.NEXT",
-			"path": "packages/nebula-logger/source",
+			"path": "plugins/nebula-logger/source",
 			"default": false,
 			"package": "Apex Database Layer: Nebula Logger Plugin",
 			"versionDescription": "Use Nebula Logger to automatically log details of DML & SOQL operations"
@@ -23,7 +23,7 @@
 	"packageAliases": {
 		"apex-database-layer-managed": "0HoDn0000010wCnKAI",
 		"apex-database-layer-unlocked": "0HoDn000000kAONKA2",
-		"apex-database-layer-nebula-logger-plugin-unlocked": "0HoDn0000010wCxKAI",
-		"apex-database-layer-nebula-logger-plugin-managed": "0HoDn0000010wD2KAI"
+		"apex-database-layer-nebula-logger-plugin-managed": "0HoDn0000010wD2KAI",
+		"apex-database-layer-nebula-logger-plugin-unlocked": "0HoDn0000010wCxKAI"
 	}
 }
