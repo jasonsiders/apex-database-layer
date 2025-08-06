@@ -1,7 +1,7 @@
 {
 	"packageDirectories": [
 		{
-			"path": "force-app",
+			"path": "source",
 			"default": true,
 			"versionName": "v3.1.0",
 			"versionNumber": "3.1.0.NEXT"
