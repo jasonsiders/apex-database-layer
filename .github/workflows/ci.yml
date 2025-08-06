@@ -32,6 +32,7 @@ permissions:
 jobs:
   claude-review:
     name: Claude Code Review
+    if: ${{ '! github.event.pull_request.draft' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
