@@ -1031,9 +1031,9 @@ private class DmlTest {
 		return leadToConvert;
 	}
 
-	private static void initPlugins(String pluginName) {
+	private static void initPlugins(String dmlPluginName) {
 		DatabaseLayerSetting__mdt setting = new DatabaseLayerSetting__mdt();
-		setting.DmlPreAndPostProcessor__c = pluginName;
+		setting.DmlPreAndPostProcessor__c = dmlPluginName;
 		DatabaseLayerTestUtils.initSettings(setting);
 	}
 
