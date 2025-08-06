@@ -2,12 +2,13 @@
 @IsTest 
 private class DatabaseLayerNebulaLoggerAdapterTest {
     private static final Account MOCK_RECORD;
+    private static final String PLUGIN_NAME = DatabaseLayerNebulaLoggerAdapter.class.getName();
 
     static {
         DatabaseLayer.useMocks();
         MOCK_RECORD = (Account) new MockRecord(Account.SObjectType)?.withId()?.toSObject();
         MockSoql.setGlobalMock().withResults(new List<Account>{ MOCK_RECORD });
-        // TODO: Figure out how to enable nebula logger plugins
+        DatabaseLayerNebulaLoggerAdapterTest.initPlugins();
     }
 
     @IsTest 
@@ -80,5 +81,13 @@ private class DatabaseLayerNebulaLoggerAdapterTest {
             FROM LogEntry__c
             WHERE EntryScenario__r.Name = :DatabaseLayerNebulaLoggerAdapter.SCENARIO_NAME
         ];
+    }
+
+    private static void initPlugins() {
+        // Inject the plugin class to be used by the database layer framework:
+        DatabaseLayerSetting__mdt settings = new DatabaseLayerSetting__mdt();
+        settings.DmlPreAndPostProcessor__c = PLUGIN_NAME;
+        settings.SoqlPreAndPostProcessor__c = PLUGIN_NAME;
+        DatabaseLayerTestUtils.initSettings(settings);
     }
 }
