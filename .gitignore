@@ -48,8 +48,8 @@ $RECYCLE.BIN/
 .vscode/settings.json
 
 # Unrelated Metadata
-force-app/main/default/objectTranslations/**
-force-app/main/default/profiles/**
+source/objectTranslations/**
+source/profiles/**
 
 # Agents
 CLAUDE.md

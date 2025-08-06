@@ -95,7 +95,7 @@ def define_args():
         help="Path that the formatted .md summary will be saved to",
         default="static_analysis_summary.md",
     )
-    parser.add_argument("--target", help="The directory to scan", default="force-app/")
+    parser.add_argument("--target", help="The directory to scan", default="source/")
     parser.add_argument(
         "--threshold",
         help="Defines the severity threshold of violations that are allowed w/out failure",
@@ -112,7 +112,7 @@ def get_sfca_violation_location(violation):
     locations = []
     for l in violation.get("locations", []):
         # Note: Omit everything before the actual working directory:
-        path = "force-app/" + l.get("file").split("force-app/", 1)[-1]
+        path = "source/" + l.get("file").split("source/", 1)[-1]
         start_line = l.get("startLine", "?")
         start_col = l.get("startColumn", "?")
         loc = f"{path}:{start_line}:{start_col}"
