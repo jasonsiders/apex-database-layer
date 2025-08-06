@@ -12,5 +12,5 @@ package.xml
 **/__tests__/**
 
 # Unrelated Metadata
-force-app/main/default/objectTranslations/**
-force-app/main/default/profiles/**
+source/objectTranslations/**
+source/profiles/**

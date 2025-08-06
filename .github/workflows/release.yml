@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - force-app
+      - source
   workflow_dispatch:
     inputs:
       version:
