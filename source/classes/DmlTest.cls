@@ -13,7 +13,7 @@ private class DmlTest {
 		// Custom metadata actually defined in the org should not interfere with this test:
 		DatabaseLayer.Utils.MetadataSelector.settings = new List<DatabaseLayerSetting__mdt>{};
 		// Initialize plugins
-		DmlTest.initPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
+		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
 	}
 
 	// **** TESTS **** //
@@ -915,7 +915,7 @@ private class DmlTest {
 
 	@IsTest
 	static void shouldNotRunProcessorLogicIfInvalidApexClassDefined() {
-		DmlTest.initPlugins('An obviously invalid apex class name');
+		DatabaseLayerTestUtils.initDmlAndSoqlPlugins('An obviously invalid apex class name');
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();
@@ -934,7 +934,7 @@ private class DmlTest {
 
 	@IsTest
 	static void shouldNotRunProcessorLogicIfNoValueDefined() {
-		DmlTest.initPlugins(null);
+		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(null);
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();
@@ -1027,12 +1027,6 @@ private class DmlTest {
 		leadToConvert?.setLeadId(lead?.Id);
 		leadToConvert?.setConvertedStatus(CONVERTED_STATUS?.ApiName);
 		return leadToConvert;
-	}
-
-	private static void initPlugins(String dmlPluginName) {
-		DatabaseLayerSetting__mdt setting = new DatabaseLayerSetting__mdt();
-		setting.DmlPreAndPostProcessor__c = dmlPluginName;
-		DatabaseLayerTestUtils.initSettings(setting);
 	}
 
 	// **** INNER **** //

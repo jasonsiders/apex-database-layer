@@ -11,7 +11,7 @@ private class MockDmlTest {
 		// Use Mock DML:
 		DatabaseLayer.useMockDml();
 		// Initialize plugins:
-		MockDmlTest.initPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
+		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
 	}
 
 	// **** TESTS **** //
@@ -947,7 +947,7 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldNotRunProcessorLogicIfInvalidApexClassDefined() {
-		MockDmlTest.initPlugins('An obviously invalid apex class name');
+		DatabaseLayerTestUtils.initDmlAndSoqlPlugins('An obviously invalid apex class name');
 		List<Account> accounts = MockDmlTest.initRecords(Account.SObjectType, false);
 
 		Test.startTest();
@@ -966,7 +966,7 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldNotRunProcessorLogicIfNoValueDefined() {
-		MockDmlTest.initPlugins(null);
+		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(null);
 		List<Account> accounts = MockDmlTest.initRecords(Account.SObjectType, false);
 
 		Test.startTest();
@@ -1004,12 +1004,6 @@ private class MockDmlTest {
 	}
 
 	// **** HELPER **** //
-	private static void initPlugins(String dmlPluginName) {
-		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
-		settings.DmlPreAndPostProcessor__c = dmlPluginName;
-		DatabaseLayerTestUtils.initSettings(settings);
-	}
-
 	private static List<SObject> initRecords(SObjectType objectType, Boolean withId) {
 		List<SObject> records = new List<SObject>();
 		for (Integer i = 0; i < TEST_SIZE; i++) {

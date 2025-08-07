@@ -4,7 +4,7 @@
 @IsTest
 private class SoqlTest {
 	static {
-		SoqlTest.initPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
+		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
 	}
 
 	// **** TESTS **** //
@@ -1562,7 +1562,7 @@ private class SoqlTest {
 
 	@IsTest
 	static void shouldNotRunProcessorLogicIfInvalidApexClassDefined() {
-		SoqlTest.initPlugins('an obviously invalid apex class name');
+		DatabaseLayerTestUtils.initDmlAndSoqlPlugins('an obviously invalid apex class name');
 
 		Test.startTest();
 		DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowLimit(1)?.toSoql()?.query();
@@ -1583,7 +1583,7 @@ private class SoqlTest {
 
 	@IsTest
 	static void shouldNotRunProcessorLogicIfNoValueDefined() {
-		SoqlTest.initPlugins(null);
+		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(null);
 
 		Test.startTest();
 		DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowLimit(1)?.toSoql()?.query();
@@ -1625,12 +1625,6 @@ private class SoqlTest {
 	}
 
 	// **** HELPER **** //
-	private static void initPlugins(String soqlPluginName) {
-		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
-		settings.SoqlPreAndPostProcessor__c = soqlPluginName;
-		DatabaseLayerTestUtils.initSettings(settings);
-	}
-
 	private static DatabaseLayerSetting__mdt initSettings() {
 		DatabaseLayerSetting__mdt settings = new DatabaseLayerSetting__mdt();
 		DatabaseLayer.Utils.MetadataSelector.settings?.add(settings);

@@ -30,6 +30,19 @@ global class DatabaseLayerTestUtils {
 		return DatabaseLayerTestUtils.initSettings(new DatabaseLayerSetting__mdt());
 	}
 
+	/**
+	 * @description Creates a DatabaseLayerSetting__mdt for testing with both DML and SOQL plugins configured to use the same class.
+	 * @param className The name of the class to use for both DML and SOQL pre/post processing
+	 * @return The created test settings object with plugin configuration
+	 */
+	global static DatabaseLayerSetting__mdt initDmlAndSoqlPlugins(String className) {
+		DatabaseLayerSetting__mdt setting = new DatabaseLayerSetting__mdt(
+			DmlPreAndPostProcessor__c = className,
+			SoqlPreAndPostProcessor__c = className
+		);
+		return DatabaseLayerTestUtils.initSettings(setting);
+	}
+
 	// **** INNER **** //
 	/**
 	 * @description Spy implementation for tracking plugin method invocations during testing.

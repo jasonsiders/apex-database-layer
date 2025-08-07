@@ -7,7 +7,7 @@ private class MockSoqlTest {
 	static {
 		DatabaseLayer.useMocks();
 		NUM_ACCS = 10;
-		MockSoqlTest.initPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
+		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
 	}
 
 	// **** TESTS **** //
@@ -459,7 +459,7 @@ private class MockSoqlTest {
 
 	@IsTest
 	static void shouldNotRunProcessorLogicIfInvalidApexClassDefined() {
-		MockSoqlTest.initPlugins('an obviously invalid apex class name');
+		DatabaseLayerTestUtils.initDmlAndSoqlPlugins('an obviously invalid apex class name');
 
 		Test.startTest();
 		DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowLimit(1)?.toSoql()?.query();
@@ -476,7 +476,7 @@ private class MockSoqlTest {
 
 	@IsTest
 	static void shouldNotRunProcessorLogicIfNoValueDefined() {
-		MockSoqlTest.initPlugins(null);
+		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(null);
 
 		Test.startTest();
 		DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowLimit(1)?.toSoql()?.query();
@@ -518,12 +518,6 @@ private class MockSoqlTest {
 			accounts?.add(account);
 		}
 		return accounts;
-	}
-
-	private static void initPlugins(String soqlPluginName) {
-		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
-		settings.SoqlPreAndPostProcessor__c = soqlPluginName;
-		DatabaseLayerTestUtils.initSettings(settings);
 	}
 
 	// **** INNER **** //
