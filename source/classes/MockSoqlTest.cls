@@ -5,19 +5,16 @@ private class MockSoqlTest {
 	private static final Integer NUM_ACCS;
 
 	static {
+		DatabaseLayer.useMocks();
 		NUM_ACCS = 10;
-		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
-		settings.SoqlPreAndPostProcessor__c = DatabaseLayerTestUtils.SamplePlugin.class.getName();
-		DatabaseLayer.Soql.initPlugins();
+		MockSoqlTest.initPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
 	}
 
 	// **** TESTS **** //
 	@IsTest
 	static void shouldMockCountQuery() {
-		// Build a query
 		Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT);
-		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()?.newQuery(Account.SObjectType)?.addSelect(count);
-		// Inject the query w/mock results
+		MockSoql soql = (MockSoql) DatabaseLayer.Soql?.newQuery(Account.SObjectType)?.addSelect(count);
 		List<Account> accounts = MockSoqlTest.initAccounts(NUM_ACCS);
 		soql?.setMock()?.withResults(accounts);
 
@@ -31,9 +28,7 @@ private class MockSoqlTest {
 
 	@IsTest
 	static void shouldMockCountQueryErrors() {
-		// Build a query
-		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()?.newQuery(Account.SObjectType)?.addSelect(Account.Name);
-		// Inject the query w/a mock error
+		MockSoql soql = (MockSoql) DatabaseLayer.Soql.newQuery(Account.SObjectType)?.addSelect(Account.Name);
 		soql?.setMock()?.withError();
 
 		Test.startTest();
@@ -49,8 +44,7 @@ private class MockSoqlTest {
 
 	@IsTest
 	static void shouldMockCursor() {
-		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()?.newQuery(Account.SObjectType)?.addSelect(Account.Name);
-		// Inject the query w/mock results
+		MockSoql soql = (MockSoql) DatabaseLayer.Soql.newQuery(Account.SObjectType)?.addSelect(Account.Name);
 		List<Account> accounts = MockSoqlTest.initAccounts(NUM_ACCS);
 		soql?.setMock()?.withResults(accounts);
 		Integer numToFetch = 3;
@@ -68,8 +62,7 @@ private class MockSoqlTest {
 
 	@IsTest
 	static void shouldHandleCursorFetchCallWithNegativePositionParameter() {
-		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()?.newQuery(Account.SObjectType)?.addSelect(Account.Name);
-		// Inject the query w/mock results
+		MockSoql soql = (MockSoql) DatabaseLayer.Soql.newQuery(Account.SObjectType)?.addSelect(Account.Name);
 		List<Account> accounts = MockSoqlTest.initAccounts(NUM_ACCS);
 		soql?.setMock()?.withResults(accounts);
 		Soql.Cursor cursor = soql?.getCursor();
@@ -88,8 +81,7 @@ private class MockSoqlTest {
 
 	@IsTest
 	static void shouldHandleCursorFetchCallWithNegativeCountParameter() {
-		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()?.newQuery(Account.SObjectType)?.addSelect(Account.Name);
-		// Inject the query w/mock results
+		MockSoql soql = (MockSoql) DatabaseLayer.Soql.newQuery(Account.SObjectType)?.addSelect(Account.Name);
 		List<Account> accounts = MockSoqlTest.initAccounts(NUM_ACCS);
 		soql?.setMock()?.withResults(accounts);
 		Soql.Cursor cursor = soql?.getCursor();
@@ -108,8 +100,7 @@ private class MockSoqlTest {
 
 	@IsTest
 	static void shouldHandleCursorFetchCallThatExceedsNumberOfRecords() {
-		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()?.newQuery(Account.SObjectType)?.addSelect(Account.Name);
-		// Inject the query w/mock results
+		MockSoql soql = (MockSoql) DatabaseLayer.Soql.newQuery(Account.SObjectType)?.addSelect(Account.Name);
 		List<Account> accounts = MockSoqlTest.initAccounts(NUM_ACCS);
 		soql?.setMock()?.withResults(accounts);
 		Soql.Cursor cursor = soql?.getCursor();
@@ -128,8 +119,7 @@ private class MockSoqlTest {
 
 	@IsTest
 	static void shouldHandleCursorFetchCallWithNullParameters() {
-		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()?.newQuery(Account.SObjectType)?.addSelect(Account.Name);
-		// Inject the query w/mock results
+		MockSoql soql = (MockSoql) DatabaseLayer.Soql.newQuery(Account.SObjectType)?.addSelect(Account.Name);
 		List<Account> accounts = MockSoqlTest.initAccounts(NUM_ACCS);
 		soql?.setMock()?.withResults(accounts);
 		Soql.Cursor cursor = soql?.getCursor();
@@ -148,9 +138,7 @@ private class MockSoqlTest {
 
 	@IsTest
 	static void shouldMockQueryLocator() {
-		// Build a query
-		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()?.newQuery(Account.SObjectType)?.addSelect(Account.Name);
-		// Inject the query w/mock results
+		MockSoql soql = (MockSoql) DatabaseLayer.Soql.newQuery(Account.SObjectType)?.addSelect(Account.Name);
 		List<Account> accounts = MockSoqlTest.initAccounts(NUM_ACCS);
 		soql?.setMock()?.withResults(accounts);
 
@@ -182,9 +170,7 @@ private class MockSoqlTest {
 
 	@IsTest
 	static void shouldMockQueryLocatorErrors() {
-		// Build a query
-		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()?.newQuery(Account.SObjectType)?.addSelect(Account.Name);
-		// Inject the query w/a mock error
+		MockSoql soql = (MockSoql) DatabaseLayer.Soql.newQuery(Account.SObjectType)?.addSelect(Account.Name);
 		soql?.setMock()?.withError();
 
 		Test.startTest();
@@ -200,9 +186,7 @@ private class MockSoqlTest {
 
 	@IsTest
 	static void shouldMockQuery() {
-		// Build query
-		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()?.newQuery(Account.SObjectType)?.addSelect(Account.Name);
-		// Inject the query w/mock results
+		MockSoql soql = (MockSoql) DatabaseLayer.Soql.newQuery(Account.SObjectType)?.addSelect(Account.Name);
 		List<Account> accounts = MockSoqlTest.initAccounts(NUM_ACCS);
 		soql?.setMock()?.withResults(accounts);
 
@@ -216,9 +200,7 @@ private class MockSoqlTest {
 
 	@IsTest
 	static void shouldMockQueryErrors() {
-		// Build a query
-		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()?.newQuery(Account.SObjectType)?.addSelect(Account.Name);
-		// Inject the query w/a mock error
+		MockSoql soql = (MockSoql) DatabaseLayer.Soql.newQuery(Account.SObjectType)?.addSelect(Account.Name);
 		soql?.setMock()?.withError();
 
 		Test.startTest();
@@ -234,14 +216,12 @@ private class MockSoqlTest {
 
 	@IsTest
 	static void shouldMockAggregateQuery() {
-		// Build an aggregate query
 		Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id);
 		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()
 			?.newQuery(User.SObjectType)
 			?.addSelect(new Soql.ParentField(User.ProfileId, Profile.Name))
 			?.addSelect(count)
 			?.addGroupBy(new Soql.ParentField(User.ProfileId, Profile.Name));
-		// Inject results into the query
 		MockSoql.AggregateResult mockResult1 = new MockSoql.AggregateResult()
 			?.addParameter('Foo Profile')
 			?.addParameter(123);
@@ -270,14 +250,12 @@ private class MockSoqlTest {
 
 	@IsTest
 	static void shouldMockAggregateQueryErrors() {
-		// Build an aggregate query
 		Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id);
 		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()
 			?.newQuery(User.SObjectType)
 			?.addSelect(new Soql.ParentField(User.ProfileId, Profile.Name))
 			?.addSelect(count)
 			?.addGroupBy(new Soql.ParentField(User.ProfileId, Profile.Name));
-		// Inject an error
 		soql?.setMock()?.withError();
 
 		Test.startTest();
@@ -293,14 +271,12 @@ private class MockSoqlTest {
 
 	@IsTest
 	static void shouldMockQueryAndCastToType() {
-		// Build an aggregate query
 		Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id);
 		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()
 			?.newQuery(User.SObjectType)
 			?.addSelect(new Soql.ParentField(User.ProfileId, Profile.Name))
 			?.addSelect(count)
 			?.addGroupBy(new Soql.ParentField(User.ProfileId, Profile.Name));
-		// Inject results
 		MockSoqlTest.SampleWrapper mockResult1 = new MockSoqlTest.SampleWrapper()?.wrap('Foo Profile', 123);
 		MockSoqlTest.SampleWrapper mockResult2 = new MockSoqlTest.SampleWrapper()?.wrap('Bar Profile', 45);
 		List<MockSoqlTest.SampleWrapper> mockResults = new List<MockSoqlTest.SampleWrapper>{ mockResult1, mockResult2 };
@@ -324,14 +300,12 @@ private class MockSoqlTest {
 
 	@IsTest
 	static void shouldHandleErrorsWithMockAndCast() {
-		// Build an aggregate query
 		Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id);
 		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()
 			?.newQuery(User.SObjectType)
 			?.addSelect(new Soql.ParentField(User.ProfileId, Profile.Name))
 			?.addSelect(count)
 			?.addGroupBy(new Soql.ParentField(User.ProfileId, Profile.Name));
-		// Inject an error
 		soql?.setMock()?.withError(new System.TypeException());
 
 		Test.startTest();
@@ -347,14 +321,11 @@ private class MockSoqlTest {
 
 	@IsTest
 	static void shouldUseCustomSimulatorMocks() {
-		// Establish Dml & Soql objects to be used
-		DatabaseLayer.useMocks();
 		MockSoql soql = (MockSoql) DatabaseLayer.Soql.newQuery(Task.SObjectType)
 			?.addSelect(Task.WhatId)
 			?.addSelect(Task.WhoId);
 		// Mock with a custom class that leverages MockDml.INSERTED to generate results
 		soql?.setMock(new MockSoqlTest.CustomTaskQueryLogic());
-		// Mock insert an account + related contact
 		Account mockAccount = (Account) new MockRecord(Account.SObjectType)?.toSObject();
 		DatabaseLayer.Dml.doInsert(mockAccount);
 		Contact mockContact = (Contact) new MockRecord(Contact.SObjectType)
@@ -375,7 +346,6 @@ private class MockSoqlTest {
 
 	@IsTest
 	static void shouldSetGlobalMock() {
-		DatabaseLayer.useMocks();
 		MockSoql theQuery = (MockSoql) DatabaseLayer.Soql.newQuery(Account.SObjectType);
 		// Set a global mock - all SOQL objects will return these results by default now:
 		Account mockAccount = (Account) new MockRecord(Account.SObjectType)?.withId()?.toSObject();
@@ -391,7 +361,6 @@ private class MockSoqlTest {
 
 	@IsTest
 	static void shouldIgnoreGlobalMockIfSpecificSimulatorAssignedToQuery() {
-		DatabaseLayer.useMocks();
 		MockSoql theQuery = (MockSoql) DatabaseLayer.Soql.newQuery(Account.SObjectType);
 		// Set a global mock - all SOQL objects will return these results by default now:
 		Account mockAccount1 = (Account) new MockRecord(Account.SObjectType)?.withId()?.toSObject();
@@ -410,7 +379,6 @@ private class MockSoqlTest {
 
 	@IsTest
 	static void shouldIntelligentlyReturnCorrectQueryResults() {
-		DatabaseLayer.useMocks();
 		MockSoql accountQuery = (MockSoql) DatabaseLayer.Soql.newQuery(Account.SObjectType);
 		MockSoql caseQuery = (MockSoql) DatabaseLayer.Soql.newQuery(Case.SObjectType);
 		MockSoql.Simulator simulator = new MockSoqlTest.DynamicSimulator();
@@ -430,7 +398,7 @@ private class MockSoqlTest {
 	@IsTest
 	static void shouldReturnEmptyListIfNoMocks() {
 		// If a MockSoql is ran, and no Simulator is injected, the methods will automatically return an empty List
-		MockSoql soql = (MockSoql) DatabaseLayer.useMockSoql()?.newQuery(Account.SObjectType);
+		MockSoql soql = (MockSoql) DatabaseLayer.Soql.newQuery(Account.SObjectType);
 
 		Test.startTest();
 		List<Soql.AggregateResult> aggregateResults = soql?.aggregateQuery();
@@ -452,11 +420,6 @@ private class MockSoqlTest {
 
 	@IsTest
 	static void shouldRunPreAndPostProcessorPluginLogic() {
-		DatabaseLayer.useMocks();
-		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
-		settings.SoqlPreAndPostProcessor__c = DatabaseLayerTestUtils.SamplePlugin.class.getName();
-		DatabaseLayer.Soql.initPlugins();
-
 		Test.startTest();
 		DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowLimit(1)?.toSoql()?.query();
 		Test.stopTest();
@@ -472,10 +435,6 @@ private class MockSoqlTest {
 
 	@IsTest
 	static void shouldRunPluginErrorLogic() {
-		DatabaseLayer.useMocks();
-		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
-		settings.SoqlPreAndPostProcessor__c = DatabaseLayerTestUtils.SamplePlugin.class.getName();
-		DatabaseLayer.Soql.initPlugins();
 		MockSoql.setGlobalMock()?.withError();
 
 		Test.startTest();
@@ -500,10 +459,7 @@ private class MockSoqlTest {
 
 	@IsTest
 	static void shouldNotRunProcessorLogicIfInvalidApexClassDefined() {
-		DatabaseLayer.useMocks();
-		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
-		settings.SoqlPreAndPostProcessor__c = 'an obviously invalid apex class name';
-		DatabaseLayer.Soql.initPlugins();
+		MockSoqlTest.initPlugins('an obviously invalid apex class name');
 
 		Test.startTest();
 		DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowLimit(1)?.toSoql()?.query();
@@ -520,10 +476,7 @@ private class MockSoqlTest {
 
 	@IsTest
 	static void shouldNotRunProcessorLogicIfNoValueDefined() {
-		DatabaseLayer.useMocks();
-		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
-		settings.SoqlPreAndPostProcessor__c = null;
-		DatabaseLayer.Soql.initPlugins();
+		MockSoqlTest.initPlugins(null);
 
 		Test.startTest();
 		DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowLimit(1)?.toSoql()?.query();
@@ -541,7 +494,6 @@ private class MockSoqlTest {
 	@IsTest
 	static void shouldNotRunProcessorLogicIfNoSettingsDefined() {
 		DatabaseLayer.Utils.MetadataSelector.settings = new List<DatabaseLayerSetting__mdt>{};
-		DatabaseLayer.useMocks();
 		DatabaseLayer.Soql.initPlugins();
 
 		Test.startTest();
@@ -566,6 +518,12 @@ private class MockSoqlTest {
 			accounts?.add(account);
 		}
 		return accounts;
+	}
+
+	private static void initPlugins(String soqlPluginName) {
+		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
+		settings.SoqlPreAndPostProcessor__c = soqlPluginName;
+		DatabaseLayerTestUtils.initSettings(settings);
 	}
 
 	// **** INNER **** //

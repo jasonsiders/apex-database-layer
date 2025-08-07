@@ -4,9 +4,7 @@
 @IsTest
 private class SoqlTest {
 	static {
-		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
-		settings.SoqlPreAndPostProcessor__c = DatabaseLayerTestUtils.SamplePlugin.class.getName();
-		DatabaseLayer.Soql.initPlugins();
+		SoqlTest.initPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
 	}
 
 	// **** TESTS **** //
@@ -1518,10 +1516,6 @@ private class SoqlTest {
 
 	@IsTest
 	static void shouldRunPreAndPostProcessorPluginLogic() {
-		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
-		settings.SoqlPreAndPostProcessor__c = DatabaseLayerTestUtils.SamplePlugin.class.getName();
-		DatabaseLayer.Soql.initPlugins();
-
 		Test.startTest();
 		DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowLimit(1)?.toSoql()?.query();
 		Test.stopTest();
@@ -1541,10 +1535,6 @@ private class SoqlTest {
 
 	@IsTest
 	static void shouldRunPluginErrorLogic() {
-		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
-		settings.SoqlPreAndPostProcessor__c = DatabaseLayerTestUtils.SamplePlugin.class.getName();
-		DatabaseLayer.Soql.initPlugins();
-
 		Test.startTest();
 		Exception caughtError;
 		try {
@@ -1572,9 +1562,7 @@ private class SoqlTest {
 
 	@IsTest
 	static void shouldNotRunProcessorLogicIfInvalidApexClassDefined() {
-		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
-		settings.SoqlPreAndPostProcessor__c = 'an obviously invalid apex class name';
-		DatabaseLayer.Soql.initPlugins();
+		SoqlTest.initPlugins('an obviously invalid apex class name');
 
 		Test.startTest();
 		DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowLimit(1)?.toSoql()?.query();
@@ -1595,9 +1583,7 @@ private class SoqlTest {
 
 	@IsTest
 	static void shouldNotRunProcessorLogicIfNoValueDefined() {
-		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
-		settings.SoqlPreAndPostProcessor__c = null;
-		DatabaseLayer.Soql.initPlugins();
+		SoqlTest.initPlugins(null);
 
 		Test.startTest();
 		DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowLimit(1)?.toSoql()?.query();
@@ -1639,6 +1625,12 @@ private class SoqlTest {
 	}
 
 	// **** HELPER **** //
+	private static void initPlugins(String soqlPluginName) {
+		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
+		settings.SoqlPreAndPostProcessor__c = soqlPluginName;
+		DatabaseLayerTestUtils.initSettings(settings);
+	}
+
 	private static DatabaseLayerSetting__mdt initSettings() {
 		DatabaseLayerSetting__mdt settings = new DatabaseLayerSetting__mdt();
 		DatabaseLayer.Utils.MetadataSelector.settings?.add(settings);
