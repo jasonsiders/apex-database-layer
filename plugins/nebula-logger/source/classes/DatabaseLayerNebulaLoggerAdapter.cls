@@ -8,8 +8,8 @@ global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor
      */
     global void processPreDml(Dml.Request request) {
         List<SObject> records = request?.records ?? new List<SObject>{};
-        String op = this.getOperationName(request?.operation);
-        String msg = 'Processing ' + op + ' on ' + request?.numRecords + ' ' + request?.sObjectType + ' records';
+        String op = this.getDmlOperationName(request?.operation);
+        String msg = 'Processing DML ' + op + ' on ' + request?.numRecords + ' ' + request?.sObjectType + ' records';
         Logger.finest(msg)?.addTag(TAG_NAME)?.setRecord(records);
     }
 
@@ -20,8 +20,8 @@ global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor
      */
     global void processPostDml(Dml.Request request, List<Object> databaseResults) {
         List<SObject> records = request?.records ?? new List<SObject>{};
-        String op = this.getOperationName(request?.operation);
-        String msg = 'Processed ' + op + ' on ' + request?.numRecords + ' ' + request?.sObjectType + ' records\nResults: ' + JSON.serialize(databaseResults);
+        String op = this.getDmlOperationName(request?.operation);
+        String msg = 'Processed DML ' + op + ' on ' + request?.numRecords + ' ' + request?.sObjectType + ' records\n\nRequest: ' + JSON.serialize(request) + '\n\nResults:\n' + JSON.serialize(databaseResults);
         Logger.finest(msg)?.addTag(TAG_NAME)?.setRecord(records);
     }
 
@@ -31,7 +31,10 @@ global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor
      * @param error The exception that was thrown
      */
     global void processDmlError(Dml.Request request, Exception error) {
-        // TODO
+        List<SObject> records = request?.records ?? new List<SObject>{};
+        String op = this.getDmlOperationName(request?.operation);
+        String msg = 'Error processing DML ' + op + ':\n' + error + '\n' + error?.getStackTraceString() + '\n\nRequest: ' + JSON.serialize(request);
+        Logger.error(msg)?.addTag(TAG_NAME)?.setRecord(records);
     }
 
     /**
@@ -39,7 +42,8 @@ global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor
      * @param request The SOQL request being processed
      */
     global void processPreSoql(Soql.Request request) {
-        // TODO
+        String msg = 'Processing SOQL ' + request?.operation + ':\n' + request?.queryString;
+        Logger.finest(msg)?.addTag(TAG_NAME);
     }
 
     /**
@@ -48,7 +52,8 @@ global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor
      * @param results The results from the SOQL operation
      */
     global void processPostSoql(Soql.Request request, Object results) {
-        // TODO
+        String msg = 'Processed SOQL ' + request?.operation + ':\n' + request?.queryString + '\nResults: ' + results;
+        Logger.finest(msg)?.addTag(TAG_NAME);
     }
 
     /**
@@ -57,10 +62,11 @@ global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor
      * @param error The exception that occurred
      */
     global void processSoqlError(Soql.Request request, Exception error) {
-        // TODO
+        String msg = 'Error processing SOQL ' + request?.operation + ':\n' + error + '\n' + error?.getStackTraceString() + '\n\nRequest: ' + JSON.serialize(request);
+        Logger.error(msg)?.addTag(TAG_NAME);
     }
 
-    private String getOperationName(Dml.Operation operation) {
+    private String getDmlOperationName(Dml.Operation operation) {
         return operation?.name()?.removeStart('DO_');
     }
 }

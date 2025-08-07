@@ -1722,8 +1722,6 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @description The Soql query instance being executed.
 		 */
 		global Soql query { get; private set; }
-		protected transient System.AccessLevel accessLevel { get; private set; }
-		protected transient Map<String, Object> binds { get; private set; }
 		/**
 		 * @description The SOQL query string representation.
 		 */
@@ -1732,6 +1730,8 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 				return this.query?.toString();
 			}
 		}
+		protected transient System.AccessLevel accessLevel { get; private set; }
+		protected transient Map<String, Object> binds { get; private set; }
 
 		protected Request(Soql query, Soql.Operation operation) {
 			this.accessLevel = query?.accessLevel;
