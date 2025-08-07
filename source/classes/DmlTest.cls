@@ -872,7 +872,6 @@ private class DmlTest {
 
 	@IsTest
 	static void shouldRunPreAndPostProcessorPluginLogic() {
-		DmlTest.initPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();
@@ -891,7 +890,6 @@ private class DmlTest {
 
 	@IsTest
 	static void shouldRunPluginErrorLogic() {
-		DmlTest.initPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();

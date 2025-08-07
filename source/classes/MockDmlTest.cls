@@ -903,7 +903,6 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldRunPreAndPostProcessorPluginLogic() {
-		MockDmlTest.initPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
 		List<Account> accounts = MockDmlTest.initRecords(Account.SObjectType, false);
 
 		Test.startTest();
@@ -922,7 +921,6 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldRunPluginErrorLogic() {
-		MockDmlTest.initPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
 		List<Account> accounts = MockDmlTest.initRecords(Account.SObjectType, false);
 		MockDml.shouldFail();
 
