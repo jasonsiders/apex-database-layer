@@ -78,6 +78,9 @@ private class DatabaseLayerNebulaLoggerAdapterTest {
         private List<LogEntryTag__c> taggedEntries;
         private Map<String, Set<Id>> entryIdsByLevel;
 
+        /**
+         * @description Creates a new LogSummary by saving logs, delivering events, and querying tagged entries
+         */
         public LogSummary() {
             Logger.saveLog();
             Test.getEventBus().deliver();
@@ -85,10 +88,19 @@ private class DatabaseLayerNebulaLoggerAdapterTest {
             this.mapTaggedEntriesByLevel();
         }
 
+        /**
+         * @description Returns the number of log entries with the specified logging level
+         * @param level The logging level to count entries for
+         * @return The number of entries with the specified level, or 0 if none exist
+         */
         public Integer numEntriesWithLevel(System.LoggingLevel level) {
             return this.entryIdsByLevel?.get(level?.name())?.size() ?? 0; 
         }
 
+        /**
+         * @description Returns the total number of tagged log entries
+         * @return The total number of tagged entries, or 0 if none exist
+         */
         public Integer numTotalEntries() {
             return this.taggedEntries?.size() ?? 0;
         }
