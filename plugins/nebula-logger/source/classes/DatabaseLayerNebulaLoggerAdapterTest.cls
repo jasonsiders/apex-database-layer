@@ -8,18 +8,18 @@ private class DatabaseLayerNebulaLoggerAdapterTest {
         DatabaseLayer.useMocks();
         MOCK_RECORD = (Account) new MockRecord(Account.SObjectType)?.withId()?.toSObject();
         MockSoql.setGlobalMock().withResults(new List<Account>{ MOCK_RECORD });
-        DatabaseLayerNebulaLoggerAdapterTest.initPlugins();
+        DatabaseLayerTestUtils.initDmlAndSoqlPlugins(PLUGIN_NAME);
     }
 
     @IsTest 
     static void shouldLogSuccessfulDmlOperations() {
         Test.startTest();
         DatabaseLayer.Dml.doUpdate(MOCK_RECORD);
-        Logger.saveLog();
         Test.stopTest();
 
-        List<LogEntry__c> entries = DatabaseLayerNebulaLoggerAdapterTest.getLogs();
-        Assert.isFalse(entries?.isEmpty(), 'Did not log via nebula logger');
+        LogSummary summary = new LogSummary();
+        Assert.areEqual(2, summary?.numTotalEntries(), 'Wrong # of log entries');
+        Assert.areEqual(2, summary?.numEntriesWithLevel(System.LoggingLevel.FINEST), 'Wrong # of FINEST logs');
     }
 
     @IsTest 
@@ -33,24 +33,24 @@ private class DatabaseLayerNebulaLoggerAdapterTest {
             Assert.fail('A System.DmlException was not thrown');
         } catch (System.DmlException error) {
             caughtError = error; 
-        } finally {
-            Logger.saveLog();
         }
         Test.stopTest();
 
-        List<LogEntry__c> entries = DatabaseLayerNebulaLoggerAdapterTest.getLogs();
-        Assert.isFalse(entries?.isEmpty(), 'Did not log via nebula logger');
+        LogSummary summary = new LogSummary();
+        Assert.areEqual(2, summary?.numTotalEntries(), 'Wrong # of log entries');
+        Assert.areEqual(1, summary?.numEntriesWithLevel(System.LoggingLevel.FINEST), 'Wrong # of FINEST logs');
+        Assert.areEqual(1, summary?.numEntriesWithLevel(System.LoggingLevel.ERROR), 'Wrong # of ERROR logs');
     }
 
     @IsTest 
     static void shouldLogSuccessfulSoqlOperations() {
         Test.startTest();
         DatabaseLayer.Soql.newQuery(Account.SObjectType)?.query();
-        Logger.saveLog();
         Test.stopTest();
 
-        List<LogEntry__c> entries = DatabaseLayerNebulaLoggerAdapterTest.getLogs();
-        Assert.isFalse(entries?.isEmpty(), 'Did not log via nebula logger');
+        LogSummary summary = new LogSummary();
+        Assert.areEqual(2, summary?.numTotalEntries(), 'Wrong # of log entries');
+        Assert.areEqual(2, summary?.numEntriesWithLevel(System.LoggingLevel.FINEST), 'Wrong # of FINEST logs');
     }
 
     @IsTest 
@@ -64,30 +64,53 @@ private class DatabaseLayerNebulaLoggerAdapterTest {
             Assert.fail('Did not throw a System.QueryException');
         } catch (System.QueryException error) {
             caughtError = error; 
-        } finally {
-            Logger.saveLog();
         }
         Test.stopTest();
 
-        List<LogEntry__c> entries = DatabaseLayerNebulaLoggerAdapterTest.getLogs();
-        Assert.isFalse(entries?.isEmpty(), 'Did not log via nebula logger');
+        LogSummary summary = new LogSummary();
+        Assert.areEqual(2, summary?.numTotalEntries(), 'Wrong # of log entries');
+        Assert.areEqual(1, summary?.numEntriesWithLevel(System.LoggingLevel.FINEST), 'Wrong # of FINEST logs');
+        Assert.areEqual(1, summary?.numEntriesWithLevel(System.LoggingLevel.ERROR), 'Wrong # of ERROR logs');
     }
 
-    // **** HELPER **** //
-    private static List<LogEntry__c> getLogs() {
-        // Note: Nebula Logger DML is not encompassed by apex-database-layer; this will always create real log entries
-        return [
-            SELECT Id
-            FROM LogEntry__c
-            WHERE EntryScenario__r.Name = :DatabaseLayerNebulaLoggerAdapter.SCENARIO_NAME
-        ];
-    }
+    // **** INNER **** //
+    private class LogSummary {
+        private List<LogEntryTag__c> taggedEntries;
+        private Map<String, Set<Id>> entryIdsByLevel;
 
-    private static void initPlugins() {
-        // Inject the plugin class to be used by the database layer framework:
-        DatabaseLayerSetting__mdt settings = new DatabaseLayerSetting__mdt();
-        settings.DmlPreAndPostProcessor__c = PLUGIN_NAME;
-        settings.SoqlPreAndPostProcessor__c = PLUGIN_NAME;
-        DatabaseLayerTestUtils.initSettings(settings);
+        public LogSummary() {
+            Logger.saveLog();
+            Test.getEventBus().deliver();
+            this.queryTaggedEntries();
+            this.mapTaggedEntriesByLevel();
+        }
+
+        public Integer numEntriesWithLevel(System.LoggingLevel level) {
+            return this.entryIdsByLevel?.get(level?.name())?.size() ?? 0; 
+        }
+
+        public Integer numTotalEntries() {
+            return this.taggedEntries?.size() ?? 0;
+        }
+
+        private void mapTaggedEntriesByLevel() {
+            // Group LogEntry Ids by their common Logging Level name
+            this.entryIdsByLevel = new Map<String, Set<Id>>{};
+            for (LogEntryTag__c taggedEntry : this.taggedEntries) {
+                String level = taggedEntry?.LogEntry__r?.LoggingLevel__c;
+                Set<Id> matching = this.entryIdsByLevel?.get(level) ?? new Set<Id>{};
+                matching?.add(taggedEntry?.LogEntry__c);
+                this.entryIdsByLevel?.put(level, matching);
+            }
+        }
+
+        private void queryTaggedEntries() {
+            // Query for all log entries that were tagged with 'apex-database-layer'
+            this.taggedEntries = [
+                SELECT Id, LogEntry__c, LogEntry__r.LoggingLevel__c, LogEntry__r.Message__c, Tag__r.Name
+                FROM LogEntryTag__c
+                WHERE Tag__r.Name = :DatabaseLayerNebulaLoggerAdapter.TAG_NAME
+            ];
+        }
     }
 }

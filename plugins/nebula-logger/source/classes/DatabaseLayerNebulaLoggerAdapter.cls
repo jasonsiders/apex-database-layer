@@ -1,13 +1,16 @@
 @SuppressWarnings('PMD.AvoidGlobalModifier')
 global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor, Soql.PreAndPostProcessor {
-    public static final String SCENARIO_NAME = 'apex-database-layer';
+    public static final String TAG_NAME = 'apex-database-layer';
 
     /**
      * @description Called before executing a DML operation.
      * @param request The DML request to be processed
      */
     global void processPreDml(Dml.Request request) {
-        // TODO
+        List<SObject> records = request?.records ?? new List<SObject>{};
+        String op = this.getOperationName(request?.operation);
+        String msg = 'Processing ' + op + ' on ' + request?.numRecords + ' ' + request?.sObjectType + ' records';
+        Logger.finest(msg)?.addTag(TAG_NAME)?.setRecord(records);
     }
 
     /**
@@ -16,7 +19,10 @@ global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor
      * @param databaseResults The results returned from the DML operation
      */
     global void processPostDml(Dml.Request request, List<Object> databaseResults) {
-        // TODO
+        List<SObject> records = request?.records ?? new List<SObject>{};
+        String op = this.getOperationName(request?.operation);
+        String msg = 'Processed ' + op + ' on ' + request?.numRecords + ' ' + request?.sObjectType + ' records\nResults: ' + JSON.serialize(databaseResults);
+        Logger.finest(msg)?.addTag(TAG_NAME)?.setRecord(records);
     }
 
     /**
@@ -27,7 +33,6 @@ global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor
     global void processDmlError(Dml.Request request, Exception error) {
         // TODO
     }
-
 
     /**
      * @description Processes SOQL requests before execution.
@@ -55,4 +60,7 @@ global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor
         // TODO
     }
 
+    private String getOperationName(Dml.Operation operation) {
+        return operation?.name()?.removeStart('DO_');
+    }
 }
