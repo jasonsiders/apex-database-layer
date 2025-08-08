@@ -114,8 +114,10 @@ private class DatabaseLayerNebulaLoggerAdapterTest {
 		Test.stopTest();
 
 		LogSummary summary = new LogSummary();
-		Assert.areEqual(2, summary?.numTotalEntries(), 'Wrong # of log entries');
-		Assert.areEqual(2, summary?.numEntriesWithLevel(System.LoggingLevel.FINEST), 'Wrong # of FINEST logs');
+		// Note: MockSoql.getQueryLocator uses a normal MockSoql.query under the hood
+		// As a result, logs are shown for *both* the `getQueryLocator` and `query` methods:
+		Assert.areEqual(4, summary?.numTotalEntries(), 'Wrong # of log entries');
+		Assert.areEqual(4, summary?.numEntriesWithLevel(System.LoggingLevel.FINEST), 'Wrong # of FINEST logs');
 	}
 
 	@IsTest 
