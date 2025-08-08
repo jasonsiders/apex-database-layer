@@ -28,13 +28,12 @@ global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor
 	 * @param request The DML request to be processed
 	 */
 	global void processPreDml(Dml.Request request) {
-		// prettier-ignore
-		List<String> lines = new List<String>{
-			'⏳ DML: Processing ' + this.getDmlOperationName(request?.operation) + '...',
-			'Request:\n' + JSON.serialize(request)
-		};
-		String msg = String.join(lines, DELIMITER);
-		Logger.finest(msg)?.addTag(TAG_NAME)?.setRecord(request?.records);
+		String op = this.getDmlOperationName(request?.operation);
+		this.log(System.LoggingLevel.FINEST)
+			?.addLine('⏳ DML: Processing {0}', op)
+			?.addLine('Request:\n{0}', JSON.serialize(request))
+			?.setRecords(request?.records)
+			?.build();
 	}
 
 	/**
@@ -43,14 +42,13 @@ global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor
 	 * @param results The Database.*Results returned from the DML operation
 	 */
 	global void processPostDml(Dml.Request request, List<Object> results) {
-		// prettier-ignore
-		List<String> lines = new List<String>{
-			'✅ DML: Processed ' + this.getDmlOperationName(request?.operation),
-			'Request:\n' + JSON.serialize(request)
-		};
-		String msg = String.join(lines, DELIMITER);
-		LogEntryEventBuilder log = Logger.finest(msg)?.addTag(TAG_NAME)?.setRecord(request?.records);
-		this.logDmlResults(log, results);
+		String op = this.getDmlOperationName(request?.operation);
+		this.log(System.LoggingLevel.FINEST)
+			?.addLine('✅ DML: Processed {0}', op)
+			?.addLine('Request: {0}', JSON.serialize(request))
+			?.setDatabaseResults(results)
+			?.setRecords(request?.records)
+			?.build();
 	}
 
 	/**
@@ -59,14 +57,13 @@ global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor
 	 * @param error The exception that was thrown
 	 */
 	global void processDmlError(Dml.Request request, Exception error) {
-		// prettier-ignore
-		List<String> lines = new List<String>{
-			'🚨 DML: Error processing ' + this.getDmlOperationName(request?.operation),
-			error + '\n' + error?.getStackTraceString(),
-			'Request:\n' + JSON.serialize(request)
-		};
-		String msg = String.join(lines, DELIMITER);
-		Logger.error(msg)?.addTag(TAG_NAME)?.setRecord(request?.records);
+		String op = this.getDmlOperationName(request?.operation);
+		this.log(System.LoggingLevel.ERROR)
+			?.addLine('🚨 DML: Error processing {0}', op)
+			?.addLine('{0}\n{1}', error, error?.getStackTraceString())
+			?.addLine('Request:\n{0}', JSON.serialize(request))
+			?.setRecords(request?.records)
+			?.build();
 	}
 
 	/**
@@ -74,13 +71,10 @@ global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor
 	 * @param request The SOQL request being processed
 	 */
 	global void processPreSoql(Soql.Request request) {
-		// prettier-ignore
-		List<String> lines = new List<String>{
-			'⏳ SOQL: Processing ' + request?.operation + '...',
-			'Query:\n' + request?.queryString
-		};
-		String msg = String.join(lines, DELIMITER);
-		Logger.finest(msg)?.addTag(TAG_NAME);
+		this.log(System.LoggingLevel.FINEST)
+			?.addLine('⏳ SOQL: Processing {0}...', request?.operation)
+			?.addLine(request?.queryString)
+			?.build();
 	}
 
 	/**
@@ -89,27 +83,11 @@ global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor
 	 * @param results The results from the SOQL operation
 	 */
 	global void processPostSoql(Soql.Request request, Object results) {
-		LogEntryEventBuilder log = Logger.finest('')?.addTag(TAG_NAME);
-		// prettier-ignore
-		List<String> lines = new List<String>{
-			'✅ SOQL: Processed ' + request?.operation,
-			request?.queryString
-		};
-		// Add the query results to the log, depending on their type
-		if (results instanceOf List<SObject>) {
-			// SObjects can be added to the log's related records, via the `setRecord` method
-			// All other types will be appended to the log body itself
-			List<SObject> records = (List<SObject>) results;
-			log?.setRecord(records);
-		} else if (results instanceOf Soql.QueryLocator) {
-            // QueryLocators aren't serializable, and there isn't a performant way to determine the number of results:
-			Soql.QueryLocator locator = (Soql.QueryLocator) results;
-			lines?.add('Results:\n' + locator?.getLocator());
-        } else {
-            // All other possible query operations return serializable results:
-			lines?.add('Results:\n' + JSON.serialize(results));
-        }
-		log?.setMessage(String.join(lines, DELIMITER));
+		this.log(System.LoggingLevel.FINEST)
+			?.addLine('✅ SOQL: Processed {0}', request?.operation)
+			?.addLine(request?.queryString)
+			?.setRecords(results)
+			?.build();
 	}
 
 	/**
@@ -118,14 +96,11 @@ global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor
 	 * @param error The exception that occurred
 	 */
 	global void processSoqlError(Soql.Request request, Exception error) {
-		// prettier-ignore
-		List<String> lines = new List<String>{
-			'🚨 SOQL: Error processing ' + request?.operation,
-			request?.queryString, 
-            error + '\n' + error?.getStackTraceString()
-		};
-		String msg = String.join(lines, DELIMITER);
-		Logger.error(msg)?.addTag(TAG_NAME);
+		this.log(System.LoggingLevel.ERROR)
+			?.addLine('🚨 SOQL: Error processing {0}', request?.operation)
+			?.addLine(request?.queryString)
+			?.addLine('{0}\n{1}', error, error?.getStackTraceString())
+			?.build();
 	}
 
 	// **** PRIVATE **** //
@@ -133,23 +108,107 @@ global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor
 		return operation?.name()?.removeStart('DO_');
 	}
 
-	private void logDmlResults(LogEntryEventBuilder log, List<Object> objList) {
-		// Note: Nebula Logger doesn't accept an untyped List<Object> in `setDatabaseResult`:
-		if (objList instanceof List<Database.DeleteResult>) {
-			List<Database.DeleteResult> results = (List<Database.DeleteResult>) objList;
-			log?.setDatabaseResult(results);
-		} else if (objList instanceof List<Database.LeadConvertResult>) {
-			List<Database.LeadConvertResult> results = (List<Database.LeadConvertResult>) objList;
-			log?.setDatabaseResult(results);
-		} else if (objList instanceof List<Database.SaveResult>) {
-			List<Database.SaveResult> results = (List<Database.SaveResult>) objList;
-			log?.setDatabaseResult(results);
-		} else if (objList instanceof List<Database.UndeleteResult>) {
-			List<Database.UndeleteResult> results = (List<Database.UndeleteResult>) objList;
-			log?.setDatabaseResult(results);
-		} else if (objList instanceof List<Database.UpsertResult>) {
-			List<Database.UpsertResult> results = (List<Database.UpsertResult>) objList;
-			log?.setDatabaseResult(results);
+	private LogBuilder log(System.LoggingLevel level) {
+		return new DatabaseLayerNebulaLoggerAdapter.LogBuilder(level);
+	}
+
+	// **** INNER **** //
+	private class LogBuilder {
+		private LogEntryEventBuilder entry;
+		private List<String> lines;
+
+		/**
+		 * @description Creates a new LogBuilder instance with the specified logging level
+		 * @param level The logging level for this log entry
+		 */
+		public LogBuilder(System.LoggingLevel level) {
+			String temporaryMsg = null;
+			this.entry = Logger.newEntry(level, temporaryMsg)?.addTag(TAG_NAME);
+			this.lines = new List<String>{};
+		}
+
+		/**
+		 * @description Adds a line to the log message
+		 * @param line The line to add to the log message
+		 * @return This LogBuilder instance for method chaining
+		 */
+		public LogBuilder addLine(String line) {
+			this.lines?.add(line);
+			return this;
+		}
+
+		/**
+		 * @description Adds a formatted line to the log message with two arguments
+		 * @param tmp The string template with placeholders
+		 * @param arg1 The first argument to substitute in the template
+		 * @param arg2 The second argument to substitute in the template
+		 * @return This LogBuilder instance for method chaining
+		 */
+		public LogBuilder addLine(String tmp, Object arg1, Object arg2) {
+			String line = String.format(tmp, new List<String>{ arg1?.toString(), arg2?.toString() });
+			return this.addLine(line);
+		}
+
+		/**
+		 * @description Adds a formatted line to the log message with one argument
+		 * @param tmp The string template with placeholders
+		 * @param arg1 The argument to substitute in the template
+		 * @return This LogBuilder instance for method chaining
+		 */
+		public LogBuilder addLine(String tmp, Object arg1) {
+			return this.addLine(tmp, arg1, '');
+		}
+
+		/**
+		 * @description Builds the final log entry with all accumulated lines
+		 * @return The LogEntryEventBuilder with the complete log message
+		 */
+		public LogEntryEventBuilder build() {
+			String msg = String.join(this.lines, DELIMITER);
+			return this.entry?.setMessage(msg);
+		}
+
+		/**
+		 * @description Sets database operation results on the log entry
+		 * @param obj List of database results (DeleteResult, SaveResult, etc.)
+		 * @return This LogBuilder instance for method chaining
+		 */
+		public LogBuilder setDatabaseResults(List<Object> obj) {
+			if (obj instanceof List<Database.DeleteResult>) {
+				List<Database.DeleteResult> databaseResults = (List<Database.DeleteResult>) obj;
+				this.entry?.setDatabaseResult(databaseResults);
+			} else if (obj instanceof List<Database.LeadConvertResult>) {
+				List<Database.LeadConvertResult> databaseResults = (List<Database.LeadConvertResult>) obj;
+				this.entry?.setDatabaseResult(databaseResults);
+			} else if (obj instanceof List<Database.SaveResult>) {
+				List<Database.SaveResult> databaseResults = (List<Database.SaveResult>) obj;
+				this.entry?.setDatabaseResult(databaseResults);
+			} else if (obj instanceof List<Database.UndeleteResult>) {
+				List<Database.UndeleteResult> databaseResults = (List<Database.UndeleteResult>) obj;
+				this.entry?.setDatabaseResult(databaseResults);
+			} else if (obj instanceof List<Database.UpsertResult>) {
+				List<Database.UpsertResult> databaseResults = (List<Database.UpsertResult>) obj;
+				this.entry?.setDatabaseResult(databaseResults);
+			}
+			return this;
+		}
+
+		/**
+		 * @description Sets records or query results on the log entry
+		 * @param obj Records to log (SObject list, QueryLocator, or other results)
+		 * @return This LogBuilder instance for method chaining
+		 */
+		public LogBuilder setRecords(Object obj) {
+			if (obj instanceof List<SObject>) {
+				List<SObject> records = (List<SObject>) obj;
+				this.entry?.setRecord(records);
+			} else if (obj instanceof Soql.QueryLocator) {
+				Soql.QueryLocator locator = (Soql.QueryLocator) obj;
+				this.lines?.add('Results:\n' + locator);
+			} else {
+				this.lines?.add('Results:\n' + JSON.serialize(obj));
+			}
+			return this;
 		}
 	}
 }
