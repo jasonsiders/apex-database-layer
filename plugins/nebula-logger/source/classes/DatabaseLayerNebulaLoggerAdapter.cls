@@ -12,7 +12,15 @@ global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor
 	 * @description Configure Nebula Logger to ignore database layer framework classes in log stack traces
 	 */
 	global DatabaseLayerNebulaLoggerAdapter() {
-		this.omitFrameworkFromLogStackTrace();
+		Logger.ignoreOrigin(DatabaseLayerNebulaLoggerAdapter.class);
+		Logger.ignoreOrigin(DatabaseLayer.class);
+		Logger.ignoreOrigin(DatabaseLayerUtils.class);
+		Logger.ignoreOrigin(DatabaseLayerTestUtils.class);
+		Logger.ignoreOrigin(Dml.class);
+		Logger.ignoreOrigin(MockDml.class);
+		Logger.ignoreOrigin(MockRecord.class);
+		Logger.ignoreOrigin(MockSoql.class);
+		Logger.ignoreOrigin(Soql.class);
 	}
 
 	/**
@@ -38,11 +46,11 @@ global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor
 		// prettier-ignore
 		List<String> lines = new List<String>{
 			'✅ DML: Processed ' + this.getDmlOperationName(request?.operation),
-			'Request:\n' + JSON.serialize(request),
-			'Results:\n' + JSON.serialize(results)
+			'Request:\n' + JSON.serialize(request)
 		};
 		String msg = String.join(lines, DELIMITER);
-		Logger.finest(msg)?.addTag(TAG_NAME)?.setRecord(request?.records);
+		LogEntryEventBuilder log = Logger.finest(msg)?.addTag(TAG_NAME)?.setRecord(request?.records);
+		this.logDmlResults(log, results);
 	}
 
 	/**
@@ -84,11 +92,19 @@ global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor
 		// prettier-ignore
 		List<String> lines = new List<String>{
 			'✅ SOQL: Processed ' + request?.operation,
-			request?.queryString,
-			this.summarizeSoqlResults(results)
+			request?.queryString
 		};
+		List<SObject> records = new List<SObject>();
+		// Log the query results, depending on the result type:
+		if (results instanceof List<SObject>) {
+			// Where possible, add the SOQL query results to the log using the `setRecord` method:
+			records = (List<SObject>) results;
+		} else {
+			// `setRecord` only accepts a List<SObject>. Print other types of results in the message body:
+			lines?.add(this.summarizeSoqlResults(results));
+		}
 		String msg = String.join(lines, DELIMITER);
-		Logger.finest(msg)?.addTag(TAG_NAME);
+		Logger.finest(msg)?.addTag(TAG_NAME)?.setRecord(records);
 	}
 
 	/**
@@ -112,27 +128,34 @@ global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor
 		return operation?.name()?.removeStart('DO_');
 	}
 
-	private void omitFrameworkFromLogStackTrace() {
-		// Prevent framework-specific method calls from polluting Nebula Logger's stack trace
-		Logger.ignoreOrigin(DatabaseLayerNebulaLoggerAdapter.class);
-		Logger.ignoreOrigin(DatabaseLayer.class);
-		Logger.ignoreOrigin(DatabaseLayerUtils.class);
-		Logger.ignoreOrigin(DatabaseLayerTestUtils.class);
-		Logger.ignoreOrigin(Dml.class);
-		Logger.ignoreOrigin(MockDml.class);
-		Logger.ignoreOrigin(MockRecord.class);
-		Logger.ignoreOrigin(MockSoql.class);
-		Logger.ignoreOrigin(Soql.class);
+	private void logDmlResults(LogEntryEventBuilder log, List<Object> objList) {
+		// Note: Nebula Logger doesn't accept an untyped List<Object> in `setDatabaseResult`:
+		if (objList instanceof List<Database.DeleteResult>) {
+			List<Database.DeleteResult> results = (List<Database.DeleteResult>) objList;
+			log?.setDatabaseResult(results);
+		} else if (objList instanceof List<Database.LeadConvertResult>) {
+			List<Database.LeadConvertResult> results = (List<Database.LeadConvertResult>) objList;
+			log?.setDatabaseResult(results);
+		} else if (objList instanceof List<Database.SaveResult>) {
+			List<Database.SaveResult> results = (List<Database.SaveResult>) objList;
+			log?.setDatabaseResult(results);
+		} else if (objList instanceof List<Database.UndeleteResult>) {
+			List<Database.UndeleteResult> results = (List<Database.UndeleteResult>) objList;
+			log?.setDatabaseResult(results);
+		} else if (objList instanceof List<Database.UpsertResult>) {
+			List<Database.UpsertResult> results = (List<Database.UpsertResult>) objList;
+			log?.setDatabaseResult(results);
+		}
 	}
 
-	private String summarizeSoqlResults(Object resultsObj) {
-		if (resultsObj instanceof Soql.QueryLocator) {
+	private String summarizeSoqlResults(Object results) {
+		if (results instanceof Soql.QueryLocator) {
 			// Note: QueryLocators aren't serializable, and there isn't a performant way to determine the number of results:
-			Soql.QueryLocator locator = (Soql.QueryLocator) resultsObj;
+			Soql.QueryLocator locator = (Soql.QueryLocator) results;
 			return 'Results:\n' + locator?.getLocator();
 		} else {
 			// All other possible query operations return serializable results:
-			return 'Results:\n' + JSON.serialize(resultsObj);
+			return 'Results:\n' + JSON.serialize(results);
 		}
 	}
 }
