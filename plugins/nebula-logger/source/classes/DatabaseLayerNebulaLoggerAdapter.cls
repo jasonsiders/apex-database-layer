@@ -7,9 +7,16 @@ global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor
 	@TestVisible
 	private static final String TAG_NAME = 'apex-database-layer';
 	private static final String DELIMITER = '\n---\n';
+	private static final Boolean ORIGINAL_DEBUG_FLAG_VALUE;
+	private static final LoggerSettings__c SETTINGS; 
+
+	static {
+		SETTINGS = Logger.getUserSettings();
+		ORIGINAL_DEBUG_FLAG_VALUE = SETTINGS?.IsApexSystemDebugLoggingEnabled__c ?? false;
+	}
 
 	/**
-	 * @description Configure Nebula Logger to ignore database layer framework classes in log stack traces
+	 * @description Configure Nebula Logger to ignore this framework's internal classes in log stack traces
 	 */
 	global DatabaseLayerNebulaLoggerAdapter() {
 		Logger.ignoreOrigin(DatabaseLayerNebulaLoggerAdapter.class);
@@ -122,8 +129,7 @@ global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor
 		 * @param level The logging level for this log entry
 		 */
 		public LogBuilder(System.LoggingLevel level) {
-			String temporaryMsg = null;
-			this.entry = Logger.newEntry(level, temporaryMsg)?.addTag(TAG_NAME);
+			this.createLogEntry(level);
 			this.lines = new List<String>{};
 		}
 
@@ -209,6 +215,14 @@ global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor
 				this.lines?.add('Results:\n' + JSON.serialize(obj));
 			}
 			return this;
+		}
+
+		private void createLogEntry(System.LoggingLevel level) {
+			// Create a basic/empty log entry object for the builder to hydrate with log lines & other information
+			// Special care must be taken to prevent committing unnecessary '' log lines to System.debug logs:
+			SETTINGS.IsApexSystemDebugLoggingEnabled__c = false;
+			this.entry = Logger.newEntry(level, '')?.addTag(TAG_NAME);
+			SETTINGS.IsApexSystemDebugLoggingEnabled__c = ORIGINAL_DEBUG_FLAG_VALUE;
 		}
 	}
 }
