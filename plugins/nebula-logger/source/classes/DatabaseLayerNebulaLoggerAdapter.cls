@@ -8,7 +8,7 @@ global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor
 	private static final String TAG_NAME = 'apex-database-layer';
 	private static final String DELIMITER = '\n---\n';
 	private static final Boolean ORIGINAL_DEBUG_FLAG_VALUE;
-	private static final LoggerSettings__c SETTINGS; 
+	private static final LoggerSettings__c SETTINGS;
 
 	static {
 		SETTINGS = Logger.getUserSettings();

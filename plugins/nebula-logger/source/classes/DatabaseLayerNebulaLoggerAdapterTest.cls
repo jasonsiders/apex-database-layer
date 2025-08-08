@@ -2,13 +2,13 @@
 @IsTest
 private class DatabaseLayerNebulaLoggerAdapterTest {
 	private static final Lead MOCK_RECORD;
-	private static final String PLUGIN_NAME = DatabaseLayerNebulaLoggerAdapter.class.getName();
 
 	static {
 		DatabaseLayer.useMocks();
 		MOCK_RECORD = (Lead) new MockRecord(Lead.SObjectType)?.withId()?.toSObject();
 		MockSoql.setGlobalMock().withResults(new List<Lead>{ MOCK_RECORD });
-		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(PLUGIN_NAME);
+		String pluginName = DatabaseLayerNebulaLoggerAdapter.class.getName();
+		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(pluginName);
 	}
 
 	@IsTest
@@ -22,7 +22,7 @@ private class DatabaseLayerNebulaLoggerAdapterTest {
 		Assert.areEqual(2, summary?.numEntriesWithLevel(System.LoggingLevel.FINEST), 'Wrong # of FINEST logs');
 	}
 
-	@IsTest 
+	@IsTest
 	static void shouldLogDmlConvertOperations() {
 		// Mostly for coverage -- necessary since Nebula Logger doesn't support using generic Objects for its `setDatabaseResult` method
 		Database.LeadConvert leadToConvert = new Database.LeadConvert();
@@ -38,7 +38,7 @@ private class DatabaseLayerNebulaLoggerAdapterTest {
 		Assert.areEqual(2, summary?.numEntriesWithLevel(System.LoggingLevel.FINEST), 'Wrong # of FINEST logs');
 	}
 
-	@IsTest 
+	@IsTest
 	static void shouldLogDmlDeleteOperations() {
 		// Mostly for coverage -- necessary since Nebula Logger doesn't support using generic Objects for its `setDatabaseResult` method
 		Test.startTest();
@@ -50,7 +50,7 @@ private class DatabaseLayerNebulaLoggerAdapterTest {
 		Assert.areEqual(2, summary?.numEntriesWithLevel(System.LoggingLevel.FINEST), 'Wrong # of FINEST logs');
 	}
 
-	@IsTest 
+	@IsTest
 	static void shouldLogDmlUndeleteOperations() {
 		// Mostly for coverage -- necessary since Nebula Logger doesn't support using generic Objects for its `setDatabaseResult` method
 		Test.startTest();
@@ -62,7 +62,7 @@ private class DatabaseLayerNebulaLoggerAdapterTest {
 		Assert.areEqual(2, summary?.numEntriesWithLevel(System.LoggingLevel.FINEST), 'Wrong # of FINEST logs');
 	}
 
-	@IsTest 
+	@IsTest
 	static void shouldLogDmlUpsertOperations() {
 		// Mostly for coverage -- necessary since Nebula Logger doesn't support using generic Objects for its `setDatabaseResult` method
 		Test.startTest();
@@ -105,9 +105,9 @@ private class DatabaseLayerNebulaLoggerAdapterTest {
 		Assert.areEqual(2, summary?.numEntriesWithLevel(System.LoggingLevel.FINEST), 'Wrong # of FINEST logs');
 	}
 
-	@IsTest 
+	@IsTest
 	static void shouldLogSoqlQueryLocatorOperations() {
-		// Mostly for coverage -- Database.QueryLocators are not serializable, 
+		// Mostly for coverage -- Database.QueryLocators are not serializable,
 		// and therefore have special log handling to prevent errors:
 		Test.startTest();
 		DatabaseLayer.Soql.newQuery(Lead.SObjectType)?.getQueryLocator();
@@ -120,9 +120,9 @@ private class DatabaseLayerNebulaLoggerAdapterTest {
 		Assert.areEqual(4, summary?.numEntriesWithLevel(System.LoggingLevel.FINEST), 'Wrong # of FINEST logs');
 	}
 
-	@IsTest 
+	@IsTest
 	static void shouldLogOtherSoqlOperations() {
-		// This is mostly for coverage; results from query operations 
+		// This is mostly for coverage; results from query operations
 		// that return something other than a List<SObject> are serialized
 		Test.startTest();
 		DatabaseLayer.Soql.newQuery(Lead.SObjectType)?.countQuery();
