@@ -24,7 +24,7 @@ global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor
 	}
 
 	/**
-	 * @description Called before executing a DML operation.
+	 * @description Logs DML requests before execution
 	 * @param request The DML request to be processed
 	 */
 	global void processPreDml(Dml.Request request) {
@@ -38,7 +38,7 @@ global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor
 	}
 
 	/**
-	 * @description Called after successfully executing a DML operation.
+	 * @description Logs a successful DML operation
 	 * @param request The DML request that was processed
 	 * @param results The Database.*Results returned from the DML operation
 	 */
@@ -54,7 +54,7 @@ global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor
 	}
 
 	/**
-	 * @description Called when a DML operation encounters an error.
+	 * @description Logs DML errors
 	 * @param request The DML request that encountered an error
 	 * @param error The exception that was thrown
 	 */
@@ -70,7 +70,7 @@ global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor
 	}
 
 	/**
-	 * @description Processes SOQL requests before execution.
+	 * @description Logs SOQL requests before execution.
 	 * @param request The SOQL request being processed
 	 */
 	global void processPreSoql(Soql.Request request) {
@@ -84,35 +84,36 @@ global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor
 	}
 
 	/**
-	 * @description Processes SOQL requests after execution.
+	 * @description Logs SOQL requests after execution.
 	 * @param request The SOQL request that was processed
 	 * @param results The results from the SOQL operation
 	 */
 	global void processPostSoql(Soql.Request request, Object results) {
+		LogEntryEventBuilder log = Logger.finest('')?.addTag(TAG_NAME);
 		// prettier-ignore
 		List<String> lines = new List<String>{
 			'✅ SOQL: Processed ' + request?.operation,
 			request?.queryString
 		};
-		List<SObject> records = new List<SObject>();
-		// Log the query results, depending on the result type:
-		if (results instanceof List<SObject>) {
-			// Where possible, add the SOQL query results to the log using the `setRecord` method:
-			records = (List<SObject>) results;
+		// Add the query results to the log, depending on their type
+		if (results instanceOf List<SObject>) {
+			// SObjects can be added to the log's related records, via the `setRecord` method
+			// All other types will be appended to the log body itself
+			List<SObject> records = (List<SObject>) results;
+			log?.setRecord(records);
 		} else if (results instanceOf Soql.QueryLocator) {
-            // Note: QueryLocators aren't serializable, and there isn't a performant way to determine the number of results:
+            // QueryLocators aren't serializable, and there isn't a performant way to determine the number of results:
 			Soql.QueryLocator locator = (Soql.QueryLocator) results;
 			lines?.add('Results:\n' + locator?.getLocator());
         } else {
             // All other possible query operations return serializable results:
 			lines?.add('Results:\n' + JSON.serialize(results));
         }
-		String msg = String.join(lines, DELIMITER);
-		Logger.finest(msg)?.addTag(TAG_NAME)?.setRecord(records);
+		log?.setMessage(String.join(lines, DELIMITER));
 	}
 
 	/**
-	 * @description Processes SOQL errors.
+	 * @description Logs SOQL errors.
 	 * @param request The SOQL request that failed
 	 * @param error The exception that occurred
 	 */
