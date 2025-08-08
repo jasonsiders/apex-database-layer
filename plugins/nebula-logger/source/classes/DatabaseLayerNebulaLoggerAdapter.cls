@@ -99,10 +99,14 @@ global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor
 		if (results instanceof List<SObject>) {
 			// Where possible, add the SOQL query results to the log using the `setRecord` method:
 			records = (List<SObject>) results;
-		} else {
-			// `setRecord` only accepts a List<SObject>. Print other types of results in the message body:
-			lines?.add(this.summarizeSoqlResults(results));
-		}
+		} else if (results instanceOf Soql.QueryLocator) {
+            // Note: QueryLocators aren't serializable, and there isn't a performant way to determine the number of results:
+			Soql.QueryLocator locator = (Soql.QueryLocator) results;
+			lines?.add('Results:\n' + locator?.getLocator());
+        } else {
+            // All other possible query operations return serializable results:
+			lines?.add('Results:\n' + JSON.serialize(results));
+        }
 		String msg = String.join(lines, DELIMITER);
 		Logger.finest(msg)?.addTag(TAG_NAME)?.setRecord(records);
 	}
@@ -145,17 +149,6 @@ global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor
 		} else if (objList instanceof List<Database.UpsertResult>) {
 			List<Database.UpsertResult> results = (List<Database.UpsertResult>) objList;
 			log?.setDatabaseResult(results);
-		}
-	}
-
-	private String summarizeSoqlResults(Object results) {
-		if (results instanceof Soql.QueryLocator) {
-			// Note: QueryLocators aren't serializable, and there isn't a performant way to determine the number of results:
-			Soql.QueryLocator locator = (Soql.QueryLocator) results;
-			return 'Results:\n' + locator?.getLocator();
-		} else {
-			// All other possible query operations return serializable results:
-			return 'Results:\n' + JSON.serialize(results);
 		}
 	}
 }
