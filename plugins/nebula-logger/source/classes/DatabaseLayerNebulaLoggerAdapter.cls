@@ -37,7 +37,7 @@ global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor
 	global void processPreDml(Dml.Request request) {
 		String op = this.getDmlOperationName(request?.operation);
 		this.log(System.LoggingLevel.FINEST)
-			?.addLine('⏳ DML: Processing {0}', op)
+			?.addLine('⏳ DML: Processing {0}...', op)
 			?.addLine('Request:\n{0}', JSON.serialize(request))
 			?.setRecords(request?.records)
 			?.build();
