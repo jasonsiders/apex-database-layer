@@ -26,7 +26,8 @@ private class DatabaseLayerNebulaLoggerAdapterTest {
 	static void shouldLogDmlConvertOperations() {
 		// Mostly for coverage -- necessary since Nebula Logger doesn't support using generic Objects for its `setDatabaseResult` method
 		Database.LeadConvert leadToConvert = new Database.LeadConvert();
-		leadToConvert.leadId = MOCK_RECORD?.Id;
+		leadToConvert.setConvertedStatus('Some Status');
+		leadToConvert.setLeadId(MOCK_RECORD?.Id);
 
 		Test.startTest();
 		DatabaseLayer.Dml.doConvert(leadToConvert);
