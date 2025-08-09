@@ -17,7 +17,7 @@
 			"dependencies": [
 				{
 					"package": "apex-database-layer-unlocked",
-					"versionNumber": "3.0.0.LATEST"
+					"versionNumber": "3.2.0.LATEST"
 				},
 				{
 					"package": "nebula-logger-unlocked@4.16.4"
