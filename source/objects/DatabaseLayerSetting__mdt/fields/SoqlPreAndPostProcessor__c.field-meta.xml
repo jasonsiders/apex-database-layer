@@ -7,7 +7,7 @@
 	>The name of an Apex Class that runs special processing before &amp; after SOQL is processed. You can use this for things like automatic logging.
 
 Must be the fully qualified API Name (including namespace, if applicable) of an Apex Class that implements the Soql.PreAndPostProcessor interface, and has a public 0-arg constructor.</inlineHelpText>
-    <label>Soql: Pre &amp; Post Processor</label>
+    <label>SOQL: Pre &amp; Post Processor</label>
     <length>255</length>
     <required>false</required>
     <type>Text</type>

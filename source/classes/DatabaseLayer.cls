@@ -3,16 +3,10 @@
  */
 @SuppressWarnings('PMD.AvoidGlobalModifier')
 global class DatabaseLayer {
-	public static final DatabaseLayerUtils UTILS;
-	private static final DatabaseLayer INSTANCE;
+	private static final DatabaseLayer INSTANCE = new DatabaseLayer();
 
 	private Dml currentDml;
 	private SoqlProvider currentSoql;
-
-	static {
-		INSTANCE = new DatabaseLayer();
-		UTILS = new DatabaseLayerUtils(INSTANCE);
-	}
 
 	private DatabaseLayer() {
 		this.currentDml = new Dml(this);
@@ -39,6 +33,19 @@ global class DatabaseLayer {
 		get {
 			return INSTANCE?.currentSoql;
 		}
+	}
+
+	/**
+	 * @description Provides access to utility methods for database operations and testing.
+	 * @return Singleton instance of the DatabaseLayerUtils class
+	 */
+	@SuppressWarnings('PMD.PropertyNamingConventions')
+	public static final DatabaseLayerUtils Utils {
+		get {
+			DatabaseLayer.Utils = DatabaseLayer.Utils ?? new DatabaseLayerUtils(INSTANCE);
+			return DatabaseLayer.Utils;
+		}
+		private set;
 	}
 
 	/**

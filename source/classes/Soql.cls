@@ -1430,6 +1430,11 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	 */
 	global virtual class Cursor {
 		protected Database.Cursor cursor;
+		protected Integer numRecords {
+			get {
+				return this.cursor?.getNumRecords();
+			}
+		}
 
 		protected Cursor(Database.Cursor cursor) {
 			this.cursor = cursor;
@@ -1466,7 +1471,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @return The total number of records in the cursor
 		 */
 		global virtual Integer getNumRecords() {
-			return this.cursor?.getNumRecords();
+			return this.numRecords;
 		}
 	}
 
@@ -1675,7 +1680,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	 * @description Mockable wrapper for Database.QueryLocator that enables testing of batch processing queries.
 	 */
 	global virtual class QueryLocator {
-		private Database.QueryLocator locator;
+		protected transient Database.QueryLocator locator;
 
 		protected QueryLocator(Database.QueryLocator locator) {
 			this.locator = locator;
@@ -1722,8 +1727,6 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @description The Soql query instance being executed.
 		 */
 		global Soql query { get; private set; }
-		protected transient System.AccessLevel accessLevel { get; private set; }
-		protected transient Map<String, Object> binds { get; private set; }
 		/**
 		 * @description The SOQL query string representation.
 		 */
@@ -1732,6 +1735,8 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 				return this.query?.toString();
 			}
 		}
+		protected transient System.AccessLevel accessLevel { get; private set; }
+		protected transient Map<String, Object> binds { get; private set; }
 
 		protected Request(Soql query, Soql.Operation operation) {
 			this.accessLevel = query?.accessLevel;
