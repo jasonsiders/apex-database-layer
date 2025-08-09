@@ -37,8 +37,8 @@ global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor
 	global void processPreDml(Dml.Request request) {
 		String op = this.getDmlOperationName(request?.operation);
 		this.log(System.LoggingLevel.FINEST)
-			?.addLine('⏳ DML: Processing {0}...', op)
-			?.addLine('Request:\n{0}', JSON.serialize(request))
+			?.addLine('⏳ DML: Processing ' + op + '...')
+			?.addLine('Request:\n' + JSON.serialize(request))
 			?.setRecords(request?.records)
 			?.build();
 	}
@@ -51,8 +51,8 @@ global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor
 	global void processPostDml(Dml.Request request, List<Object> results) {
 		String op = this.getDmlOperationName(request?.operation);
 		this.log(System.LoggingLevel.FINEST)
-			?.addLine('✅ DML: Processed {0}', op)
-			?.addLine('Request: {0}', JSON.serialize(request))
+			?.addLine('✅ DML: Processed ' + op)
+			?.addLine('Request: ' + JSON.serialize(request))
 			?.setDatabaseResults(results)
 			?.setRecords(request?.records)
 			?.build();
@@ -66,9 +66,9 @@ global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor
 	global void processDmlError(Dml.Request request, Exception error) {
 		String op = this.getDmlOperationName(request?.operation);
 		this.log(System.LoggingLevel.ERROR)
-			?.addLine('🚨 DML: Error processing {0}', op)
-			?.addLine('{0}\n{1}', error, error?.getStackTraceString())
-			?.addLine('Request:\n{0}', JSON.serialize(request))
+			?.addLine('🚨 DML: Error processing ' + op)
+			?.addLine(error?.toString())
+			?.addLine('Request:\n' + JSON.serialize(request))
 			?.setRecords(request?.records)
 			?.build();
 	}
@@ -79,7 +79,7 @@ global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor
 	 */
 	global void processPreSoql(Soql.Request request) {
 		this.log(System.LoggingLevel.FINEST)
-			?.addLine('⏳ SOQL: Processing {0}...', request?.operation)
+			?.addLine('⏳ SOQL: Processing ' + request?.operation + '...')
 			?.addLine(request?.queryString)
 			?.build();
 	}
@@ -91,7 +91,7 @@ global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor
 	 */
 	global void processPostSoql(Soql.Request request, Object results) {
 		this.log(System.LoggingLevel.FINEST)
-			?.addLine('✅ SOQL: Processed {0}', request?.operation)
+			?.addLine('✅ SOQL: Processed ' + request?.operation)
 			?.addLine(request?.queryString)
 			?.setRecords(results)
 			?.build();
@@ -104,9 +104,9 @@ global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor
 	 */
 	global void processSoqlError(Soql.Request request, Exception error) {
 		this.log(System.LoggingLevel.ERROR)
-			?.addLine('🚨 SOQL: Error processing {0}', request?.operation)
+			?.addLine('🚨 SOQL: Error processing ' + request?.operation)
 			?.addLine(request?.queryString)
-			?.addLine('{0}\n{1}', error, error?.getStackTraceString())
+			?.addLine(error?.toString())
 			?.build();
 	}
 
@@ -141,28 +141,6 @@ global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor
 		public LogBuilder addLine(String line) {
 			this.lines?.add(line);
 			return this;
-		}
-
-		/**
-		 * @description Adds a formatted line to the log message with two arguments
-		 * @param tmp The string template with placeholders
-		 * @param arg1 The first argument to substitute in the template
-		 * @param arg2 The second argument to substitute in the template
-		 * @return This LogBuilder instance for method chaining
-		 */
-		public LogBuilder addLine(String tmp, Object arg1, Object arg2) {
-			String line = String.format(tmp, new List<String>{ arg1?.toString(), arg2?.toString() });
-			return this.addLine(line);
-		}
-
-		/**
-		 * @description Adds a formatted line to the log message with one argument
-		 * @param tmp The string template with placeholders
-		 * @param arg1 The argument to substitute in the template
-		 * @return This LogBuilder instance for method chaining
-		 */
-		public LogBuilder addLine(String tmp, Object arg1) {
-			return this.addLine(tmp, arg1, '');
 		}
 
 		/**
