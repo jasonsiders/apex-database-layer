@@ -13,9 +13,7 @@ private class DmlTest {
 		// Custom metadata actually defined in the org should not interfere with this test:
 		DatabaseLayer.Utils.MetadataSelector.settings = new List<DatabaseLayerSetting__mdt>{};
 		// Initialize plugins
-		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
-		settings.DmlPreAndPostProcessor__c = DatabaseLayerTestUtils.SamplePlugin.class.getName();
-		DatabaseLayer.Dml.initPlugins();
+		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
 	}
 
 	// **** TESTS **** //
@@ -874,10 +872,6 @@ private class DmlTest {
 
 	@IsTest
 	static void shouldRunPreAndPostProcessorPluginLogic() {
-		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
-		settings.DmlPreAndPostProcessor__c = DatabaseLayerTestUtils.SamplePlugin.class.getName();
-		// Re-initialize the plugins, now that the field has been set:
-		DatabaseLayer.Dml.initPlugins();
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();
@@ -896,10 +890,6 @@ private class DmlTest {
 
 	@IsTest
 	static void shouldRunPluginErrorLogic() {
-		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
-		settings.DmlPreAndPostProcessor__c = DatabaseLayerTestUtils.SamplePlugin.class.getName();
-		// Re-initialize the plugins, now that the field has been set:
-		DatabaseLayer.Dml.initPlugins();
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();
@@ -925,10 +915,7 @@ private class DmlTest {
 
 	@IsTest
 	static void shouldNotRunProcessorLogicIfInvalidApexClassDefined() {
-		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
-		settings.DmlPreAndPostProcessor__c = 'an obviously invalid apex class name';
-		// Re-initialize the plugins, now that the field has been set:
-		DatabaseLayer.Dml.initPlugins();
+		DatabaseLayerTestUtils.initDmlAndSoqlPlugins('An obviously invalid apex class name');
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();
@@ -947,9 +934,7 @@ private class DmlTest {
 
 	@IsTest
 	static void shouldNotRunProcessorLogicIfNoValueDefined() {
-		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
-		settings.DmlPreAndPostProcessor__c = null;
-		DatabaseLayer.Dml.initPlugins();
+		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(null);
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();
@@ -1042,12 +1027,6 @@ private class DmlTest {
 		leadToConvert?.setLeadId(lead?.Id);
 		leadToConvert?.setConvertedStatus(CONVERTED_STATUS?.ApiName);
 		return leadToConvert;
-	}
-
-	private static DatabaseLayerSetting__mdt initSettings() {
-		DatabaseLayerSetting__mdt settings = new DatabaseLayerSetting__mdt();
-		DatabaseLayer.Utils.MetadataSelector.settings?.add(settings);
-		return settings;
 	}
 
 	// **** INNER **** //
