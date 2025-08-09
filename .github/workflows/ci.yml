@@ -4,6 +4,8 @@ on:
   pull_request:
     branches:
       - main
+    paths:
+      - "source/**"
     types: [opened, ready_for_review, reopened, synchronize]
 
 concurrency:
@@ -59,7 +61,7 @@ jobs:
 
   scan:
     name: Run Static Analysis
-    if: ${{ !github.event.pull_request.draft }}
+    if: ${{ '! github.event.pull_request.draft' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -67,23 +69,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 2
-      
-      - name: Check for source changes
-        uses: dorny/paths-filter@v2
-        id: changes
-        with:
-          filters: |
-            source:
-              - 'source/**'
 
       - name: Setup SF CLI
-        if: steps.changes.outputs.source == 'true'
         uses: ./.github/actions/setup-sf-cli
         with:
           install-plugins: "true"
 
       - name: Get Changed Files
-        if: steps.changes.outputs.source == 'true'
         run: |
           # Ensure this check only runs against changed files in the current PR; not the entire codebase
           set -euo pipefail
@@ -93,7 +85,6 @@ jobs:
           ls "$CHANGES_DIR"
 
       - name: Scan
-        if: steps.changes.outputs.source == 'true'
         id: scan
         run: |
           # Perform the scanning logic, via a .py script that creates various artifacts:
@@ -108,7 +99,6 @@ jobs:
           cat "$SCAN_OUTPUTS" >> $GITHUB_OUTPUT
 
       - name: Summarize
-        if: steps.changes.outputs.source == 'true'
         run: |
           # Add the .md Summary to a PR Review, and the Step Summary;
           SUMMARY=$(cat "$SCAN_SUMMARY")
@@ -116,7 +106,6 @@ jobs:
           gh pr review "$PR_NUMBER" --body "$SUMMARY" --comment
 
       - name: Upload Artifacts
-        if: steps.changes.outputs.source == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: Raw Results
@@ -124,7 +113,7 @@ jobs:
             ${{ env.SFCA_RESULTS }}
 
       - name: Report Violations
-        if: ${{ steps.changes.outputs.source == 'true' && steps.scan.outputs.num-violations-above-threshold > 0 }}
+        if: ${{ steps.scan.outputs.num-violations-above-threshold > 0 }}
         run: |
           # If any violations above the specified threshold, post the results to the PR and fail the check:
           NUM_VIOLATIONS=${{ steps.scan.outputs.num-violations-above-threshold}}
@@ -134,27 +123,17 @@ jobs:
 
   run-unit-tests:
     name: Run Unit Tests
-    if: ${{ !github.event.pull_request.draft }}
+    if: ${{ '! github.event.pull_request.draft' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      
-      - name: Check for source changes
-        uses: dorny/paths-filter@v2
-        id: changes
-        with:
-          filters: |
-            source:
-              - 'source/**'
 
       - name: Setup SF CLI
-        if: steps.changes.outputs.source == 'true'
         uses: ./.github/actions/setup-sf-cli
 
       - name: Authenticate Devhub
-        if: steps.changes.outputs.source == 'true'
         env:
           CLIENT_ID: ${{ secrets.SALESFORCE_CONSUMER_KEY }}
           JWT_KEY: ${{ secrets.SALESFORCE_JWT_KEY }}
@@ -169,7 +148,6 @@ jobs:
             --username "$USERNAME"
 
       - name: Get Existing Scratch Org
-        if: steps.changes.outputs.source == 'true'
         id: get-existing
         continue-on-error: true
         env:
@@ -197,7 +175,7 @@ jobs:
           fi
 
       - name: Create Scratch Org
-        if: ${{ steps.changes.outputs.source == 'true' && steps.get-existing.outputs.success != 'true' }}
+        if: ${{ steps.get-existing.outputs.success != 'true' }}
         run: |
           # Create a new scratch org, with a dynamic username ending in the repo's domain:
           set -euo pipefail
@@ -212,7 +190,6 @@ jobs:
             --wait 10
 
       - name: Run Tests
-        if: steps.changes.outputs.source == 'true'
         run: |
           sf project deploy start \
             --coverage-formatters json-summary \
@@ -224,7 +201,6 @@ jobs:
             --wait 30
 
       - name: Check Code Coverage
-        if: steps.changes.outputs.source == 'true'
         run: |
           # Parse the JSON coverage summary file to extract overall coverage percentage
           COVERAGE_PERCENT=$(cat coverage/coverage/coverage-summary.json | jq -r '.total.lines.pct')
@@ -235,5 +211,5 @@ jobs:
           fi
 
       - name: Post Authenticate Devhub
-        if: ${{ always() && steps.changes.outputs.source == 'true' }}
+        if: ${{ always() }}
         run: rm -f server.key
