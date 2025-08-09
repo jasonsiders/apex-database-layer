@@ -11,9 +11,7 @@ private class MockDmlTest {
 		// Use Mock DML:
 		DatabaseLayer.useMockDml();
 		// Initialize plugins:
-		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
-		settings.DmlPreAndPostProcessor__c = DatabaseLayerTestUtils.SamplePlugin.class.getName();
-		DatabaseLayer.Dml.initPlugins();
+		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
 	}
 
 	// **** TESTS **** //
@@ -905,10 +903,6 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldRunPreAndPostProcessorPluginLogic() {
-		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
-		settings.DmlPreAndPostProcessor__c = DatabaseLayerTestUtils.SamplePlugin.class.getName();
-		// Re-initialize the plugins, now that the field has been set:
-		DatabaseLayer.Dml.initPlugins();
 		List<Account> accounts = MockDmlTest.initRecords(Account.SObjectType, false);
 
 		Test.startTest();
@@ -927,10 +921,6 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldRunPluginErrorLogic() {
-		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
-		settings.DmlPreAndPostProcessor__c = DatabaseLayerTestUtils.SamplePlugin.class.getName();
-		// Re-initialize the plugins, now that the field has been set:
-		DatabaseLayer.Dml.initPlugins();
 		List<Account> accounts = MockDmlTest.initRecords(Account.SObjectType, false);
 		MockDml.shouldFail();
 
@@ -957,10 +947,7 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldNotRunProcessorLogicIfInvalidApexClassDefined() {
-		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
-		settings.DmlPreAndPostProcessor__c = 'an obviously invalid apex class name';
-		// Re-initialize the plugins, now that the field has been set:
-		DatabaseLayer.Dml.initPlugins();
+		DatabaseLayerTestUtils.initDmlAndSoqlPlugins('An obviously invalid apex class name');
 		List<Account> accounts = MockDmlTest.initRecords(Account.SObjectType, false);
 
 		Test.startTest();
@@ -979,9 +966,7 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldNotRunProcessorLogicIfNoValueDefined() {
-		DatabaseLayerSetting__mdt settings = DatabaseLayerTestUtils.initSettings();
-		settings.DmlPreAndPostProcessor__c = null;
-		DatabaseLayer.Dml.initPlugins();
+		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(null);
 		List<Account> accounts = MockDmlTest.initRecords(Account.SObjectType, false);
 
 		Test.startTest();
