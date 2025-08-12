@@ -5,15 +5,27 @@
 global class DatabaseLayer {
 	private static final DatabaseLayer INSTANCE = new DatabaseLayer();
 
+	private Cmdt currentCmdt;
 	private Dml currentDml;
 	private SoqlProvider currentSoql;
 
 	private DatabaseLayer() {
+		this.currentCmdt = new Cmdt(this);
 		this.currentDml = new Dml(this);
 		this.currentSoql = new SoqlProvider(this);
 	}
 
 	// **** STATIC **** //
+	/**
+	 * @description Primary access point for CMDT operations. Returns the currently configured CMDT provider instance.
+	 * @return The current CMDT provider (real or mock based on configuration)
+	 */
+	@SuppressWarnings('PMD.PropertyNamingConventions')
+	global static Cmdt Cmdt {
+		get {
+			return INSTANCE?.currentCmdt;
+		}
+	}	
 	/**
 	 * @description Primary access point for DML operations. Returns the currently configured DML provider instance.
 	 * @return Current DML provider (real or mock based on configuration)
