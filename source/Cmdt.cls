@@ -4,91 +4,102 @@
  */
 @SuppressWarnings('PMD.AvoidGlobalModifier')
 global inherited sharing virtual class Cmdt {
-    private static final String DEVELOPER_NAME = 'DeveloperName';
-    private static final String NAMESPACE_PREFIX = 'NamespacePrefix';
-    
-    protected DatabaseLayer factory;
-    protected Map<String, Cmdt.Repository> repos;
+	private static final String DEVELOPER_NAME = 'DeveloperName';
+	private static final String NAMESPACE_PREFIX = 'NamespacePrefix';
+	@SuppressWarnings('PMD.FieldNamingConventions')
+	private static DatabaseLayer Factory;
 
-    /**
-     * @description Creates a new Cmdt instance with the specified DatabaseLayer factory.
-     * @param factory The DatabaseLayer factory to use for SOQL operations
-     */
-    @SuppressWarnings('PMD.EmptyStatementBlock')
-    public Cmdt(DatabaseLayer factory) {
-        this.factory = factory;
-        this.repos = new Map<String, Cmdt.Repository>{};
-    }
+	protected Map<String, Cmdt.Repository> repos;
 
-    /**
-     * @description Gets or creates a Repository for the specified Custom Metadata Type.
-     * @param objectType The SObjectType of the Custom Metadata Type
-     * @return A Repository instance for accessing records of the specified type
-     */
-    global Cmdt.Repository ofType(SObjectType objectType) {
-        String objectApiName = objectType?.toString();
-        Cmdt.Repository repo = this.repos?.get(objectApiName) ?? this.initRepository(objectType);
-        this.repos?.put(objectApiName, repo);
-        return repo;
-    }
+	/**
+	 * @description Creates a new Cmdt instance with the specified DatabaseLayer factory.
+	 * @param factory The DatabaseLayer factory to use for SOQL operations
+	 */
+	@SuppressWarnings('PMD.EmptyStatementBlock')
+	public Cmdt(DatabaseLayer factory) {
+		Cmdt.Factory = factory;
+		this.repos = new Map<String, Cmdt.Repository>{};
+	}
 
-    protected virtual Cmdt.Repository initRepository(SObjectType objectType) {
-        return new Cmdt.Repository(this.factory, objectType);
-    }
+	/**
+	 * @description Gets or creates a Repository for the specified Custom Metadata Type.
+	 * @param objectType The SObjectType of the Custom Metadata Type
+	 * @return A Repository instance for accessing records of the specified type
+	 */
+	global Cmdt.Repository ofType(SObjectType objectType) {
+		String objectApiName = objectType?.toString();
+		Cmdt.Repository repo = this.repos?.get(objectApiName) ?? this.initRepository(objectType);
+		this.repos?.put(objectApiName, repo);
+		return repo;
+	}
 
-    // **** INNER **** //
-    /**
-     * @description Repository for accessing Custom Metadata Type records with caching support.
-     *              Records are indexed by DeveloperName and optionally by qualified namespace__DeveloperName.
-     */
-    global inherited sharing virtual class Repository {
-        protected Map<String, SObject> records;
+	protected virtual Cmdt.Repository initRepository(SObjectType objectType) {
+		return new Cmdt.Repository(objectType);
+	}
 
-        protected Repository(DatabaseLayer factory, SObjectType objectType) {
-            this.records = new Map<String, SObject>{};
-            List<SObject> recordList = this.queryAll(factory, objectType);
-            this.mapRecords(recordList);
-        }
+	// **** INNER **** //
+	/**
+	 * @description Repository for accessing Custom Metadata Type records with caching support.
+	 *              Records are indexed by DeveloperName and optionally by qualified namespace__DeveloperName.
+	 */
+	global inherited sharing virtual class Repository {
+		protected transient SObjectType objectType;
+		protected transient Map<String, SObject> records;
 
-        /**
-         * @description Returns all cached Custom Metadata Type records indexed by their keys.
-         * @return Map of DeveloperName/qualified name to SObject records
-         */
-        global Map<String, SObject> getAll() {
-            return this.records;
-        }
+		protected Repository(SObjectType objectType) {
+			this.objectType = objectType;
+			this.records = new Map<String, SObject>{};
+		}
 
-        /**
-         * @description Retrieves a specific Custom Metadata Type record by its key.
-         * @param key The DeveloperName or qualified namespace__DeveloperName
-         * @return The matching SObject record, or null if not found
-         */
-        global SObject getInstance(String key) {
-            return this.getAll()?.get(key);
-        }
+		/**
+		 * @description Returns all cached Custom Metadata Type records indexed by their keys.
+		 * @return Map of DeveloperName/qualified name to SObject records
+		 */
+		global Map<String, SObject> getAll() {
+			this.retrieve();
+			return this.records;
+		}
 
-        protected virtual Soql initQuery(DatabaseLayer factory) {
-            return new Soql(factory);
-        }
+		/**
+		 * @description Retrieves a specific Custom Metadata Type record by its key.
+		 * @param key The DeveloperName or qualified namespace__DeveloperName
+		 * @return The matching SObject record, or null if not found
+		 */
+		global SObject getInstance(String key) {
+			return this.getAll()?.get(key);
+		}
 
-        protected void mapRecords(List<SObject> recordList) {
-            for (SObject record : recordList) {
-                // Map records by their DeveloperName
-                String developerName = (String) record?.get(DEVELOPER_NAME);
-                this.records?.put(developerName, record);
-                // If namespaced, also map records by their NamespacePrefix + DeveloperName
-                String namespace = (String) record?.get(NAMESPACE_PREFIX);
-                if (namespace != null) {
-                    String qualifiedApiName = String.join(new List<String>{ namespace, developerName}, '__');
-                    this.records?.put(qualifiedApiName, record);
-                }
-            }
-        }
+		protected virtual Soql initQuery(DatabaseLayer factory) {
+			// CMDT queries are made independently of the configured DatabaseLayer.Soql instance
+			// Callers can define mock SOQL queries, while still using real SOQL to retrieve CMDT if desired
+			return new Soql(factory);
+		}
 
-        protected List<SObject> queryAll(DatabaseLayer factory, SObjectType objectType) {
-            // CMDT SOQL queries don't count against SOQL query limits (!)
-            // This is nececessary because the CMDT .getAll/.getInstance methods aren't dynamically accessible
-            return this.initQuery(factory)?.setFrom(objectType)?.selectAll()?.toSoql()?.query();
-        }
-    }
+		protected Map<String, SObject> mapRecords(List<SObject> recordList) {
+			Map<String, SObject> results = new Map<String, SObject>{};
+			for (SObject record : recordList) {
+				// Map records by their DeveloperName
+				String developerName = (String) record?.get(DEVELOPER_NAME);
+				results?.put(developerName, record);
+				// Also map records by their NamespacePrefix + DeveloperName
+				String namespace = (String) record?.get(NAMESPACE_PREFIX);
+				String qualifiedApiName = String.join(new List<String>{ namespace, developerName }, '__');
+				results?.put(qualifiedApiName, record);
+			}
+			return results;
+		}
+
+		protected List<SObject> queryAll() {
+			// CMDT SOQL queries don't count against SOQL query limits (!)
+			// This is nececessary because the CMDT .getAll/.getInstance methods aren't dynamically accessible
+			return this.initQuery(Cmdt.Factory)?.setFrom(this.objectType)?.selectAll()?.toSoql()?.query();
+		}
+
+		protected void retrieve() {
+			if (this.records == null) {
+				List<SObject> recordList = this.queryAll();
+				this.records = this.mapRecords(recordList);
+			}
+		}
+	}
 }

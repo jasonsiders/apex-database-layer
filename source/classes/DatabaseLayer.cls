@@ -25,7 +25,7 @@ global class DatabaseLayer {
 		get {
 			return INSTANCE?.currentCmdt;
 		}
-	}	
+	}
 	/**
 	 * @description Primary access point for DML operations. Returns the currently configured DML provider instance.
 	 * @return Current DML provider (real or mock based on configuration)
