@@ -48,7 +48,6 @@ global inherited sharing virtual class Cmdt {
 
 		protected Repository(SObjectType objectType) {
 			this.objectType = objectType;
-			this.records = new Map<String, SObject>{};
 		}
 
 		/**
