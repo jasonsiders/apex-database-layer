@@ -120,7 +120,7 @@ global class DatabaseLayer {
 	/**
 	 * @description Factory class responsible for provisioning SOQL instances with proper configuration and plugin support.
 	 */
-	global class SoqlProvider {
+	global virtual class SoqlProvider {
 		/**
 		 * @description The currently configured SOQL plugin for pre/post processing
 		 */
@@ -132,7 +132,7 @@ global class DatabaseLayer {
 		 * Sets up plugins and configures for real database operations by default.
 		 * @param factory The parent DatabaseLayer factory instance
 		 */
-		private SoqlProvider(DatabaseLayer factory) {
+		protected SoqlProvider(DatabaseLayer factory) {
 			this.useMocks = false;
 			this.initPlugins();
 		}
@@ -143,9 +143,12 @@ global class DatabaseLayer {
 		 * @return A configured SOQL builder instance (real or mock based on current configuration)
 		 */
 		global Soql newQuery(SObjectType objectType) {
-			return (this.useMocks == true)
-				? new MockSoql(INSTANCE)?.setFrom(objectType)?.toSoql()
-				: new Soql(INSTANCE)?.setFrom(objectType)?.toSoql();
+			Soql query = this.shouldUseMocks() ? new MockSoql(INSTANCE) : new Soql(INSTANCE);
+			return query?.setFrom(objectType)?.toSoql();
+		}
+
+		protected virtual Boolean shouldUseMocks() {
+			return this.useMocks == true;
 		}
 
 		/**

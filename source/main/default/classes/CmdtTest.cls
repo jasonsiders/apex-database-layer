@@ -3,16 +3,50 @@
 private class CmdtTest {
 	@IsTest
 	static void shouldQueryWhatIsInOrg() {
-		List<DatabaseLayerSetting__mdt> allSettings = DatabaseLayerSetting__mdt.getAll()?.values();
+		Cmdt.Repository repository = DatabaseLayer.Cmdt?.ofType(DatabaseLayerSetting__mdt.SObjectType);
 
 		Test.startTest();
-		List<DatabaseLayerSetting__mdt> results = (List<DatabaseLayerSetting__mdt>) DatabaseLayer.Cmdt
-			?.ofType(DatabaseLayerSetting__mdt.SObjectType)
-			?.getAll()
-			?.values();
+		List<DatabaseLayerSetting__mdt> results = (List<DatabaseLayerSetting__mdt>) repository?.getAll()?.values();
 		Assert.areEqual(0, Limits.getQueries(), 'Should not count towards query limits');
 		Test.stopTest();
 
-		Assert.areEqual(allSettings?.size(), results?.size(), 'Did not query what is in org');
+		Integer numSettings = DatabaseLayerSetting__mdt.getAll()?.size();
+		Assert.areEqual(numSettings, results?.size(), 'Did not query what is in org');
+	}
+
+	@IsTest
+	static void shouldReturnSpecifiedInstance() {
+		// Note: Callers won't normally mock CMDT queries in this way,
+		// but there's no way to reliably do this and ensure test coverage otherwise
+		Cmdt.Soql = DatabaseLayer.Soql;
+		DatabaseLayer.useMocks();
+		String key = 'Test_Record';
+		SObjectType objectType = DatabaseLayerSetting__mdt.SObjectType;
+		DatabaseLayerSetting__mdt setting = (DatabaseLayerSetting__mdt) new MockRecord(objectType)
+			?.setField(DatabaseLayerSetting__mdt.DeveloperName, key)
+			?.toSObject();
+		MockSoql.setGlobalMock().withResults(new List<DatabaseLayerSetting__mdt>{ setting });
+
+		Test.startTest();
+		DatabaseLayerSetting__mdt result = (DatabaseLayerSetting__mdt) DatabaseLayer.Cmdt
+			?.ofType(objectType)
+			?.getInstance(key);
+		Test.stopTest();
+
+		Assert.areEqual(key, result?.DeveloperName, 'Wrong instance returned');
+	}
+
+	@IsTest
+	static void shouldCacheQueryResultsIfCmdtContainsLongTextAreaField() {
+		String objectApiName = DatabaseLayerSetting__mdt.SObjectType.toString();
+		DatabaseLayer.Cmdt.cacheObjectApiNames = new Set<String>{ objectApiName };
+		Cmdt.Repository repository = DatabaseLayer.Cmdt?.ofType(DatabaseLayerSetting__mdt.SObjectType);
+
+		Test.startTest();
+		for (Integer i = 0; i < 201; i++) {
+			repository?.getAll()?.values();
+			Assert.areEqual(0, Limits.getQueries(), 'Should not count towards query limits');
+		}
+		Test.stopTest();
 	}
 }
