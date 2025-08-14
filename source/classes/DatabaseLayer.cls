@@ -80,8 +80,8 @@ global class DatabaseLayer {
 	private static MockDml useMockDml() {
 		// ! Deprecated: Will be removed in a future version
 		// ! Replace usage with DatabaseLayer.Config.useMockDml = true
-		INSTANCE.currentDml = new MockDml(INSTANCE);
-		return (MockDml) INSTANCE.currentDml;
+		DatabaseLayer.Config.useMockDml = true;
+		return (MockDml) DatabaseLayer.Dml;
 	}
 
 	/**
@@ -92,7 +92,8 @@ global class DatabaseLayer {
 	private static SoqlProvider useMockSoql() {
 		// ! Deprecated: Will be removed in a future version
 		// ! Replace usage with DatabaseLayer.Config.useMockSoql = true
-		return INSTANCE.currentSoql?.useMocks(true);
+		DatabaseLayer.Config.useMockSoql = true;
+		return DatabaseLayer.Soql;
 	}
 
 	/**
@@ -103,8 +104,8 @@ global class DatabaseLayer {
 	private static Dml useRealDml() {
 		// ! Deprecated: Will be removed in a future version
 		// ! Replace usage with DatabaseLayer.Config.useMockDml = false
-		INSTANCE.currentDml = new Dml(INSTANCE);
-		return INSTANCE.currentDml;
+		DatabaseLayer.Config.useMockDml = false;
+		return DatabaseLayer.Dml;
 	}
 
 	/**
@@ -115,7 +116,8 @@ global class DatabaseLayer {
 	private static SoqlProvider useRealSoql() {
 		// ! Deprecated: Will be removed in a future version
 		// ! Replace usage with DatabaseLayer.Config.useMockSoql = false
-		return INSTANCE.currentSoql?.useMocks(false);
+		DatabaseLayer.Config.useMockSoql = false;
+		return DatabaseLayer.Soql;
 	}
 
 	/**
