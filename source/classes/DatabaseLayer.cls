@@ -132,19 +132,32 @@ global class DatabaseLayer {
 	}
 
 	// **** INNER **** //
+	/**
+	 * @description Configuration class for managing DatabaseLayer provider settings and mock usage across different modules.
+	 */
+	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
 	global class Configuration {
+		/**
+		 * @description Controls whether to use mockable CMDT implementation. When true, uses MockCmdt for testing.
+		 */
 		global Boolean useMockableCmdt {
 			get;
 			set {
 				this.set(DatabaseLayer.Module.CMDT, value);
 			}
 		}
+		/**
+		 * @description Controls whether to use mock DML implementation. When true, uses MockDml for testing.
+		 */
 		global Boolean useMockDml {
 			get;
 			set {
 				this.set(DatabaseLayer.Module.DML, value);
 			}
 		}
+		/**
+		 * @description Controls whether to use mock SOQL implementation. When true, uses MockSoql for testing.
+		 */
 		global Boolean useMockSoql {
 			get;
 			set {
