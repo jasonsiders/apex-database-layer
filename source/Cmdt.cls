@@ -3,7 +3,8 @@
  *              Supports both DeveloperName and qualified namespace__DeveloperName lookups.
  */
 @SuppressWarnings('PMD.AvoidGlobalModifier')
-global inherited sharing class Cmdt {
+global inherited sharing virtual class Cmdt {
+	@TestVisible
 	private static final String DEVELOPER_NAME = 'DeveloperName';
 	private static final String NAMESPACE_PREFIX = 'NamespacePrefix';
 	@SuppressWarnings('PMD.FieldNamingConventions')
@@ -12,7 +13,7 @@ global inherited sharing class Cmdt {
 
 	@TestVisible
 	private Set<String> cacheObjectApiNames;
-	private Map<String, Cmdt.Repository> repos;
+	protected Map<String, Cmdt.Repository> repos;
 
 	/**
 	 * @description Creates a new Cmdt instance with the specified DatabaseLayer factory.
@@ -35,7 +36,7 @@ global inherited sharing class Cmdt {
 		return repo;
 	}
 
-	private Cmdt.Repository initRepository(SObjectType objectType) {
+	protected virtual Cmdt.Repository initRepository(SObjectType objectType) {
 		// TODO: Add conditional, something like this: `if DatabaseLayer.mockCmdtByDefault == true, return new MockRepository();`
 		if (this.includesLongTextFields(objectType) == true) {
 			return new CacheBasedRepository(objectType);
@@ -68,6 +69,20 @@ global inherited sharing class Cmdt {
 		return this.cacheObjectApiNames?.contains(objectApiName);
 	}
 
+	@TestVisible
+	private static Map<String, SObject> mapByKey(List<SObject> recordList) {
+		Map<String, SObject> results = new Map<String, SObject>{};
+		for (SObject record : recordList) {
+			String namespace = (String) record?.get(NAMESPACE_PREFIX);
+			String developerName = (String) record?.get(DEVELOPER_NAME);
+			Set<String> components = new Set<String>{ namespace, developerName };
+			components?.remove(null);
+			String key = String.join(components, '__');
+			results?.put(key, record);
+		}
+		return results;
+	}
+
 	// **** INTERFACE **** //
 	/**
 	 * @description Interface for accessing Custom Metadata Type records.
@@ -81,10 +96,10 @@ global inherited sharing class Cmdt {
 		Map<String, SObject> getAll();
 		/**
 		 * @description Retrieves a specific Custom Metadata Type record by its DeveloperName.
-		 * @param developerName The DeveloperName of the record to retrieve
+		 * @param qualifiedApiName The DeveloperName of the record to retrieve, including Namespace (if applicable)
 		 * @return The SObject record, or null if not found
 		 */
-		SObject getInstance(String developerName);
+		SObject getInstance(String qualifiedApiName);
 	}
 
 	// **** INNER **** //
@@ -110,10 +125,10 @@ global inherited sharing class Cmdt {
 			return this.records;
 		}
 
-		protected void retrieve() {
+		protected virtual void retrieve() {
 			if (this.records == null) {
 				List<SObject> recordList = this.queryAll();
-				this.records = this.mapByDeveloperName(recordList);
+				this.records = Cmdt.mapByKey(recordList);
 			}
 		}
 	}
@@ -140,25 +155,16 @@ global inherited sharing class Cmdt {
 		 */
 		global virtual Map<String, SObject> getAll() {
 			List<SObject> records = this.queryAll();
-			return this.mapByDeveloperName(records);
+			return Cmdt.mapByKey(records);
 		}
 
 		/**
 		 * @description Retrieves a specific Custom Metadata Type record by its DeveloperName.
-		 * @param developerName The DeveloperName of the record to retrieve
+		 * @param qualifiedApiName The DeveloperName of the record to retrieve, including Namespace (if applicable)
 		 * @return The SObject record, or null if not found
 		 */
-		global SObject getInstance(String developerName) {
-			return this.getAll()?.get(developerName);
-		}
-
-		protected Map<String, SObject> mapByDeveloperName(List<SObject> recordList) {
-			Map<String, SObject> results = new Map<String, SObject>{};
-			for (SObject record : recordList) {
-				String developerName = (String) record?.get(DEVELOPER_NAME);
-				results?.put(developerName, record);
-			}
-			return results;
+		global SObject getInstance(String qualifiedApiName) {
+			return this.getAll()?.get(qualifiedApiName);
 		}
 
 		protected List<SObject> queryAll() {
