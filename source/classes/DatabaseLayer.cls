@@ -174,9 +174,9 @@ global class DatabaseLayer {
 
 		private void set(DatabaseLayer.Module module, Boolean value) {
 			if (module == DatabaseLayer.Module.CMDT) {
-				INSTANCE.currentCmdt = (value == true) ? new Cmdt(INSTANCE) : new MockCmdt(INSTANCE);
+				INSTANCE.currentCmdt = (value == true) ? new MockCmdt(INSTANCE) : new Cmdt(INSTANCE);
 			} else if (module == DatabaseLayer.Module.DML) {
-				INSTANCE.currentDml = (value == true) ? new Dml(INSTANCE) : new MockDml(INSTANCE);
+				INSTANCE.currentDml = (value == true) ? new MockDml(INSTANCE) : new Dml(INSTANCE);
 			} else if (module == DatabaseLayer.Module.SOQL) {
 				INSTANCE.currentSoql?.useMocks(value);
 			}
