@@ -183,9 +183,11 @@ global inherited sharing virtual class Cmdt {
 			super(factory);
 		}
 
-		public virtual override Boolean shouldUseMocks() {
-			// Always use a real Soql query:
-			return false;
+		@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
+		public virtual override DatabaseLayer.SoqlProvider useMocks(Boolean value) {
+			// Always use a real Soql query, regardless of the provided value:
+			this.useMocks = false;
+			return this;
 		}
 	}
 }

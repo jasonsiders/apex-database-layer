@@ -4,6 +4,9 @@
 @SuppressWarnings('PMD.AvoidGlobalModifier')
 global class DatabaseLayer {
 	private static final DatabaseLayer INSTANCE = new DatabaseLayer();
+	@SuppressWarnings('PMD.FieldNamingConventions')
+	@TestVisible
+	private static DatabaseLayer.Configuration Configuration = new DatabaseLayer.Configuration();
 
 	private Cmdt currentCmdt;
 	private Dml currentDml;
@@ -127,18 +130,48 @@ global class DatabaseLayer {
 	}
 
 	// **** INNER **** //
-	@TestVisible
-	private class Configuration {
-		// TODO: Implement setters that will flip the mock configuration
-		global Boolean useMockableCmdt { get; set; }
-		global Boolean useMockDml { get; set; }
-		global Boolean useMockSoql { get; set; }
+	global class Configuration {
+		global Boolean useMockableCmdt {
+			get;
+			set {
+				this.set(DatabaseLayer.Module.CMDT, value);
+			}
+		}
+		global Boolean useMockDml {
+			get;
+			set {
+				this.set(DatabaseLayer.Module.DML, value);
+			}
+		}
+		global Boolean useMockSoql {
+			get;
+			set {
+				this.set(DatabaseLayer.Module.SOQL, value);
+			}
+		}
 
 		private Configuration() {
+			// TODO: Think about the defaults for useMockableCmdt
 			this.useMockableCmdt = Test.isRunningTest();
 			this.useMockDml = false;
 			this.useMockSoql = false;
 		}
+
+		private void set(DatabaseLayer.Module module, Boolean value) {
+			if (module == DatabaseLayer.Module.CMDT) {
+				INSTANCE.currentCmdt = (value == true) ? new Cmdt(INSTANCE) : new MockCmdt(INSTANCE);
+			} else if (module == DatabaseLayer.Module.DML) {
+				INSTANCE.currentDml = (value == true) ? new Dml(INSTANCE) : new MockDml(INSTANCE);
+			} else if (module == DatabaseLayer.Module.SOQL) {
+				INSTANCE.currentSoql?.useMocks(value);
+			}
+		}
+	}
+
+	private enum Module {
+		CMDT,
+		DML,
+		SOQL
 	}
 
 	/**
@@ -149,7 +182,7 @@ global class DatabaseLayer {
 		 * @description The currently configured SOQL plugin for pre/post processing
 		 */
 		public Soql.PreAndPostProcessor plugin { get; private set; }
-		private Boolean useMocks { get; private set; }
+		protected Boolean useMocks { get; protected set; }
 
 		/**
 		 * @description Initializes a new SOQL provider instance with default configuration.
@@ -167,12 +200,8 @@ global class DatabaseLayer {
 		 * @return A configured SOQL builder instance (real or mock based on current configuration)
 		 */
 		global Soql newQuery(SObjectType objectType) {
-			Soql query = this.shouldUseMocks() ? new MockSoql(INSTANCE) : new Soql(INSTANCE);
+			Soql query = (this.useMocks == true) ? new MockSoql(INSTANCE) : new Soql(INSTANCE);
 			return query?.setFrom(objectType)?.toSoql();
-		}
-
-		protected virtual Boolean shouldUseMocks() {
-			return this.useMocks == true;
 		}
 
 		/**
@@ -187,7 +216,7 @@ global class DatabaseLayer {
 			this.plugin = (Soql.PreAndPostProcessor) DatabaseLayer.Utils?.Plugins?.initPlugin(field);
 		}
 
-		private SoqlProvider useMocks(Boolean useMocks) {
+		protected virtual DatabaseLayer.SoqlProvider useMocks(Boolean useMocks) {
 			this.useMocks = useMocks;
 			return this;
 		}
