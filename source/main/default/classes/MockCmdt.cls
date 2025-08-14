@@ -1,8 +1,7 @@
 @SuppressWarnings('PMD.AvoidGlobalModifier')
 @IsTest
 global class MockCmdt extends Cmdt {
-	// TODO: Move this flag to DatabaseLayer?
-	private Boolean useMocksByDefault = false;
+	global Boolean useMocksByDefault = false;
 
 	public MockCmdt(DatabaseLayer factory) {
 		// Access this object via the `DatabaseLayer.Cmdt` property

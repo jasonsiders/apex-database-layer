@@ -61,11 +61,22 @@ global class DatabaseLayer {
 	}
 
 	/**
+	 * @description Switches both DML and SOQL providers to use mock implementations for testing.
+	 */
+	@TestVisible
+	private static void useMocks() {
+		DatabaseLayer.useMockDml();
+		DatabaseLayer.useMockSoql();
+	}
+
+	/**
 	 * @description Switches the DML provider to use mock implementation for testing.
 	 * @return The mock DML instance that was configured
 	 */
 	@TestVisible
 	private static MockDml useMockDml() {
+		// ! Deprecated: Will be removed in a future version
+		// ! Replace usage with DatabaseLayer.Configuration.useMockDml = true
 		INSTANCE.currentDml = new MockDml(INSTANCE);
 		return (MockDml) INSTANCE.currentDml;
 	}
@@ -76,16 +87,9 @@ global class DatabaseLayer {
 	 */
 	@TestVisible
 	private static SoqlProvider useMockSoql() {
+		// ! Deprecated: Will be removed in a future version
+		// ! Replace usage with DatabaseLayer.Configuration.useMockSoql = true
 		return INSTANCE.currentSoql?.useMocks(true);
-	}
-
-	/**
-	 * @description Switches both DML and SOQL providers to use mock implementations for testing.
-	 */
-	@TestVisible
-	private static void useMocks() {
-		DatabaseLayer.useMockDml();
-		DatabaseLayer.useMockSoql();
 	}
 
 	/**
@@ -94,6 +98,8 @@ global class DatabaseLayer {
 	 */
 	@TestVisible
 	private static Dml useRealDml() {
+		// ! Deprecated: Will be removed in a future version
+		// ! Replace usage with DatabaseLayer.Configuration.useMockDml = false
 		INSTANCE.currentDml = new Dml(INSTANCE);
 		return INSTANCE.currentDml;
 	}
@@ -104,6 +110,8 @@ global class DatabaseLayer {
 	 */
 	@TestVisible
 	private static SoqlProvider useRealSoql() {
+		// ! Deprecated: Will be removed in a future version
+		// ! Replace usage with DatabaseLayer.Configuration.useMockSoql = false
 		return INSTANCE.currentSoql?.useMocks(false);
 	}
 
@@ -112,11 +120,27 @@ global class DatabaseLayer {
 	 */
 	@TestVisible
 	private static void useRealData() {
+		// ! Deprecated: Will be removed in a future version
+		// ! Replace usage with DatabaseLayer.Configuration.useMockDml/Soql = false
 		DatabaseLayer.useRealDml();
 		DatabaseLayer.useRealSoql();
 	}
 
 	// **** INNER **** //
+	@TestVisible
+	private class Configuration {
+		// TODO: Implement setters that will flip the mock configuration
+		global Boolean useMockableCmdt { get; set; }
+		global Boolean useMockDml { get; set; }
+		global Boolean useMockSoql { get; set; }
+
+		private Configuration() {
+			this.useMockableCmdt = Test.isRunningTest();
+			this.useMockDml = false;
+			this.useMockSoql = false;
+		}
+	}
+
 	/**
 	 * @description Factory class responsible for provisioning SOQL instances with proper configuration and plugin support.
 	 */
