@@ -140,7 +140,7 @@ global class DatabaseLayer {
 		/**
 		 * @description Controls whether to use mockable CMDT implementation. When true, uses MockCmdt for testing.
 		 */
-		global Boolean useMockableCmdt {
+		global Boolean allowMockCmdt {
 			get;
 			set {
 				this.set(DatabaseLayer.Module.CMDT, value);
@@ -166,8 +166,7 @@ global class DatabaseLayer {
 		}
 
 		private Configuration() {
-			// TODO: Think about the defaults for useMockableCmdt
-			this.useMockableCmdt = Test.isRunningTest();
+			this.allowMockCmdt = Test.isRunningTest();
 			this.useMockDml = false;
 			this.useMockSoql = false;
 		}

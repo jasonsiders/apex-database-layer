@@ -4,8 +4,6 @@
 @SuppressWarnings('PMD.AvoidGlobalModifier')
 @IsTest
 global class MockCmdt extends Cmdt {
-	global Boolean useMocksByDefault = false;
-
 	/**
 	 * @description Constructs a new MockCmdt instance with the specified DatabaseLayer factory.
 	 * @param factory The DatabaseLayer factory instance for configuration
@@ -16,19 +14,14 @@ global class MockCmdt extends Cmdt {
 	}
 
 	/**
-	 * @description Creates a mock repository for the specified SObject type.
-	 * @param objectType The SObject type to create a mock repository for
-	 * @return A mock repository instance for testing
+	 * @description Creates a new mock repository for the specified Custom Metadata type.
+	 * @param       objectType The Custom Metadata type to create a mock repository for
+	 * @return      A mock repository instance for testing
 	 */
 	global MockCmdt.Repository mock(SObjectType objectType) {
-		String objectApiName = objectType?.toString();
 		MockCmdt.Repository repository = new MockCmdt.Repository();
-		this.repos?.put(objectApiName, repository);
+		this.repos?.put(objectType?.toString(), repository);
 		return repository;
-	}
-
-	protected override Cmdt.Repository initRepository(SObjectType objectType) {
-		return (this.useMocksByDefault == true) ? this.mock(objectType) : super.initRepository(objectType);
 	}
 
 	/**

@@ -36,8 +36,7 @@ global inherited sharing virtual class Cmdt {
 		return repo;
 	}
 
-	protected virtual Cmdt.Repository initRepository(SObjectType objectType) {
-		// TODO: Add conditional, something like this: `if DatabaseLayer.mockCmdtByDefault == true, return new MockRepository();`
+	private Cmdt.Repository initRepository(SObjectType objectType) {
 		if (this.includesLongTextFields(objectType) == true) {
 			return new CacheBasedRepository(objectType);
 		} else {
