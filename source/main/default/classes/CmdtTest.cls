@@ -37,16 +37,33 @@ private class CmdtTest {
 	}
 
 	@IsTest
-	static void shouldCacheQueryResultsIfCmdtContainsLongTextAreaField() {
+	static void shouldCacheQueryResultsIfCmdtIncludesLongTextAreaField() {
 		String objectApiName = DatabaseLayerSetting__mdt.SObjectType.toString();
 		DatabaseLayer.Cmdt.cacheObjectApiNames = new Set<String>{ objectApiName };
-		Cmdt.Repository repository = DatabaseLayer.Cmdt?.ofType(DatabaseLayerSetting__mdt.SObjectType);
 
 		Test.startTest();
-		for (Integer i = 0; i < 201; i++) {
-			repository?.getAll()?.values();
-			Assert.areEqual(0, Limits.getQueries(), 'Should not count towards query limits');
-		}
+		List<DatabaseLayerSetting__mdt> results = (List<DatabaseLayerSetting__mdt>) DatabaseLayer.Cmdt
+			?.ofType(DatabaseLayerSetting__mdt.SObjectType)
+			?.getAll()
+			?.values();
 		Test.stopTest();
+
+		Integer numSettings = DatabaseLayerSetting__mdt.getAll()?.size();
+		Assert.areEqual(numSettings, results?.size(), 'Did not query what is in org');
+	}
+
+	@IsTest
+	static void shouldAlwaysQueryIfCmdtDoesNotIncludeLongTextAreaField() {
+		DatabaseLayer.Cmdt.cacheObjectApiNames = new Set<String>{};
+
+		Test.startTest();
+		List<DatabaseLayerSetting__mdt> results = (List<DatabaseLayerSetting__mdt>) DatabaseLayer.Cmdt
+			?.ofType(DatabaseLayerSetting__mdt.SObjectType)
+			?.getAll()
+			?.values();
+		Test.stopTest();
+
+		Integer numSettings = DatabaseLayerSetting__mdt.getAll()?.size();
+		Assert.areEqual(numSettings, results?.size(), 'Did not query what is in org');
 	}
 }

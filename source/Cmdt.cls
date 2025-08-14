@@ -18,7 +18,6 @@ global inherited sharing class Cmdt {
 	 * @description Creates a new Cmdt instance with the specified DatabaseLayer factory.
 	 * @param factory The DatabaseLayer factory to use for SOQL operations
 	 */
-	@SuppressWarnings('PMD.EmptyStatementBlock')
 	public Cmdt(DatabaseLayer factory) {
 		Cmdt.Soql = Cmdt.Soql ?? new Cmdt.SoqlProvider(factory);
 		this.repos = new Map<String, Cmdt.Repository>{};
@@ -70,12 +69,30 @@ global inherited sharing class Cmdt {
 	}
 
 	// **** INTERFACE **** //
+	/**
+	 * @description Interface for accessing Custom Metadata Type records.
+	 *              Provides methods for retrieving all records or specific instances by developer name.
+	 */
 	global interface Repository {
+		/**
+		 * @description Retrieves all Custom Metadata Type records as a map keyed by DeveloperName.
+		 * @return Map of DeveloperName to SObject record
+		 */
 		Map<String, SObject> getAll();
+		/**
+		 * @description Retrieves a specific Custom Metadata Type record by its DeveloperName.
+		 * @param developerName The DeveloperName of the record to retrieve
+		 * @return The SObject record, or null if not found
+		 */
 		SObject getInstance(String developerName);
 	}
 
 	// **** INNER **** //
+	/**
+	 * @description Repository implementation that caches query results to avoid repeated SOQL queries.
+	 *              Use this for Custom Metadata Types that include long-text area fields, as queries for
+	 *              these objects count towards SOQL governor limits.
+	 */
 	global inherited sharing virtual class CacheBasedRepository extends Cmdt.QueryBasedRepository {
 		// This Repository caches query results to avoid repeated SOQL queries
 		// Use this for custom metadata types that include long-text area fields,
@@ -101,6 +118,11 @@ global inherited sharing class Cmdt {
 		}
 	}
 
+	/**
+	 * @description Repository implementation that issues a new SOQL query each time.
+	 *              Use this for most Custom Metadata Types; unless the object contains a long-text area field,
+	 *              SOQL queries will not count towards governor limits.
+	 */
 	global inherited sharing virtual class QueryBasedRepository implements Cmdt.Repository {
 		// This repository issues a new SOQL query each time
 		// Use this for most custom metadata types; unless the object contains a long-text area field,
@@ -112,11 +134,20 @@ global inherited sharing class Cmdt {
 			this.objectType = objectType;
 		}
 
+		/**
+		 * @description Retrieves all Custom Metadata Type records as a map keyed by DeveloperName.
+		 * @return Map of DeveloperName to SObject record
+		 */
 		global virtual Map<String, SObject> getAll() {
 			List<SObject> records = this.queryAll();
 			return this.mapByDeveloperName(records);
 		}
 
+		/**
+		 * @description Retrieves a specific Custom Metadata Type record by its DeveloperName.
+		 * @param developerName The DeveloperName of the record to retrieve
+		 * @return The SObject record, or null if not found
+		 */
 		global SObject getInstance(String developerName) {
 			return this.getAll()?.get(developerName);
 		}
