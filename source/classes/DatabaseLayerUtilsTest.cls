@@ -64,26 +64,24 @@ private class DatabaseLayerUtilsTest {
 	static void shouldReturnWhateverMetadataIsDefinedInOrg() {
 		// A validation rule enforces that at most, 1 settings record will exist in an org
 		// This ensures the get() method will return the 1st (and only) record, if one is defined:
-		Map<String, DatabaseLayerSetting__mdt> all = DatabaseLayerSetting__mdt.getAll();
-		DatabaseLayerSetting__mdt firstSetting = (all?.isEmpty() == false) ? all?.values()?.get(0) : null;
-		DatabaseLayerUtils.MetadataSelector utility = DatabaseLayer.Utils.MetadataSelector;
+		DatabaseLayerSetting__mdt defaultSetting = DatabaseLayerSetting__mdt.getInstance('Default');
 
 		Test.startTest();
-		DatabaseLayerSetting__mdt results = utility?.get();
+		DatabaseLayerSetting__mdt results = DatabaseLayer.Utils.Settings;
 		Assert.areEqual(0, Limits.getQueries(), 'Should not retrieve CMDT via SOQL');
 		Test.stopTest();
 
-		Assert.areEqual(firstSetting?.DeveloperName, results?.DeveloperName, 'Wrong DatabaseLayerSetting__mdt value');
+		Assert.areEqual(defaultSetting?.DeveloperName, results?.DeveloperName, 'Wrong DatabaseLayerSetting__mdt value');
 	}
 
 	@IsTest
 	static void shouldReturnMockedMetadata() {
 		// To force your test to use a specific DatabaseLayerSetting__mdt record, add ito the `settings` list:
 		DatabaseLayerSetting__mdt mockSetting = new DatabaseLayerSetting__mdt(DeveloperName = 'Test_123');
-		DatabaseLayer.Utils.MetadataSelector.settings = new List<DatabaseLayerSetting__mdt>{ mockSetting };
+		Cmdt.mock(DatabaseLayerSetting__mdt.SObjectType)?.add(mockSetting);
 
 		Test.startTest();
-		DatabaseLayerSetting__mdt results = DatabaseLayer.Utils.MetadataSelector.get();
+		DatabaseLayerSetting__mdt results = DatabaseLayer.Utils.Settings;
 		Assert.areEqual(0, Limits.getQueries(), 'Should not retrieve CMDT via SOQL');
 		Test.stopTest();
 
@@ -93,10 +91,10 @@ private class DatabaseLayerUtilsTest {
 	@IsTest
 	static void shouldReturnNullIfMockedEmtpyList() {
 		// Define `settings` as an empty list to ignore any defined DatabaseLayerSetting__mdt records in an org:
-		DatabaseLayer.Utils.MetadataSelector.settings = new List<DatabaseLayerSetting__mdt>{};
+		Cmdt.mock(DatabaseLayerSetting__mdt.SObjectType);
 
 		Test.startTest();
-		DatabaseLayerSetting__mdt results = DatabaseLayer.Utils.MetadataSelector.get();
+		DatabaseLayerSetting__mdt results = DatabaseLayer.Utils.Settings;
 		Assert.areEqual(0, Limits.getQueries(), 'Should not retrieve CMDT via SOQL');
 		Test.stopTest();
 
@@ -109,7 +107,7 @@ private class DatabaseLayerUtilsTest {
 			DeveloperName = 'Test_123',
 			DmlPreAndPostProcessor__c = 'Schema.Account' // For example...
 		);
-		DatabaseLayer.Utils.MetadataSelector.settings = new List<DatabaseLayerSetting__mdt>{ mockSetting };
+		Cmdt.mock(DatabaseLayerSetting__mdt.SObjectType)?.add(mockSetting);
 		SObjectField field = DatabaseLayerSetting__mdt.DmlPreAndPostProcessor__c;
 
 		Test.startTest();
@@ -126,7 +124,7 @@ private class DatabaseLayerUtilsTest {
 			DeveloperName = 'Test_123',
 			DmlPreAndPostProcessor__c = 'not a real object name'
 		);
-		DatabaseLayer.Utils.MetadataSelector.settings = new List<DatabaseLayerSetting__mdt>{ mockSetting };
+		Cmdt.mock(DatabaseLayerSetting__mdt.SObjectType)?.add(mockSetting);
 		SObjectField field = DatabaseLayerSetting__mdt.DmlPreAndPostProcessor__c;
 
 		Test.startTest();
@@ -142,7 +140,7 @@ private class DatabaseLayerUtilsTest {
 			DeveloperName = 'Test_123',
 			DmlPreAndPostProcessor__c = null
 		);
-		DatabaseLayer.Utils.MetadataSelector.settings = new List<DatabaseLayerSetting__mdt>{ mockSetting };
+		Cmdt.mock(DatabaseLayerSetting__mdt.SObjectType)?.add(mockSetting);
 		SObjectField field = DatabaseLayerSetting__mdt.DmlPreAndPostProcessor__c;
 
 		Test.startTest();
@@ -154,7 +152,7 @@ private class DatabaseLayerUtilsTest {
 
 	@IsTest
 	static void shouldReturnNullPluginIfMissingSettingsRecords() {
-		DatabaseLayer.Utils.MetadataSelector.settings = new List<DatabaseLayerSetting__mdt>{};
+		Cmdt.mock(DatabaseLayerSetting__mdt.SObjectType);
 		SObjectField field = DatabaseLayerSetting__mdt.DmlPreAndPostProcessor__c;
 
 		Test.startTest();

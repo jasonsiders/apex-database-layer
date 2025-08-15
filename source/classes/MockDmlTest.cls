@@ -7,7 +7,7 @@ private class MockDmlTest {
 	static {
 		TEST_SIZE = 20;
 		// Custom metadata actually defined in the org should not interfere with this test:
-		DatabaseLayer.Utils.MetadataSelector.settings = new List<DatabaseLayerSetting__mdt>{};
+		Cmdt.mock(DatabaseLayerSetting__mdt.SObjectType);
 		// Use Mock DML:
 		DatabaseLayer.useMockDml();
 		// Initialize plugins:
@@ -985,7 +985,7 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldNotRunProcessorLogicIfNoSettingsDefined() {
-		DatabaseLayer.Utils.MetadataSelector.settings = new List<DatabaseLayerSetting__mdt>{};
+		Cmdt.mock(DatabaseLayerSetting__mdt.SObjectType);
 		DatabaseLayer.Dml.initPlugins();
 		List<Account> accounts = MockDmlTest.initRecords(Account.SObjectType, false);
 
@@ -1023,7 +1023,7 @@ private class MockDmlTest {
 
 	private static DatabaseLayerSetting__mdt initSettings() {
 		DatabaseLayerSetting__mdt settings = new DatabaseLayerSetting__mdt();
-		DatabaseLayer.Utils.MetadataSelector.settings?.add(settings);
+		Cmdt.mock(DatabaseLayerSetting__mdt.SObjectType)?.add(settings);
 		return settings;
 	}
 
