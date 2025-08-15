@@ -5,7 +5,7 @@ private class CmdtTest {
 
 	@IsTest
 	static void shouldQueryWhatIsInOrg() {
-		Cmdt.Repository repository = DatabaseLayer.Cmdt?.ofType(DatabaseLayerSetting__mdt.SObjectType);
+		Cmdt.Repository repository = DatabaseLayer.Cmdt?.ofType(CMDT_OBJECT);
 
 		Test.startTest();
 		List<DatabaseLayerSetting__mdt> results = (List<DatabaseLayerSetting__mdt>) repository?.getAll()?.values();
@@ -32,12 +32,12 @@ private class CmdtTest {
 
 	@IsTest
 	static void shouldCacheQueryResultsIfCmdtIncludesLongTextAreaField() {
-		String objectApiName = DatabaseLayerSetting__mdt.SObjectType.toString();
+		String objectApiName = CMDT_OBJECT.toString();
 		Cmdt.objectsToCache = new Set<String>{ objectApiName };
 
 		Test.startTest();
 		List<DatabaseLayerSetting__mdt> results = (List<DatabaseLayerSetting__mdt>) DatabaseLayer.Cmdt
-			?.ofType(DatabaseLayerSetting__mdt.SObjectType)
+			?.ofType(CMDT_OBJECT)
 			?.getAll()
 			?.values();
 		Test.stopTest();
@@ -52,7 +52,7 @@ private class CmdtTest {
 
 		Test.startTest();
 		List<DatabaseLayerSetting__mdt> results = (List<DatabaseLayerSetting__mdt>) DatabaseLayer.Cmdt
-			?.ofType(DatabaseLayerSetting__mdt.SObjectType)
+			?.ofType(CMDT_OBJECT)
 			?.getAll()
 			?.values();
 		Test.stopTest();
@@ -164,6 +164,21 @@ private class CmdtTest {
 		Test.stopTest();
 
 		Assert.isNull(after, 'After: Did not clear mocked records');
+	}
+
+	@IsTest
+	static void shouldReturnNullInstanceIfOneDoesntExist() {
+		// Mostly for coverage -- since we can't test with real CMDT records
+		Cmdt.objectsToCache = new Set<String>{ CMDT_OBJECT?.toString() };
+		String key = 'There\'s no way this is a real key';
+
+		Test.startTest();
+		DatabaseLayerSetting__mdt instance = (DatabaseLayerSetting__mdt) DatabaseLayer.Cmdt
+			?.ofType(CMDT_OBJECT)
+			?.getInstance(key);
+		Test.stopTest();
+
+		Assert.isNull(instance, 'Invalid key returned an instance anyways?');
 	}
 
 	// **** HELPER **** //

@@ -52,8 +52,6 @@ global inherited sharing class Cmdt {
 		return Cmdt.objectsToCache?.contains(objectApiName) == true;
 	}
 
-	
-
 	// **** STATIC **** //
 	/**
 	 * @description Creates and configures a MockRepository for the specified Custom Metadata Type.
@@ -95,10 +93,11 @@ global inherited sharing class Cmdt {
 		// This query must **always** execute using real SOQL
 		// TODO: Use platform cache to store the query results
 		return [
-			SELECT QualifiedApiName 
+			SELECT QualifiedApiName
 			FROM EntityDefinition
-			WHERE QualifiedApiName LIKE '%__mdt'
-			AND DurableId IN (SELECT EntityDefinitionId FROM FieldDefinition WHERE DataType LIKE 'Long Text%')
+			WHERE
+				QualifiedApiName LIKE '%__mdt'
+				AND DurableId IN (SELECT EntityDefinitionId FROM FieldDefinition WHERE DataType LIKE 'Long Text%')
 			WITH SYSTEM_MODE
 		];
 	}
