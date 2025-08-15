@@ -126,12 +126,9 @@ global inherited sharing class Cmdt {
 	 * @description Repository implementation that caches query results to avoid repeated SOQL queries.
 	 *              Use this for Custom Metadata Types that include long-text area fields, as queries for
 	 *              these objects count towards SOQL governor limits.
+	 * 				https://help.salesforce.com/s/articleView?language=en_US&id=platform.custommetadatatypes_limits.htm&type=5
 	 */
 	global inherited sharing class CacheBasedRepository extends Cmdt.QueryBasedRepository {
-		// This Repository caches query results to avoid repeated SOQL queries
-		// Use this for custom metadata types that include long-text area fields,
-		// as queries for these objects **do** count towards SOQL governor limits:
-		// https://help.salesforce.com/s/articleView?language=en_US&id=platform.custommetadatatypes_limits.htm&type=5
 		// TODO: Consider using platform cache instead of an in-memory Map
 		// TODO: If not, consider modifying MockRepository to extend this
 		private transient Map<String, SObject> records;
@@ -276,12 +273,9 @@ global inherited sharing class Cmdt {
 	 * @description Repository implementation that issues a new SOQL query each time.
 	 *              Use this for most Custom Metadata Types; unless the object contains a long-text area field,
 	 *              SOQL queries will not count towards governor limits.
+	 * 				https://help.salesforce.com/s/articleView?language=en_US&id=platform.custommetadatatypes_limits.htm&type=5
 	 */
 	global inherited sharing virtual class QueryBasedRepository implements Cmdt.Repository {
-		// This repository issues a new SOQL query each time
-		// Use this for most custom metadata types; unless the object contains a long-text area field,
-		// SOQL queries will **not** count towards governor limits:
-		// https://help.salesforce.com/s/articleView?language=en_US&id=platform.custommetadatatypes_limits.htm&type=5
 		private transient SObjectType objectType;
 
 		private QueryBasedRepository(SObjectType objectType) {
@@ -307,19 +301,20 @@ global inherited sharing class Cmdt {
 		}
 
 		private Soql initQuery() {
+			// Note: CMDT SOQL queries don't count against SOQL query limits (!)
 			return Cmdt.soqlProvider.newQuery(this.objectType)?.selectAll()?.toSoql();
 		}
 
 		private List<SObject> queryAll() {
-			// CMDT SOQL queries don't count against SOQL query limits (!)
-			// This is nececessary because the CMDT .getAll/.getInstance methods aren't dynamically accessible
 			return this.initQuery()?.query();
 		}
 	}
 
+	/**
+	 * @description Custom SoqlProvider that will always return a real (not mock) Soql object
+	 * 				This enables CMDT operations to use real Soql, even when MockSoql is used elsewhere
+	 */
 	private class SoqlProvider extends DatabaseLayer.SoqlProvider {
-		// Custom Metadata queries can/should be mocked independently of other SOQL queries
-		// Normal CMDT operations should always use real Soql, even when MockSoql is used elsewhere
 		private DatabaseLayer factory;
 
 		private SoqlProvider(DatabaseLayer factory) {
