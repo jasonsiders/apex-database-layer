@@ -2,22 +2,21 @@
  * @description Provides access to Custom Metadata Type records with caching and namespace support.
  *              Supports both DeveloperName and qualified namespace__DeveloperName lookups.
  */
-@SuppressWarnings('PMD.AvoidGlobalModifier, PMD.CognitiveComplexity')
-global inherited sharing virtual class Cmdt {
+@SuppressWarnings('PMD.AvoidGlobalModifier,PMD.CognitiveComplexity')
+global inherited sharing class Cmdt {
 	@TestVisible
 	private static final String DEVELOPER_NAME = 'DeveloperName';
 	private static final String NAMESPACE_PREFIX = 'NamespacePrefix';
 	@SuppressWarnings('PMD.FieldNamingConventions')
 	@TestVisible
 	private static DatabaseLayer.SoqlProvider Soql;
-	@TestVisible
 	private static Map<String, Cmdt.Repository> repos;
 
 	@TestVisible
 	private Set<String> cacheObjectApiNames;
 
 	static {
-		repos = new Map<String, Cmdt.Repository>{};
+		Cmdt.repos = new Map<String, Cmdt.Repository>{};
 	}
 
 	/**
@@ -34,19 +33,10 @@ global inherited sharing virtual class Cmdt {
 	 * @return A Repository instance for accessing records of the specified type
 	 */
 	global Cmdt.Repository ofType(SObjectType objectType) {
-		Cmdt.Repository repo = this.getRepository(objectType) ?? this.initRepository(objectType);
-		this.mapRepository(objectType, repo);
-		return repo;
-	}
-
-	protected Cmdt.Repository getRepository(SObjectType objectType) {
 		String objectApiName = objectType?.toString();
-		return Cmdt.repos?.get(objectApiName);
-	}
-
-	protected void mapRepository(SObjectType objectType, Cmdt.Repository repo) {
-		String objectApiName = objectType?.toString();
+		Cmdt.Repository repo = Cmdt.repos?.get(objectApiName) ?? this.initRepository(objectType);
 		Cmdt.repos?.put(objectApiName, repo);
+		return repo;
 	}
 
 	private Cmdt.Repository initRepository(SObjectType objectType) {
@@ -59,6 +49,7 @@ global inherited sharing virtual class Cmdt {
 
 	private Boolean includesLongTextFields(SObjectType objectType) {
 		// Returns true if the SObjectType includes long-text fields
+		// TODO: Use platform cache to store the query results
 		if (this.cacheObjectApiNames == null) {
 			this.cacheObjectApiNames = new Set<String>{};
 			for (EntityDefinition entity : [
@@ -81,7 +72,22 @@ global inherited sharing virtual class Cmdt {
 		return this.cacheObjectApiNames?.contains(objectApiName);
 	}
 
-	public static Map<String, SObject> mapByKey(List<SObject> recordList) {
+	// **** STATIC **** //
+	/**
+	 * @description Creates and configures a MockRepository for the specified Custom Metadata Type.
+	 *              This allows mocking CMDT records in tests without database operations.
+	 * @param objectType The SObjectType of the Custom Metadata Type to mock
+	 * @return A MockRepository instance that can be configured with test data
+	 */
+	@TestVisible
+	private static Cmdt.MockRepository mock(SObjectType objectType) {
+		String objectApiName = objectType?.toString();
+		Cmdt.MockRepository repo = new Cmdt.MockRepository();
+		Cmdt.repos?.put(objectApiName, repo);
+		return repo;
+	}
+
+	private static Map<String, SObject> mapByKey(List<SObject> recordList) {
 		Map<String, SObject> results = new Map<String, SObject>{};
 		for (SObject record : recordList) {
 			String namespace = (String) record?.get(NAMESPACE_PREFIX);
@@ -125,9 +131,9 @@ global inherited sharing virtual class Cmdt {
 		// as queries for these objects **do** count towards SOQL governor limits:
 		// https://help.salesforce.com/s/articleView?language=en_US&id=platform.custommetadatatypes_limits.htm&type=5
 		// TODO: Consider using platform cache instead of an in-memory Map
-		protected transient Map<String, SObject> records;
+		private transient Map<String, SObject> records;
 
-		protected CacheBasedRepository(SObjectType objectType) {
+		private CacheBasedRepository(SObjectType objectType) {
 			super(objectType);
 		}
 
@@ -136,7 +142,7 @@ global inherited sharing virtual class Cmdt {
 			return this.records;
 		}
 
-		protected virtual void retrieve() {
+		private virtual void retrieve() {
 			if (this.records == null) {
 				List<SObject> recordList = this.queryAll();
 				this.records = Cmdt.mapByKey(recordList);
@@ -144,6 +150,10 @@ global inherited sharing virtual class Cmdt {
 		}
 	}
 
+	/**
+	 * @description Mock implementation of the Repository interface for testing purposes.
+	 *              Allows in-memory storage and manipulation of Custom Metadata Type records without database operations.
+	 */
 	global class MockRepository implements Cmdt.Repository {
 		private Map<String, SObject> records;
 
@@ -265,9 +275,9 @@ global inherited sharing virtual class Cmdt {
 		// Use this for most custom metadata types; unless the object contains a long-text area field,
 		// SOQL queries will **not** count towards governor limits:
 		// https://help.salesforce.com/s/articleView?language=en_US&id=platform.custommetadatatypes_limits.htm&type=5
-		protected transient SObjectType objectType;
+		private transient SObjectType objectType;
 
-		protected QueryBasedRepository(SObjectType objectType) {
+		private QueryBasedRepository(SObjectType objectType) {
 			this.objectType = objectType;
 		}
 
@@ -289,7 +299,7 @@ global inherited sharing virtual class Cmdt {
 			return this.getAll()?.get(qualifiedApiName);
 		}
 
-		protected List<SObject> queryAll() {
+		private List<SObject> queryAll() {
 			// CMDT SOQL queries don't count against SOQL query limits (!)
 			// This is nececessary because the CMDT .getAll/.getInstance methods aren't dynamically accessible
 			return Cmdt.Soql.newQuery(this.objectType)?.selectAll()?.toSoql()?.query();
