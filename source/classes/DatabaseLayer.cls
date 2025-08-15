@@ -143,7 +143,7 @@ global class DatabaseLayer {
 		global Boolean useMockDml {
 			get;
 			set {
-				this.set(DatabaseLayer.Module.DML, value);
+				this.setDml(value);
 			}
 		}
 		/**
@@ -152,7 +152,7 @@ global class DatabaseLayer {
 		global Boolean useMockSoql {
 			get;
 			set {
-				this.set(DatabaseLayer.Module.SOQL, value);
+				this.setSoql(value);
 			}
 		}
 
@@ -161,18 +161,13 @@ global class DatabaseLayer {
 			this.useMockSoql = false;
 		}
 
-		private void set(DatabaseLayer.Module module, Boolean value) {
-			if (module == DatabaseLayer.Module.DML) {
-				INSTANCE.currentDml = (value == true) ? new MockDml(INSTANCE) : new Dml(INSTANCE);
-			} else if (module == DatabaseLayer.Module.SOQL) {
-				INSTANCE.currentSoql?.useMocks(value);
-			}
+		private void setDml(Boolean value) {
+			INSTANCE.currentDml = (value == true) ? new MockDml(INSTANCE) : new Dml(INSTANCE);
 		}
-	}
 
-	private enum Module {
-		DML,
-		SOQL
+		private void setSoql(Boolean value) {
+			INSTANCE.currentSoql?.useMocks(value);
+		}
 	}
 
 	/**
