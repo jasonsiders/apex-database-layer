@@ -299,13 +299,17 @@ global inherited sharing class Cmdt {
 		 * @return The SObject record, or null if not found
 		 */
 		global SObject getInstance(String qualifiedApiName) {
-			return this.getAll()?.get(qualifiedApiName);
+			return this.initQuery()?.addWhere(DEVELOPER_NAME, Soql.EQUALS, qualifiedApiName)?.toSoql()?.queryFirst();
+		}
+
+		private Soql initQuery() {
+			return Cmdt.soqlProvider.newQuery(this.objectType)?.selectAll()?.toSoql();
 		}
 
 		private List<SObject> queryAll() {
 			// CMDT SOQL queries don't count against SOQL query limits (!)
 			// This is nececessary because the CMDT .getAll/.getInstance methods aren't dynamically accessible
-			return Cmdt.soqlProvider.newQuery(this.objectType)?.selectAll()?.toSoql()?.query();
+			return this.initQuery()?.query();
 		}
 	}
 
