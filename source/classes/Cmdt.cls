@@ -10,14 +10,10 @@ global inherited sharing class Cmdt {
 	@SuppressWarnings('PMD.FieldNamingConventions')
 	@TestVisible
 	private static DatabaseLayer.SoqlProvider Soql;
-	private static Map<String, Cmdt.Repository> repos;
 
 	@TestVisible
 	private Set<String> cacheObjectApiNames;
-
-	static {
-		Cmdt.repos = new Map<String, Cmdt.Repository>{};
-	}
+	private Map<String, Cmdt.Repository> repos;
 
 	/**
 	 * @description Creates a new Cmdt instance with the specified DatabaseLayer factory.
@@ -25,6 +21,7 @@ global inherited sharing class Cmdt {
 	 */
 	public Cmdt(DatabaseLayer factory) {
 		Cmdt.Soql = Cmdt.Soql ?? new Cmdt.SoqlProvider(factory);
+		this.repos = this.repos ?? new Map<String, Cmdt.Repository>{};
 	}
 
 	/**
@@ -34,9 +31,26 @@ global inherited sharing class Cmdt {
 	 */
 	global Cmdt.Repository ofType(SObjectType objectType) {
 		String objectApiName = objectType?.toString();
-		Cmdt.Repository repo = Cmdt.repos?.get(objectApiName) ?? this.initRepository(objectType);
-		Cmdt.repos?.put(objectApiName, repo);
+		Cmdt.Repository repo = this.repos?.get(objectApiName) ?? this.initRepository(objectType);
+		this.repos?.put(objectApiName, repo);
 		return repo;
+	}
+
+	/**
+	 * @description Creates and configures a MockRepository for the specified Custom Metadata Type.
+	 *              This allows mocking CMDT records in tests without database operations.
+	 * @param objectType The SObjectType of the Custom Metadata Type to mock
+	 * @return A MockRepository instance that can be configured with test data
+	 */
+	@TestVisible
+	private Cmdt.MockRepository mock(SObjectType objectType) {
+		String objectApiName = objectType?.toString();
+		Cmdt.Repository repo = this.repos?.get(objectApiName);
+		if (repo == null || (repo instanceOf Cmdt.MockRepository) == false) {
+			repo = new Cmdt.MockRepository();
+		}
+		this.repos?.put(objectApiName, repo);
+		return (Cmdt.MockRepository) repo;
 	}
 
 	private Cmdt.Repository initRepository(SObjectType objectType) {
@@ -73,20 +87,6 @@ global inherited sharing class Cmdt {
 	}
 
 	// **** STATIC **** //
-	/**
-	 * @description Creates and configures a MockRepository for the specified Custom Metadata Type.
-	 *              This allows mocking CMDT records in tests without database operations.
-	 * @param objectType The SObjectType of the Custom Metadata Type to mock
-	 * @return A MockRepository instance that can be configured with test data
-	 */
-	@TestVisible
-	private static Cmdt.MockRepository mock(SObjectType objectType) {
-		String objectApiName = objectType?.toString();
-		Cmdt.MockRepository repo = new Cmdt.MockRepository();
-		Cmdt.repos?.put(objectApiName, repo);
-		return repo;
-	}
-
 	private static Map<String, SObject> mapByKey(List<SObject> recordList) {
 		Map<String, SObject> results = new Map<String, SObject>{};
 		for (SObject record : recordList) {
