@@ -66,9 +66,10 @@ private class DatabaseLayerUtilsTest {
 		// This ensures the get() method will return the 1st (and only) record, if one is defined:
 		Map<String, DatabaseLayerSetting__mdt> all = DatabaseLayerSetting__mdt.getAll();
 		DatabaseLayerSetting__mdt firstSetting = (all?.isEmpty() == false) ? all?.values()?.get(0) : null;
+		DatabaseLayerUtils.MetadataSelector utility = DatabaseLayer.Utils.MetadataSelector;
 
 		Test.startTest();
-		DatabaseLayerSetting__mdt results = DatabaseLayer.Utils.MetadataSelector.get();
+		DatabaseLayerSetting__mdt results = utility?.get();
 		Assert.areEqual(0, Limits.getQueries(), 'Should not retrieve CMDT via SOQL');
 		Test.stopTest();
 
