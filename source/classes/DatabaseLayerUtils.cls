@@ -18,7 +18,13 @@ public without sharing class DatabaseLayerUtils {
 	 * @description Utility for retrieving DatabaseLayerSetting__mdt configuration records.
 	 */
 	@SuppressWarnings('PMD.PropertyNamingConventions')
-	public DatabaseLayerSetting__mdt Settings { get; private set; }
+	public DatabaseLayerSetting__mdt Settings { 
+		get {
+			this.Settings = this.Settings ?? this.getSettings();
+			return this.Settings;
+		} 
+		private set; 
+	}
 
 	/**
 	 * @description Constructor that initializes all utility sub-components
@@ -28,16 +34,15 @@ public without sharing class DatabaseLayerUtils {
 	public DatabaseLayerUtils(DatabaseLayer factory) {
 		this.ChildRelationships = new DatabaseLayerUtils.ChildRelationships();
 		this.Plugins = new DatabaseLayerUtils.Plugins();
-		this.Settings = this.getSettings();
 	}
 
 	private DatabaseLayerSetting__mdt getSettings() {
 		// Return the first mapped Database Layer Setting object
 		// A validation rule ensures there will only be one record of this type in an org:
-		List<DatabaseLayerSetting__mdt> allSettings = (List<DatabaseLayerSetting__mdt>) DatabaseLayer.Cmdt
+		Map<String, SObject> allSettingsMap = DatabaseLayer.Cmdt
 			?.ofType(DatabaseLayerSetting__mdt.SObjectType)
-			?.getAll()
-			?.values();
+			?.getAll();
+		List<DatabaseLayerSetting__mdt> allSettings = (List<DatabaseLayerSetting__mdt>) allSettingsMap?.values();
 		return allSettings?.isEmpty() == false ? allSettings?.get(0) : null;
 	}
 

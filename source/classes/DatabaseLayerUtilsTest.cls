@@ -65,9 +65,10 @@ private class DatabaseLayerUtilsTest {
 		// A validation rule enforces that at most, 1 settings record will exist in an org
 		// This ensures the get() method will return the 1st (and only) record, if one is defined:
 		DatabaseLayerSetting__mdt defaultSetting = DatabaseLayerSetting__mdt.getInstance('Default');
+		DatabaseLayerUtils utils = DatabaseLayer.Utils;
 
 		Test.startTest();
-		DatabaseLayerSetting__mdt results = DatabaseLayer.Utils.Settings;
+		DatabaseLayerSetting__mdt results = utils?.Settings;
 		Assert.areEqual(0, Limits.getQueries(), 'Should not retrieve CMDT via SOQL');
 		Test.stopTest();
 
@@ -105,14 +106,13 @@ private class DatabaseLayerUtilsTest {
 	static void shouldInitPluginObjectFromCustomMetadata() {
 		DatabaseLayerSetting__mdt mockSetting = new DatabaseLayerSetting__mdt(
 			DeveloperName = 'Test_123',
-			DmlPreAndPostProcessor__c = 'Schema.Account' // For example...
+			DmlPreAndPostProcessor__c = DatabaseLayerTestUtils.SamplePlugin.class.getName()
 		);
 		Cmdt.mock(DatabaseLayerSetting__mdt.SObjectType)?.add(mockSetting);
 		SObjectField field = DatabaseLayerSetting__mdt.DmlPreAndPostProcessor__c;
 
 		Test.startTest();
-		// Account would never *actually* be a plugin; this is just an example:
-		Account example = (Account) DatabaseLayer.Utils.Plugins.initPlugin(field);
+		Dml.PreAndPostProcessor example = (Dml.PreAndPostProcessor) DatabaseLayer.Utils.Plugins.initPlugin(field);
 		Test.stopTest();
 
 		Assert.isNotNull(example, 'Did not generate an object from CMDT');
