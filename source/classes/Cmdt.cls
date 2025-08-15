@@ -128,12 +128,13 @@ global inherited sharing class Cmdt {
 	 *              Use this for Custom Metadata Types that include long-text area fields, as queries for
 	 *              these objects count towards SOQL governor limits.
 	 */
-	global inherited sharing virtual class CacheBasedRepository extends Cmdt.QueryBasedRepository {
+	global inherited sharing class CacheBasedRepository extends Cmdt.QueryBasedRepository {
 		// This Repository caches query results to avoid repeated SOQL queries
 		// Use this for custom metadata types that include long-text area fields,
 		// as queries for these objects **do** count towards SOQL governor limits:
 		// https://help.salesforce.com/s/articleView?language=en_US&id=platform.custommetadatatypes_limits.htm&type=5
 		// TODO: Consider using platform cache instead of an in-memory Map
+		// TODO: If not, consider modifying MockRepository to extend this
 		private transient Map<String, SObject> records;
 
 		private CacheBasedRepository(SObjectType objectType) {
@@ -143,6 +144,10 @@ global inherited sharing class Cmdt {
 		global override Map<String, SObject> getAll() {
 			this.retrieve();
 			return this.records;
+		}
+
+		global override SObject getInstance(String qualifiedApiName) {
+			return this.getAll()?.get(qualifiedApiName);
 		}
 
 		private virtual void retrieve() {
@@ -298,7 +303,7 @@ global inherited sharing class Cmdt {
 		 * @param qualifiedApiName The DeveloperName of the record to retrieve, including Namespace (if applicable)
 		 * @return The SObject record, or null if not found
 		 */
-		global SObject getInstance(String qualifiedApiName) {
+		global virtual SObject getInstance(String qualifiedApiName) {
 			return this.initQuery()?.addWhere(DEVELOPER_NAME, Soql.EQUALS, qualifiedApiName)?.toSoql()?.queryFirst();
 		}
 
