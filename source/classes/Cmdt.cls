@@ -7,21 +7,23 @@ global inherited sharing class Cmdt {
 	@TestVisible
 	private static final String DEVELOPER_NAME = 'DeveloperName';
 	private static final String NAMESPACE_PREFIX = 'NamespacePrefix';
-	@SuppressWarnings('PMD.FieldNamingConventions')
 	@TestVisible
-	private static DatabaseLayer.SoqlProvider Soql;
+	private static Set<String> objectsToCache;
+	@TestVisible
+	private static DatabaseLayer.SoqlProvider soqlProvider;
+	private static Map<String, Cmdt.Repository> repos;
 
-	@TestVisible
-	private Set<String> cacheObjectApiNames;
-	private Map<String, Cmdt.Repository> repos;
+	static {
+		Cmdt.repos = new Map<String, Cmdt.Repository>{};
+		Cmdt.objectsToCache = Cmdt.getObjectsToCache();
+	}
 
 	/**
 	 * @description Creates a new Cmdt instance with the specified DatabaseLayer factory.
 	 * @param factory The DatabaseLayer factory to use for SOQL operations
 	 */
 	public Cmdt(DatabaseLayer factory) {
-		Cmdt.Soql = Cmdt.Soql ?? new Cmdt.SoqlProvider(factory);
-		this.repos = this.repos ?? new Map<String, Cmdt.Repository>{};
+		Cmdt.soqlProvider = Cmdt.soqlProvider ?? new Cmdt.SoqlProvider(factory);
 	}
 
 	/**
@@ -31,26 +33,9 @@ global inherited sharing class Cmdt {
 	 */
 	global Cmdt.Repository ofType(SObjectType objectType) {
 		String objectApiName = objectType?.toString();
-		Cmdt.Repository repo = this.repos?.get(objectApiName) ?? this.initRepository(objectType);
-		this.repos?.put(objectApiName, repo);
+		Cmdt.Repository repo = Cmdt.repos?.get(objectApiName) ?? this.initRepository(objectType);
+		Cmdt.repos?.put(objectApiName, repo);
 		return repo;
-	}
-
-	/**
-	 * @description Creates and configures a MockRepository for the specified Custom Metadata Type.
-	 *              This allows mocking CMDT records in tests without database operations.
-	 * @param objectType The SObjectType of the Custom Metadata Type to mock
-	 * @return A MockRepository instance that can be configured with test data
-	 */
-	@TestVisible
-	private Cmdt.MockRepository mock(SObjectType objectType) {
-		String objectApiName = objectType?.toString();
-		Cmdt.Repository repo = this.repos?.get(objectApiName);
-		if (repo == null || (repo instanceOf Cmdt.MockRepository) == false) {
-			repo = new Cmdt.MockRepository();
-		}
-		this.repos?.put(objectApiName, repo);
-		return (Cmdt.MockRepository) repo;
 	}
 
 	private Cmdt.Repository initRepository(SObjectType objectType) {
@@ -63,30 +48,36 @@ global inherited sharing class Cmdt {
 
 	private Boolean includesLongTextFields(SObjectType objectType) {
 		// Returns true if the SObjectType includes long-text fields
-		// TODO: Use platform cache to store the query results
-		if (this.cacheObjectApiNames == null) {
-			this.cacheObjectApiNames = new Set<String>{};
-			for (EntityDefinition entity : [
-				SELECT QualifiedApiName
-				FROM EntityDefinition
-				WHERE
-					DurableId IN (
-						SELECT EntityDefinitionId
-						FROM FieldDefinition
-						WHERE DataType LIKE 'Long Text%'
-					)
-					AND QualifiedApiName LIKE '%__mdt'
-				WITH SYSTEM_MODE
-			]) {
-				String objectApiName = entity?.QualifiedApiName;
-				this.cacheObjectApiNames?.add(objectApiName);
-			}
-		}
 		String objectApiName = objectType?.toString();
-		return this.cacheObjectApiNames?.contains(objectApiName);
+		return Cmdt.objectsToCache?.contains(objectApiName) == true;
 	}
 
+	
+
 	// **** STATIC **** //
+	/**
+	 * @description Creates and configures a MockRepository for the specified Custom Metadata Type.
+	 *              This allows mocking CMDT records in tests without database operations.
+	 * @param objectType The SObjectType of the Custom Metadata Type to mock
+	 * @return A MockRepository instance that can be configured with test data
+	 */
+	@TestVisible
+	private static Cmdt.MockRepository mock(SObjectType objectType) {
+		String objectApiName = objectType?.toString();
+		Cmdt.MockRepository repo = new Cmdt.MockRepository();
+		Cmdt.repos?.put(objectApiName, repo);
+		return repo;
+	}
+
+	private static Set<String> getObjectsToCache() {
+		Set<String> results = new Set<String>{};
+		for (EntityDefinition entity : Cmdt.queryEntityDefinitions()) {
+			String objectApiName = entity?.QualifiedApiName;
+			results?.add(objectApiName);
+		}
+		return results;
+	}
+
 	private static Map<String, SObject> mapByKey(List<SObject> recordList) {
 		Map<String, SObject> results = new Map<String, SObject>{};
 		for (SObject record : recordList) {
@@ -98,6 +89,18 @@ global inherited sharing class Cmdt {
 			results?.put(key, record);
 		}
 		return results;
+	}
+
+	private static List<EntityDefinition> queryEntityDefinitions() {
+		// This query must **always** execute using real SOQL
+		// TODO: Use platform cache to store the query results
+		return [
+			SELECT QualifiedApiName 
+			FROM EntityDefinition
+			WHERE QualifiedApiName LIKE '%__mdt'
+			AND DurableId IN (SELECT EntityDefinitionId FROM FieldDefinition WHERE DataType LIKE 'Long Text%')
+			WITH SYSTEM_MODE
+		];
 	}
 
 	// **** INTERFACE **** //
@@ -302,7 +305,7 @@ global inherited sharing class Cmdt {
 		private List<SObject> queryAll() {
 			// CMDT SOQL queries don't count against SOQL query limits (!)
 			// This is nececessary because the CMDT .getAll/.getInstance methods aren't dynamically accessible
-			return Cmdt.Soql.newQuery(this.objectType)?.selectAll()?.toSoql()?.query();
+			return Cmdt.soqlProvider.newQuery(this.objectType)?.selectAll()?.toSoql()?.query();
 		}
 	}
 
