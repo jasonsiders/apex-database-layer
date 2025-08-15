@@ -28,9 +28,17 @@ public without sharing class DatabaseLayerUtils {
 	public DatabaseLayerUtils(DatabaseLayer factory) {
 		this.ChildRelationships = new DatabaseLayerUtils.ChildRelationships();
 		this.Plugins = new DatabaseLayerUtils.Plugins();
-		this.Settings = (DatabaseLayerSetting__mdt) DatabaseLayer.Cmdt
+		this.Settings = this.getSettings();
+	}
+
+	private DatabaseLayerSetting__mdt getSettings() {
+		// Return the first mapped Database Layer Setting object
+		// A validation rule ensures there will only be one record of this type in an org:
+		List<DatabaseLayerSetting__mdt> allSettings = (List<DatabaseLayerSetting__mdt>) DatabaseLayer.Cmdt
 			?.ofType(DatabaseLayerSetting__mdt.SObjectType)
-			?.getInstance('Default');
+			?.getAll()
+			?.values();
+		return allSettings?.isEmpty() == false ? allSettings?.get(0) : null;
 	}
 
 	// **** INNER **** //
