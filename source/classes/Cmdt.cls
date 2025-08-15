@@ -14,8 +14,8 @@ global inherited sharing class Cmdt {
 	private static Map<String, Cmdt.Repository> repos;
 
 	static {
-		Cmdt.repos = new Map<String, Cmdt.Repository>{};
 		Cmdt.objectsToCache = Cmdt.getObjectsToCache();
+		Cmdt.repos = new Map<String, Cmdt.Repository>{};
 	}
 
 	/**
