@@ -138,15 +138,6 @@ global class DatabaseLayer {
 	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
 	global class Configuration {
 		/**
-		 * @description Controls whether to use mockable CMDT implementation. When true, uses MockCmdt for testing.
-		 */
-		global Boolean allowMockCmdt {
-			get;
-			set {
-				this.set(DatabaseLayer.Module.CMDT, value);
-			}
-		}
-		/**
 		 * @description Controls whether to use mock DML implementation. When true, uses MockDml for testing.
 		 */
 		global Boolean useMockDml {
@@ -166,15 +157,12 @@ global class DatabaseLayer {
 		}
 
 		private Configuration() {
-			this.allowMockCmdt = Test.isRunningTest();
 			this.useMockDml = false;
 			this.useMockSoql = false;
 		}
 
 		private void set(DatabaseLayer.Module module, Boolean value) {
-			if (module == DatabaseLayer.Module.CMDT) {
-				INSTANCE.currentCmdt = (value == true) ? new MockCmdt(INSTANCE) : new Cmdt(INSTANCE);
-			} else if (module == DatabaseLayer.Module.DML) {
+			if (module == DatabaseLayer.Module.DML) {
 				INSTANCE.currentDml = (value == true) ? new MockDml(INSTANCE) : new Dml(INSTANCE);
 			} else if (module == DatabaseLayer.Module.SOQL) {
 				INSTANCE.currentSoql?.useMocks(value);
@@ -183,7 +171,6 @@ global class DatabaseLayer {
 	}
 
 	private enum Module {
-		CMDT,
 		DML,
 		SOQL
 	}

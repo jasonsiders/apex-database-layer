@@ -2,7 +2,7 @@
  * @description Provides access to Custom Metadata Type records with caching and namespace support.
  *              Supports both DeveloperName and qualified namespace__DeveloperName lookups.
  */
-@SuppressWarnings('PMD.AvoidGlobalModifier')
+@SuppressWarnings('PMD.AvoidGlobalModifier, PMD.CognitiveComplexity')
 global inherited sharing virtual class Cmdt {
 	@TestVisible
 	private static final String DEVELOPER_NAME = 'DeveloperName';
@@ -10,10 +10,15 @@ global inherited sharing virtual class Cmdt {
 	@SuppressWarnings('PMD.FieldNamingConventions')
 	@TestVisible
 	private static DatabaseLayer.SoqlProvider Soql;
+	@TestVisible
+	private static Map<String, Cmdt.Repository> repos;
 
 	@TestVisible
 	private Set<String> cacheObjectApiNames;
-	protected Map<String, Cmdt.Repository> repos;
+
+	static {
+		repos = new Map<String, Cmdt.Repository>{};
+	}
 
 	/**
 	 * @description Creates a new Cmdt instance with the specified DatabaseLayer factory.
@@ -21,7 +26,6 @@ global inherited sharing virtual class Cmdt {
 	 */
 	public Cmdt(DatabaseLayer factory) {
 		Cmdt.Soql = Cmdt.Soql ?? new Cmdt.SoqlProvider(factory);
-		this.repos = new Map<String, Cmdt.Repository>{};
 	}
 
 	/**
@@ -30,10 +34,19 @@ global inherited sharing virtual class Cmdt {
 	 * @return A Repository instance for accessing records of the specified type
 	 */
 	global Cmdt.Repository ofType(SObjectType objectType) {
-		String objectApiName = objectType?.toString();
-		Cmdt.Repository repo = this.repos?.get(objectApiName) ?? this.initRepository(objectType);
-		this.repos?.put(objectApiName, repo);
+		Cmdt.Repository repo = this.getRepository(objectType) ?? this.initRepository(objectType);
+		this.mapRepository(objectType, repo);
 		return repo;
+	}
+
+	protected Cmdt.Repository getRepository(SObjectType objectType) {
+		String objectApiName = objectType?.toString();
+		return Cmdt.repos?.get(objectApiName);
+	}
+
+	protected void mapRepository(SObjectType objectType, Cmdt.Repository repo) {
+		String objectApiName = objectType?.toString();
+		Cmdt.repos?.put(objectApiName, repo);
 	}
 
 	private Cmdt.Repository initRepository(SObjectType objectType) {
@@ -68,8 +81,7 @@ global inherited sharing virtual class Cmdt {
 		return this.cacheObjectApiNames?.contains(objectApiName);
 	}
 
-	@TestVisible
-	private static Map<String, SObject> mapByKey(List<SObject> recordList) {
+	public static Map<String, SObject> mapByKey(List<SObject> recordList) {
 		Map<String, SObject> results = new Map<String, SObject>{};
 		for (SObject record : recordList) {
 			String namespace = (String) record?.get(NAMESPACE_PREFIX);
@@ -129,6 +141,117 @@ global inherited sharing virtual class Cmdt {
 				List<SObject> recordList = this.queryAll();
 				this.records = Cmdt.mapByKey(recordList);
 			}
+		}
+	}
+
+	global class MockRepository implements Cmdt.Repository {
+		private Map<String, SObject> records;
+
+		private MockRepository() {
+			this.records = new Map<String, SObject>{};
+		}
+
+		/**
+		 * @description Adds multiple records from a map to the mock repository.
+		 * @param recordMap Map of record keys to SObject records
+		 * @return This repository instance for method chaining
+		 */
+		global Cmdt.MockRepository add(Map<String, SObject> recordMap) {
+			this.records?.putAll(recordMap);
+			return this;
+		}
+
+		/**
+		 * @description Adds multiple records from a list to the mock repository.
+		 * @param recordList List of SObject records to add
+		 * @return This repository instance for method chaining
+		 */
+		global Cmdt.MockRepository add(List<SObject> recordList) {
+			Map<String, SObject> records = Cmdt.mapByKey(recordList);
+			return this.add(records);
+		}
+
+		/**
+		 * @description Adds a single record to the mock repository.
+		 * @param record The SObject record to add
+		 * @return This repository instance for method chaining
+		 */
+		global Cmdt.MockRepository add(SObject record) {
+			return this.add(new List<SObject>{ record });
+		}
+
+		/**
+		 * @description Removes all records from the mock repository.
+		 * @return This repository instance for method chaining
+		 */
+		global Cmdt.MockRepository clear() {
+			this.records?.clear();
+			return this;
+		}
+
+		/**
+		 * @description Retrieves all records from the mock repository.
+		 * @return Map of all records indexed by their qualified API names
+		 */
+		global Map<String, SObject> getAll() {
+			return this.records;
+		}
+
+		/**
+		 * @description Retrieves a specific record by its qualified API name.
+		 * @param qualifiedApiName The qualified API name of the record to retrieve
+		 * @return The SObject record if found, null otherwise
+		 */
+		global SObject getInstance(String qualifiedApiName) {
+			return this.getAll()?.get(qualifiedApiName);
+		}
+
+		/**
+		 * @description Removes records with the specified keys from the mock repository.
+		 * @param keys Set of record keys to remove
+		 * @return This repository instance for method chaining
+		 */
+		global Cmdt.MockRepository remove(Set<String> keys) {
+			this.records?.keySet()?.removeAll(keys);
+			return this;
+		}
+
+		/**
+		 * @description Removes records specified in the map from the mock repository.
+		 * @param recordMap Map containing records to remove
+		 * @return This repository instance for method chaining
+		 */
+		global Cmdt.MockRepository remove(Map<String, SObject> recordMap) {
+			Set<String> keys = recordMap?.keySet();
+			return this.remove(keys);
+		}
+
+		/**
+		 * @description Removes records specified in the list from the mock repository.
+		 * @param recordList List of records to remove
+		 * @return This repository instance for method chaining
+		 */
+		global Cmdt.MockRepository remove(List<SObject> recordList) {
+			Map<String, SObject> recordMap = Cmdt.mapByKey(recordList);
+			return this.remove(recordMap);
+		}
+
+		/**
+		 * @description Removes a single record from the mock repository.
+		 * @param record The SObject record to remove
+		 * @return This repository instance for method chaining
+		 */
+		global Cmdt.MockRepository remove(SObject record) {
+			return this.remove(new List<SObject>{ record });
+		}
+
+		/**
+		 * @description Removes a record with the specified key from the mock repository.
+		 * @param key The record key to remove
+		 * @return This repository instance for method chaining
+		 */
+		global Cmdt.MockRepository remove(String key) {
+			return this.remove(new Set<String>{ key });
 		}
 	}
 
