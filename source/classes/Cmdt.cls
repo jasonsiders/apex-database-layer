@@ -313,13 +313,7 @@ global inherited sharing class Cmdt {
 
 		private SoqlProvider(DatabaseLayer factory) {
 			super(factory);
-		}
-
-		@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
-		public virtual override DatabaseLayer.SoqlProvider useMocks(Boolean value) {
-			// Always use a real Soql query, regardless of the provided value:
 			this.useMocks = false;
-			return this;
 		}
 	}
 }

@@ -217,8 +217,8 @@ global class DatabaseLayer {
 			this.plugin = (Soql.PreAndPostProcessor) DatabaseLayer.Utils?.Plugins?.initPlugin(field);
 		}
 
-		protected virtual DatabaseLayer.SoqlProvider useMocks(Boolean useMocks) {
-			this.useMocks = useMocks;
+		private DatabaseLayer.SoqlProvider useMocks(Boolean value) {
+			this.useMocks = value;
 			return this;
 		}
 	}
