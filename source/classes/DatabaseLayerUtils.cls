@@ -18,12 +18,12 @@ public without sharing class DatabaseLayerUtils {
 	 * @description Utility for retrieving DatabaseLayerSetting__mdt configuration records.
 	 */
 	@SuppressWarnings('PMD.PropertyNamingConventions')
-	public DatabaseLayerSetting__mdt Settings { 
+	public DatabaseLayerSetting__mdt Settings {
 		get {
 			this.Settings = this.Settings ?? this.getSettings();
 			return this.Settings;
-		} 
-		private set; 
+		}
+		private set;
 	}
 
 	/**
@@ -96,6 +96,13 @@ public without sharing class DatabaseLayerUtils {
 	 */
 	@SuppressWarnings('PMD.AvoidDebugStatements')
 	public class Plugins {
+		public Dml.PreAndPostProcessor Dml { get; private set; }
+		public Soql.PreAndPostProcessor Soql { get; private set; }
+
+		public Plugins() {
+			this.init();
+		}
+
 		/**
 		 * @description Initializes a plugin instance based on custom metadata configuration.
 		 * @param field The SObjectField on DatabaseLayerSetting__mdt containing the plugin class name
@@ -112,6 +119,17 @@ public without sharing class DatabaseLayerUtils {
 				System.debug(System.LoggingLevel.WARN, msg);
 				return null;
 			}
+		}
+
+		/**
+		 * @description Initialize the Dml/Soql plugins based on current DatabaseLayerSetting__mdt values
+		 */
+		@TestVisible
+		private void init() {
+			this.Dml = (Dml.PreAndPostProcessor) this.initPlugin(DatabaseLayerSetting__mdt.DmlPreAndPostProcessor__c);
+			this.Soql = (Soql.PreAndPostProcessor) this.initPlugin(
+				DatabaseLayerSetting__mdt.SoqlPreAndPostProcessor__c
+			);
 		}
 	}
 

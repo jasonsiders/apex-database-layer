@@ -494,7 +494,7 @@ private class MockSoqlTest {
 	@IsTest
 	static void shouldNotRunProcessorLogicIfNoSettingsDefined() {
 		Cmdt.mock(DatabaseLayerSetting__mdt.SObjectType);
-		DatabaseLayer.Soql.initPlugins();
+		DatabaseLayer.Utils.Plugins.init();
 
 		Test.startTest();
 		DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowLimit(1)?.toSoql()?.query();

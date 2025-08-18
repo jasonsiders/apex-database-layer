@@ -11,11 +11,13 @@ global class DatabaseLayer {
 	private Cmdt currentCmdt;
 	private Dml currentDml;
 	private SoqlProvider currentSoql;
+	private DatabaseLayerUtils currentUtils;
 
 	private DatabaseLayer() {
 		this.currentCmdt = new Cmdt(this);
 		this.currentDml = new Dml(this);
 		this.currentSoql = new SoqlProvider(this);
+		this.currentUtils = new DatabaseLayerUtils(this);
 	}
 
 	// **** STATIC **** //
@@ -57,10 +59,8 @@ global class DatabaseLayer {
 	@SuppressWarnings('PMD.PropertyNamingConventions')
 	public static final DatabaseLayerUtils Utils {
 		get {
-			DatabaseLayer.Utils = DatabaseLayer.Utils ?? new DatabaseLayerUtils(INSTANCE);
-			return DatabaseLayer.Utils;
+			return INSTANCE?.currentUtils;
 		}
-		private set;
 	}
 
 	/**
@@ -174,10 +174,6 @@ global class DatabaseLayer {
 	 * @description Factory class responsible for provisioning SOQL instances with proper configuration and plugin support.
 	 */
 	global virtual class SoqlProvider {
-		/**
-		 * @description The currently configured SOQL plugin for pre/post processing
-		 */
-		public Soql.PreAndPostProcessor plugin { get; private set; }
 		protected Boolean useMocks { get; protected set; }
 
 		/**
@@ -187,7 +183,6 @@ global class DatabaseLayer {
 		 */
 		protected SoqlProvider(DatabaseLayer factory) {
 			this.useMocks = false;
-			this.initPlugins();
 		}
 
 		/**
@@ -198,18 +193,6 @@ global class DatabaseLayer {
 		global Soql newQuery(SObjectType objectType) {
 			Soql query = (this.useMocks == true) ? new MockSoql(INSTANCE) : new Soql(INSTANCE);
 			return query?.setFrom(objectType)?.toSoql();
-		}
-
-		/**
-		 * @description Initializes SOQL plugins based on custom metadata configuration.
-		 * Note: In production use cases, this will only happen once per transaction
-		 * In @IsTest uses cases, this happens every time the caller switches from Soql/MockSoql
-		 * Test callers can also call this method directly to recalculate the plugins after injecting mock metadata:
-		 */
-		@TestVisible
-		private void initPlugins() {
-			SObjectField field = DatabaseLayerSetting__mdt.SoqlPreAndPostProcessor__c;
-			this.plugin = (Soql.PreAndPostProcessor) DatabaseLayer.Utils?.Plugins?.initPlugin(field);
 		}
 
 		private DatabaseLayer.SoqlProvider useMocks(Boolean value) {

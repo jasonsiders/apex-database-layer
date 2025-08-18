@@ -1,7 +1,7 @@
 @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveRunAs')
 @IsTest
 private class DatabaseLayerTest {
-	@IsTest 
+	@IsTest
 	static void shouldInitCmdtObject() {
 		// There's only one CMDT object, and it can provision real or mock data in tests split by SObjectType
 		Test.startTest();

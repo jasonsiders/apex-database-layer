@@ -954,7 +954,7 @@ private class DmlTest {
 	@IsTest
 	static void shouldNotRunProcessorLogicIfNoSettingsDefined() {
 		Cmdt.mock(DatabaseLayerSetting__mdt.SObjectType);
-		DatabaseLayer.Dml.initPlugins();
+		DatabaseLayer.Utils.Plugins.init();
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();

@@ -62,9 +62,15 @@ global inherited sharing class Cmdt {
 	@TestVisible
 	private static Cmdt.MockRepository mock(SObjectType objectType) {
 		String objectApiName = objectType?.toString();
-		Cmdt.MockRepository repo = new Cmdt.MockRepository();
-		Cmdt.repos?.put(objectApiName, repo);
-		return repo;
+		Cmdt.Repository existingRepo = Cmdt.repos?.get(objectApiName);
+		Cmdt.MockRepository results;
+		if (existingRepo instanceof Cmdt.MockRepository) {
+			results = (Cmdt.MockRepository) existingRepo;
+		} else {
+			results = new Cmdt.MockRepository();
+			Cmdt.repos?.put(objectApiName, results);
+		}
+		return results;
 	}
 
 	private static Set<String> getObjectsToCache() {
