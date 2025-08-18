@@ -96,11 +96,20 @@ public without sharing class DatabaseLayerUtils {
 	 */
 	@SuppressWarnings('PMD.AvoidDebugStatements')
 	public class Plugins {
+		/**
+		 * @description The DML pre and post processor instance for this plugin configuration.
+		 */
 		@SuppressWarnings('PMD.PropertyNamingConventions')
 		public Dml.PreAndPostProcessor Dml { get; private set; }
+		/**
+		 * @description The SOQL pre and post processor instance for this plugin configuration.
+		 */
 		@SuppressWarnings('PMD.PropertyNamingConventions')
 		public Soql.PreAndPostProcessor Soql { get; private set; }
 
+		/**
+		 * @description Default constructor that initializes plugin instances.
+		 */
 		public Plugins() {
 			this.init();
 		}
