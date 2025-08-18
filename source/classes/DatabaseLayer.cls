@@ -5,8 +5,6 @@
 global class DatabaseLayer {
 	private static final DatabaseLayer INSTANCE = new DatabaseLayer();
 	@SuppressWarnings('PMD.FieldNamingConventions')
-	@TestVisible
-	private static DatabaseLayer.Configuration Config = new DatabaseLayer.Configuration();
 
 	private Cmdt currentCmdt;
 	private Dml currentDml;
@@ -78,10 +76,8 @@ global class DatabaseLayer {
 	 */
 	@TestVisible
 	private static MockDml useMockDml() {
-		// ! Deprecated: Will be removed in a future version
-		// ! Replace usage with DatabaseLayer.Config.useMockDml = true
-		DatabaseLayer.Config.useMockDml = true;
-		return (MockDml) DatabaseLayer.Dml;
+		INSTANCE.currentDml = new MockDml(INSTANCE);
+		return (MockDml) INSTANCE.currentDml;
 	}
 
 	/**
@@ -90,10 +86,7 @@ global class DatabaseLayer {
 	 */
 	@TestVisible
 	private static SoqlProvider useMockSoql() {
-		// ! Deprecated: Will be removed in a future version
-		// ! Replace usage with DatabaseLayer.Config.useMockSoql = true
-		DatabaseLayer.Config.useMockSoql = true;
-		return DatabaseLayer.Soql;
+		return INSTANCE.currentSoql?.useMocks(true);
 	}
 
 	/**
@@ -102,10 +95,8 @@ global class DatabaseLayer {
 	 */
 	@TestVisible
 	private static Dml useRealDml() {
-		// ! Deprecated: Will be removed in a future version
-		// ! Replace usage with DatabaseLayer.Config.useMockDml = false
-		DatabaseLayer.Config.useMockDml = false;
-		return DatabaseLayer.Dml;
+		INSTANCE.currentDml = new Dml(INSTANCE);
+		return INSTANCE.currentDml;
 	}
 
 	/**
@@ -114,10 +105,7 @@ global class DatabaseLayer {
 	 */
 	@TestVisible
 	private static SoqlProvider useRealSoql() {
-		// ! Deprecated: Will be removed in a future version
-		// ! Replace usage with DatabaseLayer.Config.useMockSoql = false
-		DatabaseLayer.Config.useMockSoql = false;
-		return DatabaseLayer.Soql;
+		return INSTANCE.currentSoql?.useMocks(false);
 	}
 
 	/**
@@ -125,51 +113,11 @@ global class DatabaseLayer {
 	 */
 	@TestVisible
 	private static void useRealData() {
-		// ! Deprecated: Will be removed in a future version
-		// ! Replace usage with DatabaseLayer.Config.useMockDml/Soql = false
 		DatabaseLayer.useRealDml();
 		DatabaseLayer.useRealSoql();
 	}
 
 	// **** INNER **** //
-	/**
-	 * @description Configuration class for managing DatabaseLayer provider settings and mock usage across different modules.
-	 */
-	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
-	global class Configuration {
-		/**
-		 * @description Controls whether to use mock DML implementation. When true, uses MockDml for testing.
-		 */
-		global Boolean useMockDml {
-			get;
-			set {
-				this.setDml(value);
-			}
-		}
-		/**
-		 * @description Controls whether to use mock SOQL implementation. When true, uses MockSoql for testing.
-		 */
-		global Boolean useMockSoql {
-			get;
-			set {
-				this.setSoql(value);
-			}
-		}
-
-		private Configuration() {
-			this.useMockDml = false;
-			this.useMockSoql = false;
-		}
-
-		private void setDml(Boolean value) {
-			INSTANCE.currentDml = (value == true) ? new MockDml(INSTANCE) : new Dml(INSTANCE);
-		}
-
-		private void setSoql(Boolean value) {
-			INSTANCE.currentSoql?.useMocks(value);
-		}
-	}
-
 	/**
 	 * @description Factory class responsible for provisioning SOQL instances with proper configuration and plugin support.
 	 */
