@@ -96,7 +96,9 @@ public without sharing class DatabaseLayerUtils {
 	 */
 	@SuppressWarnings('PMD.AvoidDebugStatements')
 	public class Plugins {
+		@SuppressWarnings('PMD.PropertyNamingConventions')
 		public Dml.PreAndPostProcessor Dml { get; private set; }
+		@SuppressWarnings('PMD.PropertyNamingConventions')
 		public Soql.PreAndPostProcessor Soql { get; private set; }
 
 		public Plugins() {
