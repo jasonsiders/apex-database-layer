@@ -182,9 +182,24 @@ private class CmdtTest {
 	}
 
 	@IsTest 
+	static void shouldHandleSuccessiveMockCallsToSameObject() {
+		// Multiple mock() calls should *not* reset the mocked records:
+		Test.startTest();
+		for (Integer i = 1; i < 4; i++) {
+			String name = 'Test_Record_' + i;
+			DatabaseLayerSetting__mdt settings = new DatabaseLayerSetting__mdt(DeveloperName = name);
+			Cmdt.mock(CMDT_OBJECT)?.add(settings);
+			Set<String> mocked = DatabaseLayer.Cmdt.ofType(CMDT_OBJECT)?.getAll()?.keySet();
+			Assert.areEqual(i, mocked?.size(), 'Wrong # of mocked records');
+			Assert.isTrue(mocked?.contains(name), 'Did not mock ' + i);
+		}
+		Test.stopTest();
+	}
+
+	@IsTest 
 	static void shouldExtractListOfEntityDefinitionsByName() {
 		// This is purely for coverage, in orgs that don't contain CMDTs w/long text fields
-		String objectApiName = DatabaseLayerSetting__mdt.SObjectType.toString();
+		String objectApiName = CMDT_OBJECT.toString();
 		EntityDefinition entity = (EntityDefinition) new MockRecord(EntityDefinition.SObjectType)
 			?.setField(EntityDefinition.QualifiedApiName, objectApiName)
 			?.toSObject();
@@ -196,6 +211,26 @@ private class CmdtTest {
 
 		Assert.areEqual(entities?.size(), results?.size(), 'Wrong # of results');
 		Assert.isTrue(results?.contains(objectApiName), 'Did not extract ' + objectApiName);
+	}
+
+	@IsTest 
+	static void shouldResetMetadataRetrieval() {
+		DatabaseLayerSetting__mdt mockSetting1 = new DatabaseLayerSetting__mdt(DeveloperName = 'Test_Record_1');
+		DatabaseLayerSetting__mdt mockSetting2 = new DatabaseLayerSetting__mdt(DeveloperName = 'Test_Record_2');
+		Cmdt.mock(CMDT_OBJECT)
+			?.add(mockSetting1)
+			?.add(mockSetting2);
+
+		Test.startTest();
+		Cmdt.reset(CMDT_OBJECT);
+		// After the reset, mock again, but with a new 3rd setting object:
+		DatabaseLayerSetting__mdt mockSetting3 = new DatabaseLayerSetting__mdt(DeveloperName = 'Test_Record_3');
+		Cmdt.mock(CMDT_OBJECT)?.add(mockSetting3);
+		Test.stopTest();
+
+		List<DatabaseLayerSetting__mdt> results = (List<DatabaseLayerSetting__mdt>) DatabaseLayer.Cmdt.ofType(CMDT_OBJECT)?.getAll()?.values();
+		Assert.areEqual(1, results?.size(), 'Wrong # of results');
+		Assert.areEqual(mockSetting3?.DeveloperName, results?.get(0)?.DeveloperName, 'Did not reset');
 	}
 
 	// **** HELPER **** //

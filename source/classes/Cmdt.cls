@@ -73,6 +73,16 @@ global inherited sharing class Cmdt {
 		return results;
 	}
 
+	/**
+	 * @description Remove an SObjectType from the list of repos. The `ofType` method will re-run the retrieval logic for that object
+	 * @param objectType The SObjectType to reset
+	 */
+	@TestVisible
+	private static void reset(SObjectType objectType) {
+		String objectApiName = objectType?.toString();
+		Cmdt.repos?.remove(objectApiName);
+	}
+
 	@TestVisible
 	private static Set<String> extractEntityNames(List<EntityDefinition> entities) {
 		Set<String> results = new Set<String>{};
