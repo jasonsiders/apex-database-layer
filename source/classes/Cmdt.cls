@@ -73,19 +73,19 @@ global inherited sharing class Cmdt {
 		return results;
 	}
 
-	private static Set<String> getObjectsToCache() {
-		List<EntityDefinition> entities = Cmdt.queryEntityDefinitions();
-		return Cmdt.extractObjectNames(entities);
-	}
-
 	@TestVisible
-	private static Set<String> extractObjectNames(List<EntityDefinition> entities) {
+	private static Set<String> extractEntityNames(List<EntityDefinition> entities) {
 		Set<String> results = new Set<String>{};
 		for (EntityDefinition entity : entities) {
 			String objectApiName = entity?.QualifiedApiName;
 			results?.add(objectApiName);
 		}
 		return results;
+	}
+
+	private static Set<String> getObjectsToCache() {
+		List<EntityDefinition> entities = Cmdt.queryEntityDefinitions();
+		return Cmdt.extractEntityNames(entities);
 	}
 
 	private static Map<String, SObject> mapByKey(List<SObject> recordList) {

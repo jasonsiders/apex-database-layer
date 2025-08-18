@@ -191,7 +191,7 @@ private class CmdtTest {
 		List<EntityDefinition> entities = new List<EntityDefinition>{ entity };
 		
 		Test.startTest();
-		Set<String> results = Cmdt.extractObjectNames(entities);
+		Set<String> results = Cmdt.extractEntityNames(entities);
 		Test.stopTest();
 
 		Assert.areEqual(entities?.size(), results?.size(), 'Wrong # of results');
