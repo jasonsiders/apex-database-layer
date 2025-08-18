@@ -949,8 +949,6 @@ private class MockDmlTest {
 		DatabaseLayerTestUtils.initDmlAndSoqlPlugins('An obviously invalid apex class name');
 		List<Account> accounts = MockDmlTest.initRecords(Account.SObjectType, false);
 
-		System.debug('Starting test...\nCurrent State: ' + JSON.serialize(DatabaseLayer.Utils));
-
 		Test.startTest();
 		Database.SaveResult result = DatabaseLayer.Dml.doInsert(accounts)?.get(0);
 		Test.stopTest();
