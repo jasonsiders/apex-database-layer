@@ -7,7 +7,6 @@ private class MockSoqlTest {
 	static {
 		DatabaseLayer.useMocks();
 		NUM_ACCS = 10;
-		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
 	}
 
 	// **** TESTS **** //
@@ -420,6 +419,8 @@ private class MockSoqlTest {
 
 	@IsTest
 	static void shouldRunPreAndPostProcessorPluginLogic() {
+		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
+		
 		Test.startTest();
 		DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowLimit(1)?.toSoql()?.query();
 		Test.stopTest();
@@ -435,6 +436,7 @@ private class MockSoqlTest {
 
 	@IsTest
 	static void shouldRunPluginErrorLogic() {
+		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
 		MockSoql.setGlobalMock()?.withError();
 
 		Test.startTest();
