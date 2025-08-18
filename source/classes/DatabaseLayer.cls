@@ -3,19 +3,22 @@
  */
 @SuppressWarnings('PMD.AvoidGlobalModifier')
 global class DatabaseLayer {
-	private static final DatabaseLayer INSTANCE = new DatabaseLayer();
-	@SuppressWarnings('PMD.FieldNamingConventions')
+	public static final DatabaseLayerUtils UTILS;
+	private static final DatabaseLayer INSTANCE;
+
+	static {
+		INSTANCE = new DatabaseLayer();
+		UTILS = new DatabaseLayerUtils(INSTANCE);
+	}
 
 	private Cmdt currentCmdt;
 	private Dml currentDml;
 	private SoqlProvider currentSoql;
-	private DatabaseLayerUtils currentUtils;
 
 	private DatabaseLayer() {
 		this.currentCmdt = new Cmdt(this);
 		this.currentDml = new Dml(this);
 		this.currentSoql = new SoqlProvider(this);
-		this.currentUtils = new DatabaseLayerUtils(this);
 	}
 
 	// **** STATIC **** //
@@ -47,17 +50,6 @@ global class DatabaseLayer {
 	global static SoqlProvider Soql {
 		get {
 			return INSTANCE?.currentSoql;
-		}
-	}
-
-	/**
-	 * @description Provides access to utility methods for database operations and testing.
-	 * @return Singleton instance of the DatabaseLayerUtils class
-	 */
-	@SuppressWarnings('PMD.PropertyNamingConventions')
-	public static final DatabaseLayerUtils Utils {
-		get {
-			return INSTANCE?.currentUtils;
 		}
 	}
 
