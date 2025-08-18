@@ -8,10 +8,7 @@ private class MockDmlTest {
 		TEST_SIZE = 20;
 		// Custom metadata actually defined in the org should not interfere with this test:
 		Cmdt.mock(DatabaseLayerSetting__mdt.SObjectType);
-		// Use Mock DML:
 		DatabaseLayer.useMockDml();
-		// Initialize plugins:
-		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
 	}
 
 	// **** TESTS **** //
@@ -903,6 +900,7 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldRunPreAndPostProcessorPluginLogic() {
+		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
 		List<Account> accounts = MockDmlTest.initRecords(Account.SObjectType, false);
 
 		Test.startTest();
@@ -921,6 +919,7 @@ private class MockDmlTest {
 
 	@IsTest
 	static void shouldRunPluginErrorLogic() {
+		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
 		List<Account> accounts = MockDmlTest.initRecords(Account.SObjectType, false);
 		MockDml.shouldFail();
 
@@ -949,6 +948,8 @@ private class MockDmlTest {
 	static void shouldNotRunProcessorLogicIfInvalidApexClassDefined() {
 		DatabaseLayerTestUtils.initDmlAndSoqlPlugins('An obviously invalid apex class name');
 		List<Account> accounts = MockDmlTest.initRecords(Account.SObjectType, false);
+
+		System.debug('Starting test...\nCurrent State: ' + JSON.serialize(DatabaseLayer.Utils));
 
 		Test.startTest();
 		Database.SaveResult result = DatabaseLayer.Dml.doInsert(accounts)?.get(0);
