@@ -9,8 +9,6 @@ global inherited sharing virtual class Dml {
 	private static final DataSource.AsyncDeleteCallback DEFAULT_DELETE_CALLBACK = new Dml.EmptyDeleteCallback();
 	private static final DataSource.AsyncSaveCallback DEFAULT_SAVE_CALLBACK = new Dml.EmptySaveCallback();
 	private static final SObjectField PLUGIN_FIELD = DatabaseLayerSetting__mdt.DmlPreAndPostProcessor__c;
-	@TestVisible
-	private static Dml.PreAndPostProcessor plugin;
 
 	/**
 	 * @description Constructor for Dml instance.
