@@ -181,6 +181,23 @@ private class CmdtTest {
 		Assert.isNull(instance, 'Invalid key returned an instance anyways?');
 	}
 
+	@IsTest 
+	static void shouldExtractListOfEntityDefinitionsByName() {
+		// This is purely for coverage, in orgs that don't contain CMDTs w/long text fields
+		String objectApiName = DatabaseLayerSetting__mdt.SObjectType.toString();
+		EntityDefinition entity = (EntityDefinition) new MockRecord(EntityDefinition.SObjectType)
+			?.setField(EntityDefinition.QualifiedApiName, objectApiName)
+			?.toSObject();
+		List<EntityDefinition> entities = new List<EntityDefinition>{ entity };
+		
+		Test.startTest();
+		Set<String> results = Cmdt.extractObjectNames(entities);
+		Test.stopTest();
+
+		Assert.areEqual(entities?.size(), results?.size(), 'Wrong # of results');
+		Assert.isTrue(results?.contains(objectApiName), 'Did not extract ' + objectApiName);
+	}
+
 	// **** HELPER **** //
 	private static DatabaseLayerSetting__mdt initMockSetting() {
 		// Override the guardrails that discourage query mocking
