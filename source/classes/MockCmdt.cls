@@ -10,13 +10,10 @@ global class MockCmdt {
 	global static MockCmdt.Repository mock(SObjectType objectType) {
 		String objectApiName = objectType?.toString();
 		Cmdt.Repository existingRepo = Cmdt.repos?.get(objectApiName);
-		MockCmdt.Repository results;
-		if (existingRepo instanceof MockCmdt.Repository) {
-			results = (MockCmdt.Repository) existingRepo;
-		} else {
-			results = new MockCmdt.Repository(objectType);
-			Cmdt.repos?.put(objectApiName, results);
-		}
+		MockCmdt.Repository results = (existingRepo instanceof MockCmdt.Repository)
+			? (MockCmdt.Repository) existingRepo
+			: new MockCmdt.Repository(objectType);
+		Cmdt.repos?.put(objectApiName, results);
 		return results;
 	}
 
