@@ -42,23 +42,14 @@ global class MockCmdt {
 		}
 
 		/**
-		 * @description Adds multiple records from a map to the mock repository.
-		 * @param recordMap Map of record keys to SObject records
-		 * @return This repository instance for method chaining
-		 */
-		global Repository add(Map<String, SObject> recordMap) {
-			this.records?.putAll(recordMap);
-			return this;
-		}
-
-		/**
 		 * @description Adds multiple records from a list to the mock repository.
 		 * @param recordList List of SObject records to add
 		 * @return This repository instance for method chaining
 		 */
 		global MockCmdt.Repository add(List<SObject> recordList) {
-			Map<String, SObject> records = Cmdt.mapByKey(recordList);
-			return this.add(records);
+			Map<String, SObject> recordMap = Cmdt.mapByKey(recordList);
+			this.records?.putAll(recordMap);
+			return this;
 		}
 
 		/**
