@@ -1,6 +1,6 @@
 /**
  * @description Adapter class that integrates Nebula Logger with the Apex Database Layer framework.
- *              Implements both DML and SOQL pre/post processors to log database operations.
+ * Implements both DML and SOQL pre/post processors to log database operations.
  */
 @SuppressWarnings('PMD.AvoidGlobalModifier')
 global class DatabaseLayerNebulaLoggerAdapter implements Dml.PreAndPostProcessor, Soql.PreAndPostProcessor {

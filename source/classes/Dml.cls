@@ -9,15 +9,15 @@ global inherited sharing virtual class Dml {
 	private static final DataSource.AsyncDeleteCallback DEFAULT_DELETE_CALLBACK = new Dml.EmptyDeleteCallback();
 	private static final DataSource.AsyncSaveCallback DEFAULT_SAVE_CALLBACK = new Dml.EmptySaveCallback();
 	private static final SObjectField PLUGIN_FIELD = DatabaseLayerSetting__mdt.DmlPreAndPostProcessor__c;
-	private static Dml.PreAndPostProcessor plugin;
 
 	/**
 	 * @description Constructor for Dml instance.
 	 * Note: Should not be called directly - use DatabaseLayer.Dml property instead.
 	 * @param factory The DatabaseLayer factory instance
 	 */
+	@SuppressWarnings('PMD.EmptyStatementBlock')
 	public Dml(DatabaseLayer factory) {
-		this.initPlugins();
+		// Access this class method's via the `DatabaseLayer.Dml` static property
 	}
 
 	/**
@@ -1529,14 +1529,6 @@ global inherited sharing virtual class Dml {
 		return records;
 	}
 
-	/**
-	 * @description Initializes DML plugins based on custom metadata configuration.
-	 */
-	@TestVisible
-	private void initPlugins() {
-		Dml.Plugin = (Dml.PreAndPostProcessor) DatabaseLayer.Utils?.Plugins?.initPlugin(PLUGIN_FIELD);
-	}
-
 	// **** STATIC **** //
 	private static Database.DmlOptions initDmlOptions(Boolean allOrNone) {
 		Database.DmlOptions options = new Database.DmlOptions();
@@ -1735,14 +1727,14 @@ global inherited sharing virtual class Dml {
 		protected List<Object> process() {
 			// Main method called by the Dml class; processes DML, and calls the Pre/Post DML plugins:
 			try {
-				Dml.Plugin?.processPreDml(this);
+				DatabaseLayer.Utils.Plugins.Dml?.processPreDml(this);
 				List<Object> results = this.doDml();
-				Dml.Plugin?.processPostDml(this, results);
+				DatabaseLayer.Utils.Plugins.Dml?.processPostDml(this, results);
 				return results;
 			} catch (Exception error) {
 				// Allow the plugin to act on DML exceptions, ex., for logging
 				// The error will still be thrown anyways:
-				Dml.Plugin?.processDmlError(this, error);
+				DatabaseLayer.Utils.Plugins.Dml?.processDmlError(this, error);
 				throw error;
 			}
 		}

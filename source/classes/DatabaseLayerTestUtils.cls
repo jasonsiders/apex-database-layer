@@ -16,9 +16,8 @@ global class DatabaseLayerTestUtils {
 	 * @return The created test settings object
 	 */
 	global static DatabaseLayerSetting__mdt initSettings(DatabaseLayerSetting__mdt setting) {
-		DatabaseLayer.Utils.MetadataSelector.settings = new List<DatabaseLayerSetting__mdt>{ setting };
-		DatabaseLayer.Dml.initPlugins();
-		DatabaseLayer.Soql.initPlugins();
+		MockCmdt.mock(DatabaseLayerSetting__mdt.SObjectType)?.add(setting);
+		DatabaseLayer.Utils.Plugins.init();
 		return setting;
 	}
 
