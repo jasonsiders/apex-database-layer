@@ -2,7 +2,7 @@
  * @description Provides access to Custom Metadata Type records with caching and namespace support.
  * Supports both DeveloperName and qualified namespace__DeveloperName lookups.
  */
-@SuppressWarnings('PMD.AvoidGlobalModifier,PMD.CognitiveComplexity')
+@SuppressWarnings('PMD.AvoidGlobalModifier')
 global inherited sharing class Cmdt {
 	@TestVisible
 	private static final String DEVELOPER_NAME = 'DeveloperName';
