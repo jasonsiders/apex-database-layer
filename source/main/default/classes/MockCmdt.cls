@@ -81,23 +81,13 @@ global class MockCmdt {
 		}
 
 		/**
-		 * @description Removes records specified in the map from the mock repository.
-		 * @param recordMap Map containing records to remove
-		 * @return This repository instance for method chaining
-		 */
-		global MockCmdt.Repository remove(Map<String, SObject> recordMap) {
-			Set<String> keys = recordMap?.keySet();
-			return this.remove(keys);
-		}
-
-		/**
 		 * @description Removes records specified in the list from the mock repository.
 		 * @param recordList List of records to remove
 		 * @return This repository instance for method chaining
 		 */
 		global MockCmdt.Repository remove(List<SObject> recordList) {
-			Map<String, SObject> recordMap = Cmdt.mapByKey(recordList);
-			return this.remove(recordMap);
+			Set<String> keys = Cmdt.mapByKey(recordList)?.keySet();
+			return this.remove(keys);
 		}
 
 		/**
