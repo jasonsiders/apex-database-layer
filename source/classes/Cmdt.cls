@@ -34,9 +34,20 @@ global inherited sharing class Cmdt {
 	 */
 	global Cmdt.Repository ofType(SObjectType objectType) {
 		String objectApiName = objectType?.toString();
-		Cmdt.Repository repo = Cmdt.repos?.get(objectApiName) ?? new Cmdt.RepositoryBuilder(objectType);
+		Cmdt.Repository repo = Cmdt.repos?.get(objectApiName) ?? this.initRepository(objectType);
 		Cmdt.repos?.put(objectApiName, repo);
 		return repo;
+	}
+
+	private Cmdt.Repository initRepository(SObjectType objectType) {
+		// Maximize tradeoffs between heap size storage & query limits
+		if (this.includesLongTextFields(objectType) == true) {
+			// CMDT objects w/Long Text fields count towards query limits; query once and then cache
+			return new CacheBasedRepository(objectType);
+		} else {
+			// All other CMDT objects are "free" to query; avoid cacheing to minimize heap usage
+			return new QueryBasedRepository(objectType);
+		}
 	}
 
 	private Boolean includesLongTextFields(SObjectType objectType) {
@@ -92,68 +103,25 @@ global inherited sharing class Cmdt {
 	}
 
 	// **** INNER **** //
-	global class ConfigurationException extends Exception {}
-
-	global virtual class RepositoryBuilder implements Cmdt.Repository {
-		protected Boolean alreadyQueried;
-		protected SObjectType objectType;
-		protected Cmdt.Repository repo;
-
-		protected RepositoryBuilder(SObjectType objectType) {
-			this.alreadyQueried = false;
-			this.repo = this.initInnerRepository(); 
-		}
-
-		global Map<String, SObject> getAll() {
-			this.alreadyQueried = true; 
-			return this.repo?.getAll();
-		}
-
-		global SObject getInstance(String key) {
-			this.alreadyQueried = true; 
-			return this.repo?.getInstance(key);
-		}
-
-		protected virtual Cmdt.Repository initInnerRepository() {
-			// TODO:
-			/* Maximize tradeoffs between heap size storage & query limits
-			if (this.includesLongTextFields(objectType) == true) {
-				// CMDT objects w/Long Text fields count towards query limits; query once and then cache
-				return new CacheBasedRepository(objectType);
-			} else {
-				// All other CMDT objects are "free" to query; avoid cacheing to minimize heap usage
-				return new QueryBasedRepository(objectType);
-			} */
-		}
-
-		private void validateIfalreadyQueried() {
-			if (this.alreadyQueried) {
-				String msg = objectType + ': Cmdt.Repository cannot be modified once queried';
-				throw new Cmdt.ConfigurationException(msg);
-			}
-		}
-	}
-
 	/**
 	 * @description Repository implementation that caches query results to avoid repeated SOQL queries.
 	 * Use this for Custom Metadata Types that include long-text area fields, as queries for
 	 * these objects count towards SOQL governor limits.
 	 * https://help.salesforce.com/s/articleView?language=en_US&id=platform.custommetadatatypes_limits.htm&type=5
 	 */
-	@TestVisible
-	private inherited sharing virtual class CacheBasedRepository extends Cmdt.QueryBasedRepository {
+	global inherited sharing virtual class CacheBasedRepository extends Cmdt.QueryBasedRepository {
 		protected transient Map<String, SObject> records;
 
 		protected CacheBasedRepository(SObjectType objectType) {
 			super(objectType);
 		}
 
-		protected override Map<String, SObject> getAll() {
+		global override Map<String, SObject> getAll() {
 			this.retrieve();
 			return this.records;
 		}
 
-		protected override SObject getInstance(String qualifiedApiName) {
+		global override SObject getInstance(String qualifiedApiName) {
 			return this.getAll()?.get(qualifiedApiName);
 		}
 
@@ -171,7 +139,7 @@ global inherited sharing class Cmdt {
 	 * unless the object contains a long-text area field
 	 * https://help.salesforce.com/s/articleView?language=en_US&id=platform.custommetadatatypes_limits.htm&type=5
 	 */
-	private inherited sharing virtual class QueryBasedRepository implements Cmdt.Repository {
+	global inherited sharing virtual class QueryBasedRepository implements Cmdt.Repository {
 		protected transient SObjectType objectType;
 
 		protected QueryBasedRepository(SObjectType objectType) {
@@ -182,7 +150,7 @@ global inherited sharing class Cmdt {
 		 * @description Retrieves all Custom Metadata Type records as a map keyed by DeveloperName.
 		 * @return Map of DeveloperName to SObject record
 		 */
-		protected virtual Map<String, SObject> getAll() {
+		global virtual Map<String, SObject> getAll() {
 			List<SObject> records = this.queryAll();
 			return Cmdt.mapByKey(records);
 		}
@@ -192,7 +160,7 @@ global inherited sharing class Cmdt {
 		 * @param qualifiedApiName The DeveloperName of the record to retrieve, including Namespace (if applicable)
 		 * @return The SObject record, or null if not found
 		 */
-		protected virtual SObject getInstance(String qualifiedApiName) {
+		global virtual SObject getInstance(String qualifiedApiName) {
 			return this.initQuery()?.addWhere(DEVELOPER_NAME, Soql.EQUALS, qualifiedApiName)?.toSoql()?.queryFirst();
 		}
 
