@@ -25,6 +25,7 @@ private class CmdtTest {
 		DatabaseLayerSetting__mdt result = (DatabaseLayerSetting__mdt) DatabaseLayer.Cmdt
 			?.ofType(CMDT_OBJECT)
 			?.getInstance(key);
+		Assert.areEqual(0, Limits.getQueries(), 'Should not have used SOQL');
 		Test.stopTest();
 
 		Assert.areEqual(key, result?.DeveloperName, 'Wrong instance returned');
@@ -70,6 +71,7 @@ private class CmdtTest {
 		Test.startTest();
 		Map<String, SObject> records = repo?.getAll();
 		DatabaseLayerSetting__mdt matching = (DatabaseLayerSetting__mdt) repo?.getInstance(settings?.DeveloperName);
+		Assert.areEqual(0, Limits.getQueries(), 'Should not have used SOQL');
 		Test.stopTest();
 
 		Assert.areEqual(1, records?.size(), 'Wrong # of records');
@@ -84,6 +86,7 @@ private class CmdtTest {
 
 		Test.startTest();
 		Map<String, SObject> records = DatabaseLayer.Cmdt.ofType(CMDT_OBJECT)?.getAll();
+		Assert.areEqual(0, Limits.getQueries(), 'Should not have used SOQL');
 		Test.stopTest();
 
 		Assert.areEqual(0, records?.size(), 'Wrong # of records');
