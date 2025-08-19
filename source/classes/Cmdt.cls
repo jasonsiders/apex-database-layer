@@ -59,7 +59,8 @@ global inherited sharing class Cmdt {
 	// **** STATIC **** //
 	/**
 	 * @description Map each custom metadata record by its QualifiedApiName (NamespacePrefix + DeveloperName)
-	 * @param recordList A list of Custom Metadata SObject records
+	 * @param recordList A list of custom metadata SObject records
+	 * @return A map of custom metadata SObject records by their QualifiedApiName
 	 */
 	public static Map<String, SObject> mapByKey(List<SObject> recordList) {
 		Map<String, SObject> results = new Map<String, SObject>{};
