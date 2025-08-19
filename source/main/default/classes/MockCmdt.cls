@@ -29,9 +29,9 @@ global class MockCmdt {
 		Cmdt.repos?.remove(objectApiName);
 	}
 
-
+	// **** INNER **** //
 	/**
-	 * @description Mock implementation of the Repository interface for testing purposes.
+	 * @description Mock implementation of the Cmdt.Repository interface for testing purposes.
 	 * Allows in-memory storage and manipulation of Custom Metadata Type records without database operations.
 	 */
 	global class Repository extends Cmdt.CacheBasedRepository {
