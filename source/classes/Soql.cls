@@ -1752,12 +1752,12 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		public Object process() {
 			try {
-				DatabaseLayer.Soql.Plugin?.processPreSoql(this);
+				DatabaseLayer.Utils.Plugins.Soql?.processPreSoql(this);
 				Object results = this.performQueryOperation();
-				DatabaseLayer.Soql.Plugin?.processPostSoql(this, results);
+				DatabaseLayer.Utils.Plugins.Soql?.processPostSoql(this, results);
 				return results;
 			} catch (Exception error) {
-				DatabaseLayer.Soql.Plugin?.processSoqlError(this, error);
+				DatabaseLayer.Utils.Plugins.Soql?.processSoqlError(this, error);
 				String augmentedMsg = error?.getMessage() + '\nQuery: [' + this.queryString + ']';
 				error?.setMessage(augmentedMsg);
 				throw error;

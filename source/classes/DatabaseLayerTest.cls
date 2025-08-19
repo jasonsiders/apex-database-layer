@@ -2,6 +2,15 @@
 @IsTest
 private class DatabaseLayerTest {
 	@IsTest
+	static void shouldInitCmdtObject() {
+		// There's only one CMDT object, and it can provision real or mock data in tests split by SObjectType
+		Test.startTest();
+		Cmdt result = DatabaseLayer.Cmdt;
+		Test.stopTest();
+
+		Assert.isNotNull(result, 'Did not return result');
+	}
+	@IsTest
 	static void shouldInitRealDmlObjectByDefault() {
 		Test.startTest();
 		Dml result = DatabaseLayer.Dml;

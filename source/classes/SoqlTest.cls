@@ -3,11 +3,6 @@
 )
 @IsTest
 private class SoqlTest {
-	static {
-		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
-	}
-
-	// **** TESTS **** //
 	@IsTest
 	static void shouldAggregateQuery() {
 		Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id);
@@ -1516,6 +1511,8 @@ private class SoqlTest {
 
 	@IsTest
 	static void shouldRunPreAndPostProcessorPluginLogic() {
+		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
+
 		Test.startTest();
 		DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowLimit(1)?.toSoql()?.query();
 		Test.stopTest();
@@ -1535,6 +1532,8 @@ private class SoqlTest {
 
 	@IsTest
 	static void shouldRunPluginErrorLogic() {
+		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
+
 		Test.startTest();
 		Exception caughtError;
 		try {
@@ -1604,8 +1603,8 @@ private class SoqlTest {
 
 	@IsTest
 	static void shouldNotRunProcessorLogicIfNoSettingsDefined() {
-		DatabaseLayer.Utils.MetadataSelector.settings = new List<DatabaseLayerSetting__mdt>{};
-		DatabaseLayer.Soql.initPlugins();
+		MockCmdt.mock(DatabaseLayerSetting__mdt.SObjectType);
+		DatabaseLayer.Utils.Plugins.init();
 
 		Test.startTest();
 		DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowLimit(1)?.toSoql()?.query();
@@ -1627,7 +1626,7 @@ private class SoqlTest {
 	// **** HELPER **** //
 	private static DatabaseLayerSetting__mdt initSettings() {
 		DatabaseLayerSetting__mdt settings = new DatabaseLayerSetting__mdt();
-		DatabaseLayer.Utils.MetadataSelector.settings?.add(settings);
+		MockCmdt.mock(DatabaseLayerSetting__mdt.SObjectType)?.add(settings);
 		return settings;
 	}
 

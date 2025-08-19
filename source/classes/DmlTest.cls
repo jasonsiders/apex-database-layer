@@ -11,9 +11,7 @@ private class DmlTest {
 		deleteCallbacksMade = new List<Database.DeleteResult>();
 		saveCallbacksMade = new List<Database.SaveResult>();
 		// Custom metadata actually defined in the org should not interfere with this test:
-		DatabaseLayer.Utils.MetadataSelector.settings = new List<DatabaseLayerSetting__mdt>{};
-		// Initialize plugins
-		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
+		MockCmdt.mock(DatabaseLayerSetting__mdt.SObjectType);
 	}
 
 	// **** TESTS **** //
@@ -872,6 +870,7 @@ private class DmlTest {
 
 	@IsTest
 	static void shouldRunPreAndPostProcessorPluginLogic() {
+		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();
@@ -890,6 +889,7 @@ private class DmlTest {
 
 	@IsTest
 	static void shouldRunPluginErrorLogic() {
+		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();
@@ -953,8 +953,8 @@ private class DmlTest {
 
 	@IsTest
 	static void shouldNotRunProcessorLogicIfNoSettingsDefined() {
-		DatabaseLayer.Utils.MetadataSelector.settings = new List<DatabaseLayerSetting__mdt>{};
-		DatabaseLayer.Dml.initPlugins();
+		MockCmdt.mock(DatabaseLayerSetting__mdt.SObjectType);
+		DatabaseLayer.Utils.Plugins.init();
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();
