@@ -1533,7 +1533,7 @@ private class SoqlTest {
 	@IsTest
 	static void shouldRunPluginErrorLogic() {
 		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
-		
+
 		Test.startTest();
 		Exception caughtError;
 		try {

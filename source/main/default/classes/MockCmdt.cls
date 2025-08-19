@@ -1,7 +1,7 @@
 @SuppressWarnings('PMD.AvoidGlobalModifier')
 @IsTest
 global class MockCmdt {
-    /**
+	/**
 	 * @description Creates and configures a MockCmdt.Repository for the specified Custom Metadata Type.
 	 * This allows mocking CMDT records in tests without database operations.
 	 * @param objectType The SObjectType of the Custom Metadata Type to mock

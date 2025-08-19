@@ -184,7 +184,7 @@ private class CmdtTest {
 		Assert.isNull(instance, 'Invalid key returned an instance anyways?');
 	}
 
-	@IsTest 
+	@IsTest
 	static void shouldHandleSuccessiveMockCallsToSameObject() {
 		// Multiple mock() calls should *not* reset the mocked records:
 		Test.startTest();
@@ -199,7 +199,7 @@ private class CmdtTest {
 		Test.stopTest();
 	}
 
-	@IsTest 
+	@IsTest
 	static void shouldExtractListOfEntityDefinitionsByName() {
 		// This is purely for coverage, in orgs that don't contain CMDTs w/long text fields
 		String objectApiName = CMDT_OBJECT.toString();
@@ -207,7 +207,7 @@ private class CmdtTest {
 			?.setField(EntityDefinition.QualifiedApiName, objectApiName)
 			?.toSObject();
 		List<EntityDefinition> entities = new List<EntityDefinition>{ entity };
-		
+
 		Test.startTest();
 		Set<String> results = Cmdt.extractEntityNames(entities);
 		Test.stopTest();
@@ -216,13 +216,11 @@ private class CmdtTest {
 		Assert.isTrue(results?.contains(objectApiName), 'Did not extract ' + objectApiName);
 	}
 
-	@IsTest 
+	@IsTest
 	static void shouldResetMetadataRetrieval() {
 		DatabaseLayerSetting__mdt mockSetting1 = new DatabaseLayerSetting__mdt(DeveloperName = 'Test_Record_1');
 		DatabaseLayerSetting__mdt mockSetting2 = new DatabaseLayerSetting__mdt(DeveloperName = 'Test_Record_2');
-		MockCmdt.mock(CMDT_OBJECT)
-			?.add(mockSetting1)
-			?.add(mockSetting2);
+		MockCmdt.mock(CMDT_OBJECT)?.add(mockSetting1)?.add(mockSetting2);
 
 		Test.startTest();
 		MockCmdt.reset(CMDT_OBJECT);
@@ -231,7 +229,11 @@ private class CmdtTest {
 		MockCmdt.mock(CMDT_OBJECT)?.add(mockSetting3);
 		Test.stopTest();
 
-		List<DatabaseLayerSetting__mdt> results = (List<DatabaseLayerSetting__mdt>) DatabaseLayer.Cmdt.ofType(CMDT_OBJECT)?.getAll()?.values();
+		List<DatabaseLayerSetting__mdt> results = (List<DatabaseLayerSetting__mdt>) DatabaseLayer.Cmdt.ofType(
+				CMDT_OBJECT
+			)
+			?.getAll()
+			?.values();
 		Assert.areEqual(1, results?.size(), 'Wrong # of results');
 		Assert.areEqual(mockSetting3?.DeveloperName, results?.get(0)?.DeveloperName, 'Did not reset');
 	}

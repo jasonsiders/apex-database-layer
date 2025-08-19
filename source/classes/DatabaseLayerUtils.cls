@@ -135,12 +135,11 @@ public without sharing class DatabaseLayerUtils {
 		/**
 		 * @description Initialize the Dml/Soql plugins based on current DatabaseLayerSetting__mdt values
 		 */
+		/* prettier-ignore */
 		@TestVisible
 		private void init() {
 			this.Dml = (Dml.PreAndPostProcessor) this.initPlugin(DatabaseLayerSetting__mdt.DmlPreAndPostProcessor__c);
-			this.Soql = (Soql.PreAndPostProcessor) this.initPlugin(
-				DatabaseLayerSetting__mdt.SoqlPreAndPostProcessor__c
-			);
+			this.Soql = (Soql.PreAndPostProcessor) this.initPlugin(DatabaseLayerSetting__mdt.SoqlPreAndPostProcessor__c);
 		}
 	}
 

@@ -135,7 +135,7 @@ global inherited sharing class Cmdt {
 
 	/**
 	 * @description Repository implementation that issues a new SOQL query each time.
-	 * Use this for most Custom Metadata Types; SOQL queries will not count towards governor limits, 
+	 * Use this for most Custom Metadata Types; SOQL queries will not count towards governor limits,
 	 * unless the object contains a long-text area field
 	 * https://help.salesforce.com/s/articleView?language=en_US&id=platform.custommetadatatypes_limits.htm&type=5
 	 */

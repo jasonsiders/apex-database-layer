@@ -21,7 +21,7 @@ global class DatabaseLayer {
 		INSTANCE = new DatabaseLayer();
 		UTILS = new DatabaseLayerUtils(INSTANCE);
 	}
-	
+
 	/**
 	 * @description Primary access point for CMDT operations. Returns the currently configured CMDT provider instance.
 	 * @return The current CMDT provider (real or mock based on configuration)
