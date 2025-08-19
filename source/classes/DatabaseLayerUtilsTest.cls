@@ -79,7 +79,7 @@ private class DatabaseLayerUtilsTest {
 	static void shouldReturnMockedMetadata() {
 		// To force your test to use a specific DatabaseLayerSetting__mdt record, add ito the `settings` list:
 		DatabaseLayerSetting__mdt mockSetting = new DatabaseLayerSetting__mdt(DeveloperName = 'Test_123');
-		Cmdt.mock(DatabaseLayerSetting__mdt.SObjectType)?.add(mockSetting);
+		MockCmdt.mock(DatabaseLayerSetting__mdt.SObjectType)?.add(mockSetting);
 
 		Test.startTest();
 		DatabaseLayerSetting__mdt results = DatabaseLayer.Utils.Settings;
@@ -92,7 +92,7 @@ private class DatabaseLayerUtilsTest {
 	@IsTest
 	static void shouldReturnNullIfMockedEmtpyList() {
 		// Define `settings` as an empty list to ignore any defined DatabaseLayerSetting__mdt records in an org:
-		Cmdt.mock(DatabaseLayerSetting__mdt.SObjectType);
+		MockCmdt.mock(DatabaseLayerSetting__mdt.SObjectType);
 
 		Test.startTest();
 		DatabaseLayerSetting__mdt results = DatabaseLayer.Utils.Settings;
@@ -108,7 +108,7 @@ private class DatabaseLayerUtilsTest {
 			DeveloperName = 'Test_123',
 			DmlPreAndPostProcessor__c = DatabaseLayerTestUtils.SamplePlugin.class.getName()
 		);
-		Cmdt.mock(DatabaseLayerSetting__mdt.SObjectType)?.add(mockSetting);
+		MockCmdt.mock(DatabaseLayerSetting__mdt.SObjectType)?.add(mockSetting);
 		SObjectField field = DatabaseLayerSetting__mdt.DmlPreAndPostProcessor__c;
 
 		Test.startTest();
@@ -124,7 +124,7 @@ private class DatabaseLayerUtilsTest {
 			DeveloperName = 'Test_123',
 			DmlPreAndPostProcessor__c = 'not a real object name'
 		);
-		Cmdt.mock(DatabaseLayerSetting__mdt.SObjectType)?.add(mockSetting);
+		MockCmdt.mock(DatabaseLayerSetting__mdt.SObjectType)?.add(mockSetting);
 		SObjectField field = DatabaseLayerSetting__mdt.DmlPreAndPostProcessor__c;
 
 		Test.startTest();
@@ -140,7 +140,7 @@ private class DatabaseLayerUtilsTest {
 			DeveloperName = 'Test_123',
 			DmlPreAndPostProcessor__c = null
 		);
-		Cmdt.mock(DatabaseLayerSetting__mdt.SObjectType)?.add(mockSetting);
+		MockCmdt.mock(DatabaseLayerSetting__mdt.SObjectType)?.add(mockSetting);
 		SObjectField field = DatabaseLayerSetting__mdt.DmlPreAndPostProcessor__c;
 
 		Test.startTest();
@@ -152,7 +152,7 @@ private class DatabaseLayerUtilsTest {
 
 	@IsTest
 	static void shouldReturnNullPluginIfMissingSettingsRecords() {
-		Cmdt.mock(DatabaseLayerSetting__mdt.SObjectType);
+		MockCmdt.mock(DatabaseLayerSetting__mdt.SObjectType);
 		SObjectField field = DatabaseLayerSetting__mdt.DmlPreAndPostProcessor__c;
 
 		Test.startTest();

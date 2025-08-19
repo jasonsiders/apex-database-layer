@@ -10,8 +10,9 @@ global inherited sharing class Cmdt {
 	@TestVisible
 	private static Set<String> objectsToCache;
 	@TestVisible
-	private static DatabaseLayer.SoqlProvider soqlProvider;
 	private static Map<String, Cmdt.Repository> repos;
+	@TestVisible
+	private static DatabaseLayer.SoqlProvider soqlProvider;
 
 	static {
 		Cmdt.objectsToCache = Cmdt.getObjectsToCache();
@@ -39,9 +40,12 @@ global inherited sharing class Cmdt {
 	}
 
 	private Cmdt.Repository initRepository(SObjectType objectType) {
+		// Maximize tradeoffs between heap size storage & query limits
 		if (this.includesLongTextFields(objectType) == true) {
+			// CMDT objects w/Long Text fields count towards query limits; query once and then cache
 			return new CacheBasedRepository(objectType);
 		} else {
+			// All other CMDT objects are "free" to query; avoid cacheing to minimize heap usage
 			return new QueryBasedRepository(objectType);
 		}
 	}
@@ -54,33 +58,20 @@ global inherited sharing class Cmdt {
 
 	// **** STATIC **** //
 	/**
-	 * @description Creates and configures a MockRepository for the specified Custom Metadata Type.
-	 * This allows mocking CMDT records in tests without database operations.
-	 * @param objectType The SObjectType of the Custom Metadata Type to mock
-	 * @return A MockRepository instance that can be configured with test data
+	 * @description Map each custom metadata record by its QualifiedApiName (NamespacePrefix + DeveloperName)
+	 * @param recordList A list of Custom Metadata SObject records
 	 */
-	@TestVisible
-	private static Cmdt.MockRepository mock(SObjectType objectType) {
-		String objectApiName = objectType?.toString();
-		Cmdt.Repository existingRepo = Cmdt.repos?.get(objectApiName);
-		Cmdt.MockRepository results;
-		if (existingRepo instanceof Cmdt.MockRepository) {
-			results = (Cmdt.MockRepository) existingRepo;
-		} else {
-			results = new Cmdt.MockRepository(objectType);
-			Cmdt.repos?.put(objectApiName, results);
+	public static Map<String, SObject> mapByKey(List<SObject> recordList) {
+		Map<String, SObject> results = new Map<String, SObject>{};
+		for (SObject record : recordList) {
+			String namespace = (String) record?.get(NAMESPACE_PREFIX);
+			String developerName = (String) record?.get(DEVELOPER_NAME);
+			Set<String> components = new Set<String>{ namespace, developerName };
+			components?.remove(null);
+			String key = String.join(components, '__');
+			results?.put(key, record);
 		}
 		return results;
-	}
-
-	/**
-	 * @description Remove an SObjectType from the list of repos. The `ofType` method will re-run the retrieval logic for that object
-	 * @param objectType The SObjectType to reset
-	 */
-	@TestVisible
-	private static void reset(SObjectType objectType) {
-		String objectApiName = objectType?.toString();
-		Cmdt.repos?.remove(objectApiName);
 	}
 
 	@TestVisible
@@ -98,19 +89,6 @@ global inherited sharing class Cmdt {
 		return Cmdt.extractEntityNames(entities);
 	}
 
-	private static Map<String, SObject> mapByKey(List<SObject> recordList) {
-		Map<String, SObject> results = new Map<String, SObject>{};
-		for (SObject record : recordList) {
-			String namespace = (String) record?.get(NAMESPACE_PREFIX);
-			String developerName = (String) record?.get(DEVELOPER_NAME);
-			Set<String> components = new Set<String>{ namespace, developerName };
-			components?.remove(null);
-			String key = String.join(components, '__');
-			results?.put(key, record);
-		}
-		return results;
-	}
-
 	private static List<EntityDefinition> queryEntityDefinitions() {
 		// This static query must **always** execute using real SOQL
 		return [
@@ -121,25 +99,6 @@ global inherited sharing class Cmdt {
 				AND DurableId IN (SELECT EntityDefinitionId FROM FieldDefinition WHERE DataType LIKE 'Long Text%')
 			WITH SYSTEM_MODE
 		];
-	}
-
-	// **** INTERFACE **** //
-	/**
-	 * @description Interface for accessing Custom Metadata Type records.
-	 * Provides methods for retrieving all records or specific instances by developer name.
-	 */
-	global interface Repository {
-		/**
-		 * @description Retrieves all Custom Metadata Type records as a map keyed by DeveloperName.
-		 * @return Map of DeveloperName to SObject record
-		 */
-		Map<String, SObject> getAll();
-		/**
-		 * @description Retrieves a specific Custom Metadata Type record by its DeveloperName.
-		 * @param qualifiedApiName The DeveloperName of the record to retrieve, including Namespace (if applicable)
-		 * @return The SObject record, or null if not found
-		 */
-		SObject getInstance(String qualifiedApiName);
 	}
 
 	// **** INNER **** //
@@ -174,107 +133,9 @@ global inherited sharing class Cmdt {
 	}
 
 	/**
-	 * @description Mock implementation of the Repository interface for testing purposes.
-	 * Allows in-memory storage and manipulation of Custom Metadata Type records without database operations.
-	 */
-	global class MockRepository extends Cmdt.CacheBasedRepository {
-		private MockRepository(SObjectType objectType) {
-			super(objectType);
-			// Note: Setting to a non-null value bypasses any/all queries in the parent class
-			this.records = new Map<String, SObject>{};
-		}
-
-		/**
-		 * @description Adds multiple records from a map to the mock repository.
-		 * @param recordMap Map of record keys to SObject records
-		 * @return This repository instance for method chaining
-		 */
-		global Cmdt.MockRepository add(Map<String, SObject> recordMap) {
-			this.records?.putAll(recordMap);
-			return this;
-		}
-
-		/**
-		 * @description Adds multiple records from a list to the mock repository.
-		 * @param recordList List of SObject records to add
-		 * @return This repository instance for method chaining
-		 */
-		global Cmdt.MockRepository add(List<SObject> recordList) {
-			Map<String, SObject> records = Cmdt.mapByKey(recordList);
-			return this.add(records);
-		}
-
-		/**
-		 * @description Adds a single record to the mock repository.
-		 * @param record The SObject record to add
-		 * @return This repository instance for method chaining
-		 */
-		global Cmdt.MockRepository add(SObject record) {
-			return this.add(new List<SObject>{ record });
-		}
-
-		/**
-		 * @description Removes all records from the mock repository.
-		 * @return This repository instance for method chaining
-		 */
-		global Cmdt.MockRepository clear() {
-			this.records?.clear();
-			return this;
-		}
-
-		/**
-		 * @description Removes records with the specified keys from the mock repository.
-		 * @param keys Set of record keys to remove
-		 * @return This repository instance for method chaining
-		 */
-		global Cmdt.MockRepository remove(Set<String> keys) {
-			this.records?.keySet()?.removeAll(keys);
-			return this;
-		}
-
-		/**
-		 * @description Removes records specified in the map from the mock repository.
-		 * @param recordMap Map containing records to remove
-		 * @return This repository instance for method chaining
-		 */
-		global Cmdt.MockRepository remove(Map<String, SObject> recordMap) {
-			Set<String> keys = recordMap?.keySet();
-			return this.remove(keys);
-		}
-
-		/**
-		 * @description Removes records specified in the list from the mock repository.
-		 * @param recordList List of records to remove
-		 * @return This repository instance for method chaining
-		 */
-		global Cmdt.MockRepository remove(List<SObject> recordList) {
-			Map<String, SObject> recordMap = Cmdt.mapByKey(recordList);
-			return this.remove(recordMap);
-		}
-
-		/**
-		 * @description Removes a single record from the mock repository.
-		 * @param record The SObject record to remove
-		 * @return This repository instance for method chaining
-		 */
-		global Cmdt.MockRepository remove(SObject record) {
-			return this.remove(new List<SObject>{ record });
-		}
-
-		/**
-		 * @description Removes a record with the specified key from the mock repository.
-		 * @param key The record key to remove
-		 * @return This repository instance for method chaining
-		 */
-		global Cmdt.MockRepository remove(String key) {
-			return this.remove(new Set<String>{ key });
-		}
-	}
-
-	/**
 	 * @description Repository implementation that issues a new SOQL query each time.
-	 * Use this for most Custom Metadata Types; unless the object contains a long-text area field,
-	 * SOQL queries will not count towards governor limits.
+	 * Use this for most Custom Metadata Types; SOQL queries will not count towards governor limits, 
+	 * unless the object contains a long-text area field
 	 * https://help.salesforce.com/s/articleView?language=en_US&id=platform.custommetadatatypes_limits.htm&type=5
 	 */
 	global inherited sharing virtual class QueryBasedRepository implements Cmdt.Repository {
@@ -310,6 +171,24 @@ global inherited sharing class Cmdt {
 		private List<SObject> queryAll() {
 			return this.initQuery()?.query();
 		}
+	}
+
+	/**
+	 * @description Interface for accessing Custom Metadata Type records.
+	 * Provides methods for retrieving all records or specific instances by developer name.
+	 */
+	global interface Repository {
+		/**
+		 * @description Retrieves all Custom Metadata Type records as a map keyed by DeveloperName.
+		 * @return Map of DeveloperName to SObject record
+		 */
+		Map<String, SObject> getAll();
+		/**
+		 * @description Retrieves a specific Custom Metadata Type record by its DeveloperName.
+		 * @param qualifiedApiName The DeveloperName of the record to retrieve, including Namespace (if applicable)
+		 * @return The SObject record, or null if not found
+		 */
+		SObject getInstance(String qualifiedApiName);
 	}
 
 	/**

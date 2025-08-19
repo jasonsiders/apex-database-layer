@@ -1603,7 +1603,7 @@ private class SoqlTest {
 
 	@IsTest
 	static void shouldNotRunProcessorLogicIfNoSettingsDefined() {
-		Cmdt.mock(DatabaseLayerSetting__mdt.SObjectType);
+		MockCmdt.mock(DatabaseLayerSetting__mdt.SObjectType);
 		DatabaseLayer.Utils.Plugins.init();
 
 		Test.startTest();
@@ -1626,7 +1626,7 @@ private class SoqlTest {
 	// **** HELPER **** //
 	private static DatabaseLayerSetting__mdt initSettings() {
 		DatabaseLayerSetting__mdt settings = new DatabaseLayerSetting__mdt();
-		Cmdt.mock(DatabaseLayerSetting__mdt.SObjectType)?.add(settings);
+		MockCmdt.mock(DatabaseLayerSetting__mdt.SObjectType)?.add(settings);
 		return settings;
 	}
 
