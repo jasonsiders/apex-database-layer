@@ -62,7 +62,7 @@ global inherited sharing class Cmdt {
 	 * @param recordList A list of custom metadata SObject records
 	 * @return A map of custom metadata SObject records by their QualifiedApiName
 	 */
-	public static Map<String, SObject> mapByKey(List<SObject> recordList) {
+	public static Map<String, SObject> mapByQualifiedApiName(List<SObject> recordList) {
 		Map<String, SObject> results = new Map<String, SObject>{};
 		for (SObject record : recordList) {
 			String namespace = (String) record?.get(NAMESPACE_PREFIX);
@@ -128,7 +128,7 @@ global inherited sharing class Cmdt {
 		private void retrieve() {
 			if (this.records == null) {
 				List<SObject> recordList = this.queryAll();
-				this.records = Cmdt.mapByKey(recordList);
+				this.records = Cmdt.mapByQualifiedApiName(recordList);
 			}
 		}
 	}
@@ -152,7 +152,7 @@ global inherited sharing class Cmdt {
 		 */
 		global virtual Map<String, SObject> getAll() {
 			List<SObject> records = this.queryAll();
-			return Cmdt.mapByKey(records);
+			return Cmdt.mapByQualifiedApiName(records);
 		}
 
 		/**

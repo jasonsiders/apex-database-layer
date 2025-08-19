@@ -44,7 +44,7 @@ global class MockCmdt {
 		 * @return This repository instance for method chaining
 		 */
 		global MockCmdt.Repository add(List<SObject> recordList) {
-			Map<String, SObject> recordMap = Cmdt.mapByKey(recordList);
+			Map<String, SObject> recordMap = Cmdt.mapByQualifiedApiName(recordList);
 			this.records?.putAll(recordMap);
 			return this;
 		}
@@ -83,7 +83,7 @@ global class MockCmdt {
 		 * @return This repository instance for method chaining
 		 */
 		global MockCmdt.Repository remove(List<SObject> recordList) {
-			Set<String> keys = Cmdt.mapByKey(recordList)?.keySet();
+			Set<String> keys = Cmdt.mapByQualifiedApiName(recordList)?.keySet();
 			return this.remove(keys);
 		}
 
