@@ -1,6 +1,6 @@
 /**
  * @description Provides access to Custom Metadata Type records with caching and namespace support.
- *              Supports both DeveloperName and qualified namespace__DeveloperName lookups.
+ * Supports both DeveloperName and qualified namespace__DeveloperName lookups.
  */
 @SuppressWarnings('PMD.AvoidGlobalModifier,PMD.CognitiveComplexity')
 global inherited sharing class Cmdt {
@@ -55,7 +55,7 @@ global inherited sharing class Cmdt {
 	// **** STATIC **** //
 	/**
 	 * @description Creates and configures a MockRepository for the specified Custom Metadata Type.
-	 *              This allows mocking CMDT records in tests without database operations.
+	 * This allows mocking CMDT records in tests without database operations.
 	 * @param objectType The SObjectType of the Custom Metadata Type to mock
 	 * @return A MockRepository instance that can be configured with test data
 	 */
@@ -112,8 +112,7 @@ global inherited sharing class Cmdt {
 	}
 
 	private static List<EntityDefinition> queryEntityDefinitions() {
-		// This query must **always** execute using real SOQL
-		// TODO: Use platform cache to store the query results
+		// This static query must **always** execute using real SOQL
 		return [
 			SELECT QualifiedApiName
 			FROM EntityDefinition
@@ -127,7 +126,7 @@ global inherited sharing class Cmdt {
 	// **** INTERFACE **** //
 	/**
 	 * @description Interface for accessing Custom Metadata Type records.
-	 *              Provides methods for retrieving all records or specific instances by developer name.
+	 * Provides methods for retrieving all records or specific instances by developer name.
 	 */
 	global interface Repository {
 		/**
@@ -146,13 +145,11 @@ global inherited sharing class Cmdt {
 	// **** INNER **** //
 	/**
 	 * @description Repository implementation that caches query results to avoid repeated SOQL queries.
-	 *              Use this for Custom Metadata Types that include long-text area fields, as queries for
-	 *              these objects count towards SOQL governor limits.
-	 * 				https://help.salesforce.com/s/articleView?language=en_US&id=platform.custommetadatatypes_limits.htm&type=5
+	 * Use this for Custom Metadata Types that include long-text area fields, as queries for
+	 * these objects count towards SOQL governor limits.
+	 * https://help.salesforce.com/s/articleView?language=en_US&id=platform.custommetadatatypes_limits.htm&type=5
 	 */
 	global inherited sharing class CacheBasedRepository extends Cmdt.QueryBasedRepository {
-		// TODO: Consider using platform cache instead of an in-memory Map
-		// TODO: If not, consider modifying MockRepository to extend this
 		private transient Map<String, SObject> records;
 
 		private CacheBasedRepository(SObjectType objectType) {
@@ -178,7 +175,7 @@ global inherited sharing class Cmdt {
 
 	/**
 	 * @description Mock implementation of the Repository interface for testing purposes.
-	 *              Allows in-memory storage and manipulation of Custom Metadata Type records without database operations.
+	 * Allows in-memory storage and manipulation of Custom Metadata Type records without database operations.
 	 */
 	global class MockRepository implements Cmdt.Repository {
 		private Map<String, SObject> records;
@@ -293,8 +290,8 @@ global inherited sharing class Cmdt {
 
 	/**
 	 * @description Repository implementation that issues a new SOQL query each time.
-	 *              Use this for most Custom Metadata Types; unless the object contains a long-text area field,
-	 *              SOQL queries will not count towards governor limits.
+	 * Use this for most Custom Metadata Types; unless the object contains a long-text area field,
+	 * SOQL queries will not count towards governor limits.
 	 * 				https://help.salesforce.com/s/articleView?language=en_US&id=platform.custommetadatatypes_limits.htm&type=5
 	 */
 	global inherited sharing virtual class QueryBasedRepository implements Cmdt.Repository {
