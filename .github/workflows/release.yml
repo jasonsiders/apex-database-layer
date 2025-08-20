@@ -8,6 +8,11 @@ on:
       - "source/**"
   workflow_dispatch:
     inputs:
+      promote-package:
+        description: Promote New Package Versions?
+        required: false
+        default: true
+        type: boolean
       version:
         description: Version Number (#.#.#)
         required: false
@@ -87,6 +92,7 @@ jobs:
     secrets: inherit
     with:
       package: managed
+      promote-package: ${{ inputs.promote-package }}
       version: ${{ needs.versioning.outputs.version-number }}
 
   create-unlocked-package-version:
@@ -98,6 +104,7 @@ jobs:
     secrets: inherit
     with:
       package: unlocked
+      promote-package: ${{ inputs.promote-package }}
       version: ${{ needs.versioning.outputs.version-number }}
 
   create-release:
