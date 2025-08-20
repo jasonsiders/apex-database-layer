@@ -4,9 +4,6 @@ on:
   pull_request:
     branches:
       - main
-    paths:
-      - "source/**"
-      - "plugins/nebula-logger/source/**"
     types: [opened, ready_for_review, reopened, synchronize]
 
 concurrency:
