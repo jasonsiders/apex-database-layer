@@ -8,15 +8,20 @@ on:
         default: unlocked
         required: false
         type: string
-      version:
-        description: Version Number (#.#.#)
+      promote-package:
+        description: Promote New Package Version?
+        default: false 
         required: false
-        type: string
+        type: boolean
       skip-validation:
         description: Skip validation and code coverage checks
         default: false
         required: false
         type: boolean
+      version:
+        description: Version Number (#.#.#)
+        required: false
+        type: string
     outputs:
       version-id:
         description: "Package Version ID"
@@ -28,15 +33,20 @@ on:
         default: unlocked
         required: false
         type: string
-      version:
-        description: Version Number (#.#.#)
+      promote-package:
+        description: Promote New Package Version?
+        default: false 
         required: false
-        type: string
+        type: boolean
       skip-validation:
         description: Skip validation and code coverage checks
         default: false
         required: false
         type: boolean
+      version:
+        description: Version Number (#.#.#)
+        required: false
+        type: string
 
 jobs:
   create-package-version:
@@ -154,6 +164,7 @@ jobs:
           fi
 
       - name: Promote Package Version
+        if: ${{ inputs.promote-package == 'true' }}
         env:
           PACKAGE_TYPE: ${{ inputs.package }}
           VERSION_ID: ${{ steps.create-package.outputs.version-id }}
