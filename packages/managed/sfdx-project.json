@@ -4,8 +4,8 @@
 			"path": "source",
 			"default": true,
 			"package": "apex-database-layer-managed",
-			"versionName": "v3.3.0",
-			"versionNumber": "3.3.0.NEXT",
+			"versionName": "v3.4.0",
+			"versionNumber": "3.4.0.NEXT",
 			"versionDescription": "",
 			"ancestorVersion": "HIGHEST"
 		}
@@ -19,6 +19,7 @@
 		"apex-database-layer-managed@3.0.0-9": "04tDn0000011OULIA2",
 		"apex-database-layer-managed@3.1.0-3": "04tDn0000011OUfIAM",
 		"apex-database-layer-managed@3.2.0-1": "04tDn0000011OV9IAM",
-		"apex-database-layer-managed@3.3.0-1": "04tDn0000011OWMIA2"
+		"apex-database-layer-managed@3.3.0-1": "04tDn0000011OWMIA2",
+		"apex-database-layer-managed@3.4.0-2": "04tDn0000011OWlIAM"
 	}
 }
