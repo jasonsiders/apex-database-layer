@@ -50,6 +50,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: main
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -151,6 +153,17 @@ jobs:
             exit 1
           fi
 
+      - name: Promote Package Version
+        env:
+          PACKAGE_TYPE: ${{ inputs.package }}
+          VERSION_ID: ${{ steps.create-package.outputs.version-id }}
+          VERSION_NAME: ${{ steps.get-version.outputs.version-name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          sf package version promote --package "$VERSION_ID" --no-prompt
+          echo "::success:: Promoted $PACKAGE_TYPE package $VERSION_NAME - $VERSION_ID"
+
       - name: Run Prettier
         shell: bash
         run: |
@@ -168,7 +181,13 @@ jobs:
 
       - name: Pull Latest Changes
         shell: bash
-        run: git pull origin
+        run: |
+          git fetch origin main
+          git rebase origin/main || {
+            echo "Rebase failed, trying merge strategy"
+            git rebase --abort 2>/dev/null || true
+            git pull --no-rebase origin main
+          }
 
       - name: Tag & Commit Changes
         uses: "stefanzweifel/git-auto-commit-action@v6"
