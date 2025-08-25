@@ -3,6 +3,8 @@
  */
 public without sharing class DatabaseLayerUtils {
 	// Note: These properties do not use traditional naming conventions to support a 'namespace-like' API
+	@SuppressWarnings('PMD.PropertyNamingConventions')
+	public final DatabaseLayerUtils.CacheBuilder Cache { get; private set; }
 	/**
 	 * @description Utility for managing Schema.ChildRelationship objects.
 	 */
@@ -32,6 +34,7 @@ public without sharing class DatabaseLayerUtils {
 	 */
 	@SuppressWarnings('PMD.EmptyStatementBlock')
 	public DatabaseLayerUtils(DatabaseLayer factory) {
+		this.Cache = new DatabaseLayerUtils.CacheBuilder();
 		this.ChildRelationships = new DatabaseLayerUtils.ChildRelationships();
 		this.Plugins = new DatabaseLayerUtils.Plugins();
 	}
@@ -47,6 +50,41 @@ public without sharing class DatabaseLayerUtils {
 	}
 
 	// **** INNER **** //
+	public class CacheBuilder implements Cache.CacheBuilder {
+		private final Map<String, Object> CACHE_MAP;
+		private final String PARTITION_NAME;
+		private final Cache.Partition PARTITION;
+
+		private CacheBuilder() {
+			CACHE_MAP = new Map<String, Object>{};
+			PARTITION_NAME = 'DatabaseLayer';
+			PARTITION = this.getPartition();
+		}
+
+		public Object doLoad(String key) {
+			return CACHE_MAP?.get(key);
+		}
+
+		public Object get(String key) {
+			return PARTITION?.get(key) ?? CACHE_MAP?.get(key);
+		}
+
+		public DatabaseLayerUtils.CacheBuilder put(String key, Object value) {
+			CACHE_MAP?.put(key, value);
+			PARTITION?.put(key, value);
+			return this;
+		}
+
+		private Cache.Partition getPartition() {
+			try {
+				return Cache.Org.getPartition(PARTITION_NAME);
+			} catch (Exception error) {
+				System.debug(error + '\n' + error.getStackTraceString());
+				return null;
+			}
+		}
+	}
+
 	/**
 	 * @description Utility for retrieving and caching Schema.ChildRelationship objects from SObjectFields.
 	 * Provides efficient access to relationship metadata with built-in caching for performance.
