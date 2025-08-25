@@ -161,4 +161,28 @@ private class DatabaseLayerUtilsTest {
 
 		Assert.isNull(plugin, 'Did not return null plugin');
 	}
+
+	@IsTest 
+	static void shouldRetrieveCachedItems() {
+		String key = 'Foo';
+		Object value = 'Bar';
+
+		Test.startTest();
+		DatabaseLayer.Utils.Cache.put(key, value);
+		Test.stopTest();
+
+		Object result = DatabaseLayer.Utils.Cache.get(key);
+		Assert.areEqual(value, result, 'Unexpected cache value for ' + key);
+	}
+
+	@IsTest 
+	static void shouldReturnNullIfNoItemsCached() {
+		String key = 'Foo2';
+
+		Test.startTest();
+		Object result = DatabaseLayer.Utils.Cache.get(key);
+		Test.stopTest();
+
+		Assert.isNull(result, 'Uncached key did not return null');
+	}
 }
