@@ -55,7 +55,7 @@ public without sharing class DatabaseLayerUtils {
 		private final String PARTITION_NAME;
 		private final Cache.Partition PARTITION;
 
-		private CacheBuilder() {
+		public CacheBuilder() {
 			CACHE_MAP = new Map<String, Object>{};
 			PARTITION_NAME = 'DatabaseLayer';
 			PARTITION = this.getPartition();
@@ -66,7 +66,7 @@ public without sharing class DatabaseLayerUtils {
 		}
 
 		public Object get(String key) {
-			return PARTITION?.get(key) ?? CACHE_MAP?.get(key);
+			return PARTITION?.get(DatabaseLayerUtils.CacheBuilder.class, key) ?? CACHE_MAP?.get(key);
 		}
 
 		public DatabaseLayerUtils.CacheBuilder put(String key, Object value) {
