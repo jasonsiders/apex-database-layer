@@ -1,10 +1,14 @@
 /**
  * @description Internal utility class providing framework-specific functionality in a pseudo-namespace pattern.
  */
+@SuppressWarnings('PMD.CognitiveComplexity')
 public without sharing class DatabaseLayerUtils {
+	private static final String CACHE_PARTITION_NAME = 'DatabaseLayer';
+	private static final String CACHE_SAFE_NULL_VALUE = '<<NULL_CACHE_VALUE>>';
+
 	// Note: These properties do not use traditional naming conventions to support a 'namespace-like' API
 	@SuppressWarnings('PMD.PropertyNamingConventions')
-	public final DatabaseLayerUtils.CacheBuilder Cache { get; private set; }
+	public final DatabaseLayerUtils.Cache Cache { get; private set; }
 	/**
 	 * @description Utility for managing Schema.ChildRelationship objects.
 	 */
@@ -34,7 +38,7 @@ public without sharing class DatabaseLayerUtils {
 	 */
 	@SuppressWarnings('PMD.EmptyStatementBlock')
 	public DatabaseLayerUtils(DatabaseLayer factory) {
-		this.Cache = new DatabaseLayerUtils.CacheBuilder();
+		this.Cache = new DatabaseLayerUtils.Cache();
 		this.ChildRelationships = new DatabaseLayerUtils.ChildRelationships();
 		this.Plugins = new DatabaseLayerUtils.Plugins();
 	}
@@ -50,34 +54,34 @@ public without sharing class DatabaseLayerUtils {
 	}
 
 	// **** INNER **** //
-	public class CacheBuilder implements Cache.CacheBuilder {
-		private final Map<String, Object> CACHE_MAP;
-		private final String PARTITION_NAME;
-		private final Cache.Partition PARTITION;
+	public class Cache {
+		private Map<String, Object> cacheMap;
+		private Cache.Partition partition;
 
-		public CacheBuilder() {
-			CACHE_MAP = new Map<String, Object>{};
-			PARTITION_NAME = 'DatabaseLayer';
-			PARTITION = this.getPartition();
+		private Cache() {
+			this.cacheMap = new Map<String, Object>{};
+			this.partition = this.getPartition();
 		}
 
-		public Object doLoad(String key) {
-			return CACHE_MAP?.get(key);
+		public Boolean contains(String key) {
+			return (this.partition?.contains(key) ?? this.cacheMap?.containsKey(key)) == true;
 		}
 
 		public Object get(String key) {
-			return PARTITION?.get(DatabaseLayerUtils.CacheBuilder.class, key) ?? CACHE_MAP?.get(key);
+			Object value = this.partition?.get(key) ?? this.cacheMap?.get(key);
+			return (value != CACHE_SAFE_NULL_VALUE) ? value : null;
 		}
 
-		public DatabaseLayerUtils.CacheBuilder put(String key, Object value) {
-			CACHE_MAP?.put(key, value);
-			PARTITION?.put(key, value);
+		public DatabaseLayerUtils.Cache put(String key, Object value) {
+			value = value ?? CACHE_SAFE_NULL_VALUE;
+			this.cacheMap?.put(key, value);
+			this.partition?.put(key, value);
 			return this;
 		}
 
 		private Cache.Partition getPartition() {
 			try {
-				return Cache.Org.getPartition(PARTITION_NAME);
+				return Cache.Org.getPartition(CACHE_PARTITION_NAME);
 			} catch (Exception error) {
 				System.debug(error + '\n' + error.getStackTraceString());
 				return null;

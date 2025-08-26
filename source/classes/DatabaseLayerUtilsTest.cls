@@ -180,9 +180,11 @@ private class DatabaseLayerUtilsTest {
 		String key = 'Foo2';
 
 		Test.startTest();
+		Boolean wasCached = DatabaseLayer.Utils.Cache.contains(key);
 		Object result = DatabaseLayer.Utils.Cache.get(key);
 		Test.stopTest();
 
+		Assert.isFalse(wasCached, 'Uncached key was found anyways');
 		Assert.isNull(result, 'Uncached key did not return null');
 	}
 }
