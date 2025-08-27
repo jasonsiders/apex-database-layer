@@ -19,7 +19,7 @@ public without sharing class DatabaseLayerUtils {
 	 * Note: Plugins are loaded dynamically based on custom metadata configuration.
 	 */
 	@SuppressWarnings('PMD.PropertyNamingConventions')
-	public final DatabaseLayerUtils.Plugins Plugins { get; private set; }
+	public final DatabaseLayerPlugins Plugins { get; private set; }
 	/**
 	 * @description Utility for retrieving DatabaseLayerSetting__mdt configuration records.
 	 */
@@ -40,7 +40,7 @@ public without sharing class DatabaseLayerUtils {
 	public DatabaseLayerUtils(DatabaseLayer factory) {
 		this.Cache = new DatabaseLayerCache(factory);
 		this.ChildRelationships = new DatabaseLayerChildRelationships(factory);
-		this.Plugins = new DatabaseLayerUtils.Plugins();
+		this.Plugins = new DatabaseLayerPlugins(factory);
 	}
 
 	private DatabaseLayerSetting__mdt getSettings() {
@@ -51,58 +51,5 @@ public without sharing class DatabaseLayerUtils {
 			?.getAll();
 		List<DatabaseLayerSetting__mdt> allSettings = (List<DatabaseLayerSetting__mdt>) allSettingsMap?.values();
 		return allSettings?.isEmpty() == false ? allSettings?.get(0) : null;
-	}
-
-	// **** INNER **** //
-	/**
-	 * @description Utility for managing and initializing plugin implementations.
-	 */
-	@SuppressWarnings('PMD.AvoidDebugStatements')
-	public class Plugins {
-		/**
-		 * @description The DML pre and post processor instance for this plugin configuration.
-		 */
-		@SuppressWarnings('PMD.PropertyNamingConventions')
-		public Dml.PreAndPostProcessor Dml { get; private set; }
-		/**
-		 * @description The SOQL pre and post processor instance for this plugin configuration.
-		 */
-		@SuppressWarnings('PMD.PropertyNamingConventions')
-		public Soql.PreAndPostProcessor Soql { get; private set; }
-
-		/**
-		 * @description Default constructor that initializes plugin instances.
-		 */
-		public Plugins() {
-			this.init();
-		}
-
-		/**
-		 * @description Initializes a plugin instance based on custom metadata configuration.
-		 * @param field The SObjectField on DatabaseLayerSetting__mdt containing the plugin class name
-		 * @return The instantiated plugin object, or null if initialization fails
-		 */
-		public Object initPlugin(SObjectField field) {
-			String className;
-			try {
-				className = (String) DatabaseLayer.Utils?.Settings?.get(field);
-				return Type.forName(className)?.newInstance();
-			} catch (Exception error) {
-				String source = DatabaseLayerUtils.Plugin.class.getName();
-				String msg = source + ': Invalid ' + field + ': "' + className + '". Details: ' + error;
-				System.debug(System.LoggingLevel.WARN, msg);
-				return null;
-			}
-		}
-
-		/**
-		 * @description Initialize the Dml/Soql plugins based on current DatabaseLayerSetting__mdt values
-		 */
-		/* prettier-ignore */
-		@TestVisible
-		private void init() {
-			this.Dml = (Dml.PreAndPostProcessor) this.initPlugin(DatabaseLayerSetting__mdt.DmlPreAndPostProcessor__c);
-			this.Soql = (Soql.PreAndPostProcessor) this.initPlugin(DatabaseLayerSetting__mdt.SoqlPreAndPostProcessor__c);
-		}
 	}
 }
