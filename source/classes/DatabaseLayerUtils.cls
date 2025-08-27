@@ -8,7 +8,7 @@ public without sharing class DatabaseLayerUtils {
 
 	// Note: These properties do not use traditional naming conventions to support a 'namespace-like' API
 	@SuppressWarnings('PMD.PropertyNamingConventions')
-	public final DatabaseLayerUtils.Cache Cache { get; private set; }
+	public final DatabaseLayerCache Cache { get; private set; }
 	/**
 	 * @description Utility for managing Schema.ChildRelationship objects.
 	 */
@@ -38,7 +38,7 @@ public without sharing class DatabaseLayerUtils {
 	 */
 	@SuppressWarnings('PMD.EmptyStatementBlock')
 	public DatabaseLayerUtils(DatabaseLayer factory) {
-		this.Cache = new DatabaseLayerUtils.Cache();
+		this.Cache = new DatabaseLayerCache(factory);
 		this.ChildRelationships = new DatabaseLayerUtils.ChildRelationships();
 		this.Plugins = new DatabaseLayerUtils.Plugins();
 	}
@@ -54,41 +54,6 @@ public without sharing class DatabaseLayerUtils {
 	}
 
 	// **** INNER **** //
-	public class Cache {
-		private Map<String, Object> cacheMap;
-		private Cache.Partition partition;
-
-		private Cache() {
-			this.cacheMap = new Map<String, Object>{};
-			this.partition = this.getPartition();
-		}
-
-		public Boolean contains(String key) {
-			return (this.partition?.contains(key) ?? this.cacheMap?.containsKey(key)) == true;
-		}
-
-		public Object get(String key) {
-			Object value = this.partition?.get(key) ?? this.cacheMap?.get(key);
-			return (value != CACHE_SAFE_NULL_VALUE) ? value : null;
-		}
-
-		public DatabaseLayerUtils.Cache put(String key, Object value) {
-			value = value ?? CACHE_SAFE_NULL_VALUE;
-			this.cacheMap?.put(key, value);
-			this.partition?.put(key, value);
-			return this;
-		}
-
-		private Cache.Partition getPartition() {
-			try {
-				return Cache.Org.getPartition(CACHE_PARTITION_NAME);
-			} catch (Exception error) {
-				System.debug(error + '\n' + error.getStackTraceString());
-				return null;
-			}
-		}
-	}
-
 	/**
 	 * @description Utility for retrieving and caching Schema.ChildRelationship objects from SObjectFields.
 	 * Provides efficient access to relationship metadata with built-in caching for performance.
