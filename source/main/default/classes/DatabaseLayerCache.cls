@@ -1,8 +1,18 @@
 public class DatabaseLayerCache {
-    private static final String CACHE_PARTITION_NAME = 'DatabaseLayer';
-	private static final String CACHE_SAFE_NULL_VALUE = '<<NULL_CACHE_VALUE>>';
+    private static final String CACHE_PARTITION_NAME;
+	private static final String CACHE_SAFE_NULL_VALUE;
+    @SuppressWarnings('PMD.FieldNamingConventions')
+    @TestVisible
+    private static DatabaseLayerCache.Provider Provider;
+
     private Map<String, Object> cacheMap;
     private Cache.Partition partition;
+
+    static {
+        CACHE_PARTITION_NAME = 'DatabaseLayer';
+        CACHE_SAFE_NULL_VALUE = '<<NULL_CACHE_VALUE>>';
+        Provider = new DatabaseLayerCache.Provider();
+    }
 
     public DatabaseLayerCache(DatabaseLayer factory) {
         this.cacheMap = new Map<String, Object>{};
@@ -25,12 +35,20 @@ public class DatabaseLayerCache {
         return this;
     }
 
+    @TestVisible
     private Cache.Partition getPartition() {
         try {
-            return Cache.Org.getPartition(CACHE_PARTITION_NAME);
-        } catch (Exception error) {
+            return DatabaseLayerCache.Provider?.getPartition();
+        } catch (Cache.CacheException error) {
             System.debug(error + '\n' + error.getStackTraceString());
             return null;
+        }
+    }
+
+    @TestVisible
+    private virtual class Provider {
+        public virtual Cache.Partition getPartition() {
+            return Cache.Org.getPartition(CACHE_PARTITION_NAME);
         }
     }
 }
