@@ -31,7 +31,7 @@ public without sharing class DatabaseLayerPlugins {
 		String className;
 		try {
 			className = (String) DatabaseLayer.Utils?.Settings?.get(field);
-			return (className != null) ? Type.forName(className)?.newInstance() : null;
+			return Type.forName(className)?.newInstance();
 		} catch (Exception error) {
 			String source = DatabaseLayerPlugins.class.getName();
 			String msg = source + ': Invalid ' + field + ': "' + className + '". Details: ' + error;
