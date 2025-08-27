@@ -4,10 +4,10 @@
 @SuppressWarnings('PMD.CognitiveComplexity')
 public without sharing class DatabaseLayerUtils {
 	// Note: These properties do not use traditional naming conventions to support a 'namespace-like' API
-	@SuppressWarnings('PMD.PropertyNamingConventions')
 	/**
 	 * @description Cache utility for managing DatabaseLayer-specific caching operations.
 	 */
+	@SuppressWarnings('PMD.PropertyNamingConventions')
 	public final DatabaseLayerCache Cache { get; private set; }
 	/**
 	 * @description Utility for managing Schema.ChildRelationship objects.
