@@ -2,7 +2,7 @@
  * @description Utility for managing and initializing plugin implementations.
  */
 @SuppressWarnings('PMD.AvoidDebugStatements')
-public class DatabaseLayerPlugins {
+public without sharing class DatabaseLayerPlugins {
 	/**
 	 * @description The DML pre and post processor instance for this plugin configuration.
 	 */
