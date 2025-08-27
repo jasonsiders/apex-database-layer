@@ -6,9 +6,10 @@ private class DatabaseLayerUtilsTest {
 		// A validation rule enforces that at most, 1 settings record will exist in an org
 		// This ensures the get() method will return the 1st (and only) record, if one is defined:
 		DatabaseLayerSetting__mdt defaultSetting = DatabaseLayerSetting__mdt.getInstance('Default');
+		DatabaseLayerUtils utils = DatabaseLayer.Utils;
 
 		Test.startTest();
-		DatabaseLayerSetting__mdt results = DatabaseLayer.Utils?.Settings;
+		DatabaseLayerSetting__mdt results = utils?.Settings;
 		Assert.areEqual(0, Limits.getQueries(), 'Should not retrieve CMDT via SOQL');
 		Test.stopTest();
 
