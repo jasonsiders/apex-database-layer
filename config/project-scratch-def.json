@@ -1,10 +1,7 @@
 {
 	"orgName": "jasonsiders company",
 	"edition": "Developer",
-	"features": [
-		"EnableSetPasswordInApi",
-		"PlatformCache"
-	],
+	"features": ["EnableSetPasswordInApi", "PlatformCache"],
 	"settings": {
 		"lightningExperienceSettings": {
 			"enableS1DesktopEnabled": true
