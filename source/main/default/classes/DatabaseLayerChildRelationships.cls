@@ -9,6 +9,10 @@ public class DatabaseLayerChildRelationships {
         DESCRIBES = new Map<SObjectType, DatabaseLayerChildRelationships.CachedDescribe>{};
     }
 
+    /**
+     * @description Constructor for DatabaseLayerChildRelationships.
+     * @param factory The DatabaseLayer factory instance
+     */
     @SuppressWarnings('PMD.EmptyStatementBlock')
     public DatabaseLayerChildRelationships(DatabaseLayer factory) {
         // Access this class via the DatabaseLayer.Utils.ChildRelationships property

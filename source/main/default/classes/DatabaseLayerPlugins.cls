@@ -16,6 +16,7 @@ public class DatabaseLayerPlugins {
 
     /**
      * @description Default constructor that initializes plugin instances.
+     * @param factory The DatabaseLayer factory instance
      */
     public DatabaseLayerPlugins(DatabaseLayer factory) {
         this.init();

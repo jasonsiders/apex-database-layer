@@ -1,6 +1,7 @@
 @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveRunAs')
 @IsTest
 private class DatabaseLayerUtilsTest {
+	@SuppressWarnings('PMD.UnusedLocalVariable')
 	@IsTest 
 	static void shouldInitializeUtilities() {
 		DatabaseLayerTestUtils.initSettings();
