@@ -10,7 +10,7 @@ on:
         type: string
       promote-package:
         description: Promote New Package Version?
-        default: false 
+        default: false
         required: false
         type: boolean
       skip-validation:
@@ -35,7 +35,7 @@ on:
         type: string
       promote-package:
         description: Promote New Package Version?
-        default: false 
+        default: false
         required: false
         type: boolean
       skip-validation:
