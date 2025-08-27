@@ -1,5 +1,5 @@
 {
-	"orgName": "jasonsiders company",
+	"orgName": "Jason Siders",
 	"edition": "Developer",
 	"features": ["EnableSetPasswordInApi", "PlatformCache"],
 	"settings": {
