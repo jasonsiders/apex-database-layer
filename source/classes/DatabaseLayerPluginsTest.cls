@@ -49,7 +49,7 @@ private class DatabaseLayerPluginsTest {
 		Assert.isNull(plugin, 'Did not return null plugin');
 	}
 
-	@IsTest 
+	@IsTest
 	static void shouldHandleErrorsWithPluginInitialization() {
 		// If a 0-arg constructor isn't publicly visible, it will fail
 		DatabaseLayerSetting__mdt mockSetting = new DatabaseLayerSetting__mdt(

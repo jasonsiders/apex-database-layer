@@ -51,9 +51,9 @@ private class DatabaseLayerUtilsTest {
 		DatabaseLayerUtils utils = DatabaseLayer.Utils;
 		Test.stopTest();
 
-		Assert.isNotNull(DatabaseLayer.Utils.Cache, 'Cache utility not initialized');
-		Assert.isNotNull(DatabaseLayer.Utils.ChildRelationships, 'ChildRelationships utility not initialized');
-		Assert.isNotNull(DatabaseLayer.Utils.Plugins, 'Plugins utility not initialized');
-		Assert.isNotNull(DatabaseLayer.Utils.Settings, 'Settings not initialized');
+		Assert.isNotNull(utils?.Cache, 'Cache utility not initialized');
+		Assert.isNotNull(utils?.ChildRelationships, 'ChildRelationships utility not initialized');
+		Assert.isNotNull(utils?.Plugins, 'Plugins utility not initialized');
+		Assert.isNotNull(utils?.Settings, 'Settings not initialized');
 	}
 }
