@@ -3,12 +3,6 @@
  * Provides efficient access to relationship metadata with built-in caching for performance.
  */
 public class DatabaseLayerChildRelationships {
-	private static final Map<SObjectType, DatabaseLayerChildRelationships.CachedDescribe> DESCRIBES;
-
-	static {
-		DESCRIBES = new Map<SObjectType, DatabaseLayerChildRelationships.CachedDescribe>{};
-	}
-
 	/**
 	 * @description Constructor for DatabaseLayerChildRelationships.
 	 * @param factory The DatabaseLayer factory instance
@@ -43,19 +37,16 @@ public class DatabaseLayerChildRelationships {
 
 	private DatabaseLayerChildRelationships.CachedDescribe getDescribeFromCache(SObjectType objectType) {
 		// Retrieves a CachedDescribe object, which represents a cached Schema.DatabaseLayerChildRelationships for the SObjectType
-		DatabaseLayerChildRelationships.CachedDescribe describe = DESCRIBES?.containsKey(objectType)
-			? DESCRIBES?.get(objectType)
-			: new DatabaseLayerChildRelationships.CachedDescribe(objectType);
-		DESCRIBES?.put(objectType, describe);
+		String key = DatabaseLayerChildRelationships.class.getName() + objectType?.toString();
+		DatabaseLayerChildRelationships.CachedDescribe describe = (DatabaseLayerChildRelationships.CachedDescribe) 
+			DatabaseLayer.Utils.Cache.get(key) ?? new DatabaseLayerChildRelationships.CachedDescribe(objectType);
+		DatabaseLayer.Utils.Cache.put(key, describe);
 		return describe;
 	}
 
 	private class CachedDescribe {
-		// Object used to map & cache Schema.ChildRelationships by their lookup field.
-		// Useful since the operation to retrieve Schema.ChildRelationships from an object can be expensive,
-		// and Salesforce's built in Schema caching mechanism doesn't seem to handle this.
-		// Note: In the future, consider upgrading this to use actual System.Cache.
-		private Map<SObjectField, Schema.ChildRelationship> relationshipMap;
+		// Object used to map & stash Schema.ChildRelationships by their lookup field
+		private Map<String, Schema.ChildRelationship> relationshipMap;
 
 		/**
 		 * @description Constructor that initializes the cached relationships for the specified object type.
@@ -71,7 +62,8 @@ public class DatabaseLayerChildRelationships {
 		 * @return The corresponding Schema.ChildRelationship or null if not found
 		 */
 		public Schema.ChildRelationship get(SObjectField field) {
-			return this.relationshipMap?.get(field);
+			String fieldName = field?.toString();
+			return this.relationshipMap?.get(fieldName);
 		}
 
 		private List<Schema.ChildRelationship> getRelationshipList(SObjectType objectType) {
@@ -80,10 +72,10 @@ public class DatabaseLayerChildRelationships {
 		}
 
 		private void mapRelationships(SObjectType objectType) {
-			this.relationshipMap = new Map<SObjectField, Schema.ChildRelationship>();
+			this.relationshipMap = new Map<String, Schema.ChildRelationship>();
 			for (Schema.ChildRelationship relationship : this.getRelationshipList(objectType)) {
-				SObjectField field = relationship?.getField();
-				this.relationshipMap?.put(field, relationship);
+				String fieldName = relationship?.getField()?.toString();
+				this.relationshipMap?.put(fieldName, relationship);
 			}
 		}
 	}
