@@ -1,7 +1,7 @@
 @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveRunAs')
-@IsTest 
+@IsTest
 private class DatabaseLayerChildRelationshipsTest {
-    @IsTest
+	@IsTest
 	static void shouldGetChildRelationshipFromLookupField() {
 		SObjectField field = Contact.AccountId;
 

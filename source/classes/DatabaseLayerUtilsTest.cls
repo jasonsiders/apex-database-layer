@@ -2,7 +2,7 @@
 @IsTest
 private class DatabaseLayerUtilsTest {
 	@SuppressWarnings('PMD.UnusedLocalVariable')
-	@IsTest 
+	@IsTest
 	static void shouldInitializeUtilities() {
 		DatabaseLayerTestUtils.initSettings();
 

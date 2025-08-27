@@ -3,54 +3,54 @@
  * Provides efficient access to relationship metadata with built-in caching for performance.
  */
 public class DatabaseLayerChildRelationships {
-    private static final Map<SObjectType, DatabaseLayerChildRelationships.CachedDescribe> DESCRIBES;
+	private static final Map<SObjectType, DatabaseLayerChildRelationships.CachedDescribe> DESCRIBES;
 
-    static {
-        DESCRIBES = new Map<SObjectType, DatabaseLayerChildRelationships.CachedDescribe>{};
-    }
+	static {
+		DESCRIBES = new Map<SObjectType, DatabaseLayerChildRelationships.CachedDescribe>{};
+	}
 
-    /**
-     * @description Constructor for DatabaseLayerChildRelationships.
-     * @param factory The DatabaseLayer factory instance
-     */
-    @SuppressWarnings('PMD.EmptyStatementBlock')
-    public DatabaseLayerChildRelationships(DatabaseLayer factory) {
-        // Access this class via the DatabaseLayer.Utils.ChildRelationships property
-    }
+	/**
+	 * @description Constructor for DatabaseLayerChildRelationships.
+	 * @param factory The DatabaseLayer factory instance
+	 */
+	@SuppressWarnings('PMD.EmptyStatementBlock')
+	public DatabaseLayerChildRelationships(DatabaseLayer factory) {
+		// Access this class via the DatabaseLayer.Utils.ChildRelationships property
+	}
 
-    /**
-     * @description Retrieves the child relationship for a lookup field on a specific parent object type.
-     * @param lookupField The lookup field to find the relationship for
-     * @param referenceTo The parent SObject type
-     * @return The corresponding Schema.ChildRelationship
-     */
-    public Schema.ChildRelationship getChildRelationshipFrom(SObjectField lookupField, SObjectType referenceTo) {
-        return this.getDescribeFromCache(referenceTo)?.get(lookupField);
-    }
+	/**
+	 * @description Retrieves the child relationship for a lookup field on a specific parent object type.
+	 * @param lookupField The lookup field to find the relationship for
+	 * @param referenceTo The parent SObject type
+	 * @return The corresponding Schema.ChildRelationship
+	 */
+	public Schema.ChildRelationship getChildRelationshipFrom(SObjectField lookupField, SObjectType referenceTo) {
+		return this.getDescribeFromCache(referenceTo)?.get(lookupField);
+	}
 
-    /**
-     * @description Retrieves the child relationship for a non-polymorphic lookup field.
-     * @param lookupField The lookup field to find the relationship for
-     * @return The corresponding Schema.ChildRelationship
-     */
-    public Schema.ChildRelationship getChildRelationshipFrom(SObjectField lookupField) {
-        List<SObjectType> references = lookupField?.getDescribe()?.getReferenceTo();
-        // Note: the Schema.getReferenceTo() method returns a List<SObjectType>, not a single SObjectType.
-        // Typically, a field is only be related to a single SObjectType; excluding polymorphic fields (ie, Task.WhatId).
-        SObjectType referenceTo = references?.isEmpty() == false ? references?.get(0) : null;
-        return this.getChildRelationshipFrom(lookupField, referenceTo);
-    }
+	/**
+	 * @description Retrieves the child relationship for a non-polymorphic lookup field.
+	 * @param lookupField The lookup field to find the relationship for
+	 * @return The corresponding Schema.ChildRelationship
+	 */
+	public Schema.ChildRelationship getChildRelationshipFrom(SObjectField lookupField) {
+		List<SObjectType> references = lookupField?.getDescribe()?.getReferenceTo();
+		// Note: the Schema.getReferenceTo() method returns a List<SObjectType>, not a single SObjectType.
+		// Typically, a field is only be related to a single SObjectType; excluding polymorphic fields (ie, Task.WhatId).
+		SObjectType referenceTo = references?.isEmpty() == false ? references?.get(0) : null;
+		return this.getChildRelationshipFrom(lookupField, referenceTo);
+	}
 
-    private DatabaseLayerChildRelationships.CachedDescribe getDescribeFromCache(SObjectType objectType) {
-        // Retrieves a CachedDescribe object, which represents a cached Schema.DatabaseLayerChildRelationships for the SObjectType
-        DatabaseLayerChildRelationships.CachedDescribe describe = DESCRIBES?.containsKey(objectType)
-            ? DESCRIBES?.get(objectType)
-            : new DatabaseLayerChildRelationships.CachedDescribe(objectType);
-        DESCRIBES?.put(objectType, describe);
-        return describe;
-    }
+	private DatabaseLayerChildRelationships.CachedDescribe getDescribeFromCache(SObjectType objectType) {
+		// Retrieves a CachedDescribe object, which represents a cached Schema.DatabaseLayerChildRelationships for the SObjectType
+		DatabaseLayerChildRelationships.CachedDescribe describe = DESCRIBES?.containsKey(objectType)
+			? DESCRIBES?.get(objectType)
+			: new DatabaseLayerChildRelationships.CachedDescribe(objectType);
+		DESCRIBES?.put(objectType, describe);
+		return describe;
+	}
 
-    private class CachedDescribe {
+	private class CachedDescribe {
 		// Object used to map & cache Schema.ChildRelationships by their lookup field.
 		// Useful since the operation to retrieve Schema.ChildRelationships from an object can be expensive,
 		// and Salesforce's built in Schema caching mechanism doesn't seem to handle this.
