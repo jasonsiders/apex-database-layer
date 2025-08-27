@@ -63,8 +63,9 @@ public class DatabaseLayerCache {
 	private Cache.Partition getPartition() {
 		try {
 			return DatabaseLayerCache.Provider?.getPartition();
-		} catch (Cache.CacheException error) {
-			// Platform cache is not enabled -- the framework will continue to use the cacheMap as a fallback
+		} catch (Exception anyError) {
+			// Note: Several different types of exceptions may be thrown here if platform cache is not enabled
+			// If this happens, the framework will continue to use the cacheMap as a fallback
 			return null;
 		}
 	}
