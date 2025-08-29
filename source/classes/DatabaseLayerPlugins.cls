@@ -2,24 +2,36 @@
  * @description Utility for managing and initializing plugin implementations.
  */
 @SuppressWarnings('PMD.AvoidDebugStatements')
-public without sharing class DatabaseLayerPlugins {
+public without sharing class DatabaseLayerPlugins {	
 	/**
 	 * @description The DML pre and post processor instance for this plugin configuration.
 	 */
 	@SuppressWarnings('PMD.PropertyNamingConventions')
-	public Dml.PreAndPostProcessor Dml { get; private set; }
+	public Dml.PreAndPostProcessor Dml { 
+		get {
+			Dml = Dml ?? (Dml.PreAndPostProcessor) this.initPlugin(DatabaseLayerSetting__mdt.DmlPreAndPostProcessor__c);
+			return Dml;
+		}
+		private set;
+	}
 	/**
 	 * @description The SOQL pre and post processor instance for this plugin configuration.
 	 */
 	@SuppressWarnings('PMD.PropertyNamingConventions')
-	public Soql.PreAndPostProcessor Soql { get; private set; }
+	public Soql.PreAndPostProcessor Soql { 
+		get {
+			Soql = Soql ?? (Soql.PreAndPostProcessor) this.initPlugin(DatabaseLayerSetting__mdt.SoqlPreAndPostProcessor__c);
+			return Soql;
+		}
+		private set;
+	}
 
 	/**
-	 * @description Default constructor that initializes plugin instances.
+	 * @description Default constructor that defers plugin initialization to avoid circular dependencies.
 	 * @param factory The DatabaseLayer factory instance
 	 */
 	public DatabaseLayerPlugins(DatabaseLayer factory) {
-		this.init();
+		// Deferred initialization to avoid circular dependency with DatabaseLayer.Utils
 	}
 
 	/**
@@ -40,7 +52,8 @@ public without sharing class DatabaseLayerPlugins {
 	}
 
 	/**
-	 * @description Initialize the Dml/Soql plugins based on current DatabaseLayerSetting__mdt values
+	 * @description Force-initialize the Dml/Soql plugins based on current DatabaseLayerSetting__mdt values
+	 * Callers may use this method to force a recalculation of these plugins after setting CMDT field values
 	 */
 	/* prettier-ignore */
 	@TestVisible

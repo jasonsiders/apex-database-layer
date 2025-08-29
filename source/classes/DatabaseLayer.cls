@@ -3,9 +3,7 @@
  */
 @SuppressWarnings('PMD.AvoidGlobalModifier')
 global class DatabaseLayer {
-	public static final DatabaseLayerUtils UTILS;
-	private static final DatabaseLayer INSTANCE;
-
+	private static final DatabaseLayer INSTANCE = new DatabaseLayer();
 	private Cmdt currentCmdt;
 	private Dml currentDml;
 	private SoqlProvider currentSoql;
@@ -17,11 +15,6 @@ global class DatabaseLayer {
 	}
 
 	// **** STATIC **** //
-	static {
-		INSTANCE = new DatabaseLayer();
-		UTILS = new DatabaseLayerUtils(INSTANCE);
-	}
-
 	/**
 	 * @description Primary access point for CMDT operations. Returns the currently configured CMDT provider instance.
 	 * @return The current CMDT provider (real or mock based on configuration)
@@ -51,6 +44,14 @@ global class DatabaseLayer {
 		get {
 			return INSTANCE?.currentSoql;
 		}
+	}
+	@SuppressWarnings('PMD.PropertyNamingConventions')
+	public static DatabaseLayerUtils Utils {
+		get {
+			Utils = Utils ?? new DatabaseLayerUtils(INSTANCE);
+			return Utils;
+		}
+		private set; 
 	}
 
 	/**

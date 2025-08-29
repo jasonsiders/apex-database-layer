@@ -6,16 +6,18 @@
 global inherited sharing class Cmdt {
 	@TestVisible
 	private static final String DEVELOPER_NAME = 'DeveloperName';
+	private static final String LONG_TEXT_CACHE_KEY = 'CmdtsWithLongTextFields';
 	private static final String NAMESPACE_PREFIX = 'NamespacePrefix';
 	@TestVisible
-	private static Set<String> objectsToCache;
+	private static Set<String> cachedObjectNames;
 	@TestVisible
 	private static Map<String, Cmdt.Repository> repos;
 	@TestVisible
 	private static DatabaseLayer.SoqlProvider soqlProvider;
 
 	static {
-		Cmdt.objectsToCache = Cmdt.getObjectsToCache();
+		List<EntityDefinition> cachedEntities = Cmdt.getCachedObjects();
+		Cmdt.cachedObjectNames = Cmdt.extractEntityNames(cachedEntities);
 		Cmdt.repos = new Map<String, Cmdt.Repository>{};
 	}
 
@@ -53,7 +55,7 @@ global inherited sharing class Cmdt {
 	private Boolean includesLongTextFields(SObjectType objectType) {
 		// Returns true if the SObjectType includes long-text fields
 		String objectApiName = objectType?.toString();
-		return Cmdt.objectsToCache?.contains(objectApiName) == true;
+		return Cmdt.cachedObjectNames?.contains(objectApiName) == true;
 	}
 
 	// **** STATIC **** //
@@ -85,9 +87,14 @@ global inherited sharing class Cmdt {
 		return results;
 	}
 
-	private static Set<String> getObjectsToCache() {
-		List<EntityDefinition> entities = Cmdt.queryEntityDefinitions();
-		return Cmdt.extractEntityNames(entities);
+	private static List<EntityDefinition> getCachedObjects() {
+		if (DatabaseLayer.Utils.Cache.contains(LONG_TEXT_CACHE_KEY)) {
+			return (List<EntityDefinition>) DatabaseLayer.Utils.Cache.get(LONG_TEXT_CACHE_KEY);
+		} else {
+			List<EntityDefinition> entities = Cmdt.queryEntityDefinitions();
+			DatabaseLayer.Utils.Cache.put(LONG_TEXT_CACHE_KEY, entities);
+			return entities;
+		}
 	}
 
 	private static List<EntityDefinition> queryEntityDefinitions() {
