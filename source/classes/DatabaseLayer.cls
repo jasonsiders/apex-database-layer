@@ -45,13 +45,18 @@ global class DatabaseLayer {
 			return INSTANCE?.currentSoql;
 		}
 	}
+
+	/**
+	 * @description Provides access to framework utilities including cache, settings, plugins, and child relationships.
+	 * @return The DatabaseLayerUtils instance with access to framework functionality
+	 */
 	@SuppressWarnings('PMD.PropertyNamingConventions')
 	public static DatabaseLayerUtils Utils {
 		get {
 			Utils = Utils ?? new DatabaseLayerUtils(INSTANCE);
 			return Utils;
 		}
-		private set; 
+		private set;
 	}
 
 	/**

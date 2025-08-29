@@ -17,7 +17,8 @@ global class DatabaseLayerTestUtils {
 	 */
 	global static DatabaseLayerSetting__mdt initSettings(DatabaseLayerSetting__mdt setting) {
 		MockCmdt.mock(DatabaseLayerSetting__mdt.SObjectType)?.add(setting);
-		DatabaseLayer.Utils.Plugins.init();
+		// Update plugins with the mocked settings instead of calling init()
+		DatabaseLayer.Utils.Plugins.updateSettings(setting);
 		return setting;
 	}
 

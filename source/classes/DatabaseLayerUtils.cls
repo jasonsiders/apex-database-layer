@@ -19,7 +19,7 @@ public without sharing class DatabaseLayerUtils {
 	 * Note: Plugins are loaded dynamically based on custom metadata configuration.
 	 */
 	@SuppressWarnings('PMD.PropertyNamingConventions')
-	public final DatabaseLayerPlugins Plugins { get; private set; }
+	public DatabaseLayerPlugins Plugins { get; private set; }
 	/**
 	 * @description Utility for retrieving DatabaseLayerSetting__mdt configuration records.
 	 */
@@ -40,6 +40,7 @@ public without sharing class DatabaseLayerUtils {
 	public DatabaseLayerUtils(DatabaseLayer factory) {
 		this.Cache = new DatabaseLayerCache(factory);
 		this.ChildRelationships = new DatabaseLayerChildRelationships(factory);
+		// Initialize plugins with null settings to avoid circular dependency during construction
 		this.Plugins = new DatabaseLayerPlugins(factory);
 	}
 
@@ -50,6 +51,9 @@ public without sharing class DatabaseLayerUtils {
 			?.ofType(DatabaseLayerSetting__mdt.SObjectType)
 			?.getAll();
 		List<DatabaseLayerSetting__mdt> allSettings = (List<DatabaseLayerSetting__mdt>) allSettingsMap?.values();
-		return allSettings?.isEmpty() == false ? allSettings?.get(0) : null;
+		DatabaseLayerSetting__mdt result = allSettings?.isEmpty() == false ? allSettings?.get(0) : null;
+		// Update plugins with loaded settings after they are loaded
+		this.Plugins?.updateSettings(result);
+		return result;
 	}
 }

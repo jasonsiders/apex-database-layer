@@ -7,7 +7,7 @@ private class DatabaseLayerPluginsTest {
 			DeveloperName = 'Test_123',
 			DmlPreAndPostProcessor__c = DatabaseLayerTestUtils.SamplePlugin.class.getName()
 		);
-		MockCmdt.mock(DatabaseLayerSetting__mdt.SObjectType)?.add(mockSetting);
+		DatabaseLayerTestUtils.initSettings(mockSetting);
 		SObjectField field = DatabaseLayerSetting__mdt.DmlPreAndPostProcessor__c;
 
 		Test.startTest();
@@ -23,7 +23,7 @@ private class DatabaseLayerPluginsTest {
 			DeveloperName = 'Test_123',
 			DmlPreAndPostProcessor__c = 'not a real object name'
 		);
-		MockCmdt.mock(DatabaseLayerSetting__mdt.SObjectType)?.add(mockSetting);
+		DatabaseLayerTestUtils.initSettings(mockSetting);
 		SObjectField field = DatabaseLayerSetting__mdt.DmlPreAndPostProcessor__c;
 
 		Test.startTest();
@@ -39,7 +39,7 @@ private class DatabaseLayerPluginsTest {
 			DeveloperName = 'Test_123',
 			DmlPreAndPostProcessor__c = null
 		);
-		MockCmdt.mock(DatabaseLayerSetting__mdt.SObjectType)?.add(mockSetting);
+		DatabaseLayerTestUtils.initSettings(mockSetting);
 		SObjectField field = DatabaseLayerSetting__mdt.DmlPreAndPostProcessor__c;
 
 		Test.startTest();
@@ -56,7 +56,7 @@ private class DatabaseLayerPluginsTest {
 			DeveloperName = 'Test_123',
 			DmlPreAndPostProcessor__c = DatabaseLayer.class.getName()
 		);
-		MockCmdt.mock(DatabaseLayerSetting__mdt.SObjectType)?.add(mockSetting);
+		DatabaseLayerTestUtils.initSettings(mockSetting);
 		SObjectField field = DatabaseLayerSetting__mdt.DmlPreAndPostProcessor__c;
 
 		Test.startTest();
