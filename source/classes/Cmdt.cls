@@ -93,7 +93,8 @@ global inherited sharing class Cmdt {
 		} else {
 			List<EntityDefinition> entities = Cmdt.queryEntityDefinitions();
 			DatabaseLayer.Utils.Cache.put(LONG_TEXT_CACHE_KEY, entities);
-			return entities;
+			// Recurse and get the results of the newly cached objects:
+			return Cmdt.getCachedObjects();
 		}
 	}
 
