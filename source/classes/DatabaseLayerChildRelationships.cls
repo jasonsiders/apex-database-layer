@@ -3,6 +3,12 @@
  * Provides efficient access to relationship metadata with built-in caching for performance.
  */
 public class DatabaseLayerChildRelationships {
+	private static final Map<SObjectType, DatabaseLayerChildRelationships.Describe> DESCRIBES;
+
+	static {
+		DESCRIBES = new Map<SObjectType, DatabaseLayerChildRelationships.Describe>{};
+	}
+
 	/**
 	 * @description Constructor for DatabaseLayerChildRelationships.
 	 * @param factory The DatabaseLayer factory instance
@@ -19,7 +25,7 @@ public class DatabaseLayerChildRelationships {
 	 * @return The corresponding Schema.ChildRelationship
 	 */
 	public Schema.ChildRelationship getChildRelationshipFrom(SObjectField lookupField, SObjectType referenceTo) {
-		return this.getDescribeFromCache(referenceTo)?.get(lookupField);
+		return this.getDescribeFromMap(referenceTo)?.get(lookupField);
 	}
 
 	/**
@@ -35,24 +41,24 @@ public class DatabaseLayerChildRelationships {
 		return this.getChildRelationshipFrom(lookupField, referenceTo);
 	}
 
-	private DatabaseLayerChildRelationships.CachedDescribe getDescribeFromCache(SObjectType objectType) {
-		// Retrieves a CachedDescribe object, which represents a cached Schema.DatabaseLayerChildRelationships for the SObjectType
-		String key = DatabaseLayerChildRelationships.class.getName() + objectType?.toString();
-		DatabaseLayerChildRelationships.CachedDescribe describe = (DatabaseLayerChildRelationships.CachedDescribe) 
-			DatabaseLayer.Utils.Cache.get(key) ?? new DatabaseLayerChildRelationships.CachedDescribe(objectType);
-		DatabaseLayer.Utils.Cache.put(key, describe);
+	private DatabaseLayerChildRelationships.Describe getDescribeFromMap(SObjectType objectType) {
+		// Retrieves a Describe object, which represents a cached Schema.ChildRelationships for the SObjectType
+		DatabaseLayerChildRelationships.Describe describe = DESCRIBES?.containsKey(objectType)
+			? DESCRIBES?.get(objectType)
+			: new DatabaseLayerChildRelationships.Describe(objectType);
+		DESCRIBES?.put(objectType, describe);
 		return describe;
 	}
 
-	private class CachedDescribe {
+	private class Describe {
 		// Object used to map & stash Schema.ChildRelationships by their lookup field
-		private Map<String, Schema.ChildRelationship> relationshipMap;
+		private Map<SObjectField, Schema.ChildRelationship> relationshipMap;
 
 		/**
 		 * @description Constructor that initializes the cached relationships for the specified object type.
 		 * @param objectType The SObject type to cache relationships for
 		 */
-		public CachedDescribe(SObjectType objectType) {
+		public Describe(SObjectType objectType) {
 			this.mapRelationships(objectType);
 		}
 
@@ -62,8 +68,7 @@ public class DatabaseLayerChildRelationships {
 		 * @return The corresponding Schema.ChildRelationship or null if not found
 		 */
 		public Schema.ChildRelationship get(SObjectField field) {
-			String fieldName = field?.toString();
-			return this.relationshipMap?.get(fieldName);
+			return this.relationshipMap?.get(field);
 		}
 
 		private List<Schema.ChildRelationship> getRelationshipList(SObjectType objectType) {
@@ -72,10 +77,10 @@ public class DatabaseLayerChildRelationships {
 		}
 
 		private void mapRelationships(SObjectType objectType) {
-			this.relationshipMap = new Map<String, Schema.ChildRelationship>();
+			this.relationshipMap = new Map<SObjectField, Schema.ChildRelationship>();
 			for (Schema.ChildRelationship relationship : this.getRelationshipList(objectType)) {
-				String fieldName = relationship?.getField()?.toString();
-				this.relationshipMap?.put(fieldName, relationship);
+				SObjectField field = relationship?.getField();
+				this.relationshipMap?.put(field, relationship);
 			}
 		}
 	}
