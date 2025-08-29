@@ -34,7 +34,7 @@ private class CmdtTest {
 	@IsTest
 	static void shouldCacheQueryResultsIfCmdtIncludesLongTextAreaField() {
 		String objectApiName = CMDT_OBJECT.toString();
-		Cmdt.objectsToCache = new Set<String>{ objectApiName };
+		Cmdt.cachedObjectNames = new Set<String>{ objectApiName };
 
 		Test.startTest();
 		List<DatabaseLayerSetting__mdt> results = (List<DatabaseLayerSetting__mdt>) DatabaseLayer.Cmdt
@@ -49,7 +49,7 @@ private class CmdtTest {
 
 	@IsTest
 	static void shouldAlwaysQueryIfCmdtDoesNotIncludeLongTextAreaField() {
-		Cmdt.objectsToCache = new Set<String>{};
+		Cmdt.cachedObjectNames = new Set<String>{};
 
 		Test.startTest();
 		List<DatabaseLayerSetting__mdt> results = (List<DatabaseLayerSetting__mdt>) DatabaseLayer.Cmdt
@@ -172,7 +172,7 @@ private class CmdtTest {
 	@IsTest
 	static void shouldReturnNullInstanceIfOneDoesntExist() {
 		// Mostly for coverage -- since we can't test with real CMDT records
-		Cmdt.objectsToCache = new Set<String>{ CMDT_OBJECT?.toString() };
+		Cmdt.cachedObjectNames = new Set<String>{ CMDT_OBJECT?.toString() };
 		String key = 'There\'s no way this is a real key';
 
 		Test.startTest();
