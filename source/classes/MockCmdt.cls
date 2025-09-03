@@ -32,6 +32,8 @@ global class MockCmdt {
 	 * Allows in-memory storage and manipulation of Custom Metadata Type records without database operations.
 	 */
 	global class Repository extends Cmdt.CacheBasedRepository {
+		private Map<String, SObject> records; 
+		
 		private Repository(SObjectType objectType) {
 			super(objectType);
 			// Note: Setting to a non-null value bypasses any/all queries in the parent class

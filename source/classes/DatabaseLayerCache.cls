@@ -33,7 +33,7 @@ public class DatabaseLayerCache {
 	 * @return True if the key exists, false otherwise
 	 */
 	public Boolean contains(String key) {
-		return (this.partition?.contains(key) ?? this.cacheMap?.containsKey(key)) == true;
+		return (this.partition?.contains(key) == true || this.cacheMap?.containsKey(key) == true);
 	}
 
 	/**

@@ -118,25 +118,32 @@ global inherited sharing class Cmdt {
 	 * https://help.salesforce.com/s/articleView?language=en_US&id=platform.custommetadatatypes_limits.htm&type=5
 	 */
 	global inherited sharing virtual class CacheBasedRepository extends Cmdt.QueryBasedRepository {
-		protected transient Map<String, SObject> records;
+		private String key;
 
 		protected CacheBasedRepository(SObjectType objectType) {
 			super(objectType);
+			this.generateCacheKey(objectType);
 		}
 
 		global override Map<String, SObject> getAll() {
 			this.retrieve();
-			return this.records;
+			return (Map<String, SObject>) DatabaseLayer.Utils.Cache.get(this.key);
 		}
 
 		global override SObject getInstance(String qualifiedApiName) {
 			return this.getAll()?.get(qualifiedApiName);
 		}
 
+		private void generateCacheKey(SObjectType objectType) {
+			String alphaNumericObjectName = objectType?.toString()?.replaceAll('[^a-z^A-z^0-9]', '');
+			this.key = 'Cached' + alphaNumericObjectName;
+		}
+
 		private void retrieve() {
-			if (this.records == null) {
+			if (DatabaseLayer.Utils.Cache.contains(this.key) == false) {
 				List<SObject> recordList = this.queryAll();
-				this.records = Cmdt.mapByQualifiedApiName(recordList);
+				Map<String, SObject> recordMap = Cmdt.mapByQualifiedApiName(recordList);
+				DatabaseLayer.Utils.Cache.put(this.key, recordMap);
 			}
 		}
 	}
