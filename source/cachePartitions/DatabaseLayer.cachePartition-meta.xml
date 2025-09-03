@@ -4,7 +4,7 @@
     <isDefaultPartition>false</isDefaultPartition>
     <masterLabel>DatabaseLayer</masterLabel>
     <platformCachePartitionTypes>
-        <allocatedCapacity>1</allocatedCapacity>
+        <allocatedCapacity>0</allocatedCapacity>
         <allocatedPartnerCapacity>0</allocatedPartnerCapacity>
         <allocatedPurchasedCapacity>0</allocatedPurchasedCapacity>
         <allocatedTrialCapacity>0</allocatedTrialCapacity>
