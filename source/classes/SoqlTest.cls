@@ -1635,6 +1635,8 @@ private class SoqlTest {
 		User testUser = [SELECT Id FROM User WHERE Profile.Name = 'Minimum Access - Salesforce' ORDER BY CreatedDate DESC LIMIT 1];
 		System.runAs(testUser) {
 			Assert.areEqual('"' + expected + '"', '"' + soql + '"', 'Unexpected SOQL output');
+			// #128 - Update SOQL tests to work regardless of running users' object/FLS permissions
+			soql?.setAccessLevel(System.AccessLevel.SYSTEM_MODE);
 			results = soql?.query();
 		}
 		return results;
