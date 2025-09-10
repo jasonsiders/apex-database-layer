@@ -1631,7 +1631,10 @@ private class SoqlTest {
 	}
 
 	private static Object validateQuery(Soql soql, String expected) {
-		Assert.areEqual('"' + expected + '"', '"' + soql?.toString() + '"', 'Unexpected SOQL output');
+		Assert.areEqual('"' + expected + '"', '"' + soql + '"', 'Unexpected SOQL output');
+		// This test will always run the queries in system mode to prevent FLS/CRUD errors
+		// when the test is run by non-admin users (ex., CICD integrations w/minimal object access)
+		soql?.setAccessLevel(System.AccessLevel.SYSTEM_MODE);
 		return soql?.query();
 	}
 
