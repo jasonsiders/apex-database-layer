@@ -1631,37 +1631,11 @@ private class SoqlTest {
 	}
 
 	private static Object validateQuery(Soql soql, String expected) {
-		Object results;
-		User testUser = [SELECT Id FROM User WHERE Profile.Name = 'Minimum Access - Salesforce' ORDER BY CreatedDate DESC LIMIT 1];
-		System.runAs(testUser) {
-			Assert.areEqual('"' + expected + '"', '"' + soql + '"', 'Unexpected SOQL output');
-			// #128 - Update SOQL tests to work regardless of running users' object/FLS permissions
-			soql?.setAccessLevel(System.AccessLevel.SYSTEM_MODE);
-			results = soql?.query();
-		}
-		return results;
-	}
-
-	@TestSetup 
-	static void setup() {
-		Profile profile = [SELECT Id FROM Profile WHERE Name = 'Minimum Access - Salesforce' LIMIT 1];
-		String random = EncodingUtil.base64encode(Crypto.generateAesKey(192))?.substring(0, 10);
-		String username = random + '@email.com.invalid';
-		User testUser = new User(
-			Alias = random?.left(8),
-			CommunityNickname = username,
-			Email = username,
-			EmailEncodingKey = 'UTF-8',
-			FirstName = random,
-			IsActive = true,
-			LanguageLocaleKey = 'en_US',
-			LastName = random,
-			LocaleSidKey = 'en_US',
-			ProfileId = profile?.Id,
-			TimeZoneSidKey = 'America/Los_Angeles',
-			Username = username
-		);
-		Database.insert(testUser);
+		Assert.areEqual('"' + expected + '"', '"' + soql + '"', 'Unexpected SOQL output');
+		// This test will always run the queries in system mode to prevent FLS/CRUD errors
+		// when the test is run by non-admin users (ex., CICD integrations w/minimal object access)
+		soql?.setAccessLevel(System.AccessLevel.SYSTEM_MODE);
+		return soql?.query();
 	}
 
 	// **** INNER **** //
