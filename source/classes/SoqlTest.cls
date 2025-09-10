@@ -1391,13 +1391,10 @@ private class SoqlTest {
 		Soql testQuery = DatabaseLayer.Soql.newQuery(Account.SObjectType)
 			?.addWhere(Account.Id, Soql.IN_COLLECTION, innerQuery)
 			?.toSoql();
+		String expected = 'SELECT Id FROM Account WHERE Id IN (SELECT AccountId FROM Case WHERE OwnerId = :ownerId)';
 
 		Test.startTest();
-		try {
-			testQuery?.query();
-		} catch (System.QueryException queryError) {
-			Assert.fail(queryError?.toString());
-		}
+		SoqlTest.validateQuery(testQuery, expected);
 		Test.stopTest();
 
 		String key = owner?.getKey();
@@ -1412,13 +1409,10 @@ private class SoqlTest {
 			?.addWhere(Opportunity.OwnerId, Soql.EQUALS, owner)
 			?.toSubquery();
 		Soql testQuery = DatabaseLayer.Soql.newQuery(Account.SObjectType)?.addSelect(subquery)?.toSoql();
+		String expected = 'SELECT Id, (SELECT Id FROM Opportunities WHERE OwnerId = :ownerId) FROM Account';
 
 		Test.startTest();
-		try {
-			testQuery?.query();
-		} catch (System.QueryException queryError) {
-			Assert.fail(queryError?.toString());
-		}
+		SoqlTest.validateQuery(testQuery, expected);
 		Test.stopTest();
 
 		String key = owner?.getKey();
