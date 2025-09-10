@@ -92,7 +92,7 @@ jobs:
     secrets: inherit
     with:
       package: managed
-      promote-package: ${{ inputs.promote-package }}
+      promote-package: ${{ inputs.promote-package || false }}
       version: ${{ needs.versioning.outputs.version-number }}
 
   create-unlocked-package-version:
@@ -104,7 +104,7 @@ jobs:
     secrets: inherit
     with:
       package: unlocked
-      promote-package: ${{ inputs.promote-package }}
+      promote-package: ${{ inputs.promote-package || false }}
       version: ${{ needs.versioning.outputs.version-number }}
 
   create-release:
