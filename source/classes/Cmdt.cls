@@ -40,6 +40,10 @@ global inherited sharing class Cmdt {
 		protected Map<String, SObject> records;
 		protected transient SObjectType objectType;
 
+		/**
+		 * @description Constructor for Repository class
+		 * @param objectType The SObjectType of the Custom Metadata Type
+		 */
 		protected Repository(SObjectType objectType) {
 			this.objectType = objectType;
 			this.register();
@@ -77,9 +81,11 @@ global inherited sharing class Cmdt {
 			return repository;
 		}
 
+		/**
+		 * @description Builds the base SOQL query for the Custom Metadata Type
+		 * @return A Soql query builder instance
+		 */
 		protected virtual Soql buildQuery() {
-			// Returns a base query that can be extended by other methods or custom repository types as needed
-			// By default, this
 			return Cmdt.SoqlProvider.newQuery(this.objectType)?.toSoql();
 		}
 
@@ -101,22 +107,29 @@ global inherited sharing class Cmdt {
 			return results;
 		}
 
+		/**
+		 * @description Executes the query to retrieve all Custom Metadata Type records
+		 * @return List of SObject records
+		 */
 		protected virtual List<SObject> queryAll() {
-			// Return the results of the base query
-			// This includes all records, and excludes long text area fields
 			Soql baseQuery = this.buildQuery();
 			this.selectAllFieldsExceptLongText(baseQuery);
 			return baseQuery?.query();
 		}
 
+		/**
+		 * @description Registers this repository instance for the associated SObjectType
+		 */
 		protected void register() {
-			// Mark the current repository as the object responsible for retrieving records of the current SObjectType
 			String objectApiName = this.objectType?.toString();
 			Cmdt.repos?.put(objectApiName, this);
 		}
 
+		/**
+		 * @description Adds all fields except long text area fields to the query
+		 * @param query The Soql query builder to modify
+		 */
 		protected void selectAllFieldsExceptLongText(Soql.Builder query) {
-			// Omit long text area fields, so that the CMDT query does not count against SOQL limits:
 			List<SObjectField> allFields = this.objectType?.getDescribe()?.fields?.getMap()?.values();
 			for (SObjectField field : allFields) {
 				DescribeFieldResult describe = field?.getDescribe();
@@ -135,6 +148,10 @@ global inherited sharing class Cmdt {
 	private class SoqlProvider extends DatabaseLayer.SoqlProvider {
 		private DatabaseLayer factory;
 
+		/**
+		 * @description Constructor for SoqlProvider that ensures real SOQL operations
+		 * @param factory The DatabaseLayer factory to use for SOQL operations
+		 */
 		private SoqlProvider(DatabaseLayer factory) {
 			super(factory);
 			this.useMocks = false;
