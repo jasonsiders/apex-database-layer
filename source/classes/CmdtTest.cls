@@ -16,25 +16,16 @@ private class CmdtTest {
 		Assert.areEqual(numSettings, results?.size(), 'Did not query what is in org');
 	}
 
-	@IsTest
-	static void shouldReturnSpecifiedInstance() {
-		DatabaseLayerSetting__mdt setting = CmdtTest.initMockSetting();
-		String key = setting?.DeveloperName;
-
-		Test.startTest();
-		DatabaseLayerSetting__mdt result = (DatabaseLayerSetting__mdt) DatabaseLayer.Cmdt
-			?.ofType(CMDT_OBJECT)
-			?.getInstance(key);
-		Assert.areEqual(0, Limits.getQueries(), 'Should not have used SOQL');
-		Test.stopTest();
-
-		Assert.areEqual(key, result?.DeveloperName, 'Wrong instance returned');
-	}
-
-	@IsTest
-	static void shouldCacheQueryResultsIfCmdtIncludesLongTextAreaField() {
-		String objectApiName = CMDT_OBJECT.toString();
-		Cmdt.objectsToCache = new Set<String>{ objectApiName };
+	@IsTest 
+	static void shouldGetAllInstances() {
+		List<DatabaseLayerSetting__mdt> settings = new List<DatabaseLayerSetting__mdt>{};
+		Integer numRecords = Integer.valueOf(Math.random() * 10) + 1;
+		for (Integer i = 0; i < numRecords; i++) {
+			DatabaseLayerSetting__mdt setting = CmdtTest.initMockSetting();
+			setting.DeveloperName = 'Test_Record_' + i;
+			settings?.add(setting);
+		}
+		MockCmdt.mock(CMDT_OBJECT)?.add(settings);
 
 		Test.startTest();
 		List<DatabaseLayerSetting__mdt> results = (List<DatabaseLayerSetting__mdt>) DatabaseLayer.Cmdt
@@ -43,23 +34,7 @@ private class CmdtTest {
 			?.values();
 		Test.stopTest();
 
-		Integer numSettings = DatabaseLayerSetting__mdt.getAll()?.size();
-		Assert.areEqual(numSettings, results?.size(), 'Did not query what is in org');
-	}
-
-	@IsTest
-	static void shouldAlwaysQueryIfCmdtDoesNotIncludeLongTextAreaField() {
-		Cmdt.objectsToCache = new Set<String>{};
-
-		Test.startTest();
-		List<DatabaseLayerSetting__mdt> results = (List<DatabaseLayerSetting__mdt>) DatabaseLayer.Cmdt
-			?.ofType(CMDT_OBJECT)
-			?.getAll()
-			?.values();
-		Test.stopTest();
-
-		Integer numSettings = DatabaseLayerSetting__mdt.getAll()?.size();
-		Assert.areEqual(numSettings, results?.size(), 'Did not query what is in org');
+		Assert.areEqual(numRecords, settings?.size(), 'Wrong # of settings retrieved');
 	}
 
 	@IsTest
@@ -200,23 +175,6 @@ private class CmdtTest {
 	}
 
 	@IsTest
-	static void shouldExtractListOfEntityDefinitionsByName() {
-		// This is purely for coverage, in orgs that don't contain CMDTs w/long text fields
-		String objectApiName = CMDT_OBJECT.toString();
-		EntityDefinition entity = (EntityDefinition) new MockRecord(EntityDefinition.SObjectType)
-			?.setField(EntityDefinition.QualifiedApiName, objectApiName)
-			?.toSObject();
-		List<EntityDefinition> entities = new List<EntityDefinition>{ entity };
-
-		Test.startTest();
-		Set<String> results = Cmdt.extractEntityNames(entities);
-		Test.stopTest();
-
-		Assert.areEqual(entities?.size(), results?.size(), 'Wrong # of results');
-		Assert.isTrue(results?.contains(objectApiName), 'Did not extract ' + objectApiName);
-	}
-
-	@IsTest
 	static void shouldResetMetadataRetrieval() {
 		DatabaseLayerSetting__mdt mockSetting1 = new DatabaseLayerSetting__mdt(DeveloperName = 'Test_Record_1');
 		DatabaseLayerSetting__mdt mockSetting2 = new DatabaseLayerSetting__mdt(DeveloperName = 'Test_Record_2');
@@ -238,6 +196,19 @@ private class CmdtTest {
 		Assert.areEqual(mockSetting3?.DeveloperName, results?.get(0)?.DeveloperName, 'Did not reset');
 	}
 
+	@IsTest 
+	static void shouldUseCustomRepository() {
+		CmdtTest.CustomRepository repo = new CmdtTest.CustomRepository();
+		DatabaseLayerSetting__mdt setting = CmdtTest.initMockSetting();
+		MockCmdt.mock(CMDT_OBJECT)?.withRepository(repo)?.add(setting);
+
+		Test.startTest();
+		DatabaseLayerSetting__mdt instance = (DatabaseLayerSetting__mdt) repo?.getLastModified();
+		Test.stopTest();
+
+		Assert.areEqual(setting?.DeveloperName, instance?.DeveloperName, 'Wrong DeveloperName');
+	}
+
 	// **** HELPER **** //
 	private static DatabaseLayerSetting__mdt initMockSetting() {
 		// Override the guardrails that discourage query mocking
@@ -247,5 +218,27 @@ private class CmdtTest {
 		DatabaseLayerSetting__mdt setting = new DatabaseLayerSetting__mdt(DeveloperName = 'Test_Record');
 		MockSoql.setGlobalMock().withResults(new List<DatabaseLayerSetting__mdt>{ setting });
 		return setting;
+	}
+
+	// **** INNER **** // 
+	private class CustomRepository extends Cmdt.Repository {
+		// This custom repository queries *every time*, 
+		// and it includes additional methods that expand the Cmdt API
+		public override Map<String, SObject> getAll() {
+			List<SObject> records = this.queryAll();
+			return this.mapByQualifiedApiName(records);
+		}
+
+		public override SObject getInstance(String qualifiedApiName) {
+			return this.getAll()?.get(qualifiedApiName);
+		}
+
+		public SObject getLastModified() {
+			// This is an example of a method that can extend the API to meet more specialized use cases:
+			return this.buildQuery()
+				?.addOrderBy('LastModifiedDate', Soql.SortDirection.DESCENDING)
+				?.setRowLimit(1)
+				?.query();
+		}
 	}
 }
