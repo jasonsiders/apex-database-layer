@@ -34,7 +34,7 @@ private class CmdtTest {
 			?.values();
 		Test.stopTest();
 
-		Assert.areEqual(numRecords, settings?.size(), 'Wrong # of settings retrieved');
+		Assert.areEqual(numRecords, results?.size(), 'Wrong # of settings retrieved');
 	}
 
 	@IsTest
@@ -238,8 +238,11 @@ private class CmdtTest {
 			return this.getAll()?.get(qualifiedApiName);
 		}
 
+		/**
+		 * @description This is an example of a method that can extend the API to meet more specialized use cases:
+		 * @return The Last Modified CMDT record
+		 */
 		public SObject getLastModified() {
-			// This is an example of a method that can extend the API to meet more specialized use cases:
 			return this.buildQuery()
 				?.addOrderBy('LastModifiedDate', Soql.SortDirection.DESCENDING)
 				?.toSoql()
