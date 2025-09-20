@@ -54,6 +54,9 @@ public without sharing class DatabaseLayerUtils {
 	public class ChildRelationships {
 		private Map<SObjectType, DatabaseLayerUtils.CachedDescribe> describes;
 
+		/**
+		 * @description Constructor for ChildRelationships class
+		 */
 		private ChildRelationships() {
 			this.describes = new Map<SObjectType, DatabaseLayerUtils.CachedDescribe>();
 		}

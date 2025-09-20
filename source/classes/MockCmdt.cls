@@ -31,8 +31,12 @@ global class MockCmdt {
 	 * @description Mock implementation of the Cmdt.Repository interface for testing purposes.
 	 * Allows in-memory storage and manipulation of Custom Metadata Type records without database operations.
 	 */
-	global class Repository extends Cmdt.CacheBasedRepository {
-		private Repository(SObjectType objectType) {
+	global virtual class Repository extends Cmdt.Repository {
+		/**
+		 * @description Constructor for MockCmdt.Repository class
+		 * @param objectType The SObjectType of the Custom Metadata Type to mock
+		 */
+		protected Repository(SObjectType objectType) {
 			super(objectType);
 			// Note: Setting to a non-null value bypasses any/all queries in the parent class
 			this.records = new Map<String, SObject>{};
@@ -44,7 +48,7 @@ global class MockCmdt {
 		 * @return This repository instance for method chaining
 		 */
 		global MockCmdt.Repository add(List<SObject> recordList) {
-			Map<String, SObject> recordMap = Cmdt.mapByQualifiedApiName(recordList);
+			Map<String, SObject> recordMap = this.mapByQualifiedApiName(recordList);
 			this.records?.putAll(recordMap);
 			return this;
 		}
@@ -83,7 +87,7 @@ global class MockCmdt {
 		 * @return This repository instance for method chaining
 		 */
 		global MockCmdt.Repository remove(List<SObject> recordList) {
-			Set<String> keys = Cmdt.mapByQualifiedApiName(recordList)?.keySet();
+			Set<String> keys = this.mapByQualifiedApiName(recordList)?.keySet();
 			return this.remove(keys);
 		}
 
