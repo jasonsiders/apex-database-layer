@@ -16,7 +16,7 @@ private class CmdtTest {
 		Assert.areEqual(numSettings, results?.size(), 'Did not query what is in org');
 	}
 
-	@IsTest 
+	@IsTest
 	static void shouldGetAllInstances() {
 		List<DatabaseLayerSetting__mdt> settings = new List<DatabaseLayerSetting__mdt>{};
 		Integer numRecords = Integer.valueOf(Math.random() * 10) + 1;
@@ -147,7 +147,6 @@ private class CmdtTest {
 	@IsTest
 	static void shouldReturnNullInstanceIfOneDoesntExist() {
 		// Mostly for coverage -- since we can't test with real CMDT records
-		Cmdt.objectsToCache = new Set<String>{ CMDT_OBJECT?.toString() };
 		String key = 'There\'s no way this is a real key';
 
 		Test.startTest();
@@ -196,14 +195,15 @@ private class CmdtTest {
 		Assert.areEqual(mockSetting3?.DeveloperName, results?.get(0)?.DeveloperName, 'Did not reset');
 	}
 
-	@IsTest 
+	@IsTest
 	static void shouldUseCustomRepository() {
-		CmdtTest.CustomRepository repo = new CmdtTest.CustomRepository();
 		DatabaseLayerSetting__mdt setting = CmdtTest.initMockSetting();
-		MockCmdt.mock(CMDT_OBJECT)?.withRepository(repo)?.add(setting);
+		CmdtTest.CustomRepository customRepo = (CmdtTest.CustomRepository) MockCmdt.mock(CMDT_OBJECT)
+			?.withRepository(new CmdtTest.CustomRepository(CMDT_OBJECT));
+		customRepo?.add(setting);
 
 		Test.startTest();
-		DatabaseLayerSetting__mdt instance = (DatabaseLayerSetting__mdt) repo?.getLastModified();
+		DatabaseLayerSetting__mdt instance = (DatabaseLayerSetting__mdt) customRepo?.getLastModified();
 		Test.stopTest();
 
 		Assert.areEqual(setting?.DeveloperName, instance?.DeveloperName, 'Wrong DeveloperName');
@@ -220,11 +220,16 @@ private class CmdtTest {
 		return setting;
 	}
 
-	// **** INNER **** // 
-	private class CustomRepository extends Cmdt.Repository {
-		// This custom repository queries *every time*, 
+	// **** INNER **** //
+	private class CustomRepository extends MockCmdt.Repository {
+		// This custom repository queries *every time*,
 		// and it includes additional methods that expand the Cmdt API
+		private CustomRepository(SObjectType objectType) {
+			super(objectType);
+		}
+
 		public override Map<String, SObject> getAll() {
+			// This implementation queries
 			List<SObject> records = this.queryAll();
 			return this.mapByQualifiedApiName(records);
 		}
@@ -237,8 +242,8 @@ private class CmdtTest {
 			// This is an example of a method that can extend the API to meet more specialized use cases:
 			return this.buildQuery()
 				?.addOrderBy('LastModifiedDate', Soql.SortDirection.DESCENDING)
-				?.setRowLimit(1)
-				?.query();
+				?.toSoql()
+				?.queryFirst();
 		}
 	}
 }
