@@ -1416,10 +1416,19 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	 * @description Operator for LIKE queries with wildcard patterns for contains operations.
 	 */
 	global virtual class ContainsOperator extends Soql.Operator {
+		/**
+		 * @description Constructor for ContainsOperator
+		 * @param token The operator token
+		 */
 		private ContainsOperator(String token) {
 			super(token);
 		}
 
+		/**
+		 * @description Processes string values for CONTAINS operator by adding wildcard characters
+		 * @param value The string value to process
+		 * @return The processed string value with wildcards
+		 */
 		public override String processStringValue(String value) {
 			return '\'%' + String.escapeSingleQuotes(value) + '%\'';
 		}
@@ -1479,10 +1488,19 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	 * @description Operator for LIKE queries with wildcard patterns for ends-with operations.
 	 */
 	global class EndsWithOperator extends Soql.Operator {
+		/**
+		 * @description Constructor for EndsWithOperator
+		 * @param token The operator token
+		 */
 		private EndsWithOperator(String token) {
 			super(token);
 		}
 
+		/**
+		 * @description Processes string values for ENDS_WITH operator by adding prefix wildcard
+		 * @param value The string value to process
+		 * @return The processed string value with prefix wildcard
+		 */
 		public override String processStringValue(String value) {
 			return '\'%' + String.escapeSingleQuotes(value) + '\'';
 		}
@@ -1936,10 +1954,19 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	 * @description Operator for LIKE queries with wildcard patterns for starts-with operations.
 	 */
 	global class StartsWithOperator extends Soql.Operator {
+		/**
+		 * @description Constructor for StartsWithOperator
+		 * @param token The operator token
+		 */
 		private StartsWithOperator(String token) {
 			super(token);
 		}
 
+		/**
+		 * @description Processes string values for STARTS_WITH operator by adding suffix wildcard
+		 * @param value The string value to process
+		 * @return The processed string value with suffix wildcard
+		 */
 		public override String processStringValue(String value) {
 			return '\'' + String.escapeSingleQuotes(value) + '%\'';
 		}

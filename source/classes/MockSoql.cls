@@ -116,6 +116,10 @@ global class MockSoql extends Soql {
 	global class Cursor extends Soql.Cursor {
 		private List<SObject> records;
 
+		/**
+		 * @description Constructor for MockSoql.Cursor
+		 * @param mockQuery The MockSoql instance to create a cursor for
+		 */
 		private Cursor(MockSoql mockQuery) {
 			super(null);
 			this.cursor = this.initMockCursor();
@@ -207,6 +211,10 @@ global class MockSoql extends Soql {
 		private String query;
 		private List<SObject> records;
 
+		/**
+		 * @description Constructor for MockSoql.QueryLocator
+		 * @param mockQuery The MockSoql instance to create a query locator for
+		 */
 		private QueryLocator(MockSoql mockQuery) {
 			super(null);
 			this.query = mockQuery?.toString();
@@ -229,6 +237,10 @@ global class MockSoql extends Soql {
 		private Integer index = 0;
 		private List<SObject> records;
 
+		/**
+		 * @description Constructor for QueryLocatorIterator
+		 * @param records The list of records to iterate over
+		 */
 		private QueryLocatorIterator(List<SObject> records) {
 			this.records = records;
 		}
@@ -262,32 +274,62 @@ global class MockSoql extends Soql {
 	public class Request extends Soql.Request {
 		private transient MockSoql.Simulator simulator;
 
+		/**
+		 * @description Constructor for MockSoql.Request
+		 * @param query The Soql query instance
+		 * @param operation The operation type being performed
+		 * @param simulator The simulator instance for mock behavior
+		 */
 		private Request(Soql query, Soql.Operation operation, MockSoql.Simulator simulator) {
 			super(query, operation);
 			this.isMockSoql = true;
 			this.simulator = simulator;
 		}
 
+		/**
+		 * @description Executes an aggregate query using the mock simulator
+		 * @return List of aggregate results from the simulation
+		 */
 		public override List<Soql.AggregateResult> doAggregateQuery() {
 			return (List<Soql.AggregateResult>) this.simulate() ?? new List<Soql.AggregateResult>();
 		}
 
+		/**
+		 * @description Executes a count query using the mock simulator
+		 * @return Count of records from the simulation
+		 */
 		public override Integer doCountQuery() {
 			return ((List<SObject>) this.doQuery())?.size() ?? 0;
 		}
 
+		/**
+		 * @description Creates a mock cursor for iterating through query results
+		 * @return A MockSoql.Cursor instance
+		 */
 		public override Soql.Cursor doGetCursor() {
 			return new MockSoql.Cursor((MockSoql) this.query);
 		}
 
+		/**
+		 * @description Creates a mock query locator for batch processing
+		 * @return A MockSoql.QueryLocator instance
+		 */
 		public override Soql.QueryLocator doGetQueryLocator() {
 			return new MockSoql.QueryLocator((MockSoql) this.query);
 		}
 
+		/**
+		 * @description Executes a query using the mock simulator
+		 * @return Query results from the simulation
+		 */
 		public override Object doQuery() {
 			return this.simulate() ?? new List<SObject>();
 		}
 
+		/**
+		 * @description Runs the simulator logic to generate mock query results
+		 * @return Simulated query results
+		 */
 		private Object simulate() {
 			// Run the Simulator logic
 			return this.simulator?.simulateQuery(this.query);
@@ -313,6 +355,9 @@ global class MockSoql extends Soql {
 		private Exception error;
 		private List<Object> results;
 
+		/**
+		 * @description Constructor for StaticResults class
+		 */
 		@SuppressWarnings('PMD.EmptyStatementBlock')
 		private StaticResults() {
 			// Callers have no need to ever reference the StaticResults object directly
