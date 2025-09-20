@@ -8,16 +8,9 @@ global inherited sharing class Cmdt {
 	private static final String DEVELOPER_NAME = 'DeveloperName';
 	private static final String NAMESPACE_PREFIX = 'NamespacePrefix';
 	@TestVisible
-	private static Set<String> objectsToCache;
-	@TestVisible
-	private static Map<String, Cmdt.Repository> repos;
+	private static Map<String, Cmdt.Repository> repos = new Map<String, Cmdt.Repository>{};
 	@TestVisible
 	private static DatabaseLayer.SoqlProvider soqlProvider;
-
-	static {
-		Cmdt.objectsToCache = Cmdt.getObjectsToCache();
-		Cmdt.repos = new Map<String, Cmdt.Repository>{};
-	}
 
 	/**
 	 * @description Creates a new Cmdt instance with the specified DatabaseLayer factory.
@@ -34,116 +27,26 @@ global inherited sharing class Cmdt {
 	 */
 	global Cmdt.Repository ofType(SObjectType objectType) {
 		String objectApiName = objectType?.toString();
-		Cmdt.Repository repo = Cmdt.repos?.get(objectApiName) ?? this.initRepository(objectType);
-		Cmdt.repos?.put(objectApiName, repo);
+		Cmdt.Repository repo = Cmdt.repos?.get(objectApiName) ?? new Cmdt.Repository(objectType);
 		return repo;
-	}
-
-	private Cmdt.Repository initRepository(SObjectType objectType) {
-		// Maximize tradeoffs between heap size storage & query limits
-		if (this.includesLongTextFields(objectType) == true) {
-			// CMDT objects w/Long Text fields count towards query limits; query once and then cache
-			return new CacheBasedRepository(objectType);
-		} else {
-			// All other CMDT objects are "free" to query; avoid cacheing to minimize heap usage
-			return new QueryBasedRepository(objectType);
-		}
-	}
-
-	private Boolean includesLongTextFields(SObjectType objectType) {
-		// Returns true if the SObjectType includes long-text fields
-		String objectApiName = objectType?.toString();
-		return Cmdt.objectsToCache?.contains(objectApiName) == true;
-	}
-
-	// **** STATIC **** //
-	/**
-	 * @description Map each custom metadata record by its QualifiedApiName (NamespacePrefix + DeveloperName)
-	 * @param recordList A list of custom metadata SObject records
-	 * @return A map of custom metadata SObject records by their QualifiedApiName
-	 */
-	public static Map<String, SObject> mapByQualifiedApiName(List<SObject> recordList) {
-		Map<String, SObject> results = new Map<String, SObject>{};
-		for (SObject record : recordList) {
-			String namespace = (String) record?.get(NAMESPACE_PREFIX);
-			String developerName = (String) record?.get(DEVELOPER_NAME);
-			Set<String> components = new Set<String>{ namespace, developerName };
-			components?.remove(null);
-			String key = String.join(components, '__');
-			results?.put(key, record);
-		}
-		return results;
-	}
-
-	@TestVisible
-	private static Set<String> extractEntityNames(List<EntityDefinition> entities) {
-		Set<String> results = new Set<String>{};
-		for (EntityDefinition entity : entities) {
-			String objectApiName = entity?.QualifiedApiName;
-			results?.add(objectApiName);
-		}
-		return results;
-	}
-
-	private static Set<String> getObjectsToCache() {
-		List<EntityDefinition> entities = Cmdt.queryEntityDefinitions();
-		return Cmdt.extractEntityNames(entities);
-	}
-
-	private static List<EntityDefinition> queryEntityDefinitions() {
-		// This static query must **always** execute using real SOQL
-		return [
-			SELECT QualifiedApiName
-			FROM EntityDefinition
-			WHERE
-				QualifiedApiName LIKE '%__mdt'
-				AND DurableId IN (SELECT EntityDefinitionId FROM FieldDefinition WHERE DataType LIKE 'Long Text%')
-			WITH SYSTEM_MODE
-		];
 	}
 
 	// **** INNER **** //
 	/**
-	 * @description Repository implementation that caches query results to avoid repeated SOQL queries.
-	 * Use this for Custom Metadata Types that include long-text area fields, as queries for
-	 * these objects count towards SOQL governor limits.
-	 * https://help.salesforce.com/s/articleView?language=en_US&id=platform.custommetadatatypes_limits.htm&type=5
+	 * @description Virtual class used to accessing Custom Metadata Type records.
+	 * Provides methods for retrieving all records or specific instances by developer name.
 	 */
-	global inherited sharing virtual class CacheBasedRepository extends Cmdt.QueryBasedRepository {
-		protected transient Map<String, SObject> records;
-
-		protected CacheBasedRepository(SObjectType objectType) {
-			super(objectType);
-		}
-
-		global override Map<String, SObject> getAll() {
-			this.retrieve();
-			return this.records;
-		}
-
-		global override SObject getInstance(String qualifiedApiName) {
-			return this.getAll()?.get(qualifiedApiName);
-		}
-
-		private void retrieve() {
-			if (this.records == null) {
-				List<SObject> recordList = this.queryAll();
-				this.records = Cmdt.mapByQualifiedApiName(recordList);
-			}
-		}
-	}
-
-	/**
-	 * @description Repository implementation that issues a new SOQL query each time.
-	 * Use this for most Custom Metadata Types; SOQL queries will not count towards governor limits,
-	 * unless the object contains a long-text area field
-	 * https://help.salesforce.com/s/articleView?language=en_US&id=platform.custommetadatatypes_limits.htm&type=5
-	 */
-	global inherited sharing virtual class QueryBasedRepository implements Cmdt.Repository {
+	global virtual class Repository {
+		protected Map<String, SObject> records;
 		protected transient SObjectType objectType;
 
-		protected QueryBasedRepository(SObjectType objectType) {
+		/**
+		 * @description Constructor for Repository class
+		 * @param objectType The SObjectType of the Custom Metadata Type
+		 */
+		protected Repository(SObjectType objectType) {
 			this.objectType = objectType;
+			this.register();
 		}
 
 		/**
@@ -151,8 +54,12 @@ global inherited sharing class Cmdt {
 		 * @return Map of DeveloperName to SObject record
 		 */
 		global virtual Map<String, SObject> getAll() {
-			List<SObject> records = this.queryAll();
-			return Cmdt.mapByQualifiedApiName(records);
+			if (this.records == null) {
+				List<SObject> results = this.queryAll();
+				return this.mapByQualifiedApiName(results);
+			} else {
+				return this.records;
+			}
 		}
 
 		/**
@@ -161,44 +68,90 @@ global inherited sharing class Cmdt {
 		 * @return The SObject record, or null if not found
 		 */
 		global virtual SObject getInstance(String qualifiedApiName) {
-			return this.initQuery()?.addWhere(DEVELOPER_NAME, Soql.EQUALS, qualifiedApiName)?.toSoql()?.queryFirst();
+			return this.getAll()?.get(qualifiedApiName);
 		}
 
-		private Soql initQuery() {
-			// Note: CMDT SOQL queries don't count against SOQL query limits (!)
-			return Cmdt.soqlProvider.newQuery(this.objectType)?.selectAll()?.toSoql();
-		}
-
-		private List<SObject> queryAll() {
-			return this.initQuery()?.query();
-		}
-	}
-
-	/**
-	 * @description Interface for accessing Custom Metadata Type records.
-	 * Provides methods for retrieving all records or specific instances by developer name.
-	 */
-	global interface Repository {
 		/**
-		 * @description Retrieves all Custom Metadata Type records as a map keyed by DeveloperName.
-		 * @return Map of DeveloperName to SObject record
+		 * @description Inject a custom repository object to handle CMDT retrieval instead of the current instance
+		 * @param repository the repository object to use to retrieve objects of the current type going forward
+		 * @return the same repository object passed as an input
 		 */
-		Map<String, SObject> getAll();
+		global Cmdt.Repository withRepository(Cmdt.Repository repository) {
+			repository?.register();
+			return repository;
+		}
+
 		/**
-		 * @description Retrieves a specific Custom Metadata Type record by its DeveloperName.
-		 * @param qualifiedApiName The DeveloperName of the record to retrieve, including Namespace (if applicable)
-		 * @return The SObject record, or null if not found
+		 * @description Builds the base SOQL query for the Custom Metadata Type
+		 * @return A Soql query builder instance
 		 */
-		SObject getInstance(String qualifiedApiName);
+		protected virtual Soql buildQuery() {
+			Soql query = Cmdt.SoqlProvider.newQuery(this.objectType)?.toSoql();
+			this.selectAllFieldsExceptLongText(query);
+			return query;
+		}
+
+		/**
+		 * @description Map each custom metadata record by its QualifiedApiName (NamespacePrefix + DeveloperName)
+		 * @param records A list of custom metadata SObject records
+		 * @return A map of custom metadata SObject records by their QualifiedApiName
+		 */
+		protected Map<String, SObject> mapByQualifiedApiName(List<SObject> records) {
+			Map<String, SObject> results = new Map<String, SObject>{};
+			for (SObject record : records) {
+				String namespace = (String) record?.get(NAMESPACE_PREFIX);
+				String developerName = (String) record?.get(DEVELOPER_NAME);
+				Set<String> components = new Set<String>{ namespace, developerName };
+				components?.remove(null);
+				String key = String.join(components, '__');
+				results?.put(key, record);
+			}
+			return results;
+		}
+
+		/**
+		 * @description Executes the query to retrieve all Custom Metadata Type records
+		 * @return List of SObject records
+		 */
+		protected virtual List<SObject> queryAll() {
+			return this.buildQuery()?.query();
+		}
+
+		/**
+		 * @description Registers this repository instance for the associated SObjectType
+		 */
+		protected void register() {
+			String objectApiName = this.objectType?.toString();
+			Cmdt.repos?.put(objectApiName, this);
+		}
+
+		/**
+		 * @description Adds all fields except long text area fields to the query
+		 * @param query The Soql query builder to modify
+		 */
+		protected void selectAllFieldsExceptLongText(Soql.Builder query) {
+			List<SObjectField> allFields = this.objectType?.getDescribe()?.fields?.getMap()?.values();
+			for (SObjectField field : allFields) {
+				DescribeFieldResult describe = field?.getDescribe();
+				Integer len = describe?.getLength() ?? 0;
+				if (len < 255) {
+					query?.addSelect(field);
+				}
+			}
+		}
 	}
 
 	/**
 	 * @description Custom SoqlProvider that will always return a real (not mock) Soql object
-	 * 				This enables CMDT operations to use real Soql, even when MockSoql is used elsewhere
+	 * This enables CMDT operations to use real Soql, even when MockSoql is used elsewhere
 	 */
 	private class SoqlProvider extends DatabaseLayer.SoqlProvider {
 		private DatabaseLayer factory;
 
+		/**
+		 * @description Constructor for SoqlProvider that ensures real SOQL operations
+		 * @param factory The DatabaseLayer factory to use for SOQL operations
+		 */
 		private SoqlProvider(DatabaseLayer factory) {
 			super(factory);
 			this.useMocks = false;

@@ -10,6 +10,9 @@ global class DatabaseLayer {
 	private Dml currentDml;
 	private SoqlProvider currentSoql;
 
+	/**
+	 * @description Private constructor for DatabaseLayer singleton
+	 */
 	private DatabaseLayer() {
 		this.currentCmdt = new Cmdt(this);
 		this.currentDml = new Dml(this);
