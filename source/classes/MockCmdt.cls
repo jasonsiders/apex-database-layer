@@ -32,6 +32,10 @@ global class MockCmdt {
 	 * Allows in-memory storage and manipulation of Custom Metadata Type records without database operations.
 	 */
 	global virtual class Repository extends Cmdt.Repository {
+		/**
+		 * @description Constructor for MockCmdt.Repository class
+		 * @param objectType The SObjectType of the Custom Metadata Type to mock
+		 */
 		protected Repository(SObjectType objectType) {
 			super(objectType);
 			// Note: Setting to a non-null value bypasses any/all queries in the parent class
