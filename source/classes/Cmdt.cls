@@ -86,7 +86,9 @@ global inherited sharing class Cmdt {
 		 * @return A Soql query builder instance
 		 */
 		protected virtual Soql buildQuery() {
-			return Cmdt.SoqlProvider.newQuery(this.objectType)?.toSoql();
+			Soql query = Cmdt.SoqlProvider.newQuery(this.objectType)?.toSoql();
+			this.selectAllFieldsExceptLongText(query);
+			return query;
 		}
 
 		/**
@@ -112,9 +114,7 @@ global inherited sharing class Cmdt {
 		 * @return List of SObject records
 		 */
 		protected virtual List<SObject> queryAll() {
-			Soql baseQuery = this.buildQuery();
-			this.selectAllFieldsExceptLongText(baseQuery);
-			return baseQuery?.query();
+			return this.buildQuery()?.query();
 		}
 
 		/**
