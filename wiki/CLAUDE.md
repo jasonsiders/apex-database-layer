@@ -29,17 +29,17 @@ The wiki is organized around these main architectural components:
 
 1. **DatabaseLayer Class**: Central access point providing `DatabaseLayer.Dml` and `DatabaseLayer.Soql` properties
 2. **DML Operations**:
-   - `Dml` class for real database operations
-   - `MockDml` class for testing without database interaction
-   - `Dml.Request`, `Dml.Operation` enum, and other supporting classes
+    - `Dml` class for real database operations
+    - `MockDml` class for testing without database interaction
+    - `Dml.Request`, `Dml.Operation` enum, and other supporting classes
 3. **SOQL Operations**:
-   - `Soql` class with fluent query builder pattern
-   - `MockSoql` class for query mocking in tests
-   - Extensive supporting classes: `Soql.Builder`, `Soql.Condition`, `Soql.AggregateResult`, etc.
+    - `Soql` class with fluent query builder pattern
+    - `MockSoql` class for query mocking in tests
+    - Extensive supporting classes: `Soql.Builder`, `Soql.Condition`, `Soql.AggregateResult`, etc.
 4. **Mock Testing Framework**:
-   - `MockRecord` for generating test data
-   - `MockDml.Database` for simulating database state
-   - `MockSoql.ConditionalLogic` interface for dynamic query behavior
+    - `MockRecord` for generating test data
+    - `MockDml.Database` for simulating database state
+    - `MockSoql.ConditionalLogic` interface for dynamic query behavior
 5. **Plugin Framework**: Extension system using `DatabaseLayerSetting__mdt` custom metadata
 
 ### Key Patterns

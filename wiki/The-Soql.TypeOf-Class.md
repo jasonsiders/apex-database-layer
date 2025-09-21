@@ -99,6 +99,7 @@ List<Task> tasks = soql.query();
 ```
 
 This generates the following SOQL:
+
 ```sql
 SELECT Id, TYPEOF WhatId
     WHEN Account THEN Name, Phone
@@ -119,6 +120,7 @@ Soql.TypeOf typeOfClause = new Soql.TypeOf(Task.WhatId)
 ```
 
 This generates:
+
 ```sql
 TYPEOF WhatId
     WHEN Account THEN Name

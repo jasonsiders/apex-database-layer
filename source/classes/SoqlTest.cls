@@ -546,7 +546,6 @@ private class SoqlTest {
 		Test.stopTest();
 	}
 
-
 	@IsTest
 	static void shouldSetQueryScope() {
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
@@ -1715,9 +1714,7 @@ private class SoqlTest {
 
 	@IsTest
 	static void shouldBuildTypeOfWithStringConstructor() {
-		Soql.TypeOf typeOfClause = new Soql.TypeOf('WhatId')
-			.when(Account.SObjectType)
-			.thenSelect(Account.Name);
+		Soql.TypeOf typeOfClause = new Soql.TypeOf('WhatId').when(Account.SObjectType).thenSelect(Account.Name);
 
 		Test.startTest();
 		String result = typeOfClause?.toString();
@@ -1730,9 +1727,7 @@ private class SoqlTest {
 	@IsTest
 	static void shouldBuildTypeOfWithParentField() {
 		Soql.ParentField parentField = new Soql.ParentField(Task.WhatId, Account.Name);
-		Soql.TypeOf typeOfClause = new Soql.TypeOf(parentField)
-			.when(Account.SObjectType)
-			.thenSelect(Account.Name);
+		Soql.TypeOf typeOfClause = new Soql.TypeOf(parentField).when(Account.SObjectType).thenSelect(Account.Name);
 
 		Test.startTest();
 		String result = typeOfClause?.toString();
@@ -1758,10 +1753,12 @@ private class SoqlTest {
 		typeOfClause.when(Lead.SObjectType).thenSelect(Lead.FirstName, Lead.LastName, Lead.Company);
 
 		// Test 4 fields
-		typeOfClause.when(Opportunity.SObjectType).thenSelect(Opportunity.Name, Opportunity.StageName, Opportunity.Amount, Opportunity.CloseDate);
+		typeOfClause.when(Opportunity.SObjectType)
+			.thenSelect(Opportunity.Name, Opportunity.StageName, Opportunity.Amount, Opportunity.CloseDate);
 
 		// Test 5 fields
-		typeOfClause.when(Case.SObjectType).thenSelect(Case.Subject, Case.Status, Case.Priority, Case.Origin, Case.Type);
+		typeOfClause.when(Case.SObjectType)
+			.thenSelect(Case.Subject, Case.Status, Case.Priority, Case.Origin, Case.Type);
 
 		String result = typeOfClause?.toString();
 		Test.stopTest();
@@ -1770,8 +1767,14 @@ private class SoqlTest {
 		Assert.isTrue(result?.contains('WHEN Account THEN Name'), 'Missing Account WHEN clause');
 		Assert.isTrue(result?.contains('WHEN Contact THEN FirstName, LastName'), 'Missing Contact WHEN clause');
 		Assert.isTrue(result?.contains('WHEN Lead THEN FirstName, LastName, Company'), 'Missing Lead WHEN clause');
-		Assert.isTrue(result?.contains('WHEN Opportunity THEN Name, StageName, Amount, CloseDate'), 'Missing Opportunity WHEN clause');
-		Assert.isTrue(result?.contains('WHEN Case THEN Subject, Status, Priority, Origin, Type'), 'Missing Case WHEN clause');
+		Assert.isTrue(
+			result?.contains('WHEN Opportunity THEN Name, StageName, Amount, CloseDate'),
+			'Missing Opportunity WHEN clause'
+		);
+		Assert.isTrue(
+			result?.contains('WHEN Case THEN Subject, Status, Priority, Origin, Type'),
+			'Missing Case WHEN clause'
+		);
 	}
 
 	@IsTest
@@ -1796,10 +1799,13 @@ private class SoqlTest {
 
 		// Test 5 fields
 		Soql.TypeOf typeOf5 = new Soql.TypeOf(Task.WhatId).elseSelect('Name', 'Type', 'Status', 'Id', 'CreatedDate');
-		Assert.isTrue(typeOf5?.toString()?.contains('ELSE Name, Type, Status, Id, CreatedDate'), 'Missing 5 field ELSE');
+		Assert.isTrue(
+			typeOf5?.toString()?.contains('ELSE Name, Type, Status, Id, CreatedDate'),
+			'Missing 5 field ELSE'
+		);
 
 		// Test List<String>
-		List<String> fields = new List<String>{'Name', 'Description'};
+		List<String> fields = new List<String>{ 'Name', 'Description' };
 		Soql.TypeOf typeOfList = new Soql.TypeOf(Task.WhatId).elseSelect(fields);
 		Assert.isTrue(typeOfList?.toString()?.contains('ELSE Name, Description'), 'Missing List<String> ELSE');
 
@@ -1821,8 +1827,7 @@ private class SoqlTest {
 		Assert.isTrue(result?.contains('WHEN Account THEN Name, Type'), 'Should handle null fields in thenSelect');
 
 		// Test elseSelect with null fields
-		Soql.TypeOf typeOfElse = new Soql.TypeOf(Task.WhatId)
-			.elseSelect('Name', 'Type', null, null, null);
+		Soql.TypeOf typeOfElse = new Soql.TypeOf(Task.WhatId).elseSelect('Name', 'Type', null, null, null);
 
 		String elseResult = typeOfElse?.toString();
 		Assert.isTrue(elseResult?.contains('ELSE Name, Type'), 'Should handle null fields in elseSelect');

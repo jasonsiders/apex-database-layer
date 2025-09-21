@@ -83,6 +83,7 @@ Soql soql = DatabaseLayer.Soql.newQuery(Task.SObjectType)
 ```
 
 This generates:
+
 ```sql
 SELECT Id, Subject, TYPEOF WhatId
     WHEN Account THEN Name, Phone

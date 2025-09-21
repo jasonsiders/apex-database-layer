@@ -128,14 +128,12 @@ There is one limitation to this approach: Certain frameworks (like `Database.Bat
 
 ```apex
 public class MyBatch implements Database.Batchable<SObject> {
-  public Database.QueryLocator start(Database.BatchableContext ctx) {
-    Soql.QueryLocator locator = DatabaseLayer.Soql.newQuery(Account.SObjectType)
-      ?.toSoql()
-      ?.getQueryLocator();
-    // Retrieve the underlying Database.QueryLocator:
-    return locator?.getLocator();
-  }
-  // ...rest of the class omitted for brevity...
+	public Database.QueryLocator start(Database.BatchableContext ctx) {
+		Soql.QueryLocator locator = DatabaseLayer.Soql.newQuery(Account.SObjectType)?.toSoql()?.getQueryLocator();
+		// Retrieve the underlying Database.QueryLocator:
+		return locator?.getLocator();
+	}
+	// ...rest of the class omitted for brevity...
 }
 ```
 
