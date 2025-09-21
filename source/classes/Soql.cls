@@ -2003,4 +2003,248 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			return this.relationshipName;
 		}
 	}
+
+	/**
+	 * @description Represents a TYPEOF clause for polymorphic field queries in SOQL.
+	 */
+	global class TypeOf implements Soql.Selectable {
+		private String fieldName;
+		private List<String> whenClauses = new List<String>();
+		private List<String> elseFields;
+
+		/**
+		 * @description Constructor for TypeOf with field name.
+		 * @param fieldName The polymorphic field name to query
+		 */
+		global TypeOf(String fieldName) {
+			this.fieldName = fieldName;
+		}
+
+		/**
+		 * @description Constructor for TypeOf with SObjectField.
+		 * @param field The polymorphic SObjectField to query
+		 */
+		global TypeOf(SObjectField field) {
+			this(field?.toString());
+		}
+
+		/**
+		 * @description Constructor for TypeOf with parent field.
+		 * @param field The polymorphic parent field to query
+		 */
+		global TypeOf(Soql.ParentField field) {
+			this(field?.toString());
+		}
+
+		/**
+		 * @description Adds a WHEN clause and returns a builder for specifying fields.
+		 * @param objectType The SObjectType to match in the WHEN clause
+		 * @return A WhenClause builder for specifying the fields to select
+		 */
+		global Soql.WhenClause when(SObjectType objectType) {
+			return new Soql.WhenClause(this, objectType);
+		}
+
+		/**
+		 * @description Adds an ELSE clause with a single field name.
+		 * @param fieldName The field name to select in the ELSE clause
+		 * @return This TypeOf instance for method chaining
+		 */
+		global Soql.TypeOf elseSelect(String fieldName) {
+			return this.elseSelect(new List<String>{ fieldName });
+		}
+
+		/**
+		 * @description Adds an ELSE clause with multiple field names.
+		 * @param fieldNames List of field names to select in the ELSE clause
+		 * @return This TypeOf instance for method chaining
+		 */
+		global Soql.TypeOf elseSelect(List<String> fieldNames) {
+			this.elseFields = fieldNames;
+			return this;
+		}
+
+		/**
+		 * @description Adds an ELSE clause with up to 5 field names.
+		 * @param field1 First field name
+		 * @param field2 Second field name
+		 * @param field3 Third field name
+		 * @param field4 Fourth field name
+		 * @param field5 Fifth field name
+		 * @return This TypeOf instance for method chaining
+		 */
+		@SuppressWarnings('PMD.ExcessiveParameterList')
+		global Soql.TypeOf elseSelect(String field1, String field2, String field3, String field4, String field5) {
+			List<String> fields = new List<String>();
+			for (String field : new List<String>{ field1, field2, field3, field4, field5 }) {
+				if (String.isNotBlank(field)) {
+					fields.add(field);
+				}
+			}
+			return this.elseSelect(fields);
+		}
+
+		/**
+		 * @description Adds an ELSE clause with 4 field names.
+		 * @param field1 First field name
+		 * @param field2 Second field name
+		 * @param field3 Third field name
+		 * @param field4 Fourth field name
+		 * @return This TypeOf instance for method chaining
+		 */
+		@SuppressWarnings('PMD.ExcessiveParameterList')
+		global Soql.TypeOf elseSelect(String field1, String field2, String field3, String field4) {
+			return this.elseSelect(field1, field2, field3, field4, null);
+		}
+
+		/**
+		 * @description Adds an ELSE clause with 3 field names.
+		 * @param field1 First field name
+		 * @param field2 Second field name
+		 * @param field3 Third field name
+		 * @return This TypeOf instance for method chaining
+		 */
+		global Soql.TypeOf elseSelect(String field1, String field2, String field3) {
+			return this.elseSelect(field1, field2, field3, null);
+		}
+
+		/**
+		 * @description Adds an ELSE clause with 2 field names.
+		 * @param field1 First field name
+		 * @param field2 Second field name
+		 * @return This TypeOf instance for method chaining
+		 */
+		global Soql.TypeOf elseSelect(String field1, String field2) {
+			return this.elseSelect(field1, field2, null);
+		}
+
+		global override String toString() {
+			List<String> parts = new List<String>();
+			parts.add('TYPEOF ' + this.fieldName);
+
+			for (String whenClause : this.whenClauses) {
+				parts.add(whenClause);
+			}
+
+			if (this.elseFields != null && !this.elseFields.isEmpty()) {
+				String fields = String.join(this.elseFields, ', ');
+				parts.add('ELSE ' + fields);
+			}
+
+			parts.add('END');
+			return String.join(parts, ' ');
+		}
+
+		/**
+		 * @description Internal method to add a when clause.
+		 * @param objectType The SObjectType for this WHEN clause
+		 * @param fieldNames List of field names to select
+		 */
+		private void addWhenClause(SObjectType objectType, List<String> fieldNames) {
+			String fields = String.join(fieldNames, ', ');
+			this.whenClauses.add('WHEN ' + objectType + ' THEN ' + fields);
+		}
+	}
+
+	/**
+	 * @description Builder for WHEN clauses in TYPEOF queries.
+	 */
+	global class WhenClause {
+		private Soql.TypeOf parent;
+		private SObjectType objectType;
+
+		/**
+		 * @description Constructor for WhenClause builder.
+		 * @param parent The parent TypeOf instance
+		 * @param objectType The SObjectType for this WHEN clause
+		 */
+		private WhenClause(Soql.TypeOf parent, SObjectType objectType) {
+			this.parent = parent;
+			this.objectType = objectType;
+		}
+
+		/**
+		 * @description Specifies fields to select for this WHEN clause using a list of SObjectFields.
+		 * @param fields List of SObjectFields to select
+		 * @return The parent TypeOf instance for continued chaining
+		 */
+		global Soql.TypeOf thenSelect(List<SObjectField> fields) {
+			List<String> fieldNames = new List<String>();
+			for (SObjectField field : fields) {
+				if (field != null) {
+					fieldNames.add(field?.toString());
+				}
+			}
+			this.parent?.addWhenClause(this.objectType, fieldNames);
+			return this.parent;
+		}
+
+		/**
+		 * @description Specifies up to 5 SObjectFields to select for this WHEN clause.
+		 * @param field1 First SObjectField
+		 * @param field2 Second SObjectField
+		 * @param field3 Third SObjectField
+		 * @param field4 Fourth SObjectField
+		 * @param field5 Fifth SObjectField
+		 * @return The parent TypeOf instance for continued chaining
+		 */
+		@SuppressWarnings('PMD.ExcessiveParameterList')
+		global Soql.TypeOf thenSelect(
+			SObjectField field1,
+			SObjectField field2,
+			SObjectField field3,
+			SObjectField field4,
+			SObjectField field5
+		) {
+			return this.thenSelect(new List<SObjectField>{ field1, field2, field3, field4, field5 });
+		}
+
+		/**
+		 * @description Specifies 4 SObjectFields to select for this WHEN clause.
+		 * @param field1 First SObjectField
+		 * @param field2 Second SObjectField
+		 * @param field3 Third SObjectField
+		 * @param field4 Fourth SObjectField
+		 * @return The parent TypeOf instance for continued chaining
+		 */
+		@SuppressWarnings('PMD.ExcessiveParameterList')
+		global Soql.TypeOf thenSelect(
+			SObjectField field1,
+			SObjectField field2,
+			SObjectField field3,
+			SObjectField field4
+		) {
+			return this.thenSelect(field1, field2, field3, field4, null);
+		}
+
+		/**
+		 * @description Specifies 3 SObjectFields to select for this WHEN clause.
+		 * @param field1 First SObjectField
+		 * @param field2 Second SObjectField
+		 * @param field3 Third SObjectField
+		 * @return The parent TypeOf instance for continued chaining
+		 */
+		global Soql.TypeOf thenSelect(SObjectField field1, SObjectField field2, SObjectField field3) {
+			return this.thenSelect(field1, field2, field3, null);
+		}
+
+		/**
+		 * @description Specifies 2 SObjectFields to select for this WHEN clause.
+		 * @param field1 First SObjectField
+		 * @param field2 Second SObjectField
+		 * @return The parent TypeOf instance for continued chaining
+		 */
+		global Soql.TypeOf thenSelect(SObjectField field1, SObjectField field2) {
+			return this.thenSelect(field1, field2, null);
+		}
+
+		/**
+		 * @description Specifies 1 SObjectField to select for this WHEN clause.
+		 * @param field The SObjectField to select
+		 * @return The parent TypeOf instance for continued chaining
+		 */
+		global Soql.TypeOf thenSelect(SObjectField field) {
+			return this.thenSelect(field, null);
+		}
+	}
 }
