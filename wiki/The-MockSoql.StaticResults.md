@@ -1,0 +1,1 @@
+# `MockSoql.StaticResults`
