@@ -37,7 +37,9 @@
   - [MockDml.Savepoint](./The-MockDml.Savepoint-Class)
 - [**MockRecord**](./The-MockRecord-Class)
 - [**Cmdt**](./The-Cmdt-Class)
-  - [Cmdt.Repository](./The-Cmdt.Repository-Class)
+  - [Cmdt.Repository](./The-Cmdt.Repository-Interface)
+  - [Cmdt.CacheBasedRepository](./The-Cmdt.CacheBasedRepository-Class)
+  - [Cmdt.QueryBasedRepository](./The-Cmdt.QueryBasedRepository-Class)
 - [**MockCmdt**](./The-MockCmdt-Class)
   - [MockCmdt.Repository](./The-MockCmdt.Repository-Class)
 - [**MockSoql**](./The-MockSoql-Class)
@@ -69,9 +71,7 @@
   - [Soql.SortDirection](./The-Soql.SortDirection-Enum)
   - [Soql.SortOrder](./The-Soql.SortOrder-Class)
   - [Soql.Subquery](./The-Soql.Subquery-Class)
-  - [Soql.TypeOf](./The-Soql.TypeOf-Class)
   - [Soql.Usage](./The-Soql.Usage-Enum)
-  - [Soql.WhenClause](./The-Soql.WhenClause-Class)
 
 ## Migration Gudes
 

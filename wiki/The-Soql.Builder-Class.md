@@ -28,7 +28,7 @@ Adds conditions to the HAVING clause of the query.
 
 ### `addSelect`
 
-Adds fields or `Soql.Selectable` objects to the SELECT clause of the query. `Soql.Selectable` types include `Soql.Aggregation`, `Soql.ParentField`, `Soql.Subquery`, and `Soql.TypeOf` objects.
+Adds fields or `Soql.Selectable` objects to the SELECT clause of the query. `Soql.Selectable` types include `Soql.Aggregation`, `Soql.ParentField`, and `Soql.Subquery` objects.
 
 - `Soql.Builder addSelect(String fieldName, String alias)`
 - `Soql.Builder addSelect(SObjectField field, String alias)`
