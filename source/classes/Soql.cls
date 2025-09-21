@@ -2008,9 +2008,9 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	 * @description Represents a TYPEOF clause for polymorphic field queries in SOQL.
 	 */
 	global class TypeOf implements Soql.Selectable {
-		private String fieldName;
-		private List<String> whenClauses = new List<String>();
 		private List<String> elseFields;
+		private String fieldName;
+		private List<String> whenClauses;
 
 		/**
 		 * @description Constructor for TypeOf with field name.
@@ -2018,6 +2018,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		global TypeOf(String fieldName) {
 			this.fieldName = fieldName;
+			this.whenClauses = new List<String>{};
 		}
 
 		/**
@@ -2119,18 +2120,16 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		global override String toString() {
+			// Construct a valid TYPEOF...WHEN...THEN...ELSE...END clause
 			List<String> parts = new List<String>();
 			parts.add('TYPEOF ' + this.fieldName);
-
 			for (String whenClause : this.whenClauses) {
 				parts.add(whenClause);
 			}
-
 			if (this.elseFields != null && !this.elseFields.isEmpty()) {
 				String fields = String.join(this.elseFields, ', ');
 				parts.add('ELSE ' + fields);
 			}
-
 			parts.add('END');
 			return String.join(parts, ' ');
 		}
