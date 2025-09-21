@@ -83,21 +83,9 @@ jobs:
             exit 1
           fi
 
-  create-managed-package-version:
-    name: Create Managed Package Version
-    needs: versioning
-    permissions:
-      contents: write
-    uses: ./.github/workflows/packaging.yml
-    secrets: inherit
-    with:
-      package: managed
-      promote-package: ${{ inputs.promote-package || false }}
-      version: ${{ needs.versioning.outputs.version-number }}
-
   create-unlocked-package-version:
     name: Create Unlocked Package Version
-    needs: [versioning, create-managed-package-version]
+    needs: [versioning]
     permissions:
       contents: write
     uses: ./.github/workflows/packaging.yml
@@ -109,8 +97,8 @@ jobs:
 
   create-release:
     name: Create Release
-    needs: [versioning, create-managed-package-version, create-unlocked-package-version]
-    if: ${{ success() && needs.create-managed-package-version.outputs.version-id != '' && needs.create-unlocked-package-version.outputs.version-id != '' }}
+    needs: [versioning, create-unlocked-package-version]
+    if: ${{ success() && needs.create-unlocked-package-version.outputs.version-id != '' }}
     permissions:
       contents: write
     runs-on: ubuntu-latest
@@ -120,17 +108,10 @@ jobs:
         id: release-body
         run: |
           VERSION="${{ needs.versioning.outputs.version-number }}"
-          MANAGED_ID="${{ needs.create-managed-package-version.outputs.version-id }}"
           UNLOCKED_ID="${{ needs.create-unlocked-package-version.outputs.version-id }}"
           # Start building release body
           {
             echo "## Installation"
-            echo ""
-            echo "### Managed Package"
-            echo "**Package Version**: \`$MANAGED_ID\`"
-            echo "\`\`\`bash"
-            echo "sf package install --package $MANAGED_ID --wait 20"
-            echo "\`\`\`"
             echo ""
             echo "### Unlocked Package"  
             echo "**Package Version**: \`$UNLOCKED_ID\`"
