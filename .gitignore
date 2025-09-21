@@ -50,6 +50,3 @@ $RECYCLE.BIN/
 # Unrelated Metadata
 source/objectTranslations/**
 source/profiles/**
-
-# Agents
-CLAUDE.md
