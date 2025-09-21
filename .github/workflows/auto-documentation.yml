@@ -48,16 +48,16 @@ jobs:
           git diff --name-only origin/main..HEAD | grep -E '\.(cls|trigger)$' > changed_files.txt || touch changed_files.txt
 
           if [ -s changed_files.txt ]; then
-            echo "has-changes=true" >> "$GITHUB_OUTPUT"
+            echo "has-apex-changes=true" >> "$GITHUB_OUTPUT"
             echo "Changed Apex files:"
             cat changed_files.txt
           else
-            echo "has-changes=false" >> "$GITHUB_OUTPUT"
+            echo "has-apex-changes=false" >> "$GITHUB_OUTPUT"
             echo "No Apex files changed"
           fi
 
       - name: Analyze Code Changes with Claude
-        if: steps.check-auto-commit.outputs.auto-commit == 'false' && steps.changed-files.outputs.has-changes == 'true'
+        if: steps.check-auto-commit.outputs.auto-commit == 'false' && steps.changed-files.outputs.has-apex-changes == 'true'
         uses: anthropics/claude-code-action@beta
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -95,17 +95,41 @@ jobs:
             ## Expected Output:
             Create or modify files in the `wiki/` directory as needed. I will review these changes as part of the PR.
 
+      - name: Check if Home.md Changed
+        if: steps.check-auto-commit.outputs.auto-commit == 'false'
+        id: check-home
+        run: |
+          # Check if wiki/Home.md was modified in the previous documentation step
+          if git diff --quiet HEAD -- wiki/Home.md; then
+            echo "home-changed=false" >> "$GITHUB_OUTPUT"
+            echo "wiki/Home.md was not changed"
+          else
+            echo "home-changed=true" >> "$GITHUB_OUTPUT"
+            echo "wiki/Home.md was changed"
+          fi
+
+      - name: Sync Home.md to README.md
+        if: steps.check-auto-commit.outputs.auto-commit == 'false' && steps.check-home.outputs.home-changed == 'true'
+        run: |
+          # Copy wiki/Home.md content to README.md
+          if [ -f wiki/Home.md ]; then
+            cp wiki/Home.md README.md
+            echo "Copied wiki/Home.md to README.md"
+          else
+            echo "wiki/Home.md not found, skipping sync"
+          fi
+
       - name: Check for Documentation Changes
         if: steps.check-auto-commit.outputs.auto-commit == 'false'
         id: check-docs
         run: |
-          if git diff --quiet HEAD -- wiki/; then
+          if git diff --quiet HEAD -- wiki/ README.md; then
             echo "has-doc-changes=false" >> "$GITHUB_OUTPUT"
             echo "No documentation changes generated"
           else
             echo "has-doc-changes=true" >> "$GITHUB_OUTPUT"
             echo "Documentation changes detected:"
-            git diff --name-only HEAD -- wiki/
+            git diff --name-only HEAD -- wiki/ README.md
           fi
 
       - name: Commit Documentation Updates
@@ -114,7 +138,7 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
 
-          git add wiki/
+          git add wiki/ README.md
           git commit -m "Auto-generate documentation for code changes
 
           Generated documentation for new global classes/methods/properties"
