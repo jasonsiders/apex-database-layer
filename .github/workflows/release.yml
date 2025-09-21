@@ -56,12 +56,13 @@ jobs:
           CURRENT_VERSION=$(jq -r '.packageDirectories[] | select(.default == true) | .versionNumber' sfdx-project.json | sed 's/\.NEXT$//')
           echo "Current version: $CURRENT_VERSION"
           if [[ "${{ github.event_name }}" == "push" && "${{ steps.check-changes.outputs.changed }}" == "false" ]]; then
-            # 1. On push AND sfdx-project.json was NOT updated - increment the minor version
+            # 1. On push AND sfdx-project.json was NOT updated - increment the patch version
             IFS='.' read -ra VERSION_PARTS <<< "$CURRENT_VERSION"
             MAJOR=${VERSION_PARTS[0]}
             MINOR=${VERSION_PARTS[1]}
-            NEW_MINOR=$((MINOR + 1))
-            NEW_VERSION="$MAJOR.$NEW_MINOR.0"
+            PATCH=${VERSION_PARTS[2]}
+            NEW_PATCH=$((PATCH + 1))
+            NEW_VERSION="$MAJOR.$MINOR.$NEW_PATCH"
             echo "Auto-incremented version to: $NEW_VERSION"
           elif [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ inputs.version }}" ]]; then
             # 2. On workflow dispatch & a version input is provided - use the version input

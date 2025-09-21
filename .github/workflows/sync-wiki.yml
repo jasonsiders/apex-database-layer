@@ -1,0 +1,42 @@
+name: Sync Wiki
+
+on:
+  push:
+    branches: [main]
+    paths: ["wiki/**"]
+  workflow_dispatch:
+
+jobs:
+  sync-wiki:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Checkout Wiki
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: wiki-repo
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sync Wiki Files
+        run: |
+          # Copy the changes from the local wiki files to the *actual* wiki repository connected to Github's Wiki feature
+          find wiki-repo -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
+          cp -r wiki/* wiki-repo/
+          cd wiki-repo
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          if git diff --quiet && git diff --staged --quiet; then
+            echo "No changes to sync"
+            exit 0
+          fi
+          git add .
+          git commit -m "Sync wiki from main repository
+          🤖 Automated sync from main repository
+          Co-Authored-By: GitHub Action <action@github.com>"
+          git push origin master
+          echo "📖 Wiki files have been synced from main repository to GitHub wiki"
