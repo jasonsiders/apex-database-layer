@@ -545,6 +545,26 @@ private class SoqlTest {
 		SoqlTest.validateQuery(soql, expected);
 		Test.stopTest();
 	}
+	
+	@IsTest 
+	static void shouldSelectPolymorphicFields() {
+		Assert.fail('You still need to build this test');
+	}
+
+	@IsTest 
+	static void shouldSelectPolymorphicFieldsFromMultipleObjects() {
+		Assert.fail('You still need to build this test');
+	}
+
+	@IsTest 
+	static void shouldSelectFallbackFieldIfPolymorphicFieldNotOfSpecificType() {
+		Assert.fail('You still need to build this test');
+	}
+
+	@IsTest 
+	static void shouldNotSelectFieldsIfPolymorphicFieldNotOfSpecifiedTypeAndNoFallback() {
+		Assert.fail('You still need to build this test');
+	}
 
 	@IsTest
 	static void shouldSetQueryScope() {
