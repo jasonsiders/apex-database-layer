@@ -5,6 +5,10 @@ on:
     branches:
       - main
     types: [opened, ready_for_review, reopened, synchronize]
+    paths:
+      - "source/**"
+      - "plugins/**"
+      - ".github/**"
 
 concurrency:
   # Cancel old runs when a new commit is pushed to the same branch
