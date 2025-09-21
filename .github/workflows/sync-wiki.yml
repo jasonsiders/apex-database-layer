@@ -39,8 +39,4 @@ jobs:
           🤖 Automated sync from main repository
           Co-Authored-By: GitHub Action <action@github.com>"
           git push origin master
-
-      - name: Summary
-        run: |
-          echo "✅ Wiki synchronization completed successfully"
           echo "📖 Wiki files have been synced from main repository to GitHub wiki"
