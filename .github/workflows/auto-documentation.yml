@@ -117,6 +117,6 @@ jobs:
           git add wiki/
           git commit -m "Auto-generate documentation for code changes
 
-          Updated docs
+          Generated documentation for new global classes/methods/properties"
 
           git push origin ${{ github.head_ref }}
