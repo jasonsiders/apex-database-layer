@@ -8,6 +8,10 @@ on:
       - "source/**"
       - "plugins/**"
 
+concurrency:
+  group: auto-doc
+  cancel-in-progress: true
+
 permissions:
   contents: write
   pull-requests: write
