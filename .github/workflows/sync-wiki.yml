@@ -3,6 +3,7 @@ name: Sync Wiki
 on:
   push:
     branches: [main]
+    paths: ["wiki/**"]
   workflow_dispatch:
 
 jobs:
@@ -23,7 +24,7 @@ jobs:
 
       - name: Sync Wiki Files
         run: |
-          # Copy wiki content to GitHub's wiki repository (triggered by any code changes)
+          # Copy wiki content to GitHub's wiki repository (triggered by wiki changes)
           find wiki-repo -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
           cp -r wiki/* wiki-repo/
           cd wiki-repo
@@ -36,7 +37,7 @@ jobs:
           git add .
           git commit -m "Sync wiki from main repository
 
-          🤖 Automated sync triggered by codebase changes
+          🤖 Automated sync triggered by wiki changes
 
           Co-Authored-By: GitHub Action <action@github.com>"
           git push origin master
@@ -44,4 +45,4 @@ jobs:
       - name: Summary
         run: |
           echo "✅ Wiki synchronization completed successfully"
-          echo "📖 Wiki automatically updated following codebase changes"
+          echo "📖 Wiki automatically updated following wiki changes"
