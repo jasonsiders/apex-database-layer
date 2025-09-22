@@ -1572,7 +1572,8 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	 */
 	@SuppressWarnings('PMD.ExcessiveParameterList')
 	global class ParentField implements Soql.Selectable {
-		private String value;
+		private String fieldReference;
+		private String relationshipReference;
 
 		/**
 		 * @description Constructor that creates a parent field reference from a chain of relationship fields.
@@ -1580,7 +1581,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		global ParentField(List<SObjectField> relationshipFieldChain) {
 			relationshipFieldChain = relationshipFieldChain ?? new List<SObjectField>();
-			this.value = this.computeValue(relationshipFieldChain);
+			this.computeReferences(relationshipFieldChain);
 		}
 
 		/**
@@ -1665,32 +1666,46 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			this(new List<SObjectField>{ relationship1, field });
 		}
 
+		/**
+		 * @description Outputs the SOQL relationship of the compound field
+		 * @return The dot-notation relationship reference string
+		 */
+		global String getRelationshipName() {
+			return this.relationshipReference;
+		}
+
 		global override String toString() {
-			return this.value;
+			return this.fieldReference;
 		}
 
 		/**
-		 * @description Computes the dot-notation string representation from the field chain.
+		 * @description Computes dot-notation string representations from the field chain.
 		 * @param fields List of fields in the relationship chain
-		 * @return The dot-notation field reference string
 		 */
-		private String computeValue(List<SObjectField> fields) {
-			// Generate the String reference to the parent field:
+		private void computeReferences(List<SObjectField> fields) {
+			// Generate the references to the parent field based on the ordered chain:
 			List<String> components = new List<String>();
+			String targetFieldRelationshipName;
 			Integer size = fields?.size();
-			Integer lastIteration = size - 1;
+			Integer lastIndex = size - 1;
 			for (Integer i = 0; i < size; i++) {
 				SObjectField field = fields?.get(i);
-				if (i < lastIteration) {
-					String relationshipName = field?.getDescribe()?.getRelationshipName();
+				String relationshipName = field?.getDescribe()?.getRelationshipName();
+				if (i < lastIndex) {
 					components?.add(relationshipName);
 				} else {
-					// Final field in the chain - Get the API name of the field
-					String fieldName = field?.toString();
-					components?.add(fieldName);
+					// Final field in the chain:
+					String targetFieldApiName = field?.toString();
+					components?.add(targetFieldApiName);
+					targetFieldRelationshipName = relationshipName;
 				}
 			}
-			return String.join(components, '.');
+			// Compute the compound field's API name
+			this.fieldReference = String.join(components, '.');
+			// Compute the compound field's relationship name
+			components?.remove(lastIndex);
+			components?.add(targetFieldRelationshipName);
+			this.relationshipReference = String.join(components, '.');
 		}
 	}
 
@@ -2001,6 +2016,249 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		global override String getFrom() {
 			return this.relationshipName;
+		}
+	}
+
+	/**
+	 * @description Represents a TYPEOF clause for polymorphic field queries in SOQL.
+	 */
+	global class TypeOf implements Soql.Selectable {
+		private List<String> elseFields;
+		private String relationshipName;
+		private List<String> whenClauses;
+
+		/**
+		 * @description Constructor for TypeOf with relationship name.
+		 * @param relationshipName The polymorphic field name to query
+		 */
+		global TypeOf(String relationshipName) {
+			this.relationshipName = relationshipName;
+			this.whenClauses = new List<String>{};
+		}
+
+		/**
+		 * @description Constructor for TypeOf with SObjectField.
+		 * @param field The polymorphic SObjectField to query
+		 */
+		global TypeOf(SObjectField field) {
+			this(field?.getDescribe()?.getRelationshipName());
+		}
+
+		/**
+		 * @description Constructor for TypeOf with parent field.
+		 * @param field The polymorphic parent field to query
+		 */
+		global TypeOf(Soql.ParentField field) {
+			this(field?.getRelationshipName());
+		}
+
+		/**
+		 * @description Adds a WHEN clause and returns a builder for specifying fields.
+		 * @param objectType The SObjectType to match in the WHEN clause
+		 * @return A WhenClause builder for specifying the fields to select
+		 */
+		global Soql.WhenClause when(SObjectType objectType) {
+			return new Soql.WhenClause(this, objectType);
+		}
+
+		/**
+		 * @description Adds an ELSE clause with multiple field names.
+		 * @param fieldNames List of field names to select in the ELSE clause
+		 * @return This TypeOf instance for method chaining
+		 */
+		global Soql.TypeOf elseSelect(List<String> fieldNames) {
+			this.elseFields = fieldNames;
+			return this;
+		}
+
+		/**
+		 * @description Adds an ELSE clause with up to 5 field names.
+		 * @param field1 First field name
+		 * @param field2 Second field name
+		 * @param field3 Third field name
+		 * @param field4 Fourth field name
+		 * @param field5 Fifth field name
+		 * @return This TypeOf instance for method chaining
+		 */
+		@SuppressWarnings('PMD.ExcessiveParameterList')
+		global Soql.TypeOf elseSelect(String field1, String field2, String field3, String field4, String field5) {
+			List<String> fields = new List<String>();
+			for (String field : new List<String>{ field1, field2, field3, field4, field5 }) {
+				if (String.isNotBlank(field)) {
+					fields.add(field);
+				}
+			}
+			return this.elseSelect(fields);
+		}
+
+		/**
+		 * @description Adds an ELSE clause with 4 field names.
+		 * @param field1 First field name
+		 * @param field2 Second field name
+		 * @param field3 Third field name
+		 * @param field4 Fourth field name
+		 * @return This TypeOf instance for method chaining
+		 */
+		@SuppressWarnings('PMD.ExcessiveParameterList')
+		global Soql.TypeOf elseSelect(String field1, String field2, String field3, String field4) {
+			return this.elseSelect(field1, field2, field3, field4, null);
+		}
+
+		/**
+		 * @description Adds an ELSE clause with 3 field names.
+		 * @param field1 First field name
+		 * @param field2 Second field name
+		 * @param field3 Third field name
+		 * @return This TypeOf instance for method chaining
+		 */
+		global Soql.TypeOf elseSelect(String field1, String field2, String field3) {
+			return this.elseSelect(field1, field2, field3, null);
+		}
+
+		/**
+		 * @description Adds an ELSE clause with 2 field names.
+		 * @param field1 First field name
+		 * @param field2 Second field name
+		 * @return This TypeOf instance for method chaining
+		 */
+		global Soql.TypeOf elseSelect(String field1, String field2) {
+			return this.elseSelect(field1, field2, null);
+		}
+
+		/**
+		 * @description Adds an ELSE clause with a single field name.
+		 * @param fieldName The field name to select in the ELSE clause
+		 * @return This TypeOf instance for method chaining
+		 */
+		global Soql.TypeOf elseSelect(String fieldName) {
+			return this.elseSelect(fieldName, null);
+		}
+
+		global override String toString() {
+			// Construct a valid TYPEOF...WHEN...THEN...ELSE...END clause
+			List<String> parts = new List<String>();
+			parts.add('TYPEOF ' + this.relationshipName);
+			for (String whenClause : this.whenClauses) {
+				parts.add(whenClause);
+			}
+			if (this.elseFields != null && !this.elseFields.isEmpty()) {
+				String fields = String.join(this.elseFields, ', ');
+				parts.add('ELSE ' + fields);
+			}
+			parts.add('END');
+			return String.join(parts, ' ');
+		}
+
+		/**
+		 * @description Internal method to add a when clause.
+		 * @param objectType The SObjectType for this WHEN clause
+		 * @param fieldNames List of field names to select
+		 */
+		private void addWhenClause(SObjectType objectType, List<String> fieldNames) {
+			String fields = String.join(fieldNames, ', ');
+			this.whenClauses.add('WHEN ' + objectType + ' THEN ' + fields);
+		}
+	}
+
+	/**
+	 * @description Builder for WHEN clauses in TYPEOF queries.
+	 */
+	global class WhenClause {
+		private Soql.TypeOf parent;
+		private SObjectType objectType;
+
+		/**
+		 * @description Constructor for WhenClause builder.
+		 * @param parent The parent TypeOf instance
+		 * @param objectType The SObjectType for this WHEN clause
+		 */
+		private WhenClause(Soql.TypeOf parent, SObjectType objectType) {
+			this.parent = parent;
+			this.objectType = objectType;
+		}
+
+		/**
+		 * @description Specifies fields to select for this WHEN clause using a list of SObjectFields.
+		 * @param fields List of SObjectFields to select
+		 * @return The parent TypeOf instance for continued chaining
+		 */
+		global Soql.TypeOf thenSelect(List<SObjectField> fields) {
+			List<String> fieldNames = new List<String>();
+			for (SObjectField field : fields) {
+				if (field != null) {
+					fieldNames.add(field?.toString());
+				}
+			}
+			this.parent?.addWhenClause(this.objectType, fieldNames);
+			return this.parent;
+		}
+
+		/**
+		 * @description Specifies up to 5 SObjectFields to select for this WHEN clause.
+		 * @param field1 First SObjectField
+		 * @param field2 Second SObjectField
+		 * @param field3 Third SObjectField
+		 * @param field4 Fourth SObjectField
+		 * @param field5 Fifth SObjectField
+		 * @return The parent TypeOf instance for continued chaining
+		 */
+		@SuppressWarnings('PMD.ExcessiveParameterList')
+		global Soql.TypeOf thenSelect(
+			SObjectField field1,
+			SObjectField field2,
+			SObjectField field3,
+			SObjectField field4,
+			SObjectField field5
+		) {
+			return this.thenSelect(new List<SObjectField>{ field1, field2, field3, field4, field5 });
+		}
+
+		/**
+		 * @description Specifies 4 SObjectFields to select for this WHEN clause.
+		 * @param field1 First SObjectField
+		 * @param field2 Second SObjectField
+		 * @param field3 Third SObjectField
+		 * @param field4 Fourth SObjectField
+		 * @return The parent TypeOf instance for continued chaining
+		 */
+		@SuppressWarnings('PMD.ExcessiveParameterList')
+		global Soql.TypeOf thenSelect(
+			SObjectField field1,
+			SObjectField field2,
+			SObjectField field3,
+			SObjectField field4
+		) {
+			return this.thenSelect(field1, field2, field3, field4, null);
+		}
+
+		/**
+		 * @description Specifies 3 SObjectFields to select for this WHEN clause.
+		 * @param field1 First SObjectField
+		 * @param field2 Second SObjectField
+		 * @param field3 Third SObjectField
+		 * @return The parent TypeOf instance for continued chaining
+		 */
+		global Soql.TypeOf thenSelect(SObjectField field1, SObjectField field2, SObjectField field3) {
+			return this.thenSelect(field1, field2, field3, null);
+		}
+
+		/**
+		 * @description Specifies 2 SObjectFields to select for this WHEN clause.
+		 * @param field1 First SObjectField
+		 * @param field2 Second SObjectField
+		 * @return The parent TypeOf instance for continued chaining
+		 */
+		global Soql.TypeOf thenSelect(SObjectField field1, SObjectField field2) {
+			return this.thenSelect(field1, field2, null);
+		}
+
+		/**
+		 * @description Specifies 1 SObjectField to select for this WHEN clause.
+		 * @param field The SObjectField to select
+		 * @return The parent TypeOf instance for continued chaining
+		 */
+		global Soql.TypeOf thenSelect(SObjectField field) {
+			return this.thenSelect(field, null);
 		}
 	}
 }

@@ -52,6 +52,7 @@ jobs:
         id: claude-review
         uses: anthropics/claude-code-action@beta
         with:
+          allowed_bots: 'claude'
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           direct_prompt: |
@@ -208,8 +209,8 @@ jobs:
           # Parse the JSON coverage summary file to extract overall coverage percentage
           COVERAGE_PERCENT=$(cat coverage/coverage/coverage-summary.json | jq -r '.total.lines.pct')
           echo "Code coverage: ${COVERAGE_PERCENT}%"
-          if (( $(echo "$COVERAGE_PERCENT < 95" | bc -l) )); then
-            echo "❌ Code coverage is ${COVERAGE_PERCENT}%, but 95% or higher is required"
+          if (( $(echo "$COVERAGE_PERCENT < 100" | bc -l) )); then
+            echo "❌ Code coverage is ${COVERAGE_PERCENT}%, but 100% is required"
             exit 1
           fi
 

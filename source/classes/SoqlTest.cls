@@ -1632,6 +1632,179 @@ private class SoqlTest {
 		return soql?.query();
 	}
 
+	@IsTest
+	static void shouldBuildTypeOfQuery() {
+		Soql.TypeOf typeOfClause = new Soql.TypeOf(Task.WhatId)
+			.when(Account.SObjectType)
+			.thenSelect(Account.Name, Account.Phone)
+			.when(Opportunity.SObjectType)
+			.thenSelect(Opportunity.Name, Opportunity.StageName)
+			.elseSelect('Name');
+
+		Test.startTest();
+		String result = typeOfClause?.toString();
+		Test.stopTest();
+
+		String expected = 'TYPEOF What WHEN Account THEN Name, Phone WHEN Opportunity THEN Name, StageName ELSE Name END';
+		Assert.areEqual(expected, result, 'TypeOf query not formatted correctly');
+	}
+
+	@IsTest
+	static void shouldBuildTypeOfQueryWithSObjectField() {
+		Soql.TypeOf typeOfClause = new Soql.TypeOf(Task.WhatId)
+			.when(Account.SObjectType)
+			.thenSelect(Account.Name)
+			.elseSelect('Name');
+
+		Test.startTest();
+		String result = typeOfClause?.toString();
+		Test.stopTest();
+
+		String expected = 'TYPEOF What WHEN Account THEN Name ELSE Name END';
+		Assert.areEqual(expected, result, 'TypeOf query with SObjectField not formatted correctly');
+	}
+
+	@IsTest
+	static void shouldBuildTypeOfQueryWithMultipleFields() {
+		Soql.TypeOf typeOfClause = new Soql.TypeOf(Task.WhatId)
+			.when(Account.SObjectType)
+			.thenSelect(new List<SObjectField>{ Account.Name, Account.Phone, Account.Type })
+			.elseSelect('Name', 'Phone');
+
+		Test.startTest();
+		String result = typeOfClause?.toString();
+		Test.stopTest();
+
+		String expected = 'TYPEOF What WHEN Account THEN Name, Phone, Type ELSE Name, Phone END';
+		Assert.areEqual(expected, result, 'TypeOf query with multiple fields not formatted correctly');
+	}
+
+	@IsTest
+	static void shouldBuildTypeOfQueryWithoutElse() {
+		Soql.TypeOf typeOfClause = new Soql.TypeOf(Task.WhatId)
+			.when(Account.SObjectType)
+			.thenSelect(Account.Name)
+			.when(Opportunity.SObjectType)
+			.thenSelect(Opportunity.Name);
+
+		Test.startTest();
+		String result = typeOfClause?.toString();
+		Test.stopTest();
+
+		String expected = 'TYPEOF What WHEN Account THEN Name WHEN Opportunity THEN Name END';
+		Assert.areEqual(expected, result, 'TypeOf query without ELSE not formatted correctly');
+	}
+
+	@IsTest
+	static void shouldUseTypeOfInSoqlQuery() {
+		Soql.TypeOf typeOfClause = new Soql.TypeOf(Task.WhatId)
+			.when(Case.SObjectType)
+			.thenSelect(Case.CaseNumber)
+			.elseSelect('Name');
+
+		Soql soql = DatabaseLayer.Soql.newQuery(Task.SObjectType)?.addSelect(typeOfClause)?.toSoql();
+
+		Test.startTest();
+		String result = soql?.toString();
+		Test.stopTest();
+
+		String expected = 'SELECT Id, TYPEOF What WHEN Case THEN CaseNumber ELSE Name END FROM Task';
+		Assert.areEqual(expected, result, 'SOQL query with TypeOf not formatted correctly');
+	}
+
+	@IsTest
+	static void shouldBuildTypeOfWithStringConstructor() {
+		Soql.TypeOf typeOfClause = new Soql.TypeOf('What').when(Account.SObjectType).thenSelect(Account.Name);
+
+		Test.startTest();
+		String result = typeOfClause?.toString();
+		Test.stopTest();
+
+		String expected = 'TYPEOF What WHEN Account THEN Name END';
+		Assert.areEqual(expected, result, 'TypeOf with string constructor not formatted correctly');
+	}
+
+	@IsTest
+	static void shouldBuildTypeOfWithParentField() {
+		Soql.ParentField parentField = new Soql.ParentField(Case.ContactId, Contact.OwnerId);
+		Soql.TypeOf typeOfClause = new Soql.TypeOf(parentField).when(User.SObjectType).thenSelect(User.Name);
+
+		Test.startTest();
+		String result = typeOfClause?.toString();
+		Test.stopTest();
+
+		String expected = 'TYPEOF Contact.Owner WHEN User THEN Name END';
+		Assert.areEqual(expected, result, 'TypeOf with parent field not formatted correctly');
+	}
+
+	@IsTest
+	static void shouldTestAllThenSelectOverloads() {
+		Soql.TypeOf typeOfClause = new Soql.TypeOf(Task.WhatId);
+
+		Test.startTest();
+		typeOfClause.when(Account.SObjectType).thenSelect(Account.Name);
+		typeOfClause.when(Contact.SObjectType).thenSelect(Contact.FirstName, Contact.LastName);
+		typeOfClause.when(Lead.SObjectType).thenSelect(Lead.FirstName, Lead.LastName, Lead.Company);
+		typeOfClause.when(Opportunity.SObjectType)
+			.thenSelect(Opportunity.Name, Opportunity.StageName, Opportunity.Amount, Opportunity.CloseDate);
+		typeOfClause.when(Case.SObjectType)
+			.thenSelect(Case.Subject, Case.Status, Case.Priority, Case.Origin, Case.Type);
+		String result = typeOfClause?.toString();
+		Test.stopTest();
+
+		// Should contain all WHEN clauses
+		Assert.isTrue(result?.contains('WHEN Account THEN Name'), 'Missing Account WHEN clause');
+		Assert.isTrue(result?.contains('WHEN Contact THEN FirstName, LastName'), 'Missing Contact WHEN clause');
+		Assert.isTrue(result?.contains('WHEN Lead THEN FirstName, LastName, Company'), 'Missing Lead WHEN clause');
+		Assert.isTrue(
+			result?.contains('WHEN Opportunity THEN Name, StageName, Amount, CloseDate'),
+			'Missing Opportunity WHEN clause'
+		);
+		Assert.isTrue(
+			result?.contains('WHEN Case THEN Subject, Status, Priority, Origin, Type'),
+			'Missing Case WHEN clause'
+		);
+	}
+
+	@IsTest
+	static void shouldTestAllElseSelectOverloads() {
+		Test.startTest();
+		Soql.TypeOf typeOf1 = new Soql.TypeOf(Task.WhatId).elseSelect('Name');
+		Assert.isTrue(typeOf1?.toString()?.contains('ELSE Name'), 'Missing single field ELSE');
+		Soql.TypeOf typeOf2 = new Soql.TypeOf(Task.WhatId).elseSelect('Name', 'Type');
+		Assert.isTrue(typeOf2?.toString()?.contains('ELSE Name, Type'), 'Missing 2 field ELSE');
+		Soql.TypeOf typeOf3 = new Soql.TypeOf(Task.WhatId).elseSelect('Name', 'Type', 'Status');
+		Assert.isTrue(typeOf3?.toString()?.contains('ELSE Name, Type, Status'), 'Missing 3 field ELSE');
+		Soql.TypeOf typeOf4 = new Soql.TypeOf(Task.WhatId).elseSelect('Name', 'Type', 'Status', 'Id');
+		Assert.isTrue(typeOf4?.toString()?.contains('ELSE Name, Type, Status, Id'), 'Missing 4 field ELSE');
+		Soql.TypeOf typeOf5 = new Soql.TypeOf(Task.WhatId).elseSelect('Name', 'Type', 'Status', 'Id', 'CreatedDate');
+		Assert.isTrue(
+			typeOf5?.toString()?.contains('ELSE Name, Type, Status, Id, CreatedDate'),
+			'Missing 5 field ELSE'
+		);
+		List<String> fields = new List<String>{ 'Name', 'Description' };
+		Soql.TypeOf typeOfList = new Soql.TypeOf(Task.WhatId).elseSelect(fields);
+		Assert.isTrue(typeOfList?.toString()?.contains('ELSE Name, Description'), 'Missing List<String> ELSE');
+		Test.stopTest();
+	}
+
+	@IsTest
+	static void shouldHandleNullFieldsInOverloads() {
+		Test.startTest();
+		// Test with some null fields in 5-field overload
+		Soql.TypeOf typeOfClause = new Soql.TypeOf(Task.WhatId)
+			.when(Account.SObjectType)
+			.thenSelect(Account.Name, Account.Type, null, null, null);
+		String result = typeOfClause?.toString();
+		Assert.isTrue(result?.contains('WHEN Account THEN Name, Type'), 'Should handle null fields in thenSelect');
+
+		// Test elseSelect with null fields
+		Soql.TypeOf typeOfElse = new Soql.TypeOf(Task.WhatId).elseSelect('Name', 'Type', null, null, null);
+		String elseResult = typeOfElse?.toString();
+		Assert.isTrue(elseResult?.contains('ELSE Name, Type'), 'Should handle null fields in elseSelect');
+		Test.stopTest();
+	}
+
 	// **** INNER **** //
 	private class SampleWrapper {
 		public Integer numRecords;

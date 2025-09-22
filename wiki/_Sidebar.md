@@ -69,7 +69,9 @@
   - [Soql.SortDirection](./The-Soql.SortDirection-Enum)
   - [Soql.SortOrder](./The-Soql.SortOrder-Class)
   - [Soql.Subquery](./The-Soql.Subquery-Class)
+  - [Soql.TypeOf](./The-Soql.TypeOf-Class)
   - [Soql.Usage](./The-Soql.Usage-Enum)
+  - [Soql.WhenClause](./The-Soql.WhenClause-Class)
 
 ## Migration Gudes
 

@@ -119,6 +119,22 @@ private class DatabaseLayerUtilsTest {
 	}
 
 	@IsTest
+	static void shouldReturnNullPluginIfPluginNotConstructable() {
+		DatabaseLayerSetting__mdt mockSetting = new DatabaseLayerSetting__mdt(
+			DeveloperName = 'Test_123',
+			DmlPreAndPostProcessor__c = 'Soql' // No public 0-arg constructor
+		);
+		MockCmdt.mock(DatabaseLayerSetting__mdt.SObjectType)?.add(mockSetting);
+		SObjectField field = DatabaseLayerSetting__mdt.DmlPreAndPostProcessor__c;
+
+		Test.startTest();
+		Object plugin = DatabaseLayer.Utils.Plugins.initPlugin(field);
+		Test.stopTest();
+
+		Assert.isNull(plugin, 'Did not return null plugin');
+	}
+
+	@IsTest
 	static void shouldReturnNullPluginIfPluginInvalid() {
 		DatabaseLayerSetting__mdt mockSetting = new DatabaseLayerSetting__mdt(
 			DeveloperName = 'Test_123',
