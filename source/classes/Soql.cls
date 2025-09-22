@@ -2047,15 +2047,6 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		/**
-		 * @description Adds an ELSE clause with a single field name.
-		 * @param fieldName The field name to select in the ELSE clause
-		 * @return This TypeOf instance for method chaining
-		 */
-		global Soql.TypeOf elseSelect(String fieldName) {
-			return this.elseSelect(new List<String>{ fieldName });
-		}
-
-		/**
 		 * @description Adds an ELSE clause with multiple field names.
 		 * @param fieldNames List of field names to select in the ELSE clause
 		 * @return This TypeOf instance for method chaining
@@ -2117,6 +2108,15 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		global Soql.TypeOf elseSelect(String field1, String field2) {
 			return this.elseSelect(field1, field2, null);
+		}
+
+		/**
+		 * @description Adds an ELSE clause with a single field name.
+		 * @param fieldName The field name to select in the ELSE clause
+		 * @return This TypeOf instance for method chaining
+		 */
+		global Soql.TypeOf elseSelect(String fieldName) {
+			return this.elseSelect(fieldName, null);
 		}
 
 		global override String toString() {
