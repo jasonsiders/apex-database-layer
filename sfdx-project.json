@@ -4,8 +4,8 @@
 			"path": "source",
 			"default": true,
 			"package": "Apex Database Layer",
-			"versionName": "v3.7.1",
-			"versionNumber": "3.7.1.NEXT"
+			"versionName": "v3.7.2",
+			"versionNumber": "3.7.2.NEXT"
 		},
 		{
 			"versionName": "v1.0.0",
