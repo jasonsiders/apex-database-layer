@@ -1645,7 +1645,7 @@ private class SoqlTest {
 		String result = typeOfClause?.toString();
 		Test.stopTest();
 
-		String expected = 'TYPEOF WhatId WHEN Account THEN Name, Phone WHEN Opportunity THEN Name, StageName ELSE Name END';
+		String expected = 'TYPEOF What WHEN Account THEN Name, Phone WHEN Opportunity THEN Name, StageName ELSE Name END';
 		Assert.areEqual(expected, result, 'TypeOf query not formatted correctly');
 	}
 
@@ -1660,7 +1660,7 @@ private class SoqlTest {
 		String result = typeOfClause?.toString();
 		Test.stopTest();
 
-		String expected = 'TYPEOF WhatId WHEN Account THEN Name ELSE Name END';
+		String expected = 'TYPEOF What WHEN Account THEN Name ELSE Name END';
 		Assert.areEqual(expected, result, 'TypeOf query with SObjectField not formatted correctly');
 	}
 
@@ -1675,7 +1675,7 @@ private class SoqlTest {
 		String result = typeOfClause?.toString();
 		Test.stopTest();
 
-		String expected = 'TYPEOF WhatId WHEN Account THEN Name, Phone, Type ELSE Name, Phone END';
+		String expected = 'TYPEOF What WHEN Account THEN Name, Phone, Type ELSE Name, Phone END';
 		Assert.areEqual(expected, result, 'TypeOf query with multiple fields not formatted correctly');
 	}
 
@@ -1691,7 +1691,7 @@ private class SoqlTest {
 		String result = typeOfClause?.toString();
 		Test.stopTest();
 
-		String expected = 'TYPEOF WhatId WHEN Account THEN Name WHEN Opportunity THEN Name END';
+		String expected = 'TYPEOF What WHEN Account THEN Name WHEN Opportunity THEN Name END';
 		Assert.areEqual(expected, result, 'TypeOf query without ELSE not formatted correctly');
 	}
 
@@ -1708,32 +1708,32 @@ private class SoqlTest {
 		String result = soql?.toString();
 		Test.stopTest();
 
-		String expected = 'SELECT Id, TYPEOF WhatId WHEN Case THEN CaseNumber ELSE Name END FROM Task';
+		String expected = 'SELECT Id, TYPEOF What WHEN Case THEN CaseNumber ELSE Name END FROM Task';
 		Assert.areEqual(expected, result, 'SOQL query with TypeOf not formatted correctly');
 	}
 
 	@IsTest
 	static void shouldBuildTypeOfWithStringConstructor() {
-		Soql.TypeOf typeOfClause = new Soql.TypeOf('WhatId').when(Account.SObjectType).thenSelect(Account.Name);
+		Soql.TypeOf typeOfClause = new Soql.TypeOf('What').when(Account.SObjectType).thenSelect(Account.Name);
 
 		Test.startTest();
 		String result = typeOfClause?.toString();
 		Test.stopTest();
 
-		String expected = 'TYPEOF WhatId WHEN Account THEN Name END';
+		String expected = 'TYPEOF What WHEN Account THEN Name END';
 		Assert.areEqual(expected, result, 'TypeOf with string constructor not formatted correctly');
 	}
 
 	@IsTest
 	static void shouldBuildTypeOfWithParentField() {
-		Soql.ParentField parentField = new Soql.ParentField(Task.WhatId, Account.Name);
-		Soql.TypeOf typeOfClause = new Soql.TypeOf(parentField).when(Account.SObjectType).thenSelect(Account.Name);
+		Soql.ParentField parentField = new Soql.ParentField(Case.ContactId, Contact.OwnerId);
+		Soql.TypeOf typeOfClause = new Soql.TypeOf(parentField).when(User.SObjectType).thenSelect(User.Name);
 
 		Test.startTest();
 		String result = typeOfClause?.toString();
 		Test.stopTest();
 
-		String expected = 'TYPEOF What.Name WHEN Account THEN Name END';
+		String expected = 'TYPEOF Contact.Owner WHEN User THEN Name END';
 		Assert.areEqual(expected, result, 'TypeOf with parent field not formatted correctly');
 	}
 

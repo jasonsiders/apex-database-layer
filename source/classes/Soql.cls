@@ -1572,7 +1572,8 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	 */
 	@SuppressWarnings('PMD.ExcessiveParameterList')
 	global class ParentField implements Soql.Selectable {
-		private String value;
+		private String fieldReference;
+		private String relationshipReference;
 
 		/**
 		 * @description Constructor that creates a parent field reference from a chain of relationship fields.
@@ -1580,7 +1581,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		global ParentField(List<SObjectField> relationshipFieldChain) {
 			relationshipFieldChain = relationshipFieldChain ?? new List<SObjectField>();
-			this.value = this.computeValue(relationshipFieldChain);
+			this.computeReferences(relationshipFieldChain);
 		}
 
 		/**
@@ -1665,32 +1666,46 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			this(new List<SObjectField>{ relationship1, field });
 		}
 
+		/**
+		 * @description Outputs the SOQL relationship of the compound field
+		 * @return The dot-notation relationship reference string
+		 */
+		global String getRelationshipName() {
+			return this.relationshipReference;
+		}
+
 		global override String toString() {
-			return this.value;
+			return this.fieldReference;
 		}
 
 		/**
-		 * @description Computes the dot-notation string representation from the field chain.
+		 * @description Computes dot-notation string representations from the field chain.
 		 * @param fields List of fields in the relationship chain
-		 * @return The dot-notation field reference string
 		 */
-		private String computeValue(List<SObjectField> fields) {
-			// Generate the String reference to the parent field:
+		private void computeReferences(List<SObjectField> fields) {
+			// Generate the references to the parent field based on the ordered chain:
 			List<String> components = new List<String>();
+			String targetFieldRelationshipName;
 			Integer size = fields?.size();
-			Integer lastIteration = size - 1;
+			Integer lastIndex = size - 1;
 			for (Integer i = 0; i < size; i++) {
 				SObjectField field = fields?.get(i);
-				if (i < lastIteration) {
-					String relationshipName = field?.getDescribe()?.getRelationshipName();
+				String relationshipName = field?.getDescribe()?.getRelationshipName();
+				if (i < lastIndex) {
 					components?.add(relationshipName);
 				} else {
-					// Final field in the chain - Get the API name of the field
-					String fieldName = field?.toString();
-					components?.add(fieldName);
+					// Final field in the chain:
+					String targetFieldApiName = field?.toString();
+					components?.add(targetFieldApiName);
+					targetFieldRelationshipName = relationshipName;
 				}
 			}
-			return String.join(components, '.');
+			// Compute the compound field's API name
+			this.fieldReference = String.join(components, '.');
+			// Compute the compound field's relationship name
+			components?.remove(lastIndex);
+			components?.add(targetFieldRelationshipName);
+			this.relationshipReference = String.join(components, '.');
 		}
 	}
 
@@ -2009,15 +2024,15 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	 */
 	global class TypeOf implements Soql.Selectable {
 		private List<String> elseFields;
-		private String fieldName;
+		private String relationshipName;
 		private List<String> whenClauses;
 
 		/**
-		 * @description Constructor for TypeOf with field name.
-		 * @param fieldName The polymorphic field name to query
+		 * @description Constructor for TypeOf with relationship name.
+		 * @param relationshipName The polymorphic field name to query
 		 */
-		global TypeOf(String fieldName) {
-			this.fieldName = fieldName;
+		global TypeOf(String relationshipName) {
+			this.relationshipName = relationshipName;
 			this.whenClauses = new List<String>{};
 		}
 
@@ -2026,7 +2041,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @param field The polymorphic SObjectField to query
 		 */
 		global TypeOf(SObjectField field) {
-			this(field?.toString());
+			this(field?.getDescribe()?.getRelationshipName());
 		}
 
 		/**
@@ -2034,7 +2049,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @param field The polymorphic parent field to query
 		 */
 		global TypeOf(Soql.ParentField field) {
-			this(field?.toString());
+			this(field?.getRelationshipName());
 		}
 
 		/**
@@ -2122,7 +2137,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		global override String toString() {
 			// Construct a valid TYPEOF...WHEN...THEN...ELSE...END clause
 			List<String> parts = new List<String>();
-			parts.add('TYPEOF ' + this.fieldName);
+			parts.add('TYPEOF ' + this.relationshipName);
 			for (String whenClause : this.whenClauses) {
 				parts.add(whenClause);
 			}
