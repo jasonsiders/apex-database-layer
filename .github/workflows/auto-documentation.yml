@@ -139,9 +139,9 @@ jobs:
       - name: Commit Documentation Updates
         if: steps.check-auto-commit.outputs.auto-commit == 'false' && steps.check-docs.outputs.has-doc-changes == 'true'
         run: |
+          rm -f changed_files.txt
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-
           git add wiki/ README.md
           git commit -m "Auto-generate documentation for code changes
 
