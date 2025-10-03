@@ -3,7 +3,7 @@ Using `DatabaseLayer.Soql`, you can easily engage mocks to test your code withou
 Read on below, and check out these resources for more information:
 
 - [MockSoql Methods](./The-MockSoql-Class#Methods)
-- [The MockSoql.ConditionalLogic Interface](./The-MockSoql.ConditionalLogic-Interface)
+- [The MockSoql.Simulator Interface](./The-MockSoql.Simulator-Interface)
 
 ## Setting Up Mocks
 
@@ -37,7 +37,7 @@ By default, all `MockSoql` objects will return an empty list of results, but you
 
 - Return a static list of results each time your query runs
 - Throw a static `Exception` each time your query runs.
-- Dynamically determine the results of the query, using custom logic in the [`MockSoql.ConditionalLogic`](./The-MockSoql.ConditionalLogic-Interface) interface.
+- Dynamically determine the results of the query, using custom logic in the [`MockSoql.Simulator`](./The-MockSoql.Simulator-Interface) interface.
 
 ### Static vs. Dynamic Query Mocks
 
@@ -45,10 +45,10 @@ Mock query logic can be defined for all queries encountered during a transaction
 
 Both approaches have their own set of benefits and drawbacks:
 
-- `MockSoql.setGlobalMock`: (recommended) Allows you to define mocks without exposing queries as top-level class variables, but they are less flexible. If you encounter more than one query, you will likely need to use the `MockSoql.ConditionalLogic` interface to handle each query seprately, instead of injecting a static list of results to be returned.
-- `setMock`: Gives the flexibility of defining per-query results to be returned, without using a `MockSoql.ConditionalLogic` implementation. In practice, this means all `Soql` queries in your production code must be exposed as top-level class variables, which can be less than ideal for a number of reasons.
+- `MockSoql.setGlobalMock`: (recommended) Allows you to define mocks without exposing queries as top-level class variables, but they are less flexible. If you encounter more than one query, you will likely need to use the `MockSoql.Simulator` interface to handle each query seprately, instead of injecting a static list of results to be returned.
+- `setMock`: Gives the flexibility of defining per-query results to be returned, without using a `MockSoql.Simulator` implementation. In practice, this means all `Soql` queries in your production code must be exposed as top-level class variables, which can be less than ideal for a number of reasons.
 
-We generally recommend the first approach, as it allows Soql queries to be properly encapsulated, while the `MockSoql.ConditionalLogic` interface offers the flexibility needed to handle even the most complex of test scenarios.
+We generally recommend the first approach, as it allows Soql queries to be properly encapsulated, while the `MockSoql.Simulator` interface offers the flexibility needed to handle even the most complex of test scenarios.
 
 ```apex
 DatabaseLayer.useMocks();
@@ -70,7 +70,7 @@ When 0 arguments are passed to the method, the class returns a [MockSoql.StaticR
 - ([withResults](./The-MockSoql.StaticResults-Class#withResults)): Injects a static list of results to be returned when the query runs.
 - ([withError[(./The-MockSoql.StaticResults-Class#withError)): Injects a static Exception to be thrown when the query runs.
 
-Alternatively, you can pass a [`MockSoql.ConditionalLogic`](./The-MockSoql.ConditionalLogic-Interface) object to either of the `setMock` / `setGlobalMock` methods. This interface can be used to define dynamic query results to be returned when queries run. Think of this interface as the SOQL equivalent to the [`System.HttpCalloutMock` interface](https://developer.salesforce.com/docs/atlas.en-us.apexref.meta/apexref/apex_interface_httpcalloutmock.htm) that Apex includes for HTTP Callouts.
+Alternatively, you can pass a [`MockSoql.Simulator`](./The-MockSoql.Simulator-Interface) object to either of the `setMock` / `setGlobalMock` methods. This interface can be used to define dynamic query results to be returned when queries run. Think of this interface as the SOQL equivalent to the [`System.HttpCalloutMock` interface](https://developer.salesforce.com/docs/atlas.en-us.apexref.meta/apexref/apex_interface_httpcalloutmock.htm) that Apex includes for HTTP Callouts.
 
 ```apex
 DatabaseLayer.useMocks();
@@ -85,7 +85,7 @@ MockSoql.setGlobalMock()?.withError();
 System.Exception customError = new MyCustomError();
 MockSoql.setGlobalMock()?.withError(customError);
 // Inject dynamic query-mocking logic:
-MockSoql.ConditionalLogic logic = new MyCustomQueryLogic();
+MockSoql.Simulator logic = new MyCustomQueryLogic();
 MockSoql.setGlobalMock(logic);
 ```
 
