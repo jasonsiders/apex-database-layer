@@ -16,8 +16,8 @@
 - **Cmdt**
   - [Mocking Custom Metadata Records](./Mocking-Custom-Metadata-Records)
 - **Duplicates**
-  - [Detecting Duplicates](./The-Duplicates-Class)
-  - [Mocking Duplicate Detection](./The-Duplicates-Class)
+  - [Detecting Duplicates](./Detecting-Duplicates)
+  - [Mocking Duplicate Detection](./Mocking-Duplicates)
 - **Plugins**
   - [About The Plugin Framework](./The-Plugin-Framework)
   - [About Dml.PreAndPostProcessor Plugins](./Plugin:-Dml.PreAndPostProcessor)
@@ -44,7 +44,16 @@
 - [**MockCmdt**](./The-MockCmdt-Class)
   - [MockCmdt.Repository](./The-MockCmdt.Repository-Class)
 - [**Duplicates**](./The-Duplicates-Class)
+  - [Duplicates.Request](./The-Duplicates.Request-Class)
+  - [Duplicates.FindDuplicatesResult](./The-Duplicates.FindDuplicatesResult-Class)
+  - [Duplicates.DuplicateResult](./The-Duplicates.DuplicateResult-Class)
+  - [Duplicates.MatchResult](./The-Duplicates.MatchResult-Class)
+  - [Duplicates.MatchRecord](./The-Duplicates.MatchRecord-Class)
+  - [Duplicates.FieldDiff](./The-Duplicates.FieldDiff-Class)
+  - [Duplicates.Error](./The-Duplicates.Error-Class)
 - [**MockDuplicates**](./The-MockDuplicates-Class)
+  - [MockDuplicates.Simulator](./The-MockDuplicates.Simulator-Interface)
+  - [MockDuplicates.StaticResults](./The-MockDuplicates.StaticResults-Class)
 - [**MockSoql**](./The-MockSoql-Class)
   - [MockSoql.AggregateResult](./The-MockSoql.AggregateResult-Class)
   - [MockSoql.Simulator](./The-MockSoql.Simulator-Interface)

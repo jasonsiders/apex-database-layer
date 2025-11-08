@@ -1,181 +1,95 @@
-The `Duplicates` class provides mockable abstraction over Salesforce's Datacloud duplicate detection APIs.
-
-It encapsulates `Datacloud.FindDuplicates` and `Datacloud.FindDuplicatesByIds` methods, enabling developers to easily mock duplicate detection operations for unit testing without requiring actual duplicate rules or org configuration.
+The `Duplicates` class handles duplicate detection operations and provides mockable abstraction over Salesforce's Datacloud duplicate detection APIs.
 
 ## Constructing `Duplicates` Objects
 
 `Duplicates` objects cannot be directly constructed via the `new` keyword. Instead, access the class and its methods via the `DatabaseLayer.Duplicates` static property:
 
 ```apex
-List<Duplicates.FindDuplicatesResult> results = DatabaseLayer.Duplicates.findDuplicates(records);
+DatabaseLayer.Duplicates.findDuplicates(records);
 ```
 
-The `DatabaseLayer` class is responsible for instantiating database objects of the correct type at runtime. In `@IsTest` context, developers can call `DatabaseLayer.useMocks()`, and an instance of the `MockDuplicates` class will be returned instead:
+The `DatabaseLayer` class is responsible for instantiating the correct type at runtime. In `@IsTest` context, developers can call `DatabaseLayer.useMocks()`, and an instance of the `MockDuplicates` class will be returned instead:
 
 ```apex
 DatabaseLayer.useMocks();
 Assert.isInstanceOfType(DatabaseLayer.Duplicates, MockDuplicates.class, 'Not a mock');
 ```
 
-## Finding Duplicates
+## Methods
 
-The `Duplicates` class provides two overloaded `findDuplicates` methods that support both SObject records and record IDs as input.
+### `findDuplicates`
 
-### By Records
-
-```apex
-List<Account> accounts = [SELECT Id, Name FROM Account LIMIT 10];
-List<Duplicates.FindDuplicatesResult> results = DatabaseLayer.Duplicates.findDuplicates(accounts);
-```
-
-### By IDs
+Executes duplicate detection on a list of SObject records.
 
 ```apex
-List<Id> recordIds = new List<Id>{ '001xx000003DHP', '001xx000003DHQ' };
-List<Duplicates.FindDuplicatesResult> results = DatabaseLayer.Duplicates.findDuplicates(recordIds);
+global List<Duplicates.FindDuplicatesResult> findDuplicates(List<SObject> records)
 ```
 
-## Duplicate Detection Results
+**Parameters:**
+- `records` - The records to check for duplicates
 
-The `findDuplicates` method returns a list of `FindDuplicatesResult` objects, each containing:
+**Returns:** List of `FindDuplicatesResult` objects wrapping duplicate detection results
 
-- **Success**: Boolean indicating whether the operation was successful
-- **Errors**: List of any errors that occurred
-- **DuplicateResults**: List of results for each input record
+**Throws:** Exception if duplicate detection service is unavailable
+
+### `findDuplicates` (Overload)
+
+Executes duplicate detection on a list of record IDs.
+
+```apex
+global List<Duplicates.FindDuplicatesResult> findDuplicates(Iterable<Id> recordIds)
+```
+
+**Parameters:**
+- `recordIds` - The record IDs to check for duplicates
+
+**Returns:** List of `FindDuplicatesResult` objects wrapping duplicate detection results
+
+**Throws:** Exception if duplicate detection service is unavailable
+
+## Inner Classes
+
+### Request
+
+Handles execution of duplicate detection requests against the native Datacloud APIs.
+
+See [Duplicates.Request](./The-Duplicates.Request-Class)
 
 ### FindDuplicatesResult
 
-Contains the overall result of a duplicate detection operation for a set of records.
+Mockable wrapper for duplicate detection results.
 
-```apex
-Duplicates.FindDuplicatesResult result = results[0];
-Boolean success = result.getSuccess();
-List<Duplicates.Error> errors = result.getErrors();
-List<Duplicates.DuplicateResult> duplicates = result.getDuplicateResults();
-```
+See [Duplicates.FindDuplicatesResult](./The-Duplicates.FindDuplicatesResult-Class)
 
 ### DuplicateResult
 
-Contains duplicate matches for a specific record.
+Wrapper for duplicate matches for a specific record.
 
-```apex
-Duplicates.DuplicateResult dupResult = duplicates[0];
-SObject originalRecord = dupResult.getRecord();
-List<Duplicates.MatchResult> matches = dupResult.getMatchResults();
-```
+See [Duplicates.DuplicateResult](./The-Duplicates.DuplicateResult-Class)
 
 ### MatchResult
 
-Contains matches for a specific duplicate rule.
+Wrapper for matches from a specific duplicate rule.
 
-```apex
-Duplicates.MatchResult match = matches[0];
-String ruleName = match.getRule();
-Integer matchCount = match.getSize();
-List<Duplicates.MatchRecord> records = match.getMatchRecords();
-```
+See [Duplicates.MatchResult](./The-Duplicates.MatchResult-Class)
 
 ### MatchRecord
 
-Contains a single matched record and field differences.
+Wrapper for a specific matched record and field differences.
 
-```apex
-Duplicates.MatchRecord matchRecord = records[0];
-SObject matchedRecord = matchRecord.getRecord();
-List<Duplicates.FieldDiff> differences = matchRecord.getFieldDiffs();
-```
+See [Duplicates.MatchRecord](./The-Duplicates.MatchRecord-Class)
 
 ### FieldDiff
 
-Contains information about a field that differs between records.
+Wrapper for field differences between matched records.
 
-```apex
-Duplicates.FieldDiff diff = differences[0];
-String fieldName = diff.getFieldName();
-Object differentValue = diff.getCompareValue();
-```
+See [Duplicates.FieldDiff](./The-Duplicates.FieldDiff-Class)
 
 ### Error
 
-Contains error information if duplicate detection fails.
+Wrapper for error information from duplicate detection operations.
 
-```apex
-Duplicates.Error error = errors[0];
-String message = error.getMessage();
-String statusCode = error.getStatusCode();
-List<String> affectedFields = error.getFields();
-```
-
-## Mocking Duplicates for Testing
-
-Use `MockDuplicates` to configure duplicate detection results without requiring actual duplicate rules:
-
-```apex
-@IsTest
-static void testDuplicateDetection() {
-    DatabaseLayer.useMocks();
-
-    Account originalAccount = (Account) new MockRecord(Account.SObjectType)
-        .withId()
-        .toSObject();
-
-    Account duplicateAccount = (Account) new MockRecord(Account.SObjectType)
-        .withId()
-        .toSObject();
-
-    Duplicates.FieldDiff fieldDiff = new MockDuplicates.FieldDiff()
-        .withFieldName('Name')
-        .withCompareValue('Different Name');
-
-    Duplicates.MatchRecord matchRecord = new MockDuplicates.MatchRecord()
-        .withRecord(duplicateAccount)
-        .addFieldDiff(fieldDiff);
-
-    Duplicates.MatchResult matchResult = new MockDuplicates.MatchResult()
-        .withRule('Account Duplicate Rule')
-        .withSize(1)
-        .addMatchRecord(matchRecord);
-
-    Duplicates.DuplicateResult duplicateResult = new MockDuplicates.DuplicateResult()
-        .withRecord(originalAccount)
-        .addMatchResult(matchResult);
-
-    Duplicates.FindDuplicatesResult findDupResult = new MockDuplicates.FindDuplicatesResult()
-        .withSuccess(true)
-        .addDuplicateResult(duplicateResult);
-
-    MockDuplicates.setGlobalMock().withResult(findDupResult);
-
-    // Your test code here
-    List<Duplicates.FindDuplicatesResult> results = DatabaseLayer.Duplicates.findDuplicates(
-        new List<SObject>{ originalAccount }
-    );
-
-    Assert.areEqual(1, results.size());
-}
-```
-
-### Configuring Mock Errors
-
-```apex
-Duplicates.Error error = new MockDuplicates.Error()
-    .withMessage('Permission denied')
-    .withStatusCode('FIELD_ERROR')
-    .addField('Name');
-
-Duplicates.FindDuplicatesResult mockResult = new MockDuplicates.FindDuplicatesResult()
-    .withSuccess(false)
-    .addError(error);
-
-MockDuplicates.setGlobalMock().withResult(mockResult);
-```
-
-### Throwing Exceptions
-
-```apex
-MockDuplicates.setGlobalMock()
-    .withError(new System.NullPointerException('Test error'));
-```
+See [Duplicates.Error](./The-Duplicates.Error-Class)
 
 ## Integration with DatabaseLayer
 
@@ -196,3 +110,8 @@ static void testWithRealData() {
     DatabaseLayer.Duplicates.findDuplicates(records);
 }
 ```
+
+## Usage Guides
+
+- [Detecting Duplicates](./Detecting-Duplicates) - Guide on using duplicate detection
+- [Mocking Duplicates](./Mocking-Duplicates) - Guide on mocking for tests
