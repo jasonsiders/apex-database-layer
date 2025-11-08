@@ -26,7 +26,7 @@ private class DmlTest {
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
 	}
 
-	@Istest
+	@IsTest
 	static void shouldDoInsertWithAccessLevel() {
 		Account account = DmlTest.initAccount();
 

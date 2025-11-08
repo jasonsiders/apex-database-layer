@@ -15,6 +15,9 @@
   - [Mocking SOQL Queries](./Mocking-SOQL-Queries)
 - **Cmdt**
   - [Mocking Custom Metadata Records](./Mocking-Custom-Metadata-Records)
+- **Duplicates**
+  - [Detecting Duplicates](./The-Duplicates-Class)
+  - [Mocking Duplicate Detection](./The-Duplicates-Class)
 - **Plugins**
   - [About The Plugin Framework](./The-Plugin-Framework)
   - [About Dml.PreAndPostProcessor Plugins](./Plugin:-Dml.PreAndPostProcessor)
@@ -40,6 +43,8 @@
   - [Cmdt.Repository](./The-Cmdt.Repository-Class)
 - [**MockCmdt**](./The-MockCmdt-Class)
   - [MockCmdt.Repository](./The-MockCmdt.Repository-Class)
+- [**Duplicates**](./The-Duplicates-Class)
+- [**MockDuplicates**](./The-MockDuplicates-Class)
 - [**MockSoql**](./The-MockSoql-Class)
   - [MockSoql.AggregateResult](./The-MockSoql.AggregateResult-Class)
   - [MockSoql.Simulator](./The-MockSoql.Simulator-Interface)
