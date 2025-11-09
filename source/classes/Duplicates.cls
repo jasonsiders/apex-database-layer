@@ -1,6 +1,6 @@
 /**
- * @description Handles Datacloud duplicate detection operations with mockable API abstraction. Provides wrapper classes that abstract Datacloud duplicate detection APIs for testability.
- * Note: Requires org with Datacloud API access enabled. In orgs without this feature, returns empty results.
+ * @description Handles Datacloud duplicate detection operations with mockable API abstraction.
+ * Provides wrapper classes that abstract Datacloud duplicate detection APIs for testability.
  */
 @SuppressWarnings('PMD.AvoidGlobalModifier')
 global inherited sharing virtual class Duplicates {
@@ -57,19 +57,32 @@ global inherited sharing virtual class Duplicates {
 		}
 
 		/**
-		 * @description Executes the duplicate detection request. Returns empty results if Datacloud APIs unavailable.
-		 * @return List of FindDuplicatesResult (empty if org lacks Datacloud API access)
+		 * @description Executes the duplicate detection request against native Datacloud APIs.
+		 * @return List of FindDuplicatesResult wrapping native Datacloud results
 		 */
 		protected virtual List<Duplicates.FindDuplicatesResult> execute() {
-			try {
-				// Datacloud APIs are only available in orgs with proper feature access
-				// If available, this would call: Datacloud.FindDuplicates.findDuplicates()
-				// For now, return empty results as this org doesn't have Datacloud APIs
-				return new List<Duplicates.FindDuplicatesResult>();
-			} catch (Exception ex) {
-				// Return empty results if any error occurs
+			if (this.input == null) {
 				return new List<Duplicates.FindDuplicatesResult>();
 			}
+
+			List<Object> nativeResults;
+			if (this.input instanceof List<SObject>) {
+				nativeResults = (List<Object>) Datacloud.FindDuplicates.findDuplicates((List<SObject>) this.input);
+			} else if (this.input instanceof Iterable<Id>) {
+				List<Id> recordIds = new List<Id>();
+				for (Id recordId : (Iterable<Id>) this.input) {
+					recordIds.add(recordId);
+				}
+				// Query the records by ID to get SObjects for the API call
+				String sObjectType = recordIds[0].getSObjectType().getDescribe().getName();
+				String query = 'SELECT Id FROM ' + sObjectType + ' WHERE Id IN :recordIds';
+				List<SObject> records = Database.query(query);
+				nativeResults = (List<Object>) Datacloud.FindDuplicates.findDuplicates(records);
+			} else {
+				return new List<Duplicates.FindDuplicatesResult>();
+			}
+
+			return this.wrapResults(nativeResults);
 		}
 
 		/**
@@ -81,7 +94,9 @@ global inherited sharing virtual class Duplicates {
 			List<Duplicates.FindDuplicatesResult> wrappedResults = new List<Duplicates.FindDuplicatesResult>();
 			if (nativeResults != null) {
 				for (Object nativeResult : nativeResults) {
-					wrappedResults.add(new Duplicates.FindDuplicatesResult(nativeResult));
+					String jsonString = JSON.serialize(nativeResult);
+					Map<String, Object> resultMap = (Map<String, Object>) JSON.deserializeUntyped(jsonString);
+					wrappedResults.add(new Duplicates.FindDuplicatesResult(resultMap));
 				}
 			}
 			return wrappedResults;
@@ -97,13 +112,19 @@ global inherited sharing virtual class Duplicates {
 		protected List<Duplicates.DuplicateResult> duplicateResults;
 
 		/**
-		 * @description Constructor wrapping a native duplicate detection result.
-		 * @param nativeResult The native result object (may be null)
+		 * @description Constructor wrapping a native duplicate detection result via JSON deserialization.
+		 * @param resultMap Deserialized JSON map of the native result
 		 */
-		protected FindDuplicatesResult(Object nativeResult) {
-			this.success = false;
-			this.errors = new List<Duplicates.Error>();
-			this.duplicateResults = new List<Duplicates.DuplicateResult>();
+		protected FindDuplicatesResult(Map<String, Object> resultMap) {
+			if (resultMap != null) {
+				this.success = (Boolean) resultMap.get('success');
+				this.errors = this.wrapErrors((List<Object>) resultMap.get('errors'));
+				this.duplicateResults = this.wrapDuplicateResults((List<Object>) resultMap.get('duplicateResults'));
+			} else {
+				this.success = false;
+				this.errors = new List<Duplicates.Error>();
+				this.duplicateResults = new List<Duplicates.DuplicateResult>();
+			}
 		}
 
 		/**
@@ -139,7 +160,7 @@ global inherited sharing virtual class Duplicates {
 			List<Duplicates.Error> wrappedErrors = new List<Duplicates.Error>();
 			if (nativeErrors != null) {
 				for (Object nativeError : nativeErrors) {
-					wrappedErrors.add(new Duplicates.Error(nativeError));
+					wrappedErrors.add(new Duplicates.Error((Map<String, Object>) nativeError));
 				}
 			}
 			return wrappedErrors;
@@ -154,7 +175,7 @@ global inherited sharing virtual class Duplicates {
 			List<Duplicates.DuplicateResult> wrappedResults = new List<Duplicates.DuplicateResult>();
 			if (nativeDuplicateResults != null) {
 				for (Object nativeDuplicateResult : nativeDuplicateResults) {
-					wrappedResults.add(new Duplicates.DuplicateResult(nativeDuplicateResult));
+					wrappedResults.add(new Duplicates.DuplicateResult((Map<String, Object>) nativeDuplicateResult));
 				}
 			}
 			return wrappedResults;
@@ -170,13 +191,19 @@ global inherited sharing virtual class Duplicates {
 		protected String statusCode;
 
 		/**
-		 * @description Constructor wrapping a native error.
-		 * @param nativeError The native error object (may be null)
+		 * @description Constructor wrapping a native error via JSON deserialization.
+		 * @param errorMap Deserialized JSON map of the native error
 		 */
-		protected Error(Object nativeError) {
-			this.fields = new List<String>();
-			this.message = null;
-			this.statusCode = null;
+		protected Error(Map<String, Object> errorMap) {
+			if (errorMap != null) {
+				this.fields = (List<String>) errorMap.get('fields');
+				this.message = (String) errorMap.get('message');
+				this.statusCode = (String) errorMap.get('statusCode');
+			} else {
+				this.fields = new List<String>();
+				this.message = null;
+				this.statusCode = null;
+			}
 		}
 
 		/**
@@ -212,12 +239,20 @@ global inherited sharing virtual class Duplicates {
 		protected List<Duplicates.MatchResult> matchResults;
 
 		/**
-		 * @description Constructor wrapping a native duplicate result.
-		 * @param nativeDuplicateResult The native result object (may be null)
+		 * @description Constructor wrapping a native duplicate result via JSON deserialization.
+		 * @param resultMap Deserialized JSON map of the native result
 		 */
-		protected DuplicateResult(Object nativeDuplicateResult) {
-			this.record = null;
-			this.matchResults = new List<Duplicates.MatchResult>();
+		protected DuplicateResult(Map<String, Object> resultMap) {
+			if (resultMap != null) {
+				Object sObjectData = resultMap.get('sObject');
+				if (sObjectData != null) {
+					this.record = (SObject) JSON.deserialize(JSON.serialize(sObjectData), SObject.class);
+				}
+				this.matchResults = this.wrapMatchResults((List<Object>) resultMap.get('matchResults'));
+			} else {
+				this.record = null;
+				this.matchResults = new List<Duplicates.MatchResult>();
+			}
 		}
 
 		/**
@@ -245,7 +280,7 @@ global inherited sharing virtual class Duplicates {
 			List<Duplicates.MatchResult> wrappedResults = new List<Duplicates.MatchResult>();
 			if (nativeMatchResults != null) {
 				for (Object nativeMatchResult : nativeMatchResults) {
-					wrappedResults.add(new Duplicates.MatchResult(nativeMatchResult));
+					wrappedResults.add(new Duplicates.MatchResult((Map<String, Object>) nativeMatchResult));
 				}
 			}
 			return wrappedResults;
@@ -261,13 +296,19 @@ global inherited sharing virtual class Duplicates {
 		protected List<Duplicates.MatchRecord> matchRecords;
 
 		/**
-		 * @description Constructor wrapping a native match result.
-		 * @param nativeMatchResult The native result object (may be null)
+		 * @description Constructor wrapping a native match result via JSON deserialization.
+		 * @param resultMap Deserialized JSON map of the native result
 		 */
-		protected MatchResult(Object nativeMatchResult) {
-			this.rule = null;
-			this.size = 0;
-			this.matchRecords = new List<Duplicates.MatchRecord>();
+		protected MatchResult(Map<String, Object> resultMap) {
+			if (resultMap != null) {
+				this.rule = (String) resultMap.get('rule');
+				this.size = (Integer) resultMap.get('size');
+				this.matchRecords = this.wrapMatchRecords((List<Object>) resultMap.get('matchRecords'));
+			} else {
+				this.rule = null;
+				this.size = 0;
+				this.matchRecords = new List<Duplicates.MatchRecord>();
+			}
 		}
 
 		/**
@@ -303,7 +344,7 @@ global inherited sharing virtual class Duplicates {
 			List<Duplicates.MatchRecord> wrappedRecords = new List<Duplicates.MatchRecord>();
 			if (nativeMatchRecords != null) {
 				for (Object nativeMatchRecord : nativeMatchRecords) {
-					wrappedRecords.add(new Duplicates.MatchRecord(nativeMatchRecord));
+					wrappedRecords.add(new Duplicates.MatchRecord((Map<String, Object>) nativeMatchRecord));
 				}
 			}
 			return wrappedRecords;
@@ -318,12 +359,20 @@ global inherited sharing virtual class Duplicates {
 		protected List<Duplicates.FieldDiff> fieldDiffs;
 
 		/**
-		 * @description Constructor wrapping a native match record.
-		 * @param nativeMatchRecord The native record object (may be null)
+		 * @description Constructor wrapping a native match record via JSON deserialization.
+		 * @param recordMap Deserialized JSON map of the native record
 		 */
-		protected MatchRecord(Object nativeMatchRecord) {
-			this.record = null;
-			this.fieldDiffs = new List<Duplicates.FieldDiff>();
+		protected MatchRecord(Map<String, Object> recordMap) {
+			if (recordMap != null) {
+				Object sObjectData = recordMap.get('sObject');
+				if (sObjectData != null) {
+					this.record = (SObject) JSON.deserialize(JSON.serialize(sObjectData), SObject.class);
+				}
+				this.fieldDiffs = this.wrapFieldDiffs((List<Object>) recordMap.get('fieldDiffs'));
+			} else {
+				this.record = null;
+				this.fieldDiffs = new List<Duplicates.FieldDiff>();
+			}
 		}
 
 		/**
@@ -351,7 +400,7 @@ global inherited sharing virtual class Duplicates {
 			List<Duplicates.FieldDiff> wrappedDiffs = new List<Duplicates.FieldDiff>();
 			if (nativeFieldDiffs != null) {
 				for (Object nativeFieldDiff : nativeFieldDiffs) {
-					wrappedDiffs.add(new Duplicates.FieldDiff(nativeFieldDiff));
+					wrappedDiffs.add(new Duplicates.FieldDiff((Map<String, Object>) nativeFieldDiff));
 				}
 			}
 			return wrappedDiffs;
@@ -366,12 +415,17 @@ global inherited sharing virtual class Duplicates {
 		protected Object compareValue;
 
 		/**
-		 * @description Constructor wrapping a native field difference.
-		 * @param nativeFieldDiff The native field diff object (may be null)
+		 * @description Constructor wrapping a native field difference via JSON deserialization.
+		 * @param diffMap Deserialized JSON map of the native field diff
 		 */
-		protected FieldDiff(Object nativeFieldDiff) {
-			this.fieldName = null;
-			this.compareValue = null;
+		protected FieldDiff(Map<String, Object> diffMap) {
+			if (diffMap != null) {
+				this.fieldName = (String) diffMap.get('fieldName');
+				this.compareValue = diffMap.get('compareValue');
+			} else {
+				this.fieldName = null;
+				this.compareValue = null;
+			}
 		}
 
 		/**

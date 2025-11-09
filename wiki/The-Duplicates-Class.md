@@ -1,4 +1,4 @@
-The `Duplicates` class handles duplicate detection operations and provides mockable abstraction over Salesforce's Datacloud duplicate detection APIs.
+The `Duplicates` class handles duplicate detection operations and provides mockable abstraction over Salesforce's DataCloud duplicate detection APIs. It calls the native `Datacloud.FindDuplicates.findDuplicates()` API and wraps results in testable classes.
 
 ## Constructing `Duplicates` Objects
 
@@ -30,11 +30,11 @@ global List<Duplicates.FindDuplicatesResult> findDuplicates(List<SObject> record
 
 **Returns:** List of `FindDuplicatesResult` objects wrapping duplicate detection results
 
-**Throws:** Exception if duplicate detection service is unavailable
+**Throws:** Exceptions from the DataCloud API propagate to the caller (e.g., if no duplicate rules are active or DataCloud is unavailable)
 
 ### `findDuplicates` (Overload)
 
-Executes duplicate detection on a list of record IDs.
+Executes duplicate detection on a list of record IDs. Internally queries the records by ID before calling the DataCloud API (which requires SObject instances).
 
 ```apex
 global List<Duplicates.FindDuplicatesResult> findDuplicates(Iterable<Id> recordIds)
@@ -45,7 +45,7 @@ global List<Duplicates.FindDuplicatesResult> findDuplicates(Iterable<Id> recordI
 
 **Returns:** List of `FindDuplicatesResult` objects wrapping duplicate detection results
 
-**Throws:** Exception if duplicate detection service is unavailable
+**Throws:** Exceptions from the DataCloud API propagate to the caller (e.g., if no duplicate rules are active or DataCloud is unavailable)
 
 ## Inner Classes
 
