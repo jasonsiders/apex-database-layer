@@ -34,7 +34,7 @@ global inherited sharing virtual class Duplicates {
 
 	/**
 	 * @description Virtual hook for MockDuplicates to override request creation.
-	 * @param input The input (either List<SObject> or Iterable<Id>)
+	 * @param records The list of SObject records to check for duplicates
 	 * @return A configured Request instance
 	 */
 	protected virtual Duplicates.Request initRequest(List<SObject> records) {
@@ -42,15 +42,25 @@ global inherited sharing virtual class Duplicates {
 	}
 
 	// **** INNER **** //
+	/**
+	 * @description Wrapper for additional information maps returned during duplicate detection.
+	 * Provides name-value pairs with supplemental matching data.
+	 */
 	global virtual class AdditionalInformationMap {
 		@TestVisible
 		private transient Datacloud.AdditionalInformationMap nativeResult;
+		/**
+		 * @description The name of the additional information field.
+		 */
 		global String name {
 			get {
 				return this.name ?? this.nativeResult?.name;
 			}
 			protected set;
 		}
+		/**
+		 * @description The value of the additional information field.
+		 */
 		global String value {
 			get {
 				return this.value ?? this.nativeResult?.value;
@@ -58,14 +68,26 @@ global inherited sharing virtual class Duplicates {
 			protected set;
 		}
 
+		/**
+		 * @description Constructor wrapping a native additional information map.
+		 * @param nativeResult The native Datacloud additional information map
+		 */
 		protected AdditionalInformationMap(Datacloud.AdditionalInformationMap nativeResult) {
 			this.nativeResult = nativeResult;
 		}
 
+		/**
+		 * @description Returns the name of the additional information field.
+		 * @return The field name
+		 */
 		global String getName() {
 			return this.name;
 		}
 
+		/**
+		 * @description Returns the value of the additional information field.
+		 * @return The field value
+		 */
 		global String getValue() {
 			return this.value;
 		}
@@ -77,30 +99,45 @@ global inherited sharing virtual class Duplicates {
 	global virtual class DuplicateResult {
 		@TestVisible
 		private transient Datacloud.DuplicateResult nativeResult;
+		/**
+		 * @description Indicates whether saving the record is allowed despite duplicates.
+		 */
 		global Boolean allowSave {
 			get {
 				return this.allowSave ?? this.nativeResult?.allowSave;
 			}
 			protected set;
 		}
+		/**
+		 * @description The name of the duplicate rule that was evaluated.
+		 */
 		global String duplicateRule {
 			get {
 				return this.duplicateRule ?? this.nativeResult?.duplicateRule;
 			}
 			protected set;
 		}
+		/**
+		 * @description The entity type of the duplicate rule.
+		 */
 		global String duplicateRuleEntityType {
 			get {
 				return this.duplicateRuleEntityType ?? this.nativeResult?.duplicateRuleEntityType;
 			}
 			protected set;
 		}
+		/**
+		 * @description Any error message from the duplicate detection operation.
+		 */
 		global String errorMessage {
 			get {
 				return this.errorMessage ?? this.nativeResult?.errorMessage;
 			}
 			protected set;
 		}
+		/**
+		 * @description List of match results containing matching records and their details.
+		 */
 		global List<Duplicates.MatchResult> matchResults {
 			get {
 				return this.matchResults ?? this.wrapMatchResults();
@@ -109,8 +146,8 @@ global inherited sharing virtual class Duplicates {
 		}
 
 		/**
-		 * @description Constructor wrapping a native duplicate result via JSON deserialization.
-		 * @param resultMap Deserialized JSON map of the native result
+		 * @description Constructor wrapping a native duplicate result.
+		 * @param nativeResult The native Datacloud duplicate result
 		 */
 		protected DuplicateResult(Datacloud.DuplicateResult nativeResult) {
 			this.nativeResult = nativeResult;
@@ -158,7 +195,6 @@ global inherited sharing virtual class Duplicates {
 
 		/**
 		 * @description Wraps native match result objects.
-		 * @param nativeMatchResults The native result list
 		 * @return List of wrapped MatchResult objects
 		 */
 		private List<Duplicates.MatchResult> wrapMatchResults() {
@@ -179,12 +215,18 @@ global inherited sharing virtual class Duplicates {
 	global virtual class FieldDiff {
 		@TestVisible
 		private transient Datacloud.FieldDiff nativeResult;
+		/**
+		 * @description The comparison value showing the difference for this field.
+		 */
 		global Object difference {
 			get {
 				return this.difference ?? this.nativeResult?.difference;
 			}
 			protected set;
 		}
+		/**
+		 * @description The name of the field that differs.
+		 */
 		global String name {
 			get {
 				return this.name ?? this.nativeResult?.name;
@@ -193,8 +235,8 @@ global inherited sharing virtual class Duplicates {
 		}
 
 		/**
-		 * @description Constructor wrapping a native field difference via JSON deserialization.
-		 * @param diffMap Deserialized JSON map of the native field diff
+		 * @description Constructor wrapping a native field difference.
+		 * @param nativeResult The native Datacloud field diff
 		 */
 		protected FieldDiff(Datacloud.FieldDiff nativeResult) {
 			this.nativeResult = nativeResult;
@@ -223,18 +265,27 @@ global inherited sharing virtual class Duplicates {
 	global virtual class FindDuplicatesResult {
 		@TestVisible
 		private transient Datacloud.FindDuplicatesResult nativeResult;
+		/**
+		 * @description List of duplicate results for each record that was checked.
+		 */
 		global List<Duplicates.DuplicateResult> duplicateResults {
 			get {
 				return this.duplicateResults ?? this.wrapDuplicateResults();
 			}
 			protected set;
 		}
+		/**
+		 * @description List of errors that occurred during the duplicate detection operation.
+		 */
 		global List<Database.Error> errors {
 			get {
 				return this.errors ?? this.nativeResult?.errors;
 			}
 			protected set;
 		}
+		/**
+		 * @description Indicates whether the duplicate detection operation was successful.
+		 */
 		global Boolean success {
 			get {
 				return this.success ?? this.nativeResult?.success;
@@ -243,8 +294,8 @@ global inherited sharing virtual class Duplicates {
 		}
 
 		/**
-		 * @description Constructor wrapping a native duplicate detection result via JSON deserialization.
-		 * @param resultMap Deserialized JSON map of the native result
+		 * @description Constructor wrapping a native duplicate detection result.
+		 * @param nativeResult The native Datacloud find duplicates result
 		 */
 		protected FindDuplicatesResult(Datacloud.FindDuplicatesResult nativeResult) {
 			this.nativeResult = nativeResult;
@@ -276,7 +327,6 @@ global inherited sharing virtual class Duplicates {
 
 		/**
 		 * @description Wraps native duplicate result objects.
-		 * @param nativeDuplicateResults The native result list
 		 * @return List of wrapped DuplicateResult objects
 		 */
 		private List<Duplicates.DuplicateResult> wrapDuplicateResults() {
@@ -297,24 +347,36 @@ global inherited sharing virtual class Duplicates {
 	global virtual class MatchRecord {
 		@TestVisible
 		private transient Datacloud.MatchRecord nativeResult;
+		/**
+		 * @description Additional information about the match as name-value pairs.
+		 */
 		global List<Duplicates.AdditionalInformationMap> additionalInformation {
 			get {
 				return this.additionalInformation ?? this.wrapAdditionalInformation();
 			}
 			protected set;
 		}
+		/**
+		 * @description List of field differences between the original and matching record.
+		 */
 		global List<Duplicates.FieldDiff> fieldDiffs {
 			get {
 				return this.fieldDiffs ?? this.wrapFieldDiffs();
 			}
 			protected set;
 		}
+		/**
+		 * @description The confidence score for this match.
+		 */
 		global Decimal matchConfidence {
 			get {
 				return this.matchConfidence ?? this.nativeResult?.matchConfidence;
 			}
 			protected set;
 		}
+		/**
+		 * @description The matching SObject record.
+		 */
 		global SObject record {
 			get {
 				return this.record ?? this.nativeResult?.record;
@@ -323,8 +385,8 @@ global inherited sharing virtual class Duplicates {
 		}
 
 		/**
-		 * @description Constructor wrapping a native match record via JSON deserialization.
-		 * @param recordMap Deserialized JSON map of the native record
+		 * @description Constructor wrapping a native match record.
+		 * @param nativeResult The native Datacloud match record
 		 */
 		protected MatchRecord(Datacloud.MatchRecord nativeResult) {
 			this.nativeResult = nativeResult;
@@ -377,7 +439,6 @@ global inherited sharing virtual class Duplicates {
 
 		/**
 		 * @description Wraps native field difference objects.
-		 * @param nativeFieldDiffs The native field diff list
 		 * @return List of wrapped FieldDiff objects
 		 */
 		private List<Duplicates.FieldDiff> wrapFieldDiffs() {
@@ -397,42 +458,63 @@ global inherited sharing virtual class Duplicates {
 	global virtual class MatchResult {
 		@TestVisible
 		private transient Datacloud.MatchResult nativeResult;
+		/**
+		 * @description The entity type for this match result.
+		 */
 		global String entityType {
 			get {
 				return this.entityType ?? this.nativeResult?.entityType;
 			}
 			protected set;
 		}
+		/**
+		 * @description List of errors that occurred during matching.
+		 */
 		global List<Database.Error> errors {
 			get {
 				return this.errors ?? this.nativeResult?.errors;
 			}
 			protected set;
 		}
+		/**
+		 * @description The name of the match engine used for this result.
+		 */
 		global String matchEngine {
 			get {
 				return this.matchEngine ?? this.nativeResult?.matchEngine;
 			}
 			protected set;
 		}
+		/**
+		 * @description List of matching records found by this rule.
+		 */
 		global List<Duplicates.MatchRecord> matchRecords {
 			get {
 				return this.matchRecords ?? this.wrapMatchRecords();
 			}
 			protected set;
 		}
+		/**
+		 * @description The name of the duplicate rule that generated this match result.
+		 */
 		global String rule {
 			get {
 				return this.rule ?? this.nativeResult?.rule;
 			}
 			protected set;
 		}
+		/**
+		 * @description The number of matching records found.
+		 */
 		global Integer size {
 			get {
 				return this.size ?? this.nativeResult?.getSize();
 			}
 			protected set;
 		}
+		/**
+		 * @description Indicates whether the match operation was successful.
+		 */
 		global Boolean success {
 			get {
 				return this.success ?? this.nativeResult?.success;
@@ -441,8 +523,8 @@ global inherited sharing virtual class Duplicates {
 		}
 
 		/**
-		 * @description Constructor wrapping a native match result via JSON deserialization.
-		 * @param resultMap Deserialized JSON map of the native result
+		 * @description Constructor wrapping a native match result.
+		 * @param nativeResult The native Datacloud match result
 		 */
 		protected MatchResult(Datacloud.MatchResult nativeResult) {
 			this.nativeResult = nativeResult;
@@ -506,7 +588,6 @@ global inherited sharing virtual class Duplicates {
 
 		/**
 		 * @description Wraps native match record objects.
-		 * @param nativeMatchRecords The native record list
 		 * @return List of wrapped MatchRecord objects
 		 */
 		private List<Duplicates.MatchRecord> wrapMatchRecords() {
@@ -529,7 +610,7 @@ global inherited sharing virtual class Duplicates {
 
 		/**
 		 * @description Constructor for Request with input data.
-		 * @param input The input (either List<SObject> or Iterable<Id>)
+		 * @param records The list of SObject records to check for duplicates
 		 */
 		protected Request(List<SObject> records) {
 			this.records = records;

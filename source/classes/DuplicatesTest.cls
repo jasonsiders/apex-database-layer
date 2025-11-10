@@ -5,7 +5,6 @@
 @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveRunAs')
 @IsTest
 private class DuplicatesTest {
-	private static final Map<String, List<DuplicateRule>> ACTIVE_DUPLICATE_RULES;
 	private static final String TEST_COMPANY;
 	private static final String TEST_EMAIL;
 	private static final String TEST_FIRST_NAME;
@@ -13,29 +12,17 @@ private class DuplicatesTest {
 	private static final String TEST_PHONE;
 
 	static {
-		ACTIVE_DUPLICATE_RULES = new Map<String, List<DuplicateRule>>{};
 		TEST_COMPANY = 'Test Company';
 		TEST_EMAIL = 'test@example.com.invalid';
 		TEST_FIRST_NAME = 'John';
 		TEST_LAST_NAME = 'Doe';
 		TEST_PHONE = '+12345556789';
-		List<String> objectApiNames = new List<String>{ Account.SObjectType.toString(), Lead.SObjectType.toString() };
-		for (DuplicateRule rule : [
-			SELECT Id, SObjectType
-			FROM DuplicateRule
-			WHERE IsActive = TRUE AND SObjectType IN :objectApiNames
-		]) {
-			String objectApiName = rule?.SObjectType;
-			List<DuplicateRule> matchingRules = ACTIVE_DUPLICATE_RULES?.get(objectApiName) ?? new List<DuplicateRule>{};
-			matchingRules?.add(rule);
-			ACTIVE_DUPLICATE_RULES?.put(objectApiName, matchingRules);
-		}
 	}
 
 	@TestSetup
 	private static void setup() {
 		// Create test records which would (normally) trip standard duplicate rules:
-		Database.DmlOptions options = new Database.DmlOptions(); 
+		Database.DmlOptions options = new Database.DmlOptions();
 		options.DuplicateRuleHeader.allowSave = true;
 		Account account = new Account(Name = TEST_COMPANY, Phone = TEST_PHONE);
 		Database.insert(account, options);
@@ -73,90 +60,19 @@ private class DuplicatesTest {
 
 	@IsTest
 	private static void shouldCallFindDuplicatesById() {
-		Account acc = [SELECT Id FROM Account LIMIT 1];
+		Set<Id> accountIds = new Map<Id, Account>([SELECT Id FROM Account LIMIT 1])?.keySet();
 
 		Test.startTest();
-		List<Duplicates.FindDuplicatesResult> results = DatabaseLayer.Duplicates.findDuplicates(new List<Id>{ acc.Id });
+		List<Duplicates.FindDuplicatesResult> results = DatabaseLayer.Duplicates.findDuplicates(accountIds);
 		Test.stopTest();
 
-		Assert.isNotNull(results, 'Results should not be null');
-		Assert.areEqual(0, Limits.getDmlStatements(), 'Should not perform actual DML');
-	}
-
-	@IsTest
-	private static void shouldCallActualDatacloudApiWithRecords() {
-		List<DuplicateRule> accountRules = [
-			SELECT Id
-			FROM DuplicateRule
-			WHERE SobjectType = 'Account' AND IsActive = TRUE
-			LIMIT 1
-		];
-		Boolean hasActiveRules = accountRules?.isEmpty() == false;
-
-		Account acc = new Account(Name = TEST_COMPANY, Phone = TEST_PHONE);
-
-		Test.startTest();
-		List<Duplicates.FindDuplicatesResult> results = DatabaseLayer.Duplicates.findDuplicates(
-			new List<SObject>{ acc }
-		);
-		Test.stopTest();
-
-		Assert.isNotNull(results, 'Results should not be null');
-		if (hasActiveRules) {
-			Assert.areEqual(1, results.size(), 'Should return one result per input record');
-			Assert.isNotNull(results[0].getDuplicateResults(), 'Duplicate results initialized');
+		Assert.areEqual(accountIds?.size(), results?.size(), 'Wrong # of FindDuplicatesResults');
+		for (Duplicates.FindDuplicatesResult result : results) {
+			DuplicatesTest.assertOutputIsCorrect(result);
 		}
 	}
 
-	@IsTest
-	private static void shouldCallActualDatacloudApiById() {
-		List<DuplicateRule> leadRules = [
-			SELECT Id
-			FROM DuplicateRule
-			WHERE SobjectType = 'Lead' AND IsActive = TRUE
-			LIMIT 1
-		];
-		Boolean hasActiveRules = !leadRules.isEmpty();
-
-		Lead testLead = new Lead(LastName = 'Test', Company = 'Test', Email = 'test@example.com');
-		insert testLead;
-
-		Test.startTest();
-		List<Duplicates.FindDuplicatesResult> results = DatabaseLayer.Duplicates.findDuplicates(
-			new List<Id>{ testLead.Id }
-		);
-		Test.stopTest();
-
-		Assert.isNotNull(results, 'Results should not be null');
-		if (hasActiveRules) {
-			Assert.areEqual(1, results.size(), 'Should return one result per input ID');
-		}
-	}
-
-	@IsTest
-	private static void shouldCallActualDatacloudApiWithContact() {
-		List<DuplicateRule> contactRules = [
-			SELECT Id
-			FROM DuplicateRule
-			WHERE SobjectType = 'Contact' AND IsActive = TRUE
-			LIMIT 1
-		];
-		Boolean hasActiveRules = !contactRules.isEmpty();
-
-		Contact con = new Contact(LastName = 'Test', Email = 'test@example.com');
-
-		Test.startTest();
-		List<Duplicates.FindDuplicatesResult> results = DatabaseLayer.Duplicates.findDuplicates(
-			new List<SObject>{ con }
-		);
-		Test.stopTest();
-
-		Assert.isNotNull(results, 'Results should not be null');
-		if (hasActiveRules) {
-			Assert.areEqual(1, results.size(), 'Should return one result per input record');
-		}
-	}
-
+	// **** HELPER **** //
 	private static void assertOutputIsCorrect(Duplicates.FindDuplicatesResult findResult) {
 		Datacloud.FindDuplicatesResult nativeFindResult = findResult?.nativeResult;
 		Assert.isNotNull(nativeFindResult, 'Missing underlying Datacloud.FindDuplicateResult');
