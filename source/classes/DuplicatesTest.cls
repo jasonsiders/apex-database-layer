@@ -5,22 +5,76 @@
 @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveRunAs')
 @IsTest
 private class DuplicatesTest {
-	@IsTest
-	static void shouldAccessDuplicatesViaDatabaseLayer() {
-		Duplicates duplicates = DatabaseLayer.Duplicates;
+	private static final Map<String, List<DuplicateRule>> ACTIVE_DUPLICATE_RULES;
+	private static final String TEST_COMPANY = 'Test Company';
+	private static final String TEST_EMAIL = 'test@example.com.invalid';
+	private static final String TEST_FIRST_NAME = 'John';
+	private static final String TEST_LAST_NAME = 'Doe';
+	private static final String TEST_PHONE = '+12345556789';
 
-		Assert.isNotNull(duplicates, 'Duplicates instance should not be null');
+	static {
+		TEST_COMPANY = 'Test Company';
+		TEST_EMAIL = 'test@example.com.invalid';
+		TEST_FIRST_NAME = 'John';
+		TEST_LAST_NAME = 'Doe';
+		TEST_PHONE = '+12345556789';
+		ACTIVE_DUPLICATE_RULES = new Map<String, List<DuplicateRule>>{};
+		List<String> objectApiNames = new List<String>{ Account.SObjectType.toString(), Lead.SObjectType.toString() };
+		for (DuplicateRule rule : [
+			SELECT Id, SObjectType
+			FROM DuplicateRule
+			WHERE IsActive = TRUE AND SObjectType IN :objectApiNames
+		]) {
+			String objectApiName = rule?.SObjectType;
+			List<DuplicateRule> matchingRules = ACTIVE_DUPLICATE_RULES?.get(objectApiName) ?? new List<DuplicateRule>{};
+			matchingRules?.add(rule);
+			ACTIVE_DUPLICATE_RULES?.put(objectApiName, matchingRules);
+		}
+	}
+
+	@TestSetup
+	private static void setup() {
+		// Create test records:
+		Account account = new Account(Name = TEST_COMPANY, Phone = TEST_PHONE);
+		insert account;
+		Contact contact = new Contact(
+			AccountId = account?.Id,
+			Email = TEST_EMAIL,
+			FirstName = TEST_FIRST_NAME,
+			LastName = TEST_LAST_NAME,
+			Phone = TEST_PHONE
+		);
+		insert contact;
+		Lead lead = new Lead(
+			Company = TEST_COMPANY,
+			Email = TEST_EMAIL,
+			FirstName = TEST_FIRST_NAME,
+			LastName = TEST_LAST_NAME,
+			Phone = TEST_PHONE
+		);
+		insert lead;
 	}
 
 	@IsTest
-	static void shouldCallFindDuplicatesByRecords() {
-		DatabaseLayer.useMocks();
-		Account acc = (Account) new MockRecord(Account.SObjectType).withId().toSObject();
+	private static void shouldCallFindDuplicatesByRecords() {
+		List<Account> accounts = [SELECT Id FROM Account LIMIT 1];
 
 		Test.startTest();
-		List<Duplicates.FindDuplicatesResult> results = DatabaseLayer.Duplicates.findDuplicates(
-			new List<SObject>{ acc }
-		);
+		List<Duplicates.FindDuplicatesResult> results = DatabaseLayer.Duplicates.findDuplicates(accounts);
+		Test.stopTest();
+
+		Assert.areEqual(accounts?.size(), results?.size(), 'Wrong # of FindDuplicatesResults');
+		for (Duplicates.FindDuplicatesResult result : results) {
+			DuplicatesTest.assertOutputIsCorrect(result);
+		}
+	}
+
+	@IsTest
+	private static void shouldCallFindDuplicatesById() {
+		Account acc = [SELECT Id FROM Account LIMIT 1];
+
+		Test.startTest();
+		List<Duplicates.FindDuplicatesResult> results = DatabaseLayer.Duplicates.findDuplicates(new List<Id>{ acc.Id });
 		Test.stopTest();
 
 		Assert.isNotNull(results, 'Results should not be null');
@@ -28,32 +82,16 @@ private class DuplicatesTest {
 	}
 
 	@IsTest
-	static void shouldCallFindDuplicatesById() {
-		DatabaseLayer.useMocks();
-		Account mockAcc = (Account) new MockRecord(Account.SObjectType).withId().toSObject();
-		Id testId = mockAcc.Id;
-
-		Test.startTest();
-		List<Duplicates.FindDuplicatesResult> results = DatabaseLayer.Duplicates.findDuplicates(
-			new List<Id>{ testId }
-		);
-		Test.stopTest();
-
-		Assert.isNotNull(results, 'Results should not be null');
-		Assert.areEqual(0, Limits.getDmlStatements(), 'Should not perform actual DML');
-	}
-
-	@IsTest
-	static void shouldCallActualDatacloudApiWithRecords() {
+	private static void shouldCallActualDatacloudApiWithRecords() {
 		List<DuplicateRule> accountRules = [
 			SELECT Id
 			FROM DuplicateRule
-			WHERE SobjectType = 'Account' AND IsActive = true
+			WHERE SobjectType = 'Account' AND IsActive = TRUE
 			LIMIT 1
 		];
-		Boolean hasActiveRules = !accountRules.isEmpty();
+		Boolean hasActiveRules = accountRules?.isEmpty() == false;
 
-		Account acc = new Account(Name = 'Test Account', Phone = '555-1234');
+		Account acc = new Account(Name = TEST_COMPANY, Phone = TEST_PHONE);
 
 		Test.startTest();
 		List<Duplicates.FindDuplicatesResult> results = DatabaseLayer.Duplicates.findDuplicates(
@@ -69,11 +107,11 @@ private class DuplicatesTest {
 	}
 
 	@IsTest
-	static void shouldCallActualDatacloudApiById() {
+	private static void shouldCallActualDatacloudApiById() {
 		List<DuplicateRule> leadRules = [
 			SELECT Id
 			FROM DuplicateRule
-			WHERE SobjectType = 'Lead' AND IsActive = true
+			WHERE SobjectType = 'Lead' AND IsActive = TRUE
 			LIMIT 1
 		];
 		Boolean hasActiveRules = !leadRules.isEmpty();
@@ -94,11 +132,11 @@ private class DuplicatesTest {
 	}
 
 	@IsTest
-	static void shouldCallActualDatacloudApiWithContact() {
+	private static void shouldCallActualDatacloudApiWithContact() {
 		List<DuplicateRule> contactRules = [
 			SELECT Id
 			FROM DuplicateRule
-			WHERE SobjectType = 'Contact' AND IsActive = true
+			WHERE SobjectType = 'Contact' AND IsActive = TRUE
 			LIMIT 1
 		];
 		Boolean hasActiveRules = !contactRules.isEmpty();
@@ -114,6 +152,126 @@ private class DuplicatesTest {
 		Assert.isNotNull(results, 'Results should not be null');
 		if (hasActiveRules) {
 			Assert.areEqual(1, results.size(), 'Should return one result per input record');
+		}
+	}
+
+	private static void assertOutputIsCorrect(Duplicates.FindDuplicatesResult findResult) {
+		Datacloud.FindDuplicatesResult nativeFindResult = findResult?.nativeResult;
+		Assert.isNotNull(nativeFindResult, 'Missing underlying Datacloud.FindDuplicateResult');
+		Assert.areEqual(
+			nativeFindResult?.getErrors()?.size(),
+			findResult?.getErrors()?.size(),
+			'Wrong # of getErrors() values'
+		);
+		Assert.areEqual(nativeFindResult?.getSuccess(), findResult?.getSuccess(), 'Wrong getSuccess() value');
+		List<Duplicates.DuplicateResult> dupeResults = findResult?.getDuplicateResults();
+		Assert.areEqual(
+			nativeDupeResults?.size(),
+			nativeFindResult?.getDuplicateResults()?.size(),
+			'Wrong # of DuplicateResults'
+		);
+		for (Duplicates.DuplicateResult dupeResult : dupeResults) {
+			Datacloud.DuplicateResult nativeDupeResult = dupeResult?.nativeResult;
+			Assert.isNotNull(nativeDupeResult, 'Missing underlying Datacloud.DuplicateResult');
+			Assert.areEqual(
+				nativeDupeResult?.getDuplicateRule(),
+				dupeResult?.getDuplicateRule(),
+				'Wrong getDuplicateRule() value'
+			);
+			Assert.areEqual(
+				nativeDupeResult?.getDuplicateRuleEntityType(),
+				dupeResult?.getDuplicateRuleEntityType(),
+				'Wrong getDuplicateRuleEntityType() value'
+			);
+			Assert.areEqual(
+				nativeDupeResult?.getErrorMessage(),
+				dupeResult?.getErrorMessage(),
+				'Wrong getErrorMessage() value'
+			);
+			Assert.areEqual(nativeDupeResult?.isAllowSave(), dupeResult?.isAllowSave(), 'Wrong isAllowSave() value');
+			List<Duplicates.MatchResult> matchResults = dupeResult?.getMatchResults();
+			Assert.areEqual(
+				matchResults?.size(),
+				nativeDupeResult?.getMatchResults()?.size(),
+				'Wrong # of MatchResults'
+			);
+			for (Duplicates.MatchResult matchResult : matchResults) {
+				Datacloud.MatchResult nativeMatchResult = matchResult?.nativeResult;
+				Assert.isNotNull(nativeMatchResult, 'Missing underlying Datacloud.MatchResult');
+				Assert.areEqual(
+					nativeMatchResult?.getEntityType(),
+					matchResult?.getEntityType(),
+					'Wrong getEntityType() value'
+				);
+				Assert.areEqual(
+					nativeMatchResult?.getErrors()?.size(),
+					matchResult?.getErrors()?.size(),
+					'Wrong # of getErrors() values'
+				);
+				Assert.areEqual(
+					nativeMatchResult?.getMatchEngine(),
+					matchResult?.getMatchEngine(),
+					'Wrong getMatchEngine() value'
+				);
+				Assert.areEqual(nativeMatchResult?.getRule(), matchResult?.getRule(), 'Wrong getRule() value');
+				Assert.areEqual(nativeMatchResult?.getSize(), matchResult?.getSize(), 'Wrong getSize() value');
+				List<Duplicates.MatchRecord> matchRecords = matchResult?.getMatchRecords();
+				Assert.areEqual(
+					nativeMatchResult?.getMatchRecords()?.size(),
+					matchRecords?.size(),
+					'Wrong # of MatchRecords'
+				);
+				for (Duplicates.MatchRecord matchRecord : matchRecords) {
+					Datacloud.MatchRecord nativeMatchRecord = matchRecord?.nativeResult;
+					Assert.isNotNull(nativeMatchRecord, 'Missing underlying Datacloud.MatchRecord');
+					Assert.areEqual(
+						nativeMatchRecord?.getMatchConfidence(),
+						matchRecord?.getMatchConfidence(),
+						'Wrong getMatchConfidence() value'
+					);
+					Assert.areEqual(
+						nativeMatchRecord?.getRecord()?.Id,
+						matchRecord?.getRecord()?.Id,
+						'Wrong getRecord() value'
+					);
+					List<Duplicates.AdditionalInformationMap> additionalInfos = matchRecord?.getAdditionalInformation();
+					Assert.areEqual(
+						nativeMatchRecord?.getAdditionalInformation()?.size(),
+						additionalInfos?.size(),
+						'Wrong # of AdditionalInformationMaps'
+					);
+					for (Duplicates.AdditionalInformationMap additionalInfo : additionalInfos) {
+						Datacloud.AdditionalInformationMap nativeAdditionalInfo = additionalInfo?.nativeResult;
+						Assert.isNotNull(nativeAdditionalInfo, 'Missing underlying Datacloud.AdditionalInformationMap');
+						Assert.areEqual(
+							nativeAdditionalInfo?.getName(),
+							additionalInfo?.getName(),
+							'Wrong getName() value'
+						);
+						Assert.areEqual(
+							nativeAdditionalInfo?.getValue(),
+							additionalInfo?.getValue(),
+							'Wrong getValue() value'
+						);
+					}
+					List<Duplicates.FieldDiff> fieldDiffs = matchRecord?.getFieldDiffs();
+					Assert.areEqual(
+						nativeMatchRecord?.getFieldDiffs()?.size(),
+						fieldDiffs?.size(),
+						'Wrong # of FieldDiffs'
+					);
+					for (Duplicates.FieldDiff fieldDiff : fieldDiffs) {
+						Datacloud.FieldDiff nativeFieldDiff = fieldDiff?.nativeResult;
+						Assert.isNotNull(nativeFieldDiff, 'Missing underlying Datacloud.FieldDiff');
+						Assert.areEqual(
+							nativeFieldDiff?.getDifference(),
+							fieldDiff?.getDifference(),
+							'Wrong getDifference() value'
+						);
+						Assert.areEqual(nativeFieldDiff?.getName(), fieldDiff?.getName(), 'Wrong getName() value');
+					}
+				}
+			}
 		}
 	}
 }

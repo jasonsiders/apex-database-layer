@@ -43,13 +43,14 @@ global inherited sharing virtual class Duplicates {
 
 	// **** INNER **** //
 	global virtual class AdditionalInformationMap {
+		@TestVisible
 		private transient Datacloud.AdditionalInformationMap nativeResult;
-		global String name { 
+		global String name {
 			get {
 				return this.name ?? this.nativeResult?.name;
 			}
 			protected set;
-		} 
+		}
 		global String value {
 			get {
 				return this.value ?? this.nativeResult?.value;
@@ -62,11 +63,11 @@ global inherited sharing virtual class Duplicates {
 		}
 
 		global String getName() {
-			return this.name; 
+			return this.name;
 		}
 
 		global String getValue() {
-			return this.value; 
+			return this.value;
 		}
 	}
 
@@ -74,6 +75,7 @@ global inherited sharing virtual class Duplicates {
 	 * @description Wrapper for duplicate detection result for a specific record.
 	 */
 	global virtual class DuplicateResult {
+		@TestVisible
 		private transient Datacloud.DuplicateResult nativeResult;
 		global Boolean allowSave {
 			get {
@@ -115,14 +117,6 @@ global inherited sharing virtual class Duplicates {
 		}
 
 		/**
-		 * @description Returns whether the duplicate detection allows saving the record.
-		 * @return Boolean indicating if save is allowed
-		 */
-		global Boolean getAllowSave() {
-			return this.allowSave;
-		}
-
-		/**
 		 * @description Returns the name of the duplicate rule that was evaluated.
 		 * @return Duplicate rule name
 		 */
@@ -155,13 +149,22 @@ global inherited sharing virtual class Duplicates {
 		}
 
 		/**
+		 * @description Returns whether the duplicate detection allows saving the record.
+		 * @return Boolean indicating if save is allowed
+		 */
+		global Boolean isAllowSave() {
+			return this.allowSave;
+		}
+
+		/**
 		 * @description Wraps native match result objects.
 		 * @param nativeMatchResults The native result list
 		 * @return List of wrapped MatchResult objects
 		 */
 		private List<Duplicates.MatchResult> wrapMatchResults() {
 			List<Duplicates.MatchResult> wrappedResults = new List<Duplicates.MatchResult>{};
-			List<Datacloud.MatchResult> nativeResults = this.nativeResult?.matchResults ?? new List<Datacloud.MatchResult>{};
+			List<Datacloud.MatchResult> nativeResults = this.nativeResult?.matchResults ??
+				new List<Datacloud.MatchResult>{};
 			for (Datacloud.MatchResult nativeResult : nativeResults) {
 				Duplicates.MatchResult wrappedResult = new Duplicates.MatchResult(nativeResult);
 				wrappedResults?.add(wrappedResult);
@@ -174,6 +177,7 @@ global inherited sharing virtual class Duplicates {
 	 * @description Wrapper for field difference information.
 	 */
 	global virtual class FieldDiff {
+		@TestVisible
 		private transient Datacloud.FieldDiff nativeResult;
 		global Object difference {
 			get {
@@ -217,6 +221,7 @@ global inherited sharing virtual class Duplicates {
 	 * @description Mockable wrapper for duplicate detection results.
 	 */
 	global virtual class FindDuplicatesResult {
+		@TestVisible
 		private transient Datacloud.FindDuplicatesResult nativeResult;
 		global List<Duplicates.DuplicateResult> duplicateResults {
 			get {
@@ -226,7 +231,7 @@ global inherited sharing virtual class Duplicates {
 		}
 		global List<Database.Error> errors {
 			get {
-				return this.errors ?? this.nativeResult?.errors; 
+				return this.errors ?? this.nativeResult?.errors;
 			}
 			protected set;
 		}
@@ -276,7 +281,8 @@ global inherited sharing virtual class Duplicates {
 		 */
 		private List<Duplicates.DuplicateResult> wrapDuplicateResults() {
 			List<Duplicates.DuplicateResult> wrappedResults = new List<Duplicates.DuplicateResult>{};
-			List<Datacloud.DuplicateResult> nativeResults = this.nativeResult?.getDuplicateResults() ?? new List<Datacloud.DuplicateResult>{};
+			List<Datacloud.DuplicateResult> nativeResults = this.nativeResult?.getDuplicateResults() ??
+				new List<Datacloud.DuplicateResult>{};
 			for (Datacloud.DuplicateResult nativeResult : nativeResults) {
 				Duplicates.DuplicateResult wrappedResult = new Duplicates.DuplicateResult(nativeResult);
 				wrappedResults.add(wrappedResult);
@@ -289,6 +295,7 @@ global inherited sharing virtual class Duplicates {
 	 * @description Wrapper for a specific matched record and its field differences.
 	 */
 	global virtual class MatchRecord {
+		@TestVisible
 		private transient Datacloud.MatchRecord nativeResult;
 		global List<Duplicates.AdditionalInformationMap> additionalInformation {
 			get {
@@ -311,7 +318,7 @@ global inherited sharing virtual class Duplicates {
 		global SObject record {
 			get {
 				return this.record ?? this.nativeResult?.record;
-			} 
+			}
 			protected set;
 		}
 
@@ -327,7 +334,7 @@ global inherited sharing virtual class Duplicates {
 		 * @description Returns additional information about the match.
 		 * @return List of additional information objects
 		 */
-		global List<Object> getAdditionalInformation() {
+		global List<Duplicates.AdditionalInformationMap> getAdditionalInformation() {
 			return this.additionalInformation;
 		}
 
@@ -357,9 +364,12 @@ global inherited sharing virtual class Duplicates {
 
 		private List<Duplicates.AdditionalInformationMap> wrapAdditionalInformation() {
 			List<Duplicates.AdditionalInformationMap> wrappedResults = new List<Duplicates.AdditionalInformationMap>{};
-			List<Datacloud.AdditionalInformationMap> nativeResults = this.nativeResult?.additionalinformation ?? new List<Datacloud.AdditionalInformationMap>{};
+			List<Datacloud.AdditionalInformationMap> nativeResults = this.nativeResult?.additionalinformation ??
+				new List<Datacloud.AdditionalInformationMap>{};
 			for (Datacloud.AdditionalInformationMap nativeResult : nativeResults) {
-				Duplicates.AdditionalInformationMap wrappedResult = new Duplicates.AdditionalInformationMap(nativeResult); 
+				Duplicates.AdditionalInformationMap wrappedResult = new Duplicates.AdditionalInformationMap(
+					nativeResult
+				);
 				wrappedResults?.add(wrappedResult);
 			}
 			return wrappedResults;
@@ -385,11 +395,12 @@ global inherited sharing virtual class Duplicates {
 	 * @description Wrapper for match results from a specific duplicate rule.
 	 */
 	global virtual class MatchResult {
+		@TestVisible
 		private transient Datacloud.MatchResult nativeResult;
 		global String entityType {
 			get {
 				return this.entityType ?? this.nativeResult?.entityType;
-			} 
+			}
 			protected set;
 		}
 		global List<Database.Error> errors {
@@ -414,7 +425,7 @@ global inherited sharing virtual class Duplicates {
 			get {
 				return this.rule ?? this.nativeResult?.rule;
 			}
-			protected set; 
+			protected set;
 		}
 		global Integer size {
 			get {
@@ -500,7 +511,8 @@ global inherited sharing virtual class Duplicates {
 		 */
 		private List<Duplicates.MatchRecord> wrapMatchRecords() {
 			List<Duplicates.MatchRecord> wrappedRecords = new List<Duplicates.MatchRecord>{};
-			List<Datacloud.MatchRecord> nativeResults = this.nativeResult?.matchRecords ?? new List<Datacloud.MatchRecord>{};
+			List<Datacloud.MatchRecord> nativeResults = this.nativeResult?.matchRecords ??
+				new List<Datacloud.MatchRecord>{};
 			for (Datacloud.MatchRecord nativeResult : nativeResults) {
 				Duplicates.MatchRecord wrappedRecord = new Duplicates.MatchRecord(nativeResult);
 				wrappedRecords?.add(wrappedRecord);
