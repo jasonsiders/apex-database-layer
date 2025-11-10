@@ -5,76 +5,98 @@
 @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveRunAs')
 @IsTest
 private class DuplicatesTest {
-	private static final String TEST_COMPANY;
-	private static final String TEST_EMAIL;
-	private static final String TEST_FIRST_NAME;
-	private static final String TEST_LAST_NAME;
-	private static final String TEST_PHONE;
+	private static final String TEST_ACCOUNT_NAME;
+	private static final String TEST_CITY;
+	private static final String TEST_STREET;
+	private static final String TEST_ZIP;
+	private static List<Account> testAccounts {
+		get {
+			testAccounts = testAccounts ?? [SELECT Id FROM Account LIMIT 3];
+			return testAccounts;
+		}
+		private set;
+	}
 
 	static {
-		TEST_COMPANY = 'Test Company';
-		TEST_EMAIL = 'test@example.com.invalid';
-		TEST_FIRST_NAME = 'John';
-		TEST_LAST_NAME = 'Doe';
-		TEST_PHONE = '+12345556789';
+		TEST_ACCOUNT_NAME = 'Doe Enterprises, LLC';
+		TEST_CITY = 'Walla Walla';
+		TEST_STREET = '1234 Main St.';
+		TEST_ZIP = '98765';
 	}
 
 	@TestSetup
 	private static void setup() {
 		// Create test records which would (normally) trip standard duplicate rules:
+		Account account = new Account(
+			BillingCity = TEST_CITY,
+			BillingPostalCode = TEST_ZIP,
+			BillingStreet = TEST_STREET,
+			Name = TEST_ACCOUNT_NAME,
+			ShippingCity = TEST_CITY,
+			ShippingPostalCode = TEST_ZIP,
+			ShippingStreet = TEST_STREET
+		);
+		Account duplicate = account?.clone();
+		// Bypass the duplicate rules on insert:
 		Database.DmlOptions options = new Database.DmlOptions();
 		options.DuplicateRuleHeader.allowSave = true;
-		Account account = new Account(Name = TEST_COMPANY, Phone = TEST_PHONE);
-		Database.insert(account, options);
-		Contact contact = new Contact(
-			AccountId = account?.Id,
-			Email = TEST_EMAIL,
-			FirstName = TEST_FIRST_NAME,
-			LastName = TEST_LAST_NAME,
-			Phone = TEST_PHONE
-		);
-		Database.insert(contact, options);
-		Lead lead = new Lead(
-			Company = TEST_COMPANY,
-			Email = TEST_EMAIL,
-			FirstName = TEST_FIRST_NAME,
-			LastName = TEST_LAST_NAME,
-			Phone = TEST_PHONE
-		);
-		Database.insert(lead, options);
+		Database.insert(new List<Account>{ account, duplicate }, options);
 	}
 
 	@IsTest
-	private static void shouldCallFindDuplicatesByRecords() {
-		List<Account> accounts = [SELECT Id FROM Account LIMIT 1];
-
+	private static void shouldFindDuplicatesForMultipleRecords() {
 		Test.startTest();
-		List<Duplicates.FindDuplicatesResult> results = DatabaseLayer.Duplicates.findDuplicates(accounts);
+		List<Duplicates.FindDuplicatesResult> results = DatabaseLayer.Duplicates.findDuplicates(testAccounts);
 		Test.stopTest();
 
-		Assert.areEqual(accounts?.size(), results?.size(), 'Wrong # of FindDuplicatesResults');
+		Assert.areEqual(testAccounts?.size(), results?.size(), 'Wrong # of FindDuplicatesResults');
 		for (Duplicates.FindDuplicatesResult result : results) {
 			DuplicatesTest.assertOutputIsCorrect(result);
 		}
 	}
 
 	@IsTest
-	private static void shouldCallFindDuplicatesById() {
-		Set<Id> accountIds = new Map<Id, Account>([SELECT Id FROM Account LIMIT 1])?.keySet();
+	private static void shouldFindDuplicatesForMultipleIds() {
+		Set<Id> testAccountIds = new Map<Id, Account>(testAccounts)?.keySet();
 
 		Test.startTest();
-		List<Duplicates.FindDuplicatesResult> results = DatabaseLayer.Duplicates.findDuplicates(accountIds);
+		List<Duplicates.FindDuplicatesResult> results = DatabaseLayer.Duplicates.findDuplicates(testAccountIds);
 		Test.stopTest();
 
-		Assert.areEqual(accountIds?.size(), results?.size(), 'Wrong # of FindDuplicatesResults');
+		Assert.areEqual(testAccountIds?.size(), results?.size(), 'Wrong # of FindDuplicatesResults');
 		for (Duplicates.FindDuplicatesResult result : results) {
 			DuplicatesTest.assertOutputIsCorrect(result);
 		}
+	}
+
+	@IsTest
+	private static void shouldFindDuplicatesForSingleRecord() {
+		Account testAccount = testAccounts?.get(0);
+
+		Test.startTest();
+		Duplicates.FindDuplicatesResult result = DatabaseLayer.Duplicates.findDuplicates(testAccount);
+		Test.stopTest();
+
+		Assert.isNotNull(result, 'Did not return a FindDuplicatesResult');
+		DuplicatesTest.assertOutputIsCorrect(result);
+	}
+
+	@IsTest
+	private static void shouldFindDuplicatesForSingleId() {
+		Id testAccountId = testAccounts?.get(0)?.Id;
+
+		Test.startTest();
+		Duplicates.FindDuplicatesResult result = DatabaseLayer.Duplicates.findDuplicates(testAccountId);
+		Test.stopTest();
+
+		Assert.isNotNull(result, 'Did not return a FindDuplicatesResult');
+		DuplicatesTest.assertOutputIsCorrect(result);
 	}
 
 	// **** HELPER **** //
+	@SuppressWarnings('PMD.NcssMethodCount')
 	private static void assertOutputIsCorrect(Duplicates.FindDuplicatesResult findResult) {
-		Datacloud.FindDuplicatesResult nativeFindResult = findResult?.nativeResult;
+		Datacloud.FindDuplicatesResult nativeFindResult = findResult?.toDatacloudType();
 		Assert.isNotNull(nativeFindResult, 'Missing underlying Datacloud.FindDuplicateResult');
 		Assert.areEqual(
 			nativeFindResult?.getErrors()?.size(),
@@ -89,7 +111,7 @@ private class DuplicatesTest {
 			'Wrong # of DuplicateResults'
 		);
 		for (Duplicates.DuplicateResult dupeResult : dupeResults) {
-			Datacloud.DuplicateResult nativeDupeResult = dupeResult?.nativeResult;
+			Datacloud.DuplicateResult nativeDupeResult = dupeResult?.toDatacloudType();
 			Assert.isNotNull(nativeDupeResult, 'Missing underlying Datacloud.DuplicateResult');
 			Assert.areEqual(
 				nativeDupeResult?.getDuplicateRule(),
@@ -114,7 +136,7 @@ private class DuplicatesTest {
 				'Wrong # of MatchResults'
 			);
 			for (Duplicates.MatchResult matchResult : matchResults) {
-				Datacloud.MatchResult nativeMatchResult = matchResult?.nativeResult;
+				Datacloud.MatchResult nativeMatchResult = matchResult?.toDatacloudType();
 				Assert.isNotNull(nativeMatchResult, 'Missing underlying Datacloud.MatchResult');
 				Assert.areEqual(
 					nativeMatchResult?.getEntityType(),
@@ -133,6 +155,7 @@ private class DuplicatesTest {
 				);
 				Assert.areEqual(nativeMatchResult?.getRule(), matchResult?.getRule(), 'Wrong getRule() value');
 				Assert.areEqual(nativeMatchResult?.getSize(), matchResult?.getSize(), 'Wrong getSize() value');
+				Assert.areEqual(nativeMatchResult?.isSuccess(), matchResult?.isSuccess(), 'Wrong isSuccess() value');
 				List<Duplicates.MatchRecord> matchRecords = matchResult?.getMatchRecords();
 				Assert.areEqual(
 					nativeMatchResult?.getMatchRecords()?.size(),
@@ -140,7 +163,7 @@ private class DuplicatesTest {
 					'Wrong # of MatchRecords'
 				);
 				for (Duplicates.MatchRecord matchRecord : matchRecords) {
-					Datacloud.MatchRecord nativeMatchRecord = matchRecord?.nativeResult;
+					Datacloud.MatchRecord nativeMatchRecord = matchRecord?.toDatacloudType();
 					Assert.isNotNull(nativeMatchRecord, 'Missing underlying Datacloud.MatchRecord');
 					Assert.areEqual(
 						nativeMatchRecord?.getMatchConfidence(),
@@ -159,7 +182,7 @@ private class DuplicatesTest {
 						'Wrong # of AdditionalInformationMaps'
 					);
 					for (Duplicates.AdditionalInformationMap additionalInfo : additionalInfos) {
-						Datacloud.AdditionalInformationMap nativeAdditionalInfo = additionalInfo?.nativeResult;
+						Datacloud.AdditionalInformationMap nativeAdditionalInfo = additionalInfo?.toDatacloudType();
 						Assert.isNotNull(nativeAdditionalInfo, 'Missing underlying Datacloud.AdditionalInformationMap');
 						Assert.areEqual(
 							nativeAdditionalInfo?.getName(),
@@ -179,7 +202,7 @@ private class DuplicatesTest {
 						'Wrong # of FieldDiffs'
 					);
 					for (Duplicates.FieldDiff fieldDiff : fieldDiffs) {
-						Datacloud.FieldDiff nativeFieldDiff = fieldDiff?.nativeResult;
+						Datacloud.FieldDiff nativeFieldDiff = fieldDiff?.toDatacloudType();
 						Assert.isNotNull(nativeFieldDiff, 'Missing underlying Datacloud.FieldDiff');
 						Assert.areEqual(
 							nativeFieldDiff?.getDifference(),
