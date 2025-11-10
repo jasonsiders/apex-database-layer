@@ -237,6 +237,10 @@ global inherited sharing virtual class Duplicates {
 	global virtual class DuplicateResult {
 		protected SObject record;
 		protected List<Duplicates.MatchResult> matchResults;
+		protected Boolean allowSave;
+		protected String duplicateRule;
+		protected String duplicateRuleEntityType;
+		protected String errorMessage;
 
 		/**
 		 * @description Constructor wrapping a native duplicate result via JSON deserialization.
@@ -249,9 +253,17 @@ global inherited sharing virtual class Duplicates {
 					this.record = (SObject) JSON.deserialize(JSON.serialize(sObjectData), SObject.class);
 				}
 				this.matchResults = this.wrapMatchResults((List<Object>) resultMap.get('matchResults'));
+				this.allowSave = (Boolean) resultMap.get('allowSave');
+				this.duplicateRule = (String) resultMap.get('duplicateRule');
+				this.duplicateRuleEntityType = (String) resultMap.get('duplicateRuleEntityType');
+				this.errorMessage = (String) resultMap.get('errorMessage');
 			} else {
 				this.record = null;
 				this.matchResults = new List<Duplicates.MatchResult>();
+				this.allowSave = null;
+				this.duplicateRule = null;
+				this.duplicateRuleEntityType = null;
+				this.errorMessage = null;
 			}
 		}
 
@@ -269,6 +281,38 @@ global inherited sharing virtual class Duplicates {
 		 */
 		global List<Duplicates.MatchResult> getMatchResults() {
 			return this.matchResults;
+		}
+
+		/**
+		 * @description Returns whether the duplicate detection allows saving the record.
+		 * @return Boolean indicating if save is allowed
+		 */
+		global Boolean getAllowSave() {
+			return this.allowSave;
+		}
+
+		/**
+		 * @description Returns the name of the duplicate rule that was evaluated.
+		 * @return Duplicate rule name
+		 */
+		global String getDuplicateRule() {
+			return this.duplicateRule;
+		}
+
+		/**
+		 * @description Returns the entity type of the duplicate rule.
+		 * @return Duplicate rule entity type
+		 */
+		global String getDuplicateRuleEntityType() {
+			return this.duplicateRuleEntityType;
+		}
+
+		/**
+		 * @description Returns any error message from the duplicate detection.
+		 * @return Error message string
+		 */
+		global String getErrorMessage() {
+			return this.errorMessage;
 		}
 
 		/**
@@ -294,6 +338,10 @@ global inherited sharing virtual class Duplicates {
 		protected String rule;
 		protected Integer size;
 		protected List<Duplicates.MatchRecord> matchRecords;
+		protected String entityType;
+		protected String matchEngine;
+		protected Boolean success;
+		protected List<Duplicates.Error> errors;
 
 		/**
 		 * @description Constructor wrapping a native match result via JSON deserialization.
@@ -304,10 +352,18 @@ global inherited sharing virtual class Duplicates {
 				this.rule = (String) resultMap.get('rule');
 				this.size = (Integer) resultMap.get('size');
 				this.matchRecords = this.wrapMatchRecords((List<Object>) resultMap.get('matchRecords'));
+				this.entityType = (String) resultMap.get('entityType');
+				this.matchEngine = (String) resultMap.get('matchEngine');
+				this.success = (Boolean) resultMap.get('success');
+				this.errors = this.wrapErrors((List<Object>) resultMap.get('errors'));
 			} else {
 				this.rule = null;
 				this.size = 0;
 				this.matchRecords = new List<Duplicates.MatchRecord>();
+				this.entityType = null;
+				this.matchEngine = null;
+				this.success = null;
+				this.errors = new List<Duplicates.Error>();
 			}
 		}
 
@@ -336,6 +392,53 @@ global inherited sharing virtual class Duplicates {
 		}
 
 		/**
+		 * @description Returns the entity type for this match result.
+		 * @return Entity type string
+		 */
+		global String getEntityType() {
+			return this.entityType;
+		}
+
+		/**
+		 * @description Returns the match engine used for this result.
+		 * @return Match engine name
+		 */
+		global String getMatchEngine() {
+			return this.matchEngine;
+		}
+
+		/**
+		 * @description Returns whether the match operation was successful.
+		 * @return Boolean indicating success
+		 */
+		global Boolean getSuccess() {
+			return this.success;
+		}
+
+		/**
+		 * @description Returns any errors that occurred during matching.
+		 * @return List of Error wrappers
+		 */
+		global List<Duplicates.Error> getErrors() {
+			return this.errors;
+		}
+
+		/**
+		 * @description Wraps native error objects.
+		 * @param nativeErrors The native error list
+		 * @return List of wrapped Error objects
+		 */
+		protected List<Duplicates.Error> wrapErrors(List<Object> nativeErrors) {
+			List<Duplicates.Error> wrappedErrors = new List<Duplicates.Error>();
+			if (nativeErrors != null) {
+				for (Object nativeError : nativeErrors) {
+					wrappedErrors.add(new Duplicates.Error((Map<String, Object>) nativeError));
+				}
+			}
+			return wrappedErrors;
+		}
+
+		/**
 		 * @description Wraps native match record objects.
 		 * @param nativeMatchRecords The native record list
 		 * @return List of wrapped MatchRecord objects
@@ -357,6 +460,8 @@ global inherited sharing virtual class Duplicates {
 	global virtual class MatchRecord {
 		protected SObject record;
 		protected List<Duplicates.FieldDiff> fieldDiffs;
+		protected Decimal matchConfidence;
+		protected List<Object> additionalInformation;
 
 		/**
 		 * @description Constructor wrapping a native match record via JSON deserialization.
@@ -364,14 +469,18 @@ global inherited sharing virtual class Duplicates {
 		 */
 		protected MatchRecord(Map<String, Object> recordMap) {
 			if (recordMap != null) {
-				Object sObjectData = recordMap.get('sObject');
-				if (sObjectData != null) {
-					this.record = (SObject) JSON.deserialize(JSON.serialize(sObjectData), SObject.class);
+				Object recordData = recordMap.get('record');
+				if (recordData != null) {
+					this.record = (SObject) JSON.deserialize(JSON.serialize(recordData), SObject.class);
 				}
 				this.fieldDiffs = this.wrapFieldDiffs((List<Object>) recordMap.get('fieldDiffs'));
+				this.matchConfidence = (Decimal) recordMap.get('matchConfidence');
+				this.additionalInformation = (List<Object>) recordMap.get('additionalInformation');
 			} else {
 				this.record = null;
 				this.fieldDiffs = new List<Duplicates.FieldDiff>();
+				this.matchConfidence = null;
+				this.additionalInformation = null;
 			}
 		}
 
@@ -389,6 +498,22 @@ global inherited sharing virtual class Duplicates {
 		 */
 		global List<Duplicates.FieldDiff> getFieldDiffs() {
 			return this.fieldDiffs;
+		}
+
+		/**
+		 * @description Returns the match confidence score.
+		 * @return Match confidence as Decimal
+		 */
+		global Decimal getMatchConfidence() {
+			return this.matchConfidence;
+		}
+
+		/**
+		 * @description Returns additional information about the match.
+		 * @return List of additional information objects
+		 */
+		global List<Object> getAdditionalInformation() {
+			return this.additionalInformation;
 		}
 
 		/**
@@ -420,8 +545,8 @@ global inherited sharing virtual class Duplicates {
 		 */
 		protected FieldDiff(Map<String, Object> diffMap) {
 			if (diffMap != null) {
-				this.fieldName = (String) diffMap.get('fieldName');
-				this.compareValue = diffMap.get('compareValue');
+				this.fieldName = (String) diffMap.get('name');
+				this.compareValue = diffMap.get('difference');
 			} else {
 				this.fieldName = null;
 				this.compareValue = null;
