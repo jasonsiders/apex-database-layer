@@ -270,7 +270,7 @@ global inherited sharing virtual class Duplicates {
 		 * @description Returns whether the operation was successful.
 		 * @return Boolean indicating success
 		 */
-		global Boolean getSuccess() {
+		global Boolean isSuccess() {
 			return this.success;
 		}
 
@@ -500,7 +500,7 @@ global inherited sharing virtual class Duplicates {
 		 * @description Returns whether the match operation was successful.
 		 * @return Boolean indicating success
 		 */
-		global Boolean getSuccess() {
+		global Boolean isSuccess() {
 			return this.success;
 		}
 

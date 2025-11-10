@@ -6,19 +6,19 @@
 @IsTest
 private class DuplicatesTest {
 	private static final Map<String, List<DuplicateRule>> ACTIVE_DUPLICATE_RULES;
-	private static final String TEST_COMPANY = 'Test Company';
-	private static final String TEST_EMAIL = 'test@example.com.invalid';
-	private static final String TEST_FIRST_NAME = 'John';
-	private static final String TEST_LAST_NAME = 'Doe';
-	private static final String TEST_PHONE = '+12345556789';
+	private static final String TEST_COMPANY;
+	private static final String TEST_EMAIL;
+	private static final String TEST_FIRST_NAME;
+	private static final String TEST_LAST_NAME;
+	private static final String TEST_PHONE;
 
 	static {
+		ACTIVE_DUPLICATE_RULES = new Map<String, List<DuplicateRule>>{};
 		TEST_COMPANY = 'Test Company';
 		TEST_EMAIL = 'test@example.com.invalid';
 		TEST_FIRST_NAME = 'John';
 		TEST_LAST_NAME = 'Doe';
 		TEST_PHONE = '+12345556789';
-		ACTIVE_DUPLICATE_RULES = new Map<String, List<DuplicateRule>>{};
 		List<String> objectApiNames = new List<String>{ Account.SObjectType.toString(), Lead.SObjectType.toString() };
 		for (DuplicateRule rule : [
 			SELECT Id, SObjectType
@@ -34,9 +34,11 @@ private class DuplicatesTest {
 
 	@TestSetup
 	private static void setup() {
-		// Create test records:
+		// Create test records which would (normally) trip standard duplicate rules:
+		Database.DmlOptions options = new Database.DmlOptions(); 
+		options.DuplicateRuleHeader.allowSave = true;
 		Account account = new Account(Name = TEST_COMPANY, Phone = TEST_PHONE);
-		insert account;
+		Database.insert(account, options);
 		Contact contact = new Contact(
 			AccountId = account?.Id,
 			Email = TEST_EMAIL,
@@ -44,7 +46,7 @@ private class DuplicatesTest {
 			LastName = TEST_LAST_NAME,
 			Phone = TEST_PHONE
 		);
-		insert contact;
+		Database.insert(contact, options);
 		Lead lead = new Lead(
 			Company = TEST_COMPANY,
 			Email = TEST_EMAIL,
@@ -52,7 +54,7 @@ private class DuplicatesTest {
 			LastName = TEST_LAST_NAME,
 			Phone = TEST_PHONE
 		);
-		insert lead;
+		Database.insert(lead, options);
 	}
 
 	@IsTest
@@ -163,11 +165,11 @@ private class DuplicatesTest {
 			findResult?.getErrors()?.size(),
 			'Wrong # of getErrors() values'
 		);
-		Assert.areEqual(nativeFindResult?.getSuccess(), findResult?.getSuccess(), 'Wrong getSuccess() value');
+		Assert.areEqual(nativeFindResult?.isSuccess(), findResult?.isSuccess(), 'Wrong isSuccess() value');
 		List<Duplicates.DuplicateResult> dupeResults = findResult?.getDuplicateResults();
 		Assert.areEqual(
-			nativeDupeResults?.size(),
 			nativeFindResult?.getDuplicateResults()?.size(),
+			dupeResults?.size(),
 			'Wrong # of DuplicateResults'
 		);
 		for (Duplicates.DuplicateResult dupeResult : dupeResults) {
