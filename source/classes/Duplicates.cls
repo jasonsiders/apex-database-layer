@@ -19,7 +19,7 @@ global inherited sharing virtual class Duplicates {
 	 * @return List of FindDuplicatesResult wrapping Datacloud results
 	 */
 	global List<Duplicates.FindDuplicatesResult> findDuplicates(List<SObject> records) {
-		return this.initRequest(records)?.execute();
+		return this.initRequest(records)?.process();
 	}
 
 	/**
@@ -29,7 +29,7 @@ global inherited sharing virtual class Duplicates {
 	 */
 	global List<Duplicates.FindDuplicatesResult> findDuplicates(Iterable<Id> recordIds) {
 		List<SObject> records = DatabaseLayer.Utils.SObjects.newSObjects(recordIds);
-		return this.initRequest(records)?.execute();
+		return this.initRequest(records)?.process();
 	}
 
 	/**
@@ -343,10 +343,8 @@ global inherited sharing virtual class Duplicates {
 		 */
 		global Boolean success {
 			get {
-				this.success = this.success ?? this.nativeResult?.success;
-				return this.success;
+				return this.nativeResult?.success ?? this.errors?.isEmpty() != false;
 			}
-			protected set;
 		}
 
 		/**
@@ -605,20 +603,16 @@ global inherited sharing virtual class Duplicates {
 		 */
 		global Integer size {
 			get {
-				this.size = this.size ?? this.nativeResult?.getSize();
-				return this.size;
+				return this.nativeResult?.getSize() ?? this.matchRecords?.size() ?? 0;
 			}
-			protected set;
 		}
 		/**
 		 * @description Indicates whether the match operation was successful.
 		 */
 		global Boolean success {
 			get {
-				this.success = this.success ?? this.nativeResult?.success;
-				return this.success;
+				return this.nativeResult?.success ?? this.errors?.isEmpty() != false;
 			}
-			protected set;
 		}
 
 		/**
@@ -732,7 +726,7 @@ global inherited sharing virtual class Duplicates {
 		 * @description Executes the duplicate detection request against native Datacloud APIs.
 		 * @return List of FindDuplicatesResult wrapping native Datacloud results
 		 */
-		protected virtual List<Duplicates.FindDuplicatesResult> execute() {
+		protected virtual List<Duplicates.FindDuplicatesResult> process() {
 			List<Datacloud.FindDuplicatesResult> nativeResults = Datacloud.FindDuplicates.findDuplicates(this.records);
 			List<Duplicates.FindDuplicatesResult> wrappedResults = this.wrap(nativeResults);
 			return wrappedResults;
