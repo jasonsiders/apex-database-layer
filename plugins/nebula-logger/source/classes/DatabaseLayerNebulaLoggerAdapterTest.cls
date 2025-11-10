@@ -12,7 +12,7 @@ private class DatabaseLayerNebulaLoggerAdapterTest {
 	}
 
 	@IsTest
-	static void shouldLogDmlSaveOperations() {
+	private static void shouldLogDmlSaveOperations() {
 		Test.startTest();
 		DatabaseLayer.Dml.doUpdate(MOCK_RECORD);
 		Test.stopTest();
@@ -23,7 +23,7 @@ private class DatabaseLayerNebulaLoggerAdapterTest {
 	}
 
 	@IsTest
-	static void shouldLogDmlConvertOperations() {
+	private static void shouldLogDmlConvertOperations() {
 		// Mostly for coverage -- necessary since Nebula Logger doesn't support using generic Objects for its `setDatabaseResult` method
 		Database.LeadConvert leadToConvert = new Database.LeadConvert();
 		leadToConvert.setConvertedStatus('Some Status');
@@ -39,7 +39,7 @@ private class DatabaseLayerNebulaLoggerAdapterTest {
 	}
 
 	@IsTest
-	static void shouldLogDmlDeleteOperations() {
+	private static void shouldLogDmlDeleteOperations() {
 		// Mostly for coverage -- necessary since Nebula Logger doesn't support using generic Objects for its `setDatabaseResult` method
 		Test.startTest();
 		DatabaseLayer.Dml.doDelete(MOCK_RECORD);
@@ -51,7 +51,7 @@ private class DatabaseLayerNebulaLoggerAdapterTest {
 	}
 
 	@IsTest
-	static void shouldLogDmlUndeleteOperations() {
+	private static void shouldLogDmlUndeleteOperations() {
 		// Mostly for coverage -- necessary since Nebula Logger doesn't support using generic Objects for its `setDatabaseResult` method
 		Test.startTest();
 		DatabaseLayer.Dml.doUndelete(MOCK_RECORD);
@@ -63,7 +63,7 @@ private class DatabaseLayerNebulaLoggerAdapterTest {
 	}
 
 	@IsTest
-	static void shouldLogDmlUpsertOperations() {
+	private static void shouldLogDmlUpsertOperations() {
 		// Mostly for coverage -- necessary since Nebula Logger doesn't support using generic Objects for its `setDatabaseResult` method
 		Test.startTest();
 		DatabaseLayer.Dml.doUpsert(MOCK_RECORD);
@@ -75,7 +75,7 @@ private class DatabaseLayerNebulaLoggerAdapterTest {
 	}
 
 	@IsTest
-	static void shouldLogFailedDmlOperations() {
+	private static void shouldLogFailedDmlOperations() {
 		MockDml.shouldFail();
 
 		Test.startTest();
@@ -95,7 +95,7 @@ private class DatabaseLayerNebulaLoggerAdapterTest {
 	}
 
 	@IsTest
-	static void shouldLogSoqlOperations() {
+	private static void shouldLogSoqlOperations() {
 		Test.startTest();
 		DatabaseLayer.Soql.newQuery(Lead.SObjectType)?.query();
 		Test.stopTest();
@@ -106,7 +106,7 @@ private class DatabaseLayerNebulaLoggerAdapterTest {
 	}
 
 	@IsTest
-	static void shouldLogSoqlQueryLocatorOperations() {
+	private static void shouldLogSoqlQueryLocatorOperations() {
 		// Mostly for coverage -- Database.QueryLocators are not serializable,
 		// and therefore have special log handling to prevent errors:
 		Test.startTest();
@@ -121,7 +121,7 @@ private class DatabaseLayerNebulaLoggerAdapterTest {
 	}
 
 	@IsTest
-	static void shouldLogOtherSoqlOperations() {
+	private static void shouldLogOtherSoqlOperations() {
 		// This is mostly for coverage; results from query operations
 		// that return something other than a List<SObject> are serialized
 		Test.startTest();
@@ -134,7 +134,7 @@ private class DatabaseLayerNebulaLoggerAdapterTest {
 	}
 
 	@IsTest
-	static void shouldLogFailedSoqlOperations() {
+	private static void shouldLogFailedSoqlOperations() {
 		MockSoql.setGlobalMock()?.withError();
 
 		Test.startTest();
