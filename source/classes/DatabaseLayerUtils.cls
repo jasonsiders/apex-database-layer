@@ -26,6 +26,9 @@ public without sharing class DatabaseLayerUtils {
 		private set;
 	}
 
+	@SuppressWarnings('PMD.PropertyNamingConventions')
+	public DatabaseLayerUtils.SObjects SObjects { get; private set; }
+
 	/**
 	 * @description Constructor that initializes all utility sub-components
 	 * @param factory The DatabaseLayer factory instance
@@ -34,6 +37,7 @@ public without sharing class DatabaseLayerUtils {
 	public DatabaseLayerUtils(DatabaseLayer factory) {
 		this.ChildRelationships = new DatabaseLayerUtils.ChildRelationships();
 		this.Plugins = new DatabaseLayerUtils.Plugins();
+		this.SObjects = new DatabaseLayerUtils.SObjects();
 	}
 
 	private DatabaseLayerSetting__mdt getSettings() {
@@ -113,7 +117,7 @@ public without sharing class DatabaseLayerUtils {
 		/**
 		 * @description Default constructor that initializes plugin instances.
 		 */
-		public Plugins() {
+		private Plugins() {
 			this.init();
 		}
 
@@ -143,6 +147,26 @@ public without sharing class DatabaseLayerUtils {
 		private void init() {
 			this.Dml = (Dml.PreAndPostProcessor) this.initPlugin(DatabaseLayerSetting__mdt.DmlPreAndPostProcessor__c);
 			this.Soql = (Soql.PreAndPostProcessor) this.initPlugin(DatabaseLayerSetting__mdt.SoqlPreAndPostProcessor__c);
+		}
+	}
+
+	public class SObjects {
+		private SObjects() {
+			// Don't allow construction outside of this file
+		}
+		
+		public List<SObject> newSObjects(Iterable<Id> recordIds) {
+			// Converts a List<Id> into a List<SObject> with those Ids:
+			List<SObject> records = new List<SObject>();
+			for (Id recordId : recordIds) {
+				SObject record = recordId?.getSObjectType()?.newSObject(recordId);
+				records?.add(record);
+			}
+			return records;
+		}
+
+		private SObject newSObject(Id recordId) {
+			return this.newSObjects(new List<Id>{ recordId })?.get(0);
 		}
 	}
 

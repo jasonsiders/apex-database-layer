@@ -19,7 +19,7 @@ global inherited sharing virtual class Duplicates {
 	 * @return List of FindDuplicatesResult wrapping Datacloud results
 	 */
 	global List<Duplicates.FindDuplicatesResult> findDuplicates(List<SObject> records) {
-		return this.initRequest(records).execute();
+		return this.initRequest(records)?.execute();
 	}
 
 	/**
@@ -28,7 +28,8 @@ global inherited sharing virtual class Duplicates {
 	 * @return List of FindDuplicatesResult wrapping Datacloud results
 	 */
 	global List<Duplicates.FindDuplicatesResult> findDuplicates(Iterable<Id> recordIds) {
-		return this.initRequest(recordIds).execute();
+		List<SObject> records = DatabaseLayer.Utils.SObjects.newSObjects(recordIds);
+		return this.initRequest(records)?.execute();
 	}
 
 	/**
@@ -36,251 +37,60 @@ global inherited sharing virtual class Duplicates {
 	 * @param input The input (either List<SObject> or Iterable<Id>)
 	 * @return A configured Request instance
 	 */
-	protected virtual Duplicates.Request initRequest(Object input) {
-		return new Duplicates.Request(input);
+	protected virtual Duplicates.Request initRequest(List<SObject> records) {
+		return new Duplicates.Request(records);
 	}
 
-	// **** INNER CLASSES **** //
-
-	/**
-	 * @description Handles execution of duplicate detection requests against the native Datacloud APIs.
-	 */
-	global inherited sharing virtual class Request {
-		protected Object input;
-
-		/**
-		 * @description Constructor for Request with input data.
-		 * @param input The input (either List<SObject> or Iterable<Id>)
-		 */
-		protected Request(Object input) {
-			this.input = input;
-		}
-
-		/**
-		 * @description Executes the duplicate detection request against native Datacloud APIs.
-		 * @return List of FindDuplicatesResult wrapping native Datacloud results
-		 */
-		protected virtual List<Duplicates.FindDuplicatesResult> execute() {
-			if (this.input == null) {
-				return new List<Duplicates.FindDuplicatesResult>();
-			}
-
-			List<Object> nativeResults;
-			if (this.input instanceof List<SObject>) {
-				nativeResults = (List<Object>) Datacloud.FindDuplicates.findDuplicates((List<SObject>) this.input);
-			} else if (this.input instanceof Iterable<Id>) {
-				List<Id> recordIds = new List<Id>();
-				for (Id recordId : (Iterable<Id>) this.input) {
-					recordIds.add(recordId);
-				}
-				// Query the records by ID to get SObjects for the API call
-				String sObjectType = recordIds[0].getSObjectType().getDescribe().getName();
-				String query = 'SELECT Id FROM ' + sObjectType + ' WHERE Id IN :recordIds';
-				List<SObject> records = Database.query(query);
-				nativeResults = (List<Object>) Datacloud.FindDuplicates.findDuplicates(records);
-			} else {
-				return new List<Duplicates.FindDuplicatesResult>();
-			}
-
-			return this.wrapResults(nativeResults);
-		}
-
-		/**
-		 * @description Wraps native results in mockable wrapper classes.
-		 * @param nativeResults The native result list (if available)
-		 * @return List of wrapped FindDuplicatesResult objects
-		 */
-		protected List<Duplicates.FindDuplicatesResult> wrapResults(List<Object> nativeResults) {
-			List<Duplicates.FindDuplicatesResult> wrappedResults = new List<Duplicates.FindDuplicatesResult>();
-			if (nativeResults != null) {
-				for (Object nativeResult : nativeResults) {
-					String jsonString = JSON.serialize(nativeResult);
-					Map<String, Object> resultMap = (Map<String, Object>) JSON.deserializeUntyped(jsonString);
-					wrappedResults.add(new Duplicates.FindDuplicatesResult(resultMap));
-				}
-			}
-			return wrappedResults;
-		}
-	}
-
-	/**
-	 * @description Mockable wrapper for duplicate detection results.
-	 */
-	global virtual class FindDuplicatesResult {
-		protected Boolean success;
-		protected List<Duplicates.Error> errors;
-		protected List<Duplicates.DuplicateResult> duplicateResults;
-
-		/**
-		 * @description Constructor wrapping a native duplicate detection result via JSON deserialization.
-		 * @param resultMap Deserialized JSON map of the native result
-		 */
-		protected FindDuplicatesResult(Map<String, Object> resultMap) {
-			if (resultMap != null) {
-				this.success = (Boolean) resultMap.get('success');
-				this.errors = this.wrapErrors((List<Object>) resultMap.get('errors'));
-				this.duplicateResults = this.wrapDuplicateResults((List<Object>) resultMap.get('duplicateResults'));
-			} else {
-				this.success = false;
-				this.errors = new List<Duplicates.Error>();
-				this.duplicateResults = new List<Duplicates.DuplicateResult>();
-			}
-		}
-
-		/**
-		 * @description Returns whether the operation was successful.
-		 * @return Boolean indicating success
-		 */
-		global Boolean getSuccess() {
-			return this.success;
-		}
-
-		/**
-		 * @description Returns any errors that occurred during the operation.
-		 * @return List of Error wrappers
-		 */
-		global List<Duplicates.Error> getErrors() {
-			return this.errors;
-		}
-
-		/**
-		 * @description Returns the duplicate detection results.
-		 * @return List of DuplicateResult wrappers
-		 */
-		global List<Duplicates.DuplicateResult> getDuplicateResults() {
-			return this.duplicateResults;
-		}
-
-		/**
-		 * @description Wraps native error objects.
-		 * @param nativeErrors The native error list
-		 * @return List of wrapped Error objects
-		 */
-		protected List<Duplicates.Error> wrapErrors(List<Object> nativeErrors) {
-			List<Duplicates.Error> wrappedErrors = new List<Duplicates.Error>();
-			if (nativeErrors != null) {
-				for (Object nativeError : nativeErrors) {
-					wrappedErrors.add(new Duplicates.Error((Map<String, Object>) nativeError));
-				}
-			}
-			return wrappedErrors;
-		}
-
-		/**
-		 * @description Wraps native duplicate result objects.
-		 * @param nativeDuplicateResults The native result list
-		 * @return List of wrapped DuplicateResult objects
-		 */
-		protected List<Duplicates.DuplicateResult> wrapDuplicateResults(List<Object> nativeDuplicateResults) {
-			List<Duplicates.DuplicateResult> wrappedResults = new List<Duplicates.DuplicateResult>();
-			if (nativeDuplicateResults != null) {
-				for (Object nativeDuplicateResult : nativeDuplicateResults) {
-					wrappedResults.add(new Duplicates.DuplicateResult((Map<String, Object>) nativeDuplicateResult));
-				}
-			}
-			return wrappedResults;
-		}
-	}
-
-	/**
-	 * @description Wrapper for error information.
-	 */
-	global virtual class Error {
-		protected List<String> fields;
-		protected String message;
-		protected String statusCode;
-
-		/**
-		 * @description Constructor wrapping a native error via JSON deserialization.
-		 * @param errorMap Deserialized JSON map of the native error
-		 */
-		protected Error(Map<String, Object> errorMap) {
-			if (errorMap != null) {
-				this.fields = (List<String>) errorMap.get('fields');
-				this.message = (String) errorMap.get('message');
-				this.statusCode = (String) errorMap.get('statusCode');
-			} else {
-				this.fields = new List<String>();
-				this.message = null;
-				this.statusCode = null;
-			}
-		}
-
-		/**
-		 * @description Returns the fields affected by this error.
-		 * @return List of field names
-		 */
-		global List<String> getFields() {
-			return this.fields;
-		}
-
-		/**
-		 * @description Returns the error message.
-		 * @return Error message string
-		 */
-		global String getMessage() {
-			return this.message;
-		}
-
-		/**
-		 * @description Returns the error status code.
-		 * @return Status code as string
-		 */
-		global String getStatusCode() {
-			return this.statusCode;
-		}
-	}
-
+	// **** INNER **** //
 	/**
 	 * @description Wrapper for duplicate detection result for a specific record.
 	 */
 	global virtual class DuplicateResult {
-		protected SObject record;
-		protected List<Duplicates.MatchResult> matchResults;
-		protected Boolean allowSave;
-		protected String duplicateRule;
-		protected String duplicateRuleEntityType;
-		protected String errorMessage;
+		private transient Datacloud.DuplicateResult nativeResult;
+		global Boolean allowSave {
+			get {
+				return this.allowSave ?? this.nativeResult?.allowSave;
+			}
+			protected set;
+		}
+		global String duplicateRule {
+			get {
+				return this.duplicateRule ?? this.nativeResult?.duplicateRule;
+			}
+			protected set;
+		}
+		global String duplicateRuleEntityType {
+			get {
+				return this.duplicateRuleEntityType ?? this.nativeResult?.duplicateRuleEntityType;
+			}
+			protected set;
+		}
+		global String errorMessage {
+			get {
+				return this.errorMessage ?? this.nativeResult?.errorMessage;
+			}
+			protected set;
+		}
+		global List<Duplicates.MatchResult> matchResults {
+			get {
+				return this.matchResults ?? this.wrapMatchResults();
+			}
+			protected set;
+		}
+		global SObject record {
+			get {
+				return this.record ?? this.nativeResult?.record;
+			}
+			protected set;
+		}
 
 		/**
 		 * @description Constructor wrapping a native duplicate result via JSON deserialization.
 		 * @param resultMap Deserialized JSON map of the native result
 		 */
-		protected DuplicateResult(Map<String, Object> resultMap) {
-			if (resultMap != null) {
-				Object sObjectData = resultMap.get('sObject');
-				if (sObjectData != null) {
-					this.record = (SObject) JSON.deserialize(JSON.serialize(sObjectData), SObject.class);
-				}
-				this.matchResults = this.wrapMatchResults((List<Object>) resultMap.get('matchResults'));
-				this.allowSave = (Boolean) resultMap.get('allowSave');
-				this.duplicateRule = (String) resultMap.get('duplicateRule');
-				this.duplicateRuleEntityType = (String) resultMap.get('duplicateRuleEntityType');
-				this.errorMessage = (String) resultMap.get('errorMessage');
-			} else {
-				this.record = null;
-				this.matchResults = new List<Duplicates.MatchResult>();
-				this.allowSave = null;
-				this.duplicateRule = null;
-				this.duplicateRuleEntityType = null;
-				this.errorMessage = null;
-			}
-		}
-
-		/**
-		 * @description Returns the record being checked for duplicates.
-		 * @return The SObject record
-		 */
-		global SObject getRecord() {
-			return this.record;
-		}
-
-		/**
-		 * @description Returns the match results for this record.
-		 * @return List of MatchResult wrappers
-		 */
-		global List<Duplicates.MatchResult> getMatchResults() {
-			return this.matchResults;
+		protected DuplicateResult(Datacloud.DuplicateResult nativeResult) {
+			this();
+			this.nativeResult = nativeResult;
 		}
 
 		/**
@@ -316,99 +126,137 @@ global inherited sharing virtual class Duplicates {
 		}
 
 		/**
+		 * @description Returns the match results for this record.
+		 * @return List of MatchResult wrappers
+		 */
+		global List<Duplicates.MatchResult> getMatchResults() {
+			return this.matchResults;
+		}
+
+		/**
+		 * @description Returns the record being checked for duplicates.
+		 * @return The SObject record
+		 */
+		global SObject getRecord() {
+			return this.record;
+		}
+
+		/**
 		 * @description Wraps native match result objects.
 		 * @param nativeMatchResults The native result list
 		 * @return List of wrapped MatchResult objects
 		 */
-		protected List<Duplicates.MatchResult> wrapMatchResults(List<Object> nativeMatchResults) {
-			List<Duplicates.MatchResult> wrappedResults = new List<Duplicates.MatchResult>();
-			if (nativeMatchResults != null) {
-				for (Object nativeMatchResult : nativeMatchResults) {
-					wrappedResults.add(new Duplicates.MatchResult((Map<String, Object>) nativeMatchResult));
-				}
+		private List<Duplicates.MatchResult> wrapMatchResults() {
+			List<Duplicates.MatchResult> wrappedResults = new List<Duplicates.MatchResult>{};
+			List<Datacloud.MatchResult> nativeResults = this.nativeResult?.matchResults ?? new List<Datacloud.MatchResult>{};
+			for (Datacloud.MatchResult nativeResult : nativeMatchResults) {
+				Duplicates.MatchResult wrappedResult = new Duplicates.MatchResult(nativeResult);
+				wrappedResults?.add(wrappedResult);
 			}
 			return wrappedResults;
 		}
 	}
 
 	/**
-	 * @description Wrapper for match results from a specific duplicate rule.
+	 * @description Wrapper for field difference information.
 	 */
-	global virtual class MatchResult {
-		protected String rule;
-		protected Integer size;
-		protected List<Duplicates.MatchRecord> matchRecords;
-		protected String entityType;
-		protected String matchEngine;
-		protected Boolean success;
-		protected List<Duplicates.Error> errors;
+	global virtual class FieldDiff {
+		private transient Datacloud.FieldDiff nativeResult;
+		global Object compareValue {
+			get {
+				return this.compareValue ?? this.nativeResult?.compareValue;
+			}
+			protected set;
+		}
+		global String fieldName {
+			get {
+				return this.fieldName ?? this.nativeResult?.fieldName;
+			}
+			protected set;
+		}
 
 		/**
-		 * @description Constructor wrapping a native match result via JSON deserialization.
-		 * @param resultMap Deserialized JSON map of the native result
+		 * @description Constructor wrapping a native field difference via JSON deserialization.
+		 * @param diffMap Deserialized JSON map of the native field diff
 		 */
-		protected MatchResult(Map<String, Object> resultMap) {
-			if (resultMap != null) {
-				this.rule = (String) resultMap.get('rule');
-				this.size = (Integer) resultMap.get('size');
-				this.matchRecords = this.wrapMatchRecords((List<Object>) resultMap.get('matchRecords'));
-				this.entityType = (String) resultMap.get('entityType');
-				this.matchEngine = (String) resultMap.get('matchEngine');
-				this.success = (Boolean) resultMap.get('success');
-				this.errors = this.wrapErrors((List<Object>) resultMap.get('errors'));
+		protected FieldDiff(Datacloud.FieldDiff nativeResult) {
+			if (diffMap != null) {
+				this.fieldName = (String) diffMap.get('name');
+				this.compareValue = diffMap.get('difference');
 			} else {
-				this.rule = null;
-				this.size = 0;
-				this.matchRecords = new List<Duplicates.MatchRecord>();
-				this.entityType = null;
-				this.matchEngine = null;
-				this.success = null;
-				this.errors = new List<Duplicates.Error>();
+				this.fieldName = null;
+				this.compareValue = null;
 			}
 		}
 
 		/**
-		 * @description Returns the rule name for this match.
-		 * @return Rule name string
+		 * @description Returns the comparison value for this field.
+		 * @return Field value object
 		 */
-		global String getRule() {
-			return this.rule;
+		global Object getCompareValue() {
+			return this.compareValue;
 		}
 
 		/**
-		 * @description Returns the number of matching records.
-		 * @return Match count
+		 * @description Returns the field name that differs.
+		 * @return Field name string
 		 */
-		global Integer getSize() {
-			return this.size;
+		global String getFieldName() {
+			return this.fieldName;
+		}
+	}
+
+	/**
+	 * @description Mockable wrapper for duplicate detection results.
+	 */
+	global virtual class FindDuplicatesResult {
+		private transient Datacloud.FindDuplicatesResult nativeResult;
+		global List<Duplicates.DuplicateResult> duplicateResults {
+			get {
+				this.duplicateResults ?? this.wrapDuplicateResults();
+			}
+			protected set;
+		}
+		global List<Database.Error> errors {
+			get {
+				return this.errors ?? this.nativeResult?.errors; 
+			}
+			protected set;
+		}
+		global Boolean success {
+			get {
+				return this.success ?? this.nativeResult?.success;
+			}
+			protected set;
 		}
 
 		/**
-		 * @description Returns the matching records.
-		 * @return List of MatchRecord wrappers
+		 * @description Constructor wrapping a native duplicate detection result via JSON deserialization.
+		 * @param resultMap Deserialized JSON map of the native result
 		 */
-		global List<Duplicates.MatchRecord> getMatchRecords() {
-			return this.matchRecords;
+		protected FindDuplicatesResult(Datacloud.FindDuplicatesResult nativeResult) {
+			this();
+			this.nativeResult = nativeResult;
 		}
 
 		/**
-		 * @description Returns the entity type for this match result.
-		 * @return Entity type string
+		 * @description Returns the duplicate detection results.
+		 * @return List of DuplicateResult wrappers
 		 */
-		global String getEntityType() {
-			return this.entityType;
+		global List<Duplicates.DuplicateResult> getDuplicateResults() {
+			return this.duplicateResults;
 		}
 
 		/**
-		 * @description Returns the match engine used for this result.
-		 * @return Match engine name
+		 * @description Returns any errors that occurred during the operation.
+		 * @return List of Error wrappers
 		 */
-		global String getMatchEngine() {
-			return this.matchEngine;
+		global List<Database.Error> getErrors() {
+			return this.nativeResult;
 		}
 
 		/**
-		 * @description Returns whether the match operation was successful.
+		 * @description Returns whether the operation was successful.
 		 * @return Boolean indicating success
 		 */
 		global Boolean getSuccess() {
@@ -416,41 +264,18 @@ global inherited sharing virtual class Duplicates {
 		}
 
 		/**
-		 * @description Returns any errors that occurred during matching.
-		 * @return List of Error wrappers
+		 * @description Wraps native duplicate result objects.
+		 * @param nativeDuplicateResults The native result list
+		 * @return List of wrapped DuplicateResult objects
 		 */
-		global List<Duplicates.Error> getErrors() {
-			return this.errors;
-		}
-
-		/**
-		 * @description Wraps native error objects.
-		 * @param nativeErrors The native error list
-		 * @return List of wrapped Error objects
-		 */
-		protected List<Duplicates.Error> wrapErrors(List<Object> nativeErrors) {
-			List<Duplicates.Error> wrappedErrors = new List<Duplicates.Error>();
-			if (nativeErrors != null) {
-				for (Object nativeError : nativeErrors) {
-					wrappedErrors.add(new Duplicates.Error((Map<String, Object>) nativeError));
-				}
+		private List<Duplicates.DuplicateResult> wrapDuplicateResults() {
+			List<Duplicates.DuplicateResult> wrappedResults = new List<Duplicates.DuplicateResult>{};
+			List<Datacloud.DuplicateResult> nativeResults = this.nativeResult?.getDuplicateResults() ?? new List<Datacloud.DuplicateResult>{};
+			for (Datacloud.DuplicateResult nativeResult : nativeResults) {
+				Duplicates.DuplicateResult wrappedResult = new Duplicates.DuplicateResult(nativeResult);
+				wrappedResults.add(wrappedResult);
 			}
-			return wrappedErrors;
-		}
-
-		/**
-		 * @description Wraps native match record objects.
-		 * @param nativeMatchRecords The native record list
-		 * @return List of wrapped MatchRecord objects
-		 */
-		protected List<Duplicates.MatchRecord> wrapMatchRecords(List<Object> nativeMatchRecords) {
-			List<Duplicates.MatchRecord> wrappedRecords = new List<Duplicates.MatchRecord>();
-			if (nativeMatchRecords != null) {
-				for (Object nativeMatchRecord : nativeMatchRecords) {
-					wrappedRecords.add(new Duplicates.MatchRecord((Map<String, Object>) nativeMatchRecord));
-				}
-			}
-			return wrappedRecords;
+			return wrappedResults;
 		}
 	}
 
@@ -458,38 +283,46 @@ global inherited sharing virtual class Duplicates {
 	 * @description Wrapper for a specific matched record and its field differences.
 	 */
 	global virtual class MatchRecord {
-		protected SObject record;
-		protected List<Duplicates.FieldDiff> fieldDiffs;
-		protected Decimal matchConfidence;
-		protected List<Object> additionalInformation;
+		private transient Datacloud.MatchRecord nativeResult;
+		global List<Datacloud.AdditionalInformationMap> additionalInformation {
+			get {
+				return this.additionalInformation ?? this.wrapAdditionalInformation();
+			}
+			protected set;
+		}
+		global List<Duplicates.FieldDiff> fieldDiffs {
+			get {
+				return this.fieldDiffs ?? this.wrapFieldDiffs();
+			}
+			protected set;
+		}
+		global Decimal matchConfidence {
+			get {
+				return this.matchConfidence ?? this.nativeResult?.matchConfidence;
+			}
+			protected set;
+		}
+		global SObject record {
+			get {
+				return this.record ?? this.nativeResult?.record;
+			} 
+			protected set;
+		}
 
 		/**
 		 * @description Constructor wrapping a native match record via JSON deserialization.
 		 * @param recordMap Deserialized JSON map of the native record
 		 */
-		protected MatchRecord(Map<String, Object> recordMap) {
-			if (recordMap != null) {
-				Object recordData = recordMap.get('record');
-				if (recordData != null) {
-					this.record = (SObject) JSON.deserialize(JSON.serialize(recordData), SObject.class);
-				}
-				this.fieldDiffs = this.wrapFieldDiffs((List<Object>) recordMap.get('fieldDiffs'));
-				this.matchConfidence = (Decimal) recordMap.get('matchConfidence');
-				this.additionalInformation = (List<Object>) recordMap.get('additionalInformation');
-			} else {
-				this.record = null;
-				this.fieldDiffs = new List<Duplicates.FieldDiff>();
-				this.matchConfidence = null;
-				this.additionalInformation = null;
-			}
+		protected MatchRecord(Datacloud.MatchRecord nativeResult) {
+			this.nativeResult = nativeResult;
 		}
 
 		/**
-		 * @description Returns the matching record.
-		 * @return The SObject record
+		 * @description Returns additional information about the match.
+		 * @return List of additional information objects
 		 */
-		global SObject getRecord() {
-			return this.record;
+		global List<Object> getAdditionalInformation() {
+			return this.additionalInformation;
 		}
 
 		/**
@@ -509,11 +342,21 @@ global inherited sharing virtual class Duplicates {
 		}
 
 		/**
-		 * @description Returns additional information about the match.
-		 * @return List of additional information objects
+		 * @description Returns the matching record.
+		 * @return The SObject record
 		 */
-		global List<Object> getAdditionalInformation() {
-			return this.additionalInformation;
+		global SObject getRecord() {
+			return this.record;
+		}
+
+		private List<Duplicates.AdditionalInformationMap> wrapAdditionalInformation() {
+			List<Duplicates.AdditionalInformationMap> wrappedResults = new List<Duplicates.AdditionalInformationMap>{};
+			List<Datacloud.AdditionalInformationMap> nativeResults = this.nativeResult?.additionalinformation ?? new List<Datacloud.AdditionalInformationMap>{};
+			for (Datacloud.AdditionalInformationMap nativeResult : nativeResults) {
+				Duplicates.AdditionalInformationMap wrappedResult = new Duplicates.AdditionalInformationMap(nativeResult); 
+				wrappedResults?.add(wrappedResult);
+			}
+			return wrappedResults;
 		}
 
 		/**
@@ -521,52 +364,181 @@ global inherited sharing virtual class Duplicates {
 		 * @param nativeFieldDiffs The native field diff list
 		 * @return List of wrapped FieldDiff objects
 		 */
-		protected List<Duplicates.FieldDiff> wrapFieldDiffs(List<Object> nativeFieldDiffs) {
-			List<Duplicates.FieldDiff> wrappedDiffs = new List<Duplicates.FieldDiff>();
-			if (nativeFieldDiffs != null) {
-				for (Object nativeFieldDiff : nativeFieldDiffs) {
-					wrappedDiffs.add(new Duplicates.FieldDiff((Map<String, Object>) nativeFieldDiff));
-				}
+		private List<Duplicates.FieldDiff> wrapFieldDiffs() {
+			List<Duplicates.FieldDiff> wrappedDiffs = new List<Duplicates.FieldDiff>{};
+			List<Datacloud.FieldDiff> nativeDiffs = this.nativeRecord?.fieldDiffs ?? new List<Datacloud.FieldDiff>{};
+			for (Datacloud.FieldDiff nativeDiff : nativeDiffs) {
+				Duplicates.FieldDiff wrappedDiff = new Duplicates.FieldDiff(nativeDiff);
+				wrappedDiffs?.add(wrappedDiff);
 			}
 			return wrappedDiffs;
 		}
 	}
 
 	/**
-	 * @description Wrapper for field difference information.
+	 * @description Wrapper for match results from a specific duplicate rule.
 	 */
-	global virtual class FieldDiff {
-		protected String fieldName;
-		protected Object compareValue;
-
-		/**
-		 * @description Constructor wrapping a native field difference via JSON deserialization.
-		 * @param diffMap Deserialized JSON map of the native field diff
-		 */
-		protected FieldDiff(Map<String, Object> diffMap) {
-			if (diffMap != null) {
-				this.fieldName = (String) diffMap.get('name');
-				this.compareValue = diffMap.get('difference');
-			} else {
-				this.fieldName = null;
-				this.compareValue = null;
+	global virtual class MatchResult {
+		private transient Datacloud.MatchResult nativeResult;
+		global String entityType {
+			get {
+				return this.entityType ?? this.nativeResult?.entityType;
+			} 
+			protected set;
+		}
+		global List<Database.Error> errors {
+			get {
+				return this.errors ?? this.nativeResult?.errors;
 			}
+			protected set;
+		}
+		global String matchEngine {
+			get {
+				return this.matchEngine ?? this.nativeResult?.matchEngine;
+			}
+			protected set;
+		}
+		global List<Duplicates.MatchRecord> matchRecords {
+			get {
+				return this.matchRecords ?? this.wrapMatchRecords();
+			}
+			protected set;
+		}
+		global String rule {
+			get {
+				return this.rule ?? this.nativeResult?.rule;
+			}
+			protected set; 
+		}
+		global Integer size {
+			get {
+				return this.size ?? this.nativeResult?.size();
+			}
+			protected set;
+		}
+		global Boolean success {
+			get {
+				return this.success ?? this.nativeResult?.success;
+			}
+			protected set;
 		}
 
 		/**
-		 * @description Returns the field name that differs.
-		 * @return Field name string
+		 * @description Constructor wrapping a native match result via JSON deserialization.
+		 * @param resultMap Deserialized JSON map of the native result
 		 */
-		global String getFieldName() {
-			return this.fieldName;
+		protected MatchResult(Datacloud.MatchResult nativeResult) {
+			this.nativeResult = nativeResult;
 		}
 
 		/**
-		 * @description Returns the comparison value for this field.
-		 * @return Field value object
+		 * @description Returns the entity type for this match result.
+		 * @return Entity type string
 		 */
-		global Object getCompareValue() {
-			return this.compareValue;
+		global String getEntityType() {
+			return this.entityType;
+		}
+
+		/**
+		 * @description Returns any errors that occurred during matching.
+		 * @return List of Error wrappers
+		 */
+		global List<Database.Error> getErrors() {
+			return this.errors;
+		}
+
+		/**
+		 * @description Returns the match engine used for this result.
+		 * @return Match engine name
+		 */
+		global String getMatchEngine() {
+			return this.matchEngine;
+		}
+
+		/**
+		 * @description Returns the matching records.
+		 * @return List of MatchRecord wrappers
+		 */
+		global List<Duplicates.MatchRecord> getMatchRecords() {
+			return this.matchRecords;
+		}
+
+		/**
+		 * @description Returns the rule name for this match.
+		 * @return Rule name string
+		 */
+		global String getRule() {
+			return this.rule;
+		}
+
+		/**
+		 * @description Returns the number of matching records.
+		 * @return Match count
+		 */
+		global Integer getSize() {
+			return this.size;
+		}
+
+		/**
+		 * @description Returns whether the match operation was successful.
+		 * @return Boolean indicating success
+		 */
+		global Boolean getSuccess() {
+			return this.success;
+		}
+
+		/**
+		 * @description Wraps native match record objects.
+		 * @param nativeMatchRecords The native record list
+		 * @return List of wrapped MatchRecord objects
+		 */
+		private List<Duplicates.MatchRecord> wrapMatchRecords() {
+			List<Duplicates.MatchRecord> wrappedRecords = new List<Duplicates.MatchRecord>{};
+			List<Datacloud.MatchRecord> nativeRecords = this.nativeResult?.matchRecords ?? new List<Datacloud.MatchRecord>{};
+			for (Datacloud.MatchRecord nativeRecord : nativeRecord) {
+				Duplicates.MatchRecord wrappedRecord = new Duplicates.MatchRecord(nativeRecord);
+				wrappedRecords?.add(wrappedRecord);
+			}
+			return wrappedRecords;
+		}
+	}
+
+	/**
+	 * @description Handles execution of duplicate detection requests against the native Datacloud APIs.
+	 */
+	protected inherited sharing virtual class Request {
+		protected List<SObject> records { get; private set; }
+
+		/**
+		 * @description Constructor for Request with input data.
+		 * @param input The input (either List<SObject> or Iterable<Id>)
+		 */
+		protected Request(List<SObject> records) {
+			this.records = records;
+		}
+
+		/**
+		 * @description Executes the duplicate detection request against native Datacloud APIs.
+		 * @return List of FindDuplicatesResult wrapping native Datacloud results
+		 */
+		protected virtual List<Duplicates.FindDuplicatesResult> execute() {
+			List<Datacloud.FindDuplicatesResult> nativeResults = Datacloud.FindDuplicates.findDuplicates(this.records);
+			List<Duplicates.FindDuplicatesResult> wrappedResults = this.wrap(nativeResults);
+			return wrappedResults;
+		}
+
+		/**
+		 * @description Wraps native results in mockable wrapper classes.
+		 * @param nativeResults The native result list (if available)
+		 * @return List of wrapped FindDuplicatesResult objects
+		 */
+		private List<Duplicates.FindDuplicatesResult> wrap(List<Datacloud.FindDuplicatesResult> nativeResults) {
+			List<Duplicates.FindDuplicatesResult> wrappedResults = new List<Duplicates.FindDuplicatesResult>{};
+			for (Datacloud.FindDuplicatesResult nativeResult : nativeResults) {
+				Duplicates.FindDuplicatesResult wrappedResult = new Duplicates.FindDuplicatesResult(nativeResult);
+				wrappedResults?.add(wrappedResult);
+			}
+			return wrappedResults;
 		}
 	}
 }
