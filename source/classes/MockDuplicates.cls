@@ -14,8 +14,13 @@ global class MockDuplicates extends Duplicates {
 	}
 
 	global static MockDuplicates.BaseSimulator setMock() {
-		MockDuplicates.BaseSimulator defaultSimulator = new MockDuplicates.BaseSimulator();
-		return (MockDuplicates.BaseSimulator) MockDuplicates.setMock(defaultSimulator);
+		if (MockDuplicates.simulator instanceof MockDuplicates.BaseSimulator) {
+			// Don't overwrite the simulator if already configured!
+			return (MockDuplicates.BaseSimulator) MockDuplicates.simulator;
+		} else {
+			MockDuplicates.Simulator baseSimulator = new MockDuplicates.BaseSimulator();
+			return (MockDuplicates.BaseSimulator) MockDuplicates.setMock(baseSimulator);
+		}
 	}
 
 	// **** MEMBER **** //
@@ -92,6 +97,11 @@ global class MockDuplicates extends Duplicates {
 			return this.addMatch(record);
 		}
 
+		global MockDuplicates.DuplicateResult clearMatches() {
+			this.matchResults?.clear();
+			return this; 
+		}
+
 		global MockDuplicates.DuplicateResult setErrorMessage(String errorMessage) {
 			this.errorMessage = errorMessage;
 			return this;
@@ -148,12 +158,11 @@ global class MockDuplicates extends Duplicates {
 	global virtual class FindDuplicatesResult extends Duplicates.FindDuplicatesResult {
 		private transient SObjectType objectType;
 
-		// TODO: Should this be private?
-		global FindDuplicatesResult(SObject record) {
+		private FindDuplicatesResult(SObjectType objectType) {
 			super(null);
 			this.duplicateResults = new List<Duplicates.DuplicateResult>{};
 			this.errors = new List<Database.Error>{};
-			this.objectType = record?.getSObjectType();
+			this.objectType = objectType;
 		}
 
 		global MockDuplicates.DuplicateResult addRule(SObjectType objectType) {
@@ -173,16 +182,18 @@ global class MockDuplicates extends Duplicates {
 		}
 
 		global MockDuplicates.FindDuplicatesResult addError() {
-			Exception error = new System.DmlException();
+			Exception error = new System.HandledException();
 			return this.addError(error);
 		}
 
-		global MockDuplicates.FindDuplicatesResult throwException(Exception error) {
-			throw error;
+		global MockDuplicates.FindDuplicatesResult clearErrors() {
+			this.errors?.clear();
+			return this;
 		}
 
-		global MockDuplicates.FindDuplicatesResult throwException() {
-			throw new System.HandledException();
+		global MockDuplicates.FindDuplicatesResult clearDuplicateResults() {
+			this.duplicateResults?.clear();
+			return this;
 		}
 	}
 
@@ -198,7 +209,7 @@ global class MockDuplicates extends Duplicates {
 			this.setConfidence(100.0);
 		}
 
-		global MockDuplicates.AdditionalInformationMap addInfo(String name, String value) {
+		global MockDuplicates.AdditionalInformationMap addAdditionalInfo(String name, String value) {
 			MockDuplicates.AdditionalInformationMap info = new MockDuplicates.AdditionalInformationMap(
 				this,
 				name,
@@ -253,6 +264,17 @@ global class MockDuplicates extends Duplicates {
 			this.setRuleName('Mock_' + this.entityType + '_Match_Rule_v1_0');
 		}
 
+		global MockDuplicates.MatchResult addError(Exception error) {
+			Database.Error databaseError = new MockError(error)?.toDatabaseError();
+			this.errors?.add(databaseError);
+			return this;
+		}
+
+		global MockDuplicates.MatchResult addError() {
+			Exception error = new System.HandledException();
+			return this; 
+		}
+
 		global MockDuplicates.MatchRecord addRecord(SObject record) {
 			MockDuplicates.MatchRecord matchRecord = new MockDuplicates.MatchRecord(this, record);
 			this.matchRecords?.add(matchRecord);
@@ -262,6 +284,16 @@ global class MockDuplicates extends Duplicates {
 		global MockDuplicates.MatchRecord addRecord() {
 			SObject record = new MockRecord(this.objectType)?.withId()?.toSObject();
 			return this.addRecord(record);
+		}
+
+		global MockDuplicates.MatchResult clearErrors() {
+			this.errors?.clear();
+			return this; 
+		}
+
+		global MockDuplicates.MatchResult clearRecords() {
+			this.matchRecords?.clear();
+			return this;
 		}
 
 		global MockDuplicates.MatchResult setMatchEngine(String matchEngine) {
@@ -284,15 +316,51 @@ global class MockDuplicates extends Duplicates {
 	}
 
 	global class BaseSimulator implements MockDuplicates.Simulator {
-		// * TODO: Figure out how we want callers to use this...
+		// Allows callers to inject simple simulation logic for each SObjectType
+		private transient Exception exceptionToThrow;
+		private transient Map<String, MockDuplicates.FindDuplicatesResult> responseByType;
 
-		@SuppressWarnings('PMD.EmptyStatementBlock')
 		private BaseSimulator() {
 			// Can only be constructed from within this file, or by calling MockDuplicates.setMock()
+			this.responseByType = new Map<String, MockDuplicates.FindDuplicatesResult>{};
+		}
+
+		global MockDuplicates.FindDuplicatesResult get(String objectApiName) {
+			// Retrieve the FindDuplicateResult configured for the given SObjectType
+			// An instance of this result object will be returned for each record of this type
+			return this.responseByType?.get(objectApiName);
+		}
+
+		global MockDuplicates.FindDuplicatesResult get(SObjectType objectType) {
+			String objectApiName = objectType?.toString();
+			return this.get(objectApiName);
+		}
+
+		global MockDuplicates.BaseSimulator withException(Exception error) {
+			this.exceptionToThrow = error;
+			return this;
+		}
+		
+		global MockDuplicates.BaseSimulator withException() {
+			Exception error = new System.HandledException();
+			return this.withException(error);
+		} 
+		
+		global MockDuplicates.BaseSimulator withResults(SObjectType objectType) {
+			// Define the FindDuplicateResults that will be returned for the current SObjectType
+			String objectApiName = objectType?.toString();
+			MockDuplicates.FindDuplicatesResult response = this.get(objectApiName) ?? new MockDuplicates.FindDuplicatesResult(objectType);
+			this.responseByType?.put(objectApiName, response);
+			return this;
 		}
 
 		public MockDuplicates.FindDuplicatesResult simulate(SObject record) {
-			return new MockDuplicates.FindDuplicatesResult(record);
+			if (this.exceptionToThrow != null) {
+				throw this.exceptionToThrow;
+			} else {
+				SObjectType objectType = record?.getSObjectType();
+				return this.get(objectType);
+			}
 		}
 	}
 
