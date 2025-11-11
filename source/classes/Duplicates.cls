@@ -29,7 +29,7 @@ global inherited sharing virtual class Duplicates {
 	 */
 	global List<Duplicates.FindDuplicatesResult> findDuplicates(Iterable<Id> recordIds) {
 		List<SObject> records = DatabaseLayer.Utils.SObjects.newSObjects(recordIds);
-		return this.initRequest(records)?.process();
+		return this.findDuplicates(records);
 	}
 
 	/**

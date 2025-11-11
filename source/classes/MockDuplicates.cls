@@ -1,5 +1,5 @@
-@SuppressWarnings('PMD.AvoidGlobalModifier')
-// @IsTest
+@SuppressWarnings('PMD.AvoidGlobalModifier,PMD.CognitiveComplexity')
+@IsTest
 global class MockDuplicates extends Duplicates {
 	// **** STATIC **** //
 	private static Simulator simulator;
@@ -13,13 +13,12 @@ global class MockDuplicates extends Duplicates {
 		return simulator;
 	}
 
-	global static MockDuplicates.ResponseBuilder setMock() {
-		MockDuplicates.ResponseBuilder defaultSimulator = new MockDuplicates.ResponseBuilder();
-		return (MockDuplicates.ResponseBuilder) MockDuplicates.setMock(defaultSimulator);
+	global static MockDuplicates.BaseSimulator setMock() {
+		MockDuplicates.BaseSimulator defaultSimulator = new MockDuplicates.BaseSimulator();
+		return (MockDuplicates.BaseSimulator) MockDuplicates.setMock(defaultSimulator);
 	}
 
 	// **** MEMBER **** //
-	@SuppressWarnings('PMD.EmptyStatementBlock')
 	public MockDuplicates(DatabaseLayer factory) {
 		super(factory);
 	}
@@ -146,7 +145,7 @@ global class MockDuplicates extends Duplicates {
 		}
 	}
 
-	global class FindDuplicatesResult extends Duplicates.FindDuplicatesResult {
+	global virtual class FindDuplicatesResult extends Duplicates.FindDuplicatesResult {
 		private transient SObjectType objectType;
 
 		// TODO: Should this be private?
@@ -176,6 +175,14 @@ global class MockDuplicates extends Duplicates {
 		global MockDuplicates.FindDuplicatesResult addError() {
 			Exception error = new System.DmlException();
 			return this.addError(error);
+		}
+
+		global MockDuplicates.FindDuplicatesResult throwException(Exception error) {
+			throw error;
+		}
+
+		global MockDuplicates.FindDuplicatesResult throwException() {
+			throw new System.HandledException();
 		}
 	}
 
@@ -276,16 +283,15 @@ global class MockDuplicates extends Duplicates {
 		}
 	}
 
-	global class ResponseBuilder implements MockDuplicates.Simulator {
-		// TODO: Figure this out?
-		// Constructs the data structure for a single SObject passed to findDuplicates
+	global class BaseSimulator implements MockDuplicates.Simulator {
+		// * TODO: Figure out how we want callers to use this...
 
 		@SuppressWarnings('PMD.EmptyStatementBlock')
-		private ResponseBuilder() {
+		private BaseSimulator() {
 			// Can only be constructed from within this file, or by calling MockDuplicates.setMock()
 		}
 
-		public Duplicates.FindDuplicatesResult simulate(SObject record) {
+		public MockDuplicates.FindDuplicatesResult simulate(SObject record) {
 			return new MockDuplicates.FindDuplicatesResult(record);
 		}
 	}
@@ -297,30 +303,51 @@ global class MockDuplicates extends Duplicates {
 	}
 
 	global interface Simulator {
-		Duplicates.FindDuplicatesResult simulate(SObject record);
+		MockDuplicates.FindDuplicatesResult simulate(SObject record);
 	}
 
 	private class Request extends Duplicates.Request {
+		private transient Set<String> uniqueSObjectTypes;
+
 		private Request(List<SObject> records) {
 			super(records);
+			this.uniqueSObjectTypes = new Set<String>{};
 		}
 
 		public override List<Duplicates.FindDuplicatesResult> process() {
 			List<Duplicates.FindDuplicatesResult> results = new List<Duplicates.FindDuplicatesResult>{};
-			this.validateInput();
+			this.validateInputSize(records);
 			for (SObject record : this.records) {
+				this.validateSObjectTypes(record);
 				Duplicates.FindDuplicatesResult result = MockDuplicates.simulator?.simulate(record);
 				results?.add(result);
 			}
 			return results;
 		}
 
-		private void validateInput() {
-			// TODO:
-			// Make sure the input list is within acceptable bounds:
-			// Between 1 and 50 records
-			// Must all of the same SObjectType
+		private void validateInputSize(List<SObject> records) {
+			// Mimic standard behavior, which limits the number of inputs between 1-50
 			// https://developer.salesforce.com/docs/atlas.en-us.apexref.meta/apexref/apex_class_Datacloud_FindDuplicatesResult.htm
+			Integer size = records?.size() ?? 0;
+			if (size == 0) {
+				String msg = 'The list of records to check is null or empty.';
+				throw new System.HandledException(msg);
+			} else if (size > 50) {
+				String msg = 'The number of records to check is greater than the permitted batch size.';
+				throw new System.HandledException(msg);
+			}
+		}
+
+		private void validateSObjectTypes(SObject record) {
+			// Mimic standard behavior which restricts mixed SObjectTypes in the same call
+			// https://developer.salesforce.com/docs/atlas.en-us.apexref.meta/apexref/apex_class_Datacloud_FindDuplicatesResult.htm
+			String objectApiName = record?.getSObjectType()?.toString();
+			this.uniqueSObjectTypes?.add(objectApiName);
+			Integer size = this.uniqueSObjectTypes?.size() ?? 0;
+			if (size > 1) {
+				String msg = 'The list of records to check contains more than one type of record.';
+				throw new System.HandledException(msg);
+			}
 		}
 	}
 }
