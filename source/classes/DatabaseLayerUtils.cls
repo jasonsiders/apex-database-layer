@@ -26,6 +26,9 @@ public without sharing class DatabaseLayerUtils {
 		private set;
 	}
 
+	/**
+	 * @description Utility for working with SObject instances.
+	 */
 	@SuppressWarnings('PMD.PropertyNamingConventions')
 	public DatabaseLayerUtils.SObjects SObjects { get; private set; }
 
@@ -150,11 +153,20 @@ public without sharing class DatabaseLayerUtils {
 		}
 	}
 
+	/**
+	 * @description Utility for working with SObject instances and performing common transformations.
+	 */
 	public class SObjects {
+		@SuppressWarnings('PMD.EmptyStatementBlock')
 		private SObjects() {
 			// Don't allow construction outside of this file
 		}
-		
+
+		/**
+		 * @description Converts a collection of record IDs into a list of SObject instances with those IDs.
+		 * @param recordIds The collection of record IDs to convert
+		 * @return List of SObject instances with the provided IDs
+		 */
 		public List<SObject> newSObjects(Iterable<Id> recordIds) {
 			// Converts a List<Id> into a List<SObject> with those Ids:
 			List<SObject> records = new List<SObject>();
@@ -165,6 +177,11 @@ public without sharing class DatabaseLayerUtils {
 			return records;
 		}
 
+		/**
+		 * @description Converts a single record ID into an SObject instance with that ID.
+		 * @param recordId The record ID to convert
+		 * @return SObject instance with the provided ID
+		 */
 		private SObject newSObject(Id recordId) {
 			return this.newSObjects(new List<Id>{ recordId })?.get(0);
 		}

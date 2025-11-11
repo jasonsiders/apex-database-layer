@@ -137,7 +137,6 @@ global class MockDuplicates extends Duplicates {
 
 		/**
 		 * @description Adds a match result for a specific record
-		 * @param record The SObject record that matches
 		 * @return The created MatchResult instance for method chaining
 		 */
 		global MockDuplicates.MatchResult addMatch() {
@@ -429,7 +428,7 @@ global class MockDuplicates extends Duplicates {
 		/**
 		 * @description Constructor for MatchResult
 		 * @param parent The parent DuplicateResult instance
-		 * @param record The SObject record being matched
+		 * @param objectType The SObjectType for the match result
 		 */
 		global MatchResult(MockDuplicates.DuplicateResult parent, SObjectType objectType) {
 			super(null);
