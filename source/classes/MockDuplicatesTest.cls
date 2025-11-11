@@ -107,7 +107,14 @@ private class MockDuplicatesTest {
 
 	@IsTest
 	private static void shouldReturnWithMultipleMatchResults() {
-		Assert.fail('You still need to build this test');
+		MockDuplicates.setMock()?.withResults(Lead.SObjectType)?.addRule()?.addMatch()?.up()?.addMatch();
+
+		Test.startTest();
+		Duplicates.FindDuplicatesResult result = DatabaseLayer.Duplicates.findDuplicates(TEST_LEAD);
+		Test.stopTest();
+
+		List<Duplicates.MatchResult> matchResults = result?.getDuplicateResults()?.get(0)?.getMatchResults();
+		Assert.areEqual(2, matchResults?.size(), 'Wrong # of match results');
 	}
 
 	@IsTest
@@ -220,7 +227,21 @@ private class MockDuplicatesTest {
 
 	@IsTest
 	private static void shouldAllowFluentMockNavigation() {
-		Assert.fail('You still need to build this test');
+		Integer expected = MockDuplicates.setMock()?.withResults(Lead.SObjectType)?.hashCode();
+
+		Test.startTest();
+		MockDuplicates.FindDuplicatesResult result = MockDuplicates.setMock()
+			?.withResults(Lead.SObjectType)
+			?.addRule()
+			?.addMatch()
+			?.addRecord()
+			?.addAdditionalInfo('foo', 'bar')
+			?.up()
+			?.addFieldDiff(Lead.Email, MockDuplicates.DiffType.IS_SAME)
+			?.toTop();
+		Test.stopTest();
+
+		Assert.areEqual(expected, result?.hashCode(), 'Navigated to wrong result');
 	}
 
 	@IsTest
