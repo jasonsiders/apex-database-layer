@@ -2,6 +2,7 @@
  * @description Builder pattern class for constructing mock SObject records with comprehensive field, relationship, and Id generation support for testing.
  */
 @SuppressWarnings('PMD.AvoidGlobalModifier,PMD.CognitiveComplexity,PMD.ExcessivePublicCount')
+@IsTest
 global class MockRecord {
 	private static final String ID_TOKEN = 'Id';
 	private static Integer numMockIds = 0;
