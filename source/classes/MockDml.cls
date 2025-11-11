@@ -8,7 +8,6 @@ global class MockDml extends Dml {
 	global static final List<MockDml.ConditionalFailure> FAILURES;
 	global static final MockDml.SavepointHistory SAVEPOINTS;
 	private static final String EVENT_UUID_FIELD;
-	private static final String MOCK_STATUS_CODE;
 
 	// **** STATIC **** //
 	/**
@@ -93,7 +92,6 @@ global class MockDml extends Dml {
 	static {
 		EVENT_UUID_FIELD = 'EventUuid';
 		FAILURES = new List<MockDml.ConditionalFailure>{};
-		MOCK_STATUS_CODE = 'MOCK_DML';
 		SAVEPOINTS = new MockDml.SavepointHistory();
 		MockDatabase = new MockDml.Database();
 	}
@@ -374,7 +372,7 @@ global class MockDml extends Dml {
 
 		protected MockDml.Result handleDmlError(SObject record, Exception error, Boolean allOrNone) {
 			// Handles an error during DML, according to the defined allOrNone logic, mirroring standard functionality
-			MockDml.Error dmlError = new MockDml.Error(error);
+			MockError dmlError = new MockError(error);
 			if (allOrNone == true) {
 				throw dmlError?.toDmlException();
 			} else if (this.operation == Dml.Operation.DO_CONVERT) {
@@ -806,39 +804,6 @@ global class MockDml extends Dml {
 	}
 
 	/**
-	 * @description Mocks the Database.Error class for testing DML failures.
-	 */
-	private class Error {
-		/**
-		 *  Mocks the `Database.Error` class, since this type cannot be manually constructed.
-		 **/
-		private String message;
-		private String statusCode;
-
-		private Error(Exception error) {
-			// Note: It's not possible to retrieve the actual status code
-			// of an Exception outside of an actual DML context.
-			// This class will always use a dummy status code
-			this.message = error?.getMessage();
-			this.statusCode = MOCK_STATUS_CODE;
-		}
-
-		private System.DmlException toDmlException() {
-			// De-converts the Error to a DmlException to be thrown in DML Operations
-			System.DmlException error = new System.DmlException();
-			error
-				?.setMessage(
-					'DML failed. First exception on row X; first error: ' +
-						this.statusCode +
-						', ' +
-						this.message +
-						': []'
-				);
-			return error;
-		}
-	}
-
-	/**
 	 * @description Mocks Database.LeadConvertResult for lead conversion operations.
 	 */
 	private virtual class LeadConvertResult extends MockDml.Result {
@@ -913,7 +878,7 @@ global class MockDml extends Dml {
 		 * These objects cannot be manually constructed, but they can easily be converted to their desired type via JSON de/serialization.
 		 * All types share two parameters: errors and success
 		 **/
-		protected List<MockDml.Error> errors = new List<MockDml.Error>();
+		protected List<MockError> errors = new List<MockError>();
 		/**
 		 * @description Whether the operation succeeded (no errors).
 		 */
@@ -929,7 +894,7 @@ global class MockDml extends Dml {
 			this.setId(record);
 		}
 
-		protected Result addError(MockDml.Error error) {
+		protected Result addError(MockError error) {
 			this.errors?.add(error);
 			return this;
 		}

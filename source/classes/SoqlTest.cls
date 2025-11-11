@@ -4,7 +4,7 @@
 @IsTest
 private class SoqlTest {
 	@IsTest
-	static void shouldAggregateQuery() {
+	private static void shouldAggregateQuery() {
 		Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id);
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)?.addSelect(count)?.toSoql();
 
@@ -20,7 +20,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldHandleAggregateQueryErrors() {
+	private static void shouldHandleAggregateQueryErrors() {
 		// Calling aggregateQuery() with a non-aggregate query will yield a System.TypeException
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)?.toSoql();
 
@@ -38,7 +38,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldCountQuery() {
+	private static void shouldCountQuery() {
 		Soql.ParentField field = new Soql.ParentField(User.ProfileId, Profile.Name);
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
 			?.addWhere(field, Soql.EQUALS, 'System Administrator')
@@ -55,7 +55,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldHandleCountQueryErrors() {
+	private static void shouldHandleCountQueryErrors() {
 		SObjectType illegalEntity = null; // Will cause a System.QueryException when run
 		Soql soql = DatabaseLayer.Soql.newQuery(illegalEntity)?.toSoql();
 
@@ -71,7 +71,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldGetCursor() {
+	private static void shouldGetCursor() {
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowLimit(1)?.toSoql();
 
 		Test.startTest();
@@ -85,7 +85,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldHandleCursorQueryErrors() {
+	private static void shouldHandleCursorQueryErrors() {
 		String illegalFieldName = 'abcd'; // Will cause a System.QueryException when run
 		Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)?.addSelect(illegalFieldName)?.toSoql();
 
@@ -101,7 +101,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldWrapInvalidCursorFetchErrors() {
+	private static void shouldWrapInvalidCursorFetchErrors() {
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowLimit(1)?.toSoql();
 
 		Test.startTest();
@@ -118,7 +118,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldGetQueryLocator() {
+	private static void shouldGetQueryLocator() {
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowLimit(1)?.toSoql();
 
 		Test.startTest();
@@ -131,7 +131,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldHandleQueryLocatorErrors() {
+	private static void shouldHandleQueryLocatorErrors() {
 		String illegalFieldName = 'abcd'; // Will cause a System.QueryException when run
 		Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)?.addSelect(illegalFieldName)?.toSoql();
 
@@ -147,7 +147,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldQueryRecords() {
+	private static void shouldQueryRecords() {
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowLimit(1)?.toSoql();
 
 		Test.startTest();
@@ -158,7 +158,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldQuerySingleRecord() {
+	private static void shouldQuerySingleRecord() {
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType);
 
 		Test.startTest();
@@ -169,7 +169,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldReturnNullIfNoResults() {
+	private static void shouldReturnNullIfNoResults() {
 		Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType);
 		// No accounts have been inserted yet, so this shouldn't return anything
 
@@ -181,7 +181,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldHandleQueryErrors() {
+	private static void shouldHandleQueryErrors() {
 		String illegalFieldName = 'abcd'; // Will cause a System.QueryException when run
 		Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)?.addSelect(illegalFieldName)?.toSoql();
 
@@ -197,7 +197,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldQueryRecordsAndCastToType() {
+	private static void shouldQueryRecordsAndCastToType() {
 		Soql.ParentField profile = new Soql.ParentField(User.ProfileId, Profile.Name);
 		Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id)?.withAlias('numRecords');
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
@@ -219,14 +219,14 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldSetAccessLevel() {
+	private static void shouldSetAccessLevel() {
 		System.AccessLevel level = System.AccessLevel.SYSTEM_MODE;
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)?.setAccessLevel(level)?.toSoql();
 		Assert.areEqual(level, soql?.accessLevel, 'Did not set access level');
 	}
 
 	@IsTest
-	static void shouldBindVariableToQuery() {
+	private static void shouldBindVariableToQuery() {
 		Soql.Binder binder = new Soql.Binder('userId', UserInfo.getUserId());
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
 			?.addSelect(User.Username)
@@ -241,7 +241,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldDeselectAllFields() {
+	private static void shouldDeselectAllFields() {
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)?.selectAll()?.toSoql();
 		Assert.isTrue(soql?.selectClauses?.size() > 1, 'Wrong # of SELECT clauses');
 
@@ -253,7 +253,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldDeselectSpecificClauses() {
+	private static void shouldDeselectSpecificClauses() {
 		Soql.ParentField profile = new Soql.ParentField(User.ProfileId, Profile.Name);
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)?.addSelect(profile)?.selectAll()?.toSoql();
 		Assert.isTrue(soql?.selectClauses?.size() > 1, 'Wrong # of SELECT clauses');
@@ -269,7 +269,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldSelectAllFields() {
+	private static void shouldSelectAllFields() {
 		Set<String> userFields = SObjectType.User?.fields?.getMap()?.keySet();
 
 		Test.startTest();
@@ -280,7 +280,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldSelectSpecificFields() {
+	private static void shouldSelectSpecificFields() {
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)?.addSelect(User.FirstName)?.setRowLimit(1)?.toSoql();
 		String expected = 'SELECT Id, FirstName FROM User LIMIT 1';
 
@@ -290,7 +290,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldSelectFieldWithAlias() {
+	private static void shouldSelectFieldWithAlias() {
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
 			?.addSelect(User.ProfileId, 'profile')
 			?.addGroupBy(User.ProfileId)
@@ -303,7 +303,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldSelectParentFieldWithAlias() {
+	private static void shouldSelectParentFieldWithAlias() {
 		Soql.ParentField field = new Soql.ParentField(Account.OwnerId, User.ProfileId);
 		Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)
 			?.addSelect(field, 'profile')
@@ -317,7 +317,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldSelectListOfFields() {
+	private static void shouldSelectListOfFields() {
 		List<SObjectField> fields = new List<SObjectField>{
 			Account.Name,
 			Account.NumberOfEmployees,
@@ -334,7 +334,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldSelectUpTo5Fields() {
+	private static void shouldSelectUpTo5Fields() {
 		Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)
 			?.addSelect(
 				Account.Name,
@@ -352,7 +352,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldSelectMultipleFields() {
+	private static void shouldSelectMultipleFields() {
 		Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)
 			?.addSelect(Account.Name, Account.NumberOfEmployees)
 			?.toSoql();
@@ -364,7 +364,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldSelectParentField() {
+	private static void shouldSelectParentField() {
 		Soql.ParentField field = new Soql.ParentField(Opportunity.AccountId, Account.Name);
 		Soql soql = DatabaseLayer.Soql.newQuery(Opportunity.SObjectType)?.addSelect(field)?.toSoql();
 		String expected = 'SELECT Id, Account.Name FROM Opportunity';
@@ -375,7 +375,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldSelectListOfParentFields() {
+	private static void shouldSelectListOfParentFields() {
 		List<Soql.ParentField> fields = new List<Soql.ParentField>{
 			new Soql.ParentField(Opportunity.AccountId, Account.Name),
 			new Soql.ParentField(Opportunity.AccountId, Account.OwnerId)
@@ -390,7 +390,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldSelectUpTo5ParentFields() {
+	private static void shouldSelectUpTo5ParentFields() {
 		Soql.ParentField accName = new Soql.ParentField(Opportunity.AccountId, Account.Name);
 		Soql.ParentField accOwner = new Soql.ParentField(Opportunity.AccountId, Account.OwnerId);
 		Soql.ParentField ownerProfile = new Soql.ParentField(
@@ -413,7 +413,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldSelectMultipleParentFields() {
+	private static void shouldSelectMultipleParentFields() {
 		Soql.ParentField accountName = new Soql.ParentField(Opportunity.AccountId, Account.Name);
 		Soql.ParentField accountOwner = new Soql.ParentField(Opportunity.AccountId, Account.OwnerId);
 
@@ -428,7 +428,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldSelectAggregation() {
+	private static void shouldSelectAggregation() {
 		Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id);
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)?.addSelect(count)?.toSoql();
 		String expected = 'SELECT COUNT(Id) FROM User';
@@ -439,7 +439,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldSelectListOfAggregations() {
+	private static void shouldSelectListOfAggregations() {
 		List<Soql.Aggregation> aggs = new List<Soql.Aggregation>{
 			new Soql.Aggregation(Soql.Function.COUNT, Account.Id),
 			new Soql.Aggregation(Soql.Function.AVG, Account.NumberOfEmployees),
@@ -456,7 +456,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldSelectUpTo5Aggregations() {
+	private static void shouldSelectUpTo5Aggregations() {
 		Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)
 			?.addSelect(
 				new Soql.Aggregation(Soql.Function.COUNT, Account.Id),
@@ -474,7 +474,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldSelectMultipleAggregations() {
+	private static void shouldSelectMultipleAggregations() {
 		Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)
 			?.addSelect(
 				new Soql.Aggregation(Soql.Function.COUNT, Account.Id),
@@ -489,7 +489,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldSelectSubquery() {
+	private static void shouldSelectSubquery() {
 		Soql.Subquery subquery = new Soql.Subquery(User.ProfileId);
 		Soql soql = DatabaseLayer.Soql.newQuery(Profile.SObjectType)?.addSelect(subquery)?.setRowLimit(1)?.toSoql();
 		String expected = 'SELECT Id, (SELECT Id FROM Users) FROM Profile LIMIT 1';
@@ -500,7 +500,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldSelectListOfSubqueries() {
+	private static void shouldSelectListOfSubqueries() {
 		List<Soql.Subquery> subqueries = new List<Soql.Subquery>{
 			new Soql.Subquery(Account.ParentId),
 			new Soql.Subquery(Case.AccountId),
@@ -517,7 +517,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldSelectUpTo5Subqueries() {
+	private static void shouldSelectUpTo5Subqueries() {
 		Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)
 			?.addSelect(
 				new Soql.Subquery(Account.ParentId),
@@ -535,7 +535,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldSelectMultipleSubqueries() {
+	private static void shouldSelectMultipleSubqueries() {
 		Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)
 			?.addSelect(new Soql.Subquery(Account.ParentId), new Soql.Subquery(Case.AccountId))
 			?.toSoql();
@@ -547,7 +547,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldSetQueryScope() {
+	private static void shouldSetQueryScope() {
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
 			?.setScope(Soql.Scope.EVERYTHING)
 			?.setRowLimit(1)
@@ -560,7 +560,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldAddCriteriaToWhereClause() {
+	private static void shouldAddCriteriaToWhereClause() {
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
 			?.addWhere(User.IsActive, Soql.EQUALS, true)
 			?.setRowLimit(1)
@@ -573,7 +573,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldAddCriteriaWithBindsToWhereClause() {
+	private static void shouldAddCriteriaWithBindsToWhereClause() {
 		Soql.Binder profileName = new Soql.Binder('profileName', 'System Administrator');
 		Soql.Binder userId = new Soql.Binder('userId', UserInfo.getUserId());
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
@@ -588,7 +588,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldHandleMultipleWhereClauses() {
+	private static void shouldHandleMultipleWhereClauses() {
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
 			?.addWhere(User.IsActive, Soql.EQUALS, true)
 			?.addWhere(new Soql.ParentField(User.ProfileId, Profile.Name), Soql.EQUALS, 'System Administrator')
@@ -602,7 +602,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldSetWhereClauseOuterLogic() {
+	private static void shouldSetWhereClauseOuterLogic() {
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
 			?.addWhere(User.IsActive, Soql.EQUALS, true)
 			?.addWhere(new Soql.ParentField(User.ProfileId, Profile.Name), Soql.EQUALS, 'System Administrator')
@@ -617,7 +617,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldSetNestedWhereClause() {
+	private static void shouldSetNestedWhereClause() {
 		Soql.ConditionalLogic innerCondition = new Soql.ConditionalLogic()
 			?.addCondition(User.FirstName, Soql.EQUALS, 'Jason')
 			?.addCondition(new Soql.ParentField(User.ProfileId, Profile.Name), Soql.EQUALS, 'System Administrator')
@@ -635,7 +635,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldSetWithSecurityEnforcedClause() {
+	private static void shouldSetWithSecurityEnforcedClause() {
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)?.withSecurityEnforced()?.setRowLimit(1)?.toSoql();
 		String expected = 'SELECT Id FROM User WITH SECURITY_ENFORCED LIMIT 1';
 
@@ -645,7 +645,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldGroupByField() {
+	private static void shouldGroupByField() {
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
 			?.addSelect(User.ProfileId)
 			?.addGroupBy(User.ProfileId)
@@ -658,7 +658,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldAddHavingClause() {
+	private static void shouldAddHavingClause() {
 		Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id);
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
 			?.addSelect(User.ProfileId)
@@ -673,7 +673,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldSupportMultipleHavingClauses() {
+	private static void shouldSupportMultipleHavingClauses() {
 		Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id);
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
 			?.addSelect(User.ProfileId)
@@ -689,7 +689,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldSetOuterHavingLogic() {
+	private static void shouldSetOuterHavingLogic() {
 		Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id);
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
 			?.addSelect(User.ProfileId)
@@ -706,7 +706,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldSetOrderByClause() {
+	private static void shouldSetOrderByClause() {
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
 			?.addOrderBy(User.CreatedDate, Soql.SortDirection.DESCENDING)
 			?.setRowLimit(1)
@@ -719,7 +719,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldSetOrderByClauseWithParentField() {
+	private static void shouldSetOrderByClauseWithParentField() {
 		Soql.ParentField field = new Soql.ParentField(Account.OwnerId, User.CreatedDate);
 		Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)
 			?.addOrderBy(field, Soql.SortDirection.DESCENDING)
@@ -733,7 +733,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldSupportMultipleOrderByClauses() {
+	private static void shouldSupportMultipleOrderByClauses() {
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
 			?.addOrderBy(new Soql.ParentField(User.ProfileId, Profile.Name), Soql.SortDirection.ASCENDING)
 			?.addOrderBy(User.CreatedDate, Soql.SortDirection.DESCENDING)
@@ -747,7 +747,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldSetRowLimit() {
+	private static void shouldSetRowLimit() {
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowLimit(1)?.toSoql();
 		String expected = 'SELECT Id FROM User LIMIT 1';
 
@@ -757,7 +757,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldSetRowOffset() {
+	private static void shouldSetRowOffset() {
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowOffset(1)?.setRowLimit(1)?.toSoql();
 		String expected = 'SELECT Id FROM User LIMIT 1 OFFSET 1';
 
@@ -767,7 +767,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldSetUsage() {
+	private static void shouldSetUsage() {
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
 			?.setUsage(Soql.Usage.FOR_VIEW)
 			?.setRowLimit(1)
@@ -780,7 +780,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldComposeFairlyComplexQuery() {
+	private static void shouldComposeFairlyComplexQuery() {
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
 			?.addSelect(User.FirstName)
 			?.addSelect(User.LastName)
@@ -803,7 +803,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldResetQuery() {
+	private static void shouldResetQuery() {
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
 			?.addSelect(User.FirstName)
 			?.addSelect(User.LastName)
@@ -823,7 +823,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldGenerateInnerQuery() {
+	private static void shouldGenerateInnerQuery() {
 		Test.startTest();
 		String result = new Soql.InnerQuery(Account.SObjectType)?.addSelect(Account.OwnerId)?.toString();
 		Test.stopTest();
@@ -833,7 +833,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldGenerateSubqueryFromChildRelationship() {
+	private static void shouldGenerateSubqueryFromChildRelationship() {
 		Schema.ChildRelationship rel = DatabaseLayer.Utils.ChildRelationships.getChildRelationshipFrom(Case.AccountId);
 
 		Test.startTest();
@@ -845,7 +845,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldGenerateSubqueryFromLookupField() {
+	private static void shouldGenerateSubqueryFromLookupField() {
 		Test.startTest();
 		String result = new Soql.Subquery(Case.AccountId)?.addSelect(Case.Id)?.toString();
 		Test.stopTest();
@@ -855,7 +855,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldOutputLogicWithSingleCondition() {
+	private static void shouldOutputLogicWithSingleCondition() {
 		Soql.ParentField field = new Soql.ParentField(Account.OwnerId, User.ProfileId, Profile.Name);
 		Soql.Condition condition = new Soql.Condition(field, Soql.EQUALS, 'System Administrator');
 
@@ -869,7 +869,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldOutputLogicWithMultipleConditions() {
+	private static void shouldOutputLogicWithMultipleConditions() {
 		Soql.ParentField ownerProfileName = new Soql.ParentField(Account.OwnerId, User.ProfileId, Profile.Name);
 		Soql.Condition condition1 = new Soql.Condition(Account.Id, Soql.EQUALS, null);
 		Soql.Condition condition2 = new Soql.Condition(ownerProfileName, Soql.NOT_EQUALS, 'System Administrator');
@@ -883,7 +883,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldOutputOrLogicWithMultipleConditions() {
+	private static void shouldOutputOrLogicWithMultipleConditions() {
 		Soql.Condition condition1 = new Soql.Condition(Account.Id, Soql.EQUALS, null);
 		Soql.Condition condition2 = new Soql.Condition(Account.OwnerId, Soql.NOT_EQUALS, null);
 
@@ -900,7 +900,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldOutputNestedConditionalLogic() {
+	private static void shouldOutputNestedConditionalLogic() {
 		Soql.ConditionalLogic nested = new Soql.ConditionalLogic()
 			?.addCondition(new Soql.Condition(Account.Id, Soql.EQUALS, null))
 			?.addCondition(new Soql.Condition(Account.OwnerId, Soql.NOT_EQUALS, null))
@@ -916,7 +916,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldOutputBooleanCondition() {
+	private static void shouldOutputBooleanCondition() {
 		Object value = true;
 		Soql.Condition condition = new Soql.Condition(Account.Id, Soql.EQUALS, value);
 
@@ -929,7 +929,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldOutputBooleanListCondition() {
+	private static void shouldOutputBooleanListCondition() {
 		Object value = new List<Boolean>{ true, false };
 		Soql.Condition condition = new Soql.Condition(Account.Id, Soql.IN_COLLECTION, value);
 
@@ -942,7 +942,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldOutputBooleanSetCondition() {
+	private static void shouldOutputBooleanSetCondition() {
 		Object value = new Set<Boolean>{ true, false };
 		Soql.Condition condition = new Soql.Condition(Account.Id, Soql.IN_COLLECTION, value);
 
@@ -955,7 +955,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldOutputDateCondition() {
+	private static void shouldOutputDateCondition() {
 		Object value = Date.newInstance(2024, 3, 15);
 		Soql.Condition condition = new Soql.Condition(Account.Id, Soql.EQUALS, value);
 
@@ -968,7 +968,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldOutputDateListCondition() {
+	private static void shouldOutputDateListCondition() {
 		Object value = new List<Date>{ Date.newInstance(2024, 3, 15), Date.newInstance(2024, 4, 15) };
 		Soql.Condition condition = new Soql.Condition(Account.Id, Soql.IN_COLLECTION, value);
 
@@ -981,7 +981,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldOutputDateSetCondition() {
+	private static void shouldOutputDateSetCondition() {
 		Object value = new Set<Date>{ Date.newInstance(2024, 3, 15), Date.newInstance(2024, 4, 15) };
 		Soql.Condition condition = new Soql.Condition(Account.Id, Soql.IN_COLLECTION, value);
 
@@ -994,7 +994,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldOutputDateTimeCondition() {
+	private static void shouldOutputDateTimeCondition() {
 		DateTime now = DateTime.now();
 		Object value = now;
 		Soql.Condition condition = new Soql.Condition(Account.Id, Soql.EQUALS, value);
@@ -1009,7 +1009,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldOutputDateTimeListCondition() {
+	private static void shouldOutputDateTimeListCondition() {
 		DateTime dt1 = DateTime.now();
 		DateTime dt2 = DateTime.now()?.addDays(30);
 		Object value = new List<DateTime>{ dt1, dt2 };
@@ -1026,7 +1026,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldOutputDateTimeSetCondition() {
+	private static void shouldOutputDateTimeSetCondition() {
 		DateTime dt1 = DateTime.now();
 		DateTime dt2 = DateTime.now()?.addDays(30);
 		Object value = new Set<DateTime>{ dt1, dt2 };
@@ -1043,7 +1043,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldOutputDecimalCondition() {
+	private static void shouldOutputDecimalCondition() {
 		Object value = 123.45;
 		Soql.Condition condition = new Soql.Condition(Account.Id, Soql.EQUALS, value);
 
@@ -1056,7 +1056,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldOutputDecimalListCondition() {
+	private static void shouldOutputDecimalListCondition() {
 		Object value = new List<Decimal>{ 123.45, 987.65 };
 		Soql.Condition condition = new Soql.Condition(Account.Id, Soql.IN_COLLECTION, value);
 
@@ -1069,7 +1069,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldOutputDecimalSetCondition() {
+	private static void shouldOutputDecimalSetCondition() {
 		Object value = new Set<Decimal>{ 123.45, 987.65 };
 		Soql.Condition condition = new Soql.Condition(Account.Id, Soql.IN_COLLECTION, value);
 
@@ -1082,7 +1082,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldOutputIdCondition() {
+	private static void shouldOutputIdCondition() {
 		Object value = UserInfo.getUserId();
 		Soql.Condition condition = new Soql.Condition(Account.Id, Soql.EQUALS, value);
 
@@ -1095,7 +1095,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldOutputIdListCondition() {
+	private static void shouldOutputIdListCondition() {
 		Id mockAccountId = SObjectType.Account.getKeyPrefix() + '0'?.repeat(15);
 		Object value = new List<Id>{ UserInfo.getUserId(), mockAccountId };
 		Soql.Condition condition = new Soql.Condition(Account.Id, Soql.IN_COLLECTION, value);
@@ -1109,7 +1109,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldOutputIdSetCondition() {
+	private static void shouldOutputIdSetCondition() {
 		Id mockAccountId = SObjectType.Account.getKeyPrefix() + '0'?.repeat(15);
 		Object value = new Set<Id>{ UserInfo.getUserId(), mockAccountId };
 		Soql.Condition condition = new Soql.Condition(Account.Id, Soql.IN_COLLECTION, value);
@@ -1123,7 +1123,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldOutputIntegerCondition() {
+	private static void shouldOutputIntegerCondition() {
 		Object value = 123;
 		Soql.Condition condition = new Soql.Condition(Account.Id, Soql.EQUALS, value);
 
@@ -1136,7 +1136,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldOutputIntegerListCondition() {
+	private static void shouldOutputIntegerListCondition() {
 		Object value = new List<Integer>{ 123, 456 };
 		Soql.Condition condition = new Soql.Condition(Account.Id, Soql.IN_COLLECTION, value);
 
@@ -1149,7 +1149,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldOutputIntegerSetCondition() {
+	private static void shouldOutputIntegerSetCondition() {
 		Object value = new Set<Integer>{ 123, 456 };
 		Soql.Condition condition = new Soql.Condition(Account.Id, Soql.IN_COLLECTION, value);
 
@@ -1162,7 +1162,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldOutputStringCondition() {
+	private static void shouldOutputStringCondition() {
 		Object value = 'foo';
 		Soql.Condition condition = new Soql.Condition(Account.Id, Soql.EQUALS, value);
 
@@ -1175,7 +1175,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldOutputStringListCondition() {
+	private static void shouldOutputStringListCondition() {
 		Object value = new List<String>{ 'foo', 'bar' };
 		Soql.Condition condition = new Soql.Condition(Account.Id, Soql.IN_COLLECTION, value);
 
@@ -1188,7 +1188,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldOutputStringSetCondition() {
+	private static void shouldOutputStringSetCondition() {
 		Object value = new List<String>{ 'foo', 'bar' };
 		Soql.Condition condition = new Soql.Condition(Account.Id, Soql.IN_COLLECTION, value);
 
@@ -1201,7 +1201,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldOutputNullCondition() {
+	private static void shouldOutputNullCondition() {
 		Object value = null;
 		Soql.Condition condition = new Soql.Condition(Account.Id, Soql.EQUALS, value);
 
@@ -1214,7 +1214,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldOutputBindCondition() {
+	private static void shouldOutputBindCondition() {
 		Object value = new Soql.Binder('myList');
 		Soql.Condition condition = new Soql.Condition(Account.Id, Soql.IN_COLLECTION, value);
 
@@ -1227,7 +1227,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldOutputManualBind() {
+	private static void shouldOutputManualBind() {
 		// Alternatively, callers can pass a string variable starting with ":" to indicate a bind
 		Object value = ':myList';
 		Soql.Condition condition = new Soql.Condition(Account.Id, Soql.IN_COLLECTION, value);
@@ -1241,7 +1241,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldOutputExactMatchString() {
+	private static void shouldOutputExactMatchString() {
 		Soql.Operator operator = Soql.EQUALS;
 		String value = 'foo';
 
@@ -1253,7 +1253,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldOuptutStartsWithString() {
+	private static void shouldOuptutStartsWithString() {
 		Soql.Operator operator = Soql.STARTS_WITH;
 		String value = 'foo';
 
@@ -1265,7 +1265,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldOuptutEndsWithString() {
+	private static void shouldOuptutEndsWithString() {
 		Soql.Operator operator = Soql.ENDS_WITH;
 		String value = 'foo';
 
@@ -1277,7 +1277,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldOuptutContainsString() {
+	private static void shouldOuptutContainsString() {
 		Soql.Operator operator = Soql.CONTAINS;
 		String value = 'foo';
 
@@ -1289,7 +1289,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldOutputReferenceToParentFields() {
+	private static void shouldOutputReferenceToParentFields() {
 		// SOQL supports querying objects up to 5 relationships away from the FROM object
 		Soql.Selectable field1 = new Soql.ParentField(OpportunityContactRole.OpportunityId, Opportunity.AccountId);
 		Assert.areEqual('Opportunity.AccountId', field1?.toString(), 'Wrong ParentField value');
@@ -1334,25 +1334,25 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldCreateAggregateClause() {
+	private static void shouldCreateAggregateClause() {
 		String value = new Soql.Aggregation(Soql.Function.COUNT, Account.Id)?.toString();
 		Assert.areEqual('COUNT(Id)', value, 'Wrong toString() value');
 	}
 
 	@IsTest
-	static void shouldCreateAggregateClauseWithAlias() {
+	private static void shouldCreateAggregateClauseWithAlias() {
 		String value = new Soql.Aggregation(Soql.Function.COUNT, Account.Id)?.withAlias('num')?.toString();
 		Assert.areEqual('COUNT(Id) num', value, 'Wrong toString() value');
 	}
 
 	@IsTest
-	static void shouldCreateAggregateClauseWithoutInnerField() {
+	private static void shouldCreateAggregateClauseWithoutInnerField() {
 		String value = new Soql.Aggregation(Soql.Function.COUNT)?.toString();
 		Assert.areEqual('COUNT()', value, 'Wrong toString() value');
 	}
 
 	@IsTest
-	static void shouldCreateBinderObject() {
+	private static void shouldCreateBinderObject() {
 		String key = 'ownerIds';
 		List<Id> ownerIds = new List<Id>{ UserInfo.getUserId() };
 
@@ -1368,7 +1368,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldCreateEmptyBinder() {
+	private static void shouldCreateEmptyBinder() {
 		String key = 'ownerIds';
 
 		Test.startTest();
@@ -1381,7 +1381,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldAddInnerQueryBindsToParent() {
+	private static void shouldAddInnerQueryBindsToParent() {
 		Soql.Binder owner = new Soql.Binder('ownerId', UserInfo.getUserId());
 		Soql.InnerQuery innerQuery = new Soql.InnerQuery(Case.SObjectType)
 			?.addSelect(Case.AccountId)
@@ -1403,7 +1403,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldAddSubqueryBindsToParent() {
+	private static void shouldAddSubqueryBindsToParent() {
 		Soql.Binder owner = new Soql.Binder('ownerId', UserInfo.getUserId());
 		Soql.Subquery subquery = new Soql.Subquery(Opportunity.AccountId)
 			?.addWhere(Opportunity.OwnerId, Soql.EQUALS, owner)
@@ -1421,20 +1421,20 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldOrderByField() {
+	private static void shouldOrderByField() {
 		String value = new Soql.SortOrder(Account.CreatedDate, Soql.SortDirection.ASCENDING)?.toString();
 		Assert.areEqual('CreatedDate ASC NULLS LAST', value, 'Wrong value');
 	}
 
 	@IsTest
-	static void shouldOrderByParentField() {
+	private static void shouldOrderByParentField() {
 		Soql.ParentField field = new Soql.ParentField(Opportunity.AccountId, Account.CreatedDate);
 		String value = new Soql.SortOrder(field, Soql.SortDirection.ASCENDING)?.toString();
 		Assert.areEqual('Account.CreatedDate ASC NULLS LAST', value, 'Wrong value');
 	}
 
 	@IsTest
-	static void shouldSpecifyNullOrder() {
+	private static void shouldSpecifyNullOrder() {
 		String value = new Soql.SortOrder(Account.CreatedDate, Soql.SortDirection.DESCENDING)
 			?.setNullOrder(Soql.NullOrder.NULLS_FIRST)
 			?.toString();
@@ -1442,7 +1442,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldSetQueryIdentifier() {
+	private static void shouldSetQueryIdentifier() {
 		String identifier = 'My account query';
 		Soql theQuery = DatabaseLayer.Soql.newQuery(Account.SObjectType)?.toSoql();
 
@@ -1454,7 +1454,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldCastToInnerQuery() {
+	private static void shouldCastToInnerQuery() {
 		Soql.Builder builder = new Soql.InnerQuery(Case.SObjectType)?.addSelect(Case.AccountId);
 
 		Test.startTest();
@@ -1465,7 +1465,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldCastToSoql() {
+	private static void shouldCastToSoql() {
 		Soql.Builder builder = DatabaseLayer.Soql.newQuery(Case.SObjectType)?.addSelect(Case.AccountId);
 
 		Test.startTest();
@@ -1476,7 +1476,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldCastToSubquery() {
+	private static void shouldCastToSubquery() {
 		Soql.Builder builder = new Soql.Subquery(Case.AccountId)?.addSelect(Case.Status);
 
 		Test.startTest();
@@ -1487,7 +1487,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldThrowExceptionIfInvalidCasting() {
+	private static void shouldThrowExceptionIfInvalidCasting() {
 		Soql.Builder builder = new Soql.Subquery(Case.AccountId)?.addSelect(Case.Status);
 
 		Test.startTest();
@@ -1504,7 +1504,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldRunPreAndPostProcessorPluginLogic() {
+	private static void shouldRunPreAndPostProcessorPluginLogic() {
 		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
 
 		Test.startTest();
@@ -1525,7 +1525,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldRunPluginErrorLogic() {
+	private static void shouldRunPluginErrorLogic() {
 		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
 
 		Test.startTest();
@@ -1554,7 +1554,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldNotRunProcessorLogicIfInvalidApexClassDefined() {
+	private static void shouldNotRunProcessorLogicIfInvalidApexClassDefined() {
 		DatabaseLayerTestUtils.initDmlAndSoqlPlugins('an obviously invalid apex class name');
 
 		Test.startTest();
@@ -1575,7 +1575,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldNotRunProcessorLogicIfNoValueDefined() {
+	private static void shouldNotRunProcessorLogicIfNoValueDefined() {
 		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(null);
 
 		Test.startTest();
@@ -1596,7 +1596,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldNotRunProcessorLogicIfNoSettingsDefined() {
+	private static void shouldNotRunProcessorLogicIfNoSettingsDefined() {
 		MockCmdt.mock(DatabaseLayerSetting__mdt.SObjectType);
 		DatabaseLayer.Utils.Plugins.init();
 
@@ -1633,7 +1633,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldBuildTypeOfQuery() {
+	private static void shouldBuildTypeOfQuery() {
 		Soql.TypeOf typeOfClause = new Soql.TypeOf(Task.WhatId)
 			.when(Account.SObjectType)
 			.thenSelect(Account.Name, Account.Phone)
@@ -1650,7 +1650,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldBuildTypeOfQueryWithSObjectField() {
+	private static void shouldBuildTypeOfQueryWithSObjectField() {
 		Soql.TypeOf typeOfClause = new Soql.TypeOf(Task.WhatId)
 			.when(Account.SObjectType)
 			.thenSelect(Account.Name)
@@ -1665,7 +1665,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldBuildTypeOfQueryWithMultipleFields() {
+	private static void shouldBuildTypeOfQueryWithMultipleFields() {
 		Soql.TypeOf typeOfClause = new Soql.TypeOf(Task.WhatId)
 			.when(Account.SObjectType)
 			.thenSelect(new List<SObjectField>{ Account.Name, Account.Phone, Account.Type })
@@ -1680,7 +1680,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldBuildTypeOfQueryWithoutElse() {
+	private static void shouldBuildTypeOfQueryWithoutElse() {
 		Soql.TypeOf typeOfClause = new Soql.TypeOf(Task.WhatId)
 			.when(Account.SObjectType)
 			.thenSelect(Account.Name)
@@ -1696,7 +1696,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldUseTypeOfInSoqlQuery() {
+	private static void shouldUseTypeOfInSoqlQuery() {
 		Soql.TypeOf typeOfClause = new Soql.TypeOf(Task.WhatId)
 			.when(Case.SObjectType)
 			.thenSelect(Case.CaseNumber)
@@ -1713,7 +1713,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldBuildTypeOfWithStringConstructor() {
+	private static void shouldBuildTypeOfWithStringConstructor() {
 		Soql.TypeOf typeOfClause = new Soql.TypeOf('What').when(Account.SObjectType).thenSelect(Account.Name);
 
 		Test.startTest();
@@ -1725,7 +1725,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldBuildTypeOfWithParentField() {
+	private static void shouldBuildTypeOfWithParentField() {
 		Soql.ParentField parentField = new Soql.ParentField(Case.ContactId, Contact.OwnerId);
 		Soql.TypeOf typeOfClause = new Soql.TypeOf(parentField).when(User.SObjectType).thenSelect(User.Name);
 
@@ -1738,7 +1738,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldTestAllThenSelectOverloads() {
+	private static void shouldTestAllThenSelectOverloads() {
 		Soql.TypeOf typeOfClause = new Soql.TypeOf(Task.WhatId);
 
 		Test.startTest();
@@ -1767,7 +1767,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldTestAllElseSelectOverloads() {
+	private static void shouldTestAllElseSelectOverloads() {
 		Test.startTest();
 		Soql.TypeOf typeOf1 = new Soql.TypeOf(Task.WhatId).elseSelect('Name');
 		Assert.isTrue(typeOf1?.toString()?.contains('ELSE Name'), 'Missing single field ELSE');
@@ -1789,7 +1789,7 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	static void shouldHandleNullFieldsInOverloads() {
+	private static void shouldHandleNullFieldsInOverloads() {
 		Test.startTest();
 		// Test with some null fields in 5-field overload
 		Soql.TypeOf typeOfClause = new Soql.TypeOf(Task.WhatId)

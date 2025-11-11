@@ -1,6 +1,6 @@
 The `DatabaseLayer` class serves as a centralized access point for all DML and SOQL operations within the application. It simplifies and standardizes how database interactions are performed and tested.
 
-It abstracts direct access to the Salesforce database by exposing the static properties `DatabaseLayer.Dml`, `DatabaseLayer.Soql`, and `DatabaseLayer.Cmdt`. Callers can use these properties to perform operations without tightly coupling their logic to platform-specific implementations.
+It abstracts direct access to the Salesforce database by exposing the static properties `DatabaseLayer.Dml`, `DatabaseLayer.Soql`, `DatabaseLayer.Cmdt`, and `DatabaseLayer.Duplicates`. Callers can use these properties to perform operations without tightly coupling their logic to platform-specific implementations.
 
 Acting as a pseudo-namespace, the class organizes all database-related logic under a single, consistent API, promoting separation of concerns and reducing duplication across the codebase.
 
@@ -64,6 +64,11 @@ Assert.areEqual(0, Limits.getDmlStatements(), 'Used real DML');
       <td>Cmdt</td>
       <td>Provides access to Custom Metadata Type records through repository-based access. Returns a <a href="./The-Cmdt-Class">Cmdt</a> object that can be used to retrieve CMDT records with intelligent caching and mock support.</td>
     </tr>
+    <tr>
+      <td>Duplicates</td>
+      <td>Duplicates</td>
+      <td>Returns the current <code>Duplicates</code> instance. For normal database operations, this is a <a href="./The-Duplicates-Class">Duplicates</a> object. For mock database operations, this is a <a href="./The-MockDuplicates-Class">MockDuplicates</a> object.</td>
+    </tr>
   </tbody>
 </table>
 
@@ -73,7 +78,7 @@ Assert.areEqual(0, Limits.getDmlStatements(), 'Used real DML');
 
 ### `useMocks`
 
-Configures the framework to use Mock DML and Mock SOQL operations, instead of interacting with the actual Salesforce database. Once this is called, `DatabaseLayer.Dml` will return a `MockDml` object; `Database.Soql.newQuery` will return a `MockSoql` object. This static method is only visible in the `@IsTest` context.
+Configures the framework to use Mock DML, Mock SOQL, and Mock Duplicates operations, instead of interacting with the actual Salesforce database. Once this is called, `DatabaseLayer.Dml` will return a `MockDml` object; `Database.Soql.newQuery` will return a `MockSoql` object; `DatabaseLayer.Duplicates` will return a `MockDuplicates` object. This static method is only visible in the `@IsTest` context.
 
 - `static void useMocks()`
 
@@ -93,8 +98,8 @@ This static method is only visible in the `@IsTest` context.
 
 ### `useRealData`
 
-Configures the framework to use real DML & SOQL operations that interact with the actual Salesforce database, instead of mocks.
-This is the default state of the application; there is no need to call it unless some variation of `DatabaseLayer.useMocks()` was called earlier in the transaction. Once this is called, `DatabaseLayer.Dml` will return a `Dml` object; `Database.Soql.newQuery` will return a `Soql` object.
+Configures the framework to use real DML, SOQL, and Duplicates operations that interact with the actual Salesforce database, instead of mocks.
+This is the default state of the application; there is no need to call it unless some variation of `DatabaseLayer.useMocks()` was called earlier in the transaction. Once this is called, `DatabaseLayer.Dml` will return a `Dml` object; `Database.Soql.newQuery` will return a `Soql` object; `DatabaseLayer.Duplicates` will return a `Duplicates` object.
 
 This static method is only visible in the `@IsTest` context.
 
@@ -117,3 +122,18 @@ This is the default state of the application; there is no need to call it unless
 This static method is only visible in the `@IsTest` context.
 
 - `static void useRealSoql()`
+
+### `useMockDuplicates`
+
+Configures the framework to use Mock Duplicates operations, instead of interacting with the actual Salesforce duplicate detection system. Once this is called, `DatabaseLayer.Duplicates` will return a `MockDuplicates` object. This static method is only visible in the `@IsTest` context.
+
+- `static MockDuplicates useMockDuplicates()`
+
+### `useRealDuplicates`
+
+Configures the framework to use real Duplicates operations that interact with the actual Salesforce duplicate detection system, instead of mocks.
+This is the default state of the application; there is no need to call it unless `DatabaseLayer.useMocks()` or `DatabaseLayer.useMockDuplicates()` was called earlier in the transaction. Once this is called, `DatabaseLayer.Duplicates` will return a `Duplicates` object.
+
+This static method is only visible in the `@IsTest` context.
+
+- `static Duplicates useRealDuplicates()`

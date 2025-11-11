@@ -2,7 +2,7 @@
 @IsTest
 private class DatabaseLayerTest {
 	@IsTest
-	static void shouldInitCmdtObject() {
+	private static void shouldInitCmdtObject() {
 		// There's only one CMDT object, and it can provision real or mock data in tests split by SObjectType
 		Test.startTest();
 		Cmdt result = DatabaseLayer.Cmdt;
@@ -10,8 +10,9 @@ private class DatabaseLayerTest {
 
 		Assert.isNotNull(result, 'Did not return result');
 	}
+
 	@IsTest
-	static void shouldInitRealDmlObjectByDefault() {
+	private static void shouldInitRealDmlObjectByDefault() {
 		Test.startTest();
 		Dml result = DatabaseLayer.Dml;
 		Test.stopTest();
@@ -21,7 +22,7 @@ private class DatabaseLayerTest {
 	}
 
 	@IsTest
-	static void shouldInitMockDmlObject() {
+	private static void shouldInitMockDmlObject() {
 		DatabaseLayer.useMocks();
 
 		Test.startTest();
@@ -33,7 +34,7 @@ private class DatabaseLayerTest {
 	}
 
 	@IsTest
-	static void shouldSwitchToRealDmlObject() {
+	private static void shouldSwitchToRealDmlObject() {
 		DatabaseLayer.useMocks();
 
 		Test.startTest();
@@ -47,7 +48,43 @@ private class DatabaseLayerTest {
 	}
 
 	@IsTest
-	static void shouldInitRealSoqlObjectByDefault() {
+	private static void shouldInitRealDuplicatesObjectByDefault() {
+		Test.startTest();
+		Duplicates result = DatabaseLayer.Duplicates;
+		Test.stopTest();
+
+		Assert.isInstanceOfType(result, Duplicates.class, 'Should be Duplicates');
+		Assert.isNotInstanceOfType(result, MockDuplicates.class, 'Should not be MockDuplicates');
+	}
+
+	@IsTest
+	private static void shouldInitMockDuplicatesObject() {
+		DatabaseLayer.useMocks();
+
+		Test.startTest();
+		Duplicates result = DatabaseLayer.Duplicates;
+		Test.stopTest();
+
+		Assert.isInstanceOfType(result, Duplicates.class, 'Should be Duplicates');
+		Assert.isInstanceOfType(result, MockDuplicates.class, 'Should be MockDuplicates');
+	}
+
+	@IsTest
+	private static void shouldSwitchToRealDuplicatesObject() {
+		DatabaseLayer.useMocks();
+
+		Test.startTest();
+		// Now switch back to using real database objects
+		DatabaseLayer.useRealData();
+		Duplicates result = DatabaseLayer.Duplicates;
+		Test.stopTest();
+
+		Assert.isInstanceOfType(result, Duplicates.class, 'Should be Duplicates');
+		Assert.isNotInstanceOfType(result, MockDuplicates.class, 'Should not be MockDuplicates');
+	}
+
+	@IsTest
+	private static void shouldInitRealSoqlObjectByDefault() {
 		Test.startTest();
 		Soql result = DatabaseLayer.Soql?.newQuery(Account.SObjectType);
 		Test.stopTest();
@@ -57,7 +94,7 @@ private class DatabaseLayerTest {
 	}
 
 	@IsTest
-	static void shouldInitMockSoqlObject() {
+	private static void shouldInitMockSoqlObject() {
 		DatabaseLayer.useMocks();
 
 		Test.startTest();
@@ -69,7 +106,7 @@ private class DatabaseLayerTest {
 	}
 
 	@IsTest
-	static void shouldSwitchToRealSoqlObject() {
+	private static void shouldSwitchToRealSoqlObject() {
 		DatabaseLayer.useMocks();
 
 		Test.startTest();

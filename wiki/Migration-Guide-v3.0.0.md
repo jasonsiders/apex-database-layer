@@ -87,9 +87,9 @@ Prior to `v3.0.0`, the `MockDml.ConditionalFailure`'s interface method reference
 
 ```apex
 public class MyImplementation implements MockDml.ConditionalFailure {
-    public Exception checkFailure(MockDml.Operation operation, SObject record) {
-        // Your implementaiton here!
-    }
+	public Exception checkFailure(MockDml.Operation operation, SObject record) {
+		// Your implementaiton here!
+	}
 }
 ```
 
@@ -99,13 +99,13 @@ Therefore, you will need to (temporarily) create a duplicate method in your impl
 
 ```apex
 public class MyImplementation implements MockDml.ConditionalFailure {
-    public Exception checkFailure(MockDml.Operation operation, SObject record) {
-        // Old implementation, can be unchanged (for now)
-    }
+	public Exception checkFailure(MockDml.Operation operation, SObject record) {
+		// Old implementation, can be unchanged (for now)
+	}
 
-    public Exception checkFailure(Dml.Operation operation, SObject record) {
-        // Duplicate the old implementation, `operation` type aside:
-    }
+	public Exception checkFailure(Dml.Operation operation, SObject record) {
+		// Duplicate the old implementation, `operation` type aside:
+	}
 }
 ```
 
@@ -121,9 +121,9 @@ Now that `v3.0.0` has been installed, you can safely remove the old `MockDml.Ope
 
 ```apex
 public class MyImplementation implements MockDml.ConditionalFailure {
-    public Exception checkFailure(Dml.Operation operation, SObject record) {
-        // Your implementation here
-    }
+	public Exception checkFailure(Dml.Operation operation, SObject record) {
+		// Your implementation here
+	}
 }
 ```
 

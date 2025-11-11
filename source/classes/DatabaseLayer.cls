@@ -8,6 +8,7 @@ global class DatabaseLayer {
 
 	private Cmdt currentCmdt;
 	private Dml currentDml;
+	private Duplicates currentDuplicates;
 	private SoqlProvider currentSoql;
 
 	/**
@@ -16,6 +17,7 @@ global class DatabaseLayer {
 	private DatabaseLayer() {
 		this.currentCmdt = new Cmdt(this);
 		this.currentDml = new Dml(this);
+		this.currentDuplicates = new Duplicates(this);
 		this.currentSoql = new SoqlProvider(this);
 	}
 
@@ -57,12 +59,24 @@ global class DatabaseLayer {
 	}
 
 	/**
+	 * @description Primary access point for Duplicates operations. Returns the currently configured Duplicates instance.
+	 * @return The current Duplicates instance (real or mock based on configuration)
+	 */
+	@SuppressWarnings('PMD.PropertyNamingConventions')
+	global static Duplicates Duplicates {
+		get {
+			return INSTANCE?.currentDuplicates;
+		}
+	}
+
+	/**
 	 * @description Switches both DML and SOQL providers to use mock implementations for testing.
 	 */
 	@TestVisible
 	private static void useMocks() {
 		DatabaseLayer.useMockDml();
 		DatabaseLayer.useMockSoql();
+		DatabaseLayer.useMockDuplicates();
 	}
 
 	/**
@@ -85,6 +99,16 @@ global class DatabaseLayer {
 	}
 
 	/**
+	 * @description Switches the Duplicates provider to use mock implementation for testing.
+	 * @return The mock Duplicates instance that was configured
+	 */
+	@TestVisible
+	private static MockDuplicates useMockDuplicates() {
+		INSTANCE.currentDuplicates = new MockDuplicates(INSTANCE);
+		return (MockDuplicates) INSTANCE.currentDuplicates;
+	}
+
+	/**
 	 * @description Switches the DML provider back to real database operations.
 	 * @return The real DML instance that was configured
 	 */
@@ -92,6 +116,16 @@ global class DatabaseLayer {
 	private static Dml useRealDml() {
 		INSTANCE.currentDml = new Dml(INSTANCE);
 		return INSTANCE.currentDml;
+	}
+
+	/**
+	 * @description Switches the Duplicates provider back to real duplicate detection operations.
+	 * @return The real Duplicates instance that was configured
+	 */
+	@TestVisible
+	private static Duplicates useRealDuplicates() {
+		INSTANCE.currentDuplicates = new Duplicates(INSTANCE);
+		return INSTANCE.currentDuplicates;
 	}
 
 	/**
@@ -109,6 +143,7 @@ global class DatabaseLayer {
 	@TestVisible
 	private static void useRealData() {
 		DatabaseLayer.useRealDml();
+		DatabaseLayer.useRealDuplicates();
 		DatabaseLayer.useRealSoql();
 	}
 

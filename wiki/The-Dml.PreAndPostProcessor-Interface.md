@@ -8,25 +8,25 @@ Example:
 
 ```apex
 public class MyPlugin implements Dml.PreAndPostProcessor {
-  // This sample PreAndPostProcessor logs DML operations, using Nebula Logger:
-  public void processPreDml(Dml.Request request) {
-    Logger.finest('About to process ' + this.getLogSuffix(request))?.setRecord(request?.records);
-    Logger.finest(msg)?.setRecord(request?.records);
-  }
+	// This sample PreAndPostProcessor logs DML operations, using Nebula Logger:
+	public void processPreDml(Dml.Request request) {
+		Logger.finest('About to process ' + this.getLogSuffix(request))?.setRecord(request?.records);
+		Logger.finest(msg)?.setRecord(request?.records);
+	}
 
-  public void processPostDml(Dml.Request request, List<Object> results) {
-    Logger.finest('Processed ' + this.getLogSuffix(request))?.setRecord(request?.records);
-  }
+	public void processPostDml(Dml.Request request, List<Object> results) {
+		Logger.finest('Processed ' + this.getLogSuffix(request))?.setRecord(request?.records);
+	}
 
-  public void processDmlError(Dml.Request request, Exception error) {
-    String msg = request?.operation + ' error: ' + error;
-    Logger.error(msg)?.setExceptionDetails(error);
-    Logger.saveLog();
-  }
+	public void processDmlError(Dml.Request request, Exception error) {
+		String msg = request?.operation + ' error: ' + error;
+		Logger.error(msg)?.setExceptionDetails(error);
+		Logger.saveLog();
+	}
 
-  private String getLogSuffix(Dml.Request req) {
-    return req?.numRecords + ' ' + req?.sObjectType + ' records. Operation: ' + req?.operation;
-  }
+	private String getLogSuffix(Dml.Request req) {
+		return req?.numRecords + ' ' + req?.sObjectType + ' records. Operation: ' + req?.operation;
+	}
 }
 ```
 

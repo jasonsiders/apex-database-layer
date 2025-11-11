@@ -16,7 +16,7 @@ private class DmlTest {
 
 	// **** TESTS **** //
 	@IsTest
-	static void shouldDoInsert() {
+	private static void shouldDoInsert() {
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();
@@ -26,8 +26,8 @@ private class DmlTest {
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
 	}
 
-	@Istest
-	static void shouldDoInsertWithAccessLevel() {
+	@IsTest
+	private static void shouldDoInsertWithAccessLevel() {
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();
@@ -38,7 +38,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoInsertWithAllOrNone() {
+	private static void shouldDoInsertWithAllOrNone() {
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();
@@ -49,7 +49,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoInsertWithDmlOptions() {
+	private static void shouldDoInsertWithDmlOptions() {
 		Account account = DmlTest.initAccount();
 		Database.DmlOptions options = new Database.DmlOptions();
 		options.OptAllOrNone = true;
@@ -62,7 +62,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoInsertWithAllOrNoneAndAccessLevel() {
+	private static void shouldDoInsertWithAllOrNoneAndAccessLevel() {
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();
@@ -73,7 +73,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoInsertWithDmlOptionsAndAccessLevel() {
+	private static void shouldDoInsertWithDmlOptionsAndAccessLevel() {
 		Account account = DmlTest.initAccount();
 		Database.DmlOptions options = new Database.DmlOptions();
 		options.OptAllOrNone = true;
@@ -86,7 +86,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoInsertAsync() {
+	private static void shouldDoInsertAsync() {
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();
@@ -103,7 +103,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoInsertAsyncWithAccessLevel() {
+	private static void shouldDoInsertAsyncWithAccessLevel() {
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();
@@ -120,7 +120,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoInsertAsyncWithCallback() {
+	private static void shouldDoInsertAsyncWithCallback() {
 		Account account = DmlTest.initAccount();
 		DataSource.AsyncSaveCallback callback = new DmlTest.SaveCallback();
 
@@ -138,7 +138,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoInsertAsyncWithCallbackAndAccessLevel() {
+	private static void shouldDoInsertAsyncWithCallbackAndAccessLevel() {
 		Account account = DmlTest.initAccount();
 		DataSource.AsyncSaveCallback callback = new DmlTest.SaveCallback();
 
@@ -156,7 +156,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoInsertImmediate() {
+	private static void shouldDoInsertImmediate() {
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();
@@ -167,7 +167,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldInsertImmediateWithAccessLevel() {
+	private static void shouldInsertImmediateWithAccessLevel() {
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();
@@ -178,7 +178,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoUpdate() {
+	private static void shouldDoUpdate() {
 		Account account = DmlTest.initAccount();
 		insert account;
 
@@ -190,7 +190,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoUpdateWithAccessLevel() {
+	private static void shouldDoUpdateWithAccessLevel() {
 		Account account = DmlTest.initAccount();
 		insert account;
 
@@ -202,7 +202,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoUpdateWithAllOrNone() {
+	private static void shouldDoUpdateWithAllOrNone() {
 		Account account = DmlTest.initAccount();
 		insert account;
 
@@ -214,7 +214,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoUpdateWithDmlOptions() {
+	private static void shouldDoUpdateWithDmlOptions() {
 		Account account = DmlTest.initAccount();
 		insert account;
 		Database.DmlOptions options = new Database.DmlOptions();
@@ -228,7 +228,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoUpdateWithAllOrNoneAndAccessLevel() {
+	private static void shouldDoUpdateWithAllOrNoneAndAccessLevel() {
 		Account account = DmlTest.initAccount();
 		insert account;
 
@@ -240,7 +240,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoUpdateWithDmlOptionsAndAccessLevel() {
+	private static void shouldDoUpdateWithDmlOptionsAndAccessLevel() {
 		Account account = DmlTest.initAccount();
 		insert account;
 		Database.DmlOptions options = new Database.DmlOptions();
@@ -254,7 +254,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoUpdateAsync() {
+	private static void shouldDoUpdateAsync() {
 		Account account = DmlTest.initAccount();
 		insert account;
 
@@ -266,7 +266,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoUpdateAsyncWithAccessLevel() {
+	private static void shouldDoUpdateAsyncWithAccessLevel() {
 		Account account = DmlTest.initAccount();
 		insert account;
 
@@ -278,7 +278,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoUpdateAsyncWithCallback() {
+	private static void shouldDoUpdateAsyncWithCallback() {
 		Account account = DmlTest.initAccount();
 		insert account;
 		DataSource.AsyncSaveCallback callback = new DmlTest.SaveCallback();
@@ -291,7 +291,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoUpdateAsyncWithCallbackAndAccessLevel() {
+	private static void shouldDoUpdateAsyncWithCallbackAndAccessLevel() {
 		Account account = DmlTest.initAccount();
 		insert account;
 		DataSource.AsyncSaveCallback callback = new DmlTest.SaveCallback();
@@ -304,7 +304,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoUpdateImmediate() {
+	private static void shouldDoUpdateImmediate() {
 		Account account = DmlTest.initAccount();
 		insert account;
 
@@ -316,7 +316,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoUpdateImmediateWithAccessLevel() {
+	private static void shouldDoUpdateImmediateWithAccessLevel() {
 		Account account = DmlTest.initAccount();
 		insert account;
 
@@ -328,7 +328,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoUpsert() {
+	private static void shouldDoUpsert() {
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();
@@ -339,7 +339,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoUpsertWithAccessLevel() {
+	private static void shouldDoUpsertWithAccessLevel() {
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();
@@ -350,7 +350,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoUpsertWithAllOrNone() {
+	private static void shouldDoUpsertWithAllOrNone() {
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();
@@ -361,7 +361,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoUpsertWithExternalIdField() {
+	private static void shouldDoUpsertWithExternalIdField() {
 		Account acc = DmlTest.initAccount();
 		SObjectField field = Account.Id;
 
@@ -373,7 +373,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoUpsertWithAllOrNoneAndAccessLevel() {
+	private static void shouldDoUpsertWithAllOrNoneAndAccessLevel() {
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();
@@ -384,7 +384,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoUpsertWithExternalIdFieldAndAccessLevel() {
+	private static void shouldDoUpsertWithExternalIdFieldAndAccessLevel() {
 		Account acc = DmlTest.initAccount();
 		SObjectField externalIdField = Account.Id;
 
@@ -396,7 +396,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoUpsertWithExternalIdFieldAndAllOrNone() {
+	private static void shouldDoUpsertWithExternalIdFieldAndAllOrNone() {
 		Account acc = DmlTest.initAccount();
 		SObjectField externalIdField = Account.Id;
 
@@ -408,7 +408,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoUpsertWithExternalIdFieldAndAllOrNoneAndAccessLevel() {
+	private static void shouldDoUpsertWithExternalIdFieldAndAllOrNoneAndAccessLevel() {
 		Account acc = DmlTest.initAccount();
 		SObjectField externalIdField = Account.Id;
 
@@ -425,7 +425,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoDelete() {
+	private static void shouldDoDelete() {
 		Account account = DmlTest.initAccount();
 		insert account;
 
@@ -437,7 +437,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoDeleteWithAccessLevel() {
+	private static void shouldDoDeleteWithAccessLevel() {
 		Account account = DmlTest.initAccount();
 		insert account;
 
@@ -449,7 +449,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoDeleteWithAllOrNone() {
+	private static void shouldDoDeleteWithAllOrNone() {
 		Account account = DmlTest.initAccount();
 		insert account;
 
@@ -461,7 +461,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoDeleteWithAllOrNoneAndAccessLevel() {
+	private static void shouldDoDeleteWithAllOrNoneAndAccessLevel() {
 		Account account = DmlTest.initAccount();
 		insert account;
 
@@ -473,7 +473,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoDeleteWithId() {
+	private static void shouldDoDeleteWithId() {
 		Account account = DmlTest.initAccount();
 		insert account;
 
@@ -485,7 +485,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoDeleteWithIdAndAccessLevel() {
+	private static void shouldDoDeleteWithIdAndAccessLevel() {
 		Account account = DmlTest.initAccount();
 		insert account;
 
@@ -497,7 +497,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoDeleteWithIdAndAllOrNone() {
+	private static void shouldDoDeleteWithIdAndAllOrNone() {
 		Account account = DmlTest.initAccount();
 		insert account;
 
@@ -509,7 +509,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoDeleteWithIdAndAllOrNoneAndAccessLevel() {
+	private static void shouldDoDeleteWithIdAndAllOrNoneAndAccessLevel() {
 		Account account = DmlTest.initAccount();
 		insert account;
 
@@ -521,7 +521,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoDeleteAsync() {
+	private static void shouldDoDeleteAsync() {
 		Account account = DmlTest.initAccount();
 		insert account;
 
@@ -533,7 +533,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoDeleteAsyncWithAccessLevel() {
+	private static void shouldDoDeleteAsyncWithAccessLevel() {
 		Account account = DmlTest.initAccount();
 		insert account;
 
@@ -545,7 +545,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoDeleteAsyncWithCallback() {
+	private static void shouldDoDeleteAsyncWithCallback() {
 		Account account = DmlTest.initAccount();
 		insert account;
 		DataSource.AsyncDeleteCallback callback = new DmlTest.DeleteCallback();
@@ -558,7 +558,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoDeleteAsyncWithCallbackAndAccessLevel() {
+	private static void shouldDoDeleteAsyncWithCallbackAndAccessLevel() {
 		Account account = DmlTest.initAccount();
 		insert account;
 		DataSource.AsyncDeleteCallback callback = new DmlTest.DeleteCallback();
@@ -575,7 +575,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoDeleteImmediate() {
+	private static void shouldDoDeleteImmediate() {
 		Account account = DmlTest.initAccount();
 		insert account;
 
@@ -587,7 +587,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoDeleteImmediateWithAccessLevel() {
+	private static void shouldDoDeleteImmediateWithAccessLevel() {
 		Account account = DmlTest.initAccount();
 		insert account;
 
@@ -599,7 +599,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldEmptyRecycleBin() {
+	private static void shouldEmptyRecycleBin() {
 		Account account = DmlTest.initAccount();
 		insert account;
 		delete account;
@@ -612,7 +612,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldEmptyRecycleBinWithId() {
+	private static void shouldEmptyRecycleBinWithId() {
 		Account account = DmlTest.initAccount();
 		insert account;
 		delete account;
@@ -625,7 +625,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoUndelete() {
+	private static void shouldDoUndelete() {
 		Account account = DmlTest.initAccount();
 		insert account;
 		delete account;
@@ -638,7 +638,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoUndeleteWithAccessLevel() {
+	private static void shouldDoUndeleteWithAccessLevel() {
 		Account account = DmlTest.initAccount();
 		insert account;
 		delete account;
@@ -651,7 +651,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoUndeleteWithAllOrNone() {
+	private static void shouldDoUndeleteWithAllOrNone() {
 		Account account = DmlTest.initAccount();
 		insert account;
 		delete account;
@@ -664,7 +664,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoUndeleteWithAllOrNoneAndAccessLevel() {
+	private static void shouldDoUndeleteWithAllOrNoneAndAccessLevel() {
 		Account account = DmlTest.initAccount();
 		insert account;
 		delete account;
@@ -677,7 +677,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoUndeleteWithId() {
+	private static void shouldDoUndeleteWithId() {
 		Account account = DmlTest.initAccount();
 		insert account;
 		delete account;
@@ -690,7 +690,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoUndeleteWithIdAndAccessLevel() {
+	private static void shouldDoUndeleteWithIdAndAccessLevel() {
 		Account account = DmlTest.initAccount();
 		insert account;
 		delete account;
@@ -703,7 +703,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoUndeleteWithIdAndAllOrNone() {
+	private static void shouldDoUndeleteWithIdAndAllOrNone() {
 		Account account = DmlTest.initAccount();
 		insert account;
 		delete account;
@@ -716,7 +716,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoUndeleteWithIdAndAllOrNoneAndAccessLevel() {
+	private static void shouldDoUndeleteWithIdAndAllOrNoneAndAccessLevel() {
 		Account account = DmlTest.initAccount();
 		insert account;
 		delete account;
@@ -733,7 +733,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoPublish() {
+	private static void shouldDoPublish() {
 		BatchApexErrorEvent event = new BatchApexErrorEvent();
 
 		Test.startTest();
@@ -744,7 +744,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoConvert() {
+	private static void shouldDoConvert() {
 		Lead lead = DmlTest.initLead();
 		insert lead;
 		Database.LeadConvert leadToConvert = DmlTest.initLeadConvert(lead);
@@ -757,7 +757,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoConvertWithAllOrNone() {
+	private static void shouldDoConvertWithAllOrNone() {
 		Lead lead = DmlTest.initLead();
 		insert lead;
 		Database.LeadConvert leadToConvert = DmlTest.initLeadConvert(lead);
@@ -770,7 +770,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoConvertWithDmlOptions() {
+	private static void shouldDoConvertWithDmlOptions() {
 		Lead lead = DmlTest.initLead();
 		insert lead;
 		Database.LeadConvert leadToConvert = DmlTest.initLeadConvert(lead);
@@ -785,7 +785,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoConvertWithAccessLevel() {
+	private static void shouldDoConvertWithAccessLevel() {
 		Lead lead = DmlTest.initLead();
 		insert lead;
 		Database.LeadConvert leadToConvert = DmlTest.initLeadConvert(lead);
@@ -798,7 +798,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoConvertWithDmlOptionsAndAccessLevel() {
+	private static void shouldDoConvertWithDmlOptionsAndAccessLevel() {
 		Lead lead = DmlTest.initLead();
 		insert lead;
 		Database.LeadConvert leadToConvert = DmlTest.initLeadConvert(lead);
@@ -817,7 +817,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldDoConvertWithAllOrNoneAndAccessLevel() {
+	private static void shouldDoConvertWithAllOrNoneAndAccessLevel() {
 		Lead lead = DmlTest.initLead();
 		insert lead;
 		Database.LeadConvert leadToConvert = DmlTest.initLeadConvert(lead);
@@ -834,7 +834,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldProcessEmptyDeleteCallback() {
+	private static void shouldProcessEmptyDeleteCallback() {
 		// Purely for code coverage -- run the default Async DML Callbacks
 		try {
 			Test.startTest();
@@ -847,7 +847,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldHandleSavepoints() {
+	private static void shouldHandleSavepoints() {
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();
@@ -869,7 +869,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldRunPreAndPostProcessorPluginLogic() {
+	private static void shouldRunPreAndPostProcessorPluginLogic() {
 		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
 		Account account = DmlTest.initAccount();
 
@@ -888,7 +888,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldRunPluginErrorLogic() {
+	private static void shouldRunPluginErrorLogic() {
 		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
 		Account account = DmlTest.initAccount();
 
@@ -914,7 +914,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldNotRunProcessorLogicIfInvalidApexClassDefined() {
+	private static void shouldNotRunProcessorLogicIfInvalidApexClassDefined() {
 		DatabaseLayerTestUtils.initDmlAndSoqlPlugins('An obviously invalid apex class name');
 		Account account = DmlTest.initAccount();
 
@@ -933,7 +933,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldNotRunProcessorLogicIfNoValueDefined() {
+	private static void shouldNotRunProcessorLogicIfNoValueDefined() {
 		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(null);
 		Account account = DmlTest.initAccount();
 
@@ -952,7 +952,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldNotRunProcessorLogicIfNoSettingsDefined() {
+	private static void shouldNotRunProcessorLogicIfNoSettingsDefined() {
 		MockCmdt.mock(DatabaseLayerSetting__mdt.SObjectType);
 		DatabaseLayer.Utils.Plugins.init();
 		Account account = DmlTest.initAccount();
@@ -972,7 +972,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldSerializeDmlRequestForRecords() {
+	private static void shouldSerializeDmlRequestForRecords() {
 		// The Dml.Request may be used in plugins for a variety of purposes, including logging
 		// For this reason, we should make sure the request is JSON-serializable,
 		// despite containing several fields that are not typically allowed in JSON
@@ -988,7 +988,7 @@ private class DmlTest {
 	}
 
 	@IsTest
-	static void shouldSerializeDmlRequestForLeadConverts() {
+	private static void shouldSerializeDmlRequestForLeadConverts() {
 		// The Dml.Request may be used in plugins for a variety of purposes, including logging
 		// For this reason, we should make sure the request is JSON-serializable,
 		// despite containing several fields that are not typically allowed in JSON

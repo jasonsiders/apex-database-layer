@@ -230,7 +230,7 @@ global inherited sharing virtual class Dml {
 	 */
 	@SuppressWarnings('PMD.AvoidBooleanMethodParameters')
 	global List<Database.DeleteResult> doDelete(List<Id> recordIds, Boolean allOrNone, System.AccessLevel accessLevel) {
-		List<SObject> records = this.initRecordsFromIds(recordIds);
+		List<SObject> records = DatabaseLayer.Utils.SObjects.newSObjects(recordIds);
 		return this.doDelete(records, allOrNone, accessLevel);
 	}
 
@@ -840,7 +840,7 @@ global inherited sharing virtual class Dml {
 		Boolean allOrNone,
 		System.AccessLevel accessLevel
 	) {
-		List<SObject> records = this.initRecordsFromIds(recordIds);
+		List<SObject> records = DatabaseLayer.Utils.SObjects.newSObjects(recordIds);
 		return this.doUndelete(records, allOrNone, accessLevel);
 	}
 
@@ -1455,7 +1455,7 @@ global inherited sharing virtual class Dml {
 	 * @return List of Database.EmptyRecycleBinResult objects
 	 */
 	global List<Database.EmptyRecycleBinResult> emptyRecycleBin(List<Id> recordIds) {
-		List<SObject> records = this.initRecordsFromIds(recordIds);
+		List<SObject> records = DatabaseLayer.Utils.SObjects.newSObjects(recordIds);
 		return this.emptyRecycleBin(records);
 	}
 
@@ -1517,16 +1517,6 @@ global inherited sharing virtual class Dml {
 	@TestVisible
 	protected virtual Dml.Request initRequest(Dml.Operation operation, List<Object> records) {
 		return new Dml.Request(operation, records);
-	}
-
-	private List<SObject> initRecordsFromIds(List<Id> recordIds) {
-		// Converts a List<Id> into a List<SObject> with those Ids:
-		List<SObject> records = new List<SObject>();
-		for (Id recordId : recordIds) {
-			SObject record = recordId?.getSObjectType()?.newSObject(recordId);
-			records?.add(record);
-		}
-		return records;
 	}
 
 	// **** STATIC **** //
