@@ -225,8 +225,43 @@ private class MockDuplicatesTest {
 		Assert.areEqual(diffType.name()?.removeStart('IS_'), fieldDiff?.getDifference(), 'Wrong FieldDiff.difference');
 	}
 
+	@IsTest 
+	private static void shouldClearMatches() {
+		Assert.fail('You still need to build this test');
+	}
+
+	@IsTest 
+	private static void shouldClearDuplicateResults() {
+		Assert.fail('You still need to build this test');
+	}
+
+	@IsTest 
+	private static void shouldClearDuplicateResultErrors() {
+		Assert.fail('You still need to build this test');
+	}
+	
+	@IsTest 
+	private static void shouldClearAdditionalInfos() {
+		Assert.fail('You still need to build this test');
+	}
+
+	@IsTest 
+	private static void shouldClearFieldDiffs() {
+		Assert.fail('You still need to build this test');
+	}
+
+	@IsTest 
+	private static void shouldClearMatchResultErrors() {
+		Assert.fail('You still need to build this test');
+	}
+
+	@IsTest 
+	private static void shouldClearMatchRecords() {
+		Assert.fail('You still need to build this test');
+	}
+
 	@IsTest
-	private static void shouldAllowFluentMockNavigation() {
+	private static void shouldNavigateToParentLevels() {
 		Integer expected = MockDuplicates.setMock()?.withResults(Lead.SObjectType)?.hashCode();
 
 		Test.startTest();
@@ -238,10 +273,18 @@ private class MockDuplicatesTest {
 			?.addAdditionalInfo('foo', 'bar')
 			?.up()
 			?.addFieldDiff(Lead.Email, MockDuplicates.DiffType.IS_SAME)
-			?.toTop();
+			?.up()
+			?.up()
+			?.up()
+			?.up();
 		Test.stopTest();
 
 		Assert.areEqual(expected, result?.hashCode(), 'Navigated to wrong result');
+	}
+
+	@IsTest 
+	private static void shouldNavigateToTopLevel() {
+		Assert.fail('You still need to build this test');
 	}
 
 	@IsTest
