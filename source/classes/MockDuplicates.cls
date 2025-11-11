@@ -4,7 +4,7 @@
  * Allows tests to configure expected duplicate matches, errors, and field differences.
  */
 @SuppressWarnings('PMD.AvoidGlobalModifier,PMD.CognitiveComplexity')
-@IsTest
+// @IsTest
 global class MockDuplicates extends Duplicates {
 	// **** STATIC **** //
 	/**
@@ -140,20 +140,10 @@ global class MockDuplicates extends Duplicates {
 		 * @param record The SObject record that matches
 		 * @return The created MatchResult instance for method chaining
 		 */
-		global MockDuplicates.MatchResult addMatch(SObject record) {
-			MockDuplicates.MatchResult match = new MockDuplicates.MatchResult(this, record);
+		global MockDuplicates.MatchResult addMatch() {
+			MockDuplicates.MatchResult match = new MockDuplicates.MatchResult(this, this.objectType);
 			this.matchResults?.add(match);
 			return match;
-		}
-
-		/**
-		 * @description Adds a match result with a generated mock record
-		 * @return The created MatchResult instance for method chaining
-		 */
-		global MockDuplicates.MatchResult addMatch() {
-			// Construct a match using the mock database
-			SObject record = new MockRecord(this.objectType)?.withId()?.toSObject();
-			return this.addMatch(record);
 		}
 
 		/**
@@ -441,12 +431,12 @@ global class MockDuplicates extends Duplicates {
 		 * @param parent The parent DuplicateResult instance
 		 * @param record The SObject record being matched
 		 */
-		global MatchResult(MockDuplicates.DuplicateResult parent, SObject record) {
+		global MatchResult(MockDuplicates.DuplicateResult parent, SObjectType objectType) {
 			super(null);
-			this.objectType = record?.getSObjectType();
-			this.entityType = this.objectType?.toString();
+			this.entityType = objectType?.toString();
 			this.errors = new List<Database.Error>{};
 			this.matchRecords = new List<Duplicates.MatchRecord>{};
+			this.objectType = objectType;
 			this.parent = parent;
 			this.setMatchEngine('MockMatchEngine');
 			this.setRuleName('Mock_' + this.entityType + '_Match_Rule_v1_0');
@@ -526,7 +516,7 @@ global class MockDuplicates extends Duplicates {
 		 * @return This instance for method chaining
 		 */
 		global MockDuplicates.MatchResult setRuleName(String ruleName) {
-			this.rule = rule;
+			this.rule = ruleName;
 			return this;
 		}
 
@@ -554,11 +544,11 @@ global class MockDuplicates extends Duplicates {
 	global class BaseSimulator implements MockDuplicates.Simulator {
 		// Allows callers to inject simple simulation logic for each SObjectType
 		private transient Exception exceptionToThrow;
-		private transient Map<String, MockDuplicates.FindDuplicatesResult> responseByType;
+		private transient Map<String, MockDuplicates.FindDuplicatesResult> resultsByType;
 
 		private BaseSimulator() {
 			// Can only be constructed from within this file, or by calling MockDuplicates.setMock()
-			this.responseByType = new Map<String, MockDuplicates.FindDuplicatesResult>{};
+			this.resultsByType = new Map<String, MockDuplicates.FindDuplicatesResult>{};
 		}
 
 		/**
@@ -569,7 +559,7 @@ global class MockDuplicates extends Duplicates {
 		global MockDuplicates.FindDuplicatesResult get(String objectApiName) {
 			// Retrieve the FindDuplicateResult configured for the given SObjectType
 			// An instance of this result object will be returned for each record of this type
-			return this.responseByType?.get(objectApiName);
+			return this.resultsByType?.get(objectApiName);
 		}
 
 		/**
@@ -606,13 +596,13 @@ global class MockDuplicates extends Duplicates {
 		 * @param objectType The SObjectType to configure results for
 		 * @return This instance for method chaining
 		 */
-		global MockDuplicates.BaseSimulator withResults(SObjectType objectType) {
+		global MockDuplicates.FindDuplicatesResult withResults(SObjectType objectType) {
 			// Define the FindDuplicateResults that will be returned for the current SObjectType
 			String objectApiName = objectType?.toString();
-			MockDuplicates.FindDuplicatesResult response = this.get(objectApiName) ??
+			MockDuplicates.FindDuplicatesResult result = this.get(objectApiName) ??
 				new MockDuplicates.FindDuplicatesResult(objectType);
-			this.responseByType?.put(objectApiName, response);
-			return this;
+			this.resultsByType?.put(objectApiName, result);
+			return result;
 		}
 
 		/**
@@ -625,7 +615,7 @@ global class MockDuplicates extends Duplicates {
 				throw this.exceptionToThrow;
 			} else {
 				SObjectType objectType = record?.getSObjectType();
-				return this.get(objectType);
+				return this.get(objectType) ?? new MockDuplicates.FindDuplicatesResult(objectType);
 			}
 		}
 	}
