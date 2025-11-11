@@ -6,28 +6,19 @@ This class extends [Duplicates.DuplicateResult](./The-Duplicates.DuplicateResult
 
 ### `addMatch`
 
-Adds a match result for a specific record.
+Adds a match result for a specific record. Returns the created `MatchResult` instance for method chaining.
 
 - `MockDuplicates.MatchResult addMatch()`
 
-**Returns:** The created `MatchResult` instance for method chaining.
-
 ```apex
-MockDuplicates.DuplicateResult dupResult = MockDuplicates.simulator
-    .withResults(Account.SObjectType)
-        .addRule()
-            .addMatch() // First match
-            .up()
-            .addMatch(); // Second match
+MockDuplicates.MatchResult match = dupResult.addMatch();
 ```
 
 ### `clearMatches`
 
-Removes all match results from this duplicate rule result.
+Removes all match results from this duplicate rule result. Returns this instance for method chaining.
 
 - `MockDuplicates.DuplicateResult clearMatches()`
-
-**Returns:** This instance for method chaining.
 
 ```apex
 dupResult.clearMatches();
@@ -35,11 +26,9 @@ dupResult.clearMatches();
 
 ### `setErrorMessage`
 
-Sets the error message for this duplicate rule result.
+Sets the error message for this duplicate rule result. Returns this instance for method chaining.
 
 - `MockDuplicates.DuplicateResult setErrorMessage(String errorMessage)`
-
-**Returns:** This instance for method chaining.
 
 ```apex
 dupResult.setErrorMessage('Custom duplicate alert message');
@@ -47,11 +36,9 @@ dupResult.setErrorMessage('Custom duplicate alert message');
 
 ### `setRuleName`
 
-Sets the duplicate rule name.
+Sets the duplicate rule name. Returns this instance for method chaining.
 
 - `MockDuplicates.DuplicateResult setRuleName(String ruleName)`
-
-**Returns:** This instance for method chaining.
 
 ```apex
 dupResult.setRuleName('Account_Duplicate_Rule');
@@ -59,21 +46,12 @@ dupResult.setRuleName('Account_Duplicate_Rule');
 
 ### `setSaveBehavior`
 
-Sets whether records can be saved despite duplicates.
+Sets whether records can be saved despite duplicates. The `behavior` parameter can be either `MockDuplicates.SaveBehavior.ALLOW` or `MockDuplicates.SaveBehavior.BLOCK`. Returns this instance for method chaining.
 
 - `MockDuplicates.DuplicateResult setSaveBehavior(MockDuplicates.SaveBehavior behavior)`
 
-**Returns:** This instance for method chaining.
-
-**Parameters:**
-- `behavior` - Either `MockDuplicates.SaveBehavior.ALLOW` or `MockDuplicates.SaveBehavior.BLOCK`
-
 ```apex
-// Block saving when duplicates are found
 dupResult.setSaveBehavior(MockDuplicates.SaveBehavior.BLOCK);
-
-// Allow saving when duplicates are found
-dupResult.setSaveBehavior(MockDuplicates.SaveBehavior.ALLOW);
 ```
 
 ### `toTop`
@@ -94,23 +72,4 @@ Navigates back to the parent `FindDuplicatesResult`.
 
 ```apex
 MockDuplicates.FindDuplicatesResult result = dupResult.up();
-```
-
-## Example
-
-```apex
-DatabaseLayer.useMocks();
-
-MockDuplicates.simulator
-    .withResults(Account.SObjectType)
-        .addRule()
-            .setRuleName('Standard_Account_Duplicate_Rule')
-            .setErrorMessage('This account may be a duplicate')
-            .setSaveBehavior(MockDuplicates.SaveBehavior.BLOCK)
-            .addMatch()
-                .addRecord()
-                    .toTop()
-        .addRule(Contact.SObjectType) // Can add multiple rules
-            .setRuleName('Standard_Contact_Duplicate_Rule')
-            .setSaveBehavior(MockDuplicates.SaveBehavior.ALLOW);
 ```
