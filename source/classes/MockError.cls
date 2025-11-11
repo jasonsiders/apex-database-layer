@@ -24,6 +24,13 @@ public class MockError {
 	}
 
 	/**
+	 * @description Constructor overload creates a MockError from a System.DmlException
+	 */
+	public MockError() {
+		this(new System.DmlException());
+	}
+
+	/**
 	 * @description Converts the mock error to a Database.Error instance
 	 * @return Database.Error representation of this mock error
 	 */
