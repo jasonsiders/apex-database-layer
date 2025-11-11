@@ -368,6 +368,68 @@ private class MockDuplicatesTest {
 	}
 
 	@IsTest
+	private static void shouldNavigateToTopLevelFromDuplicateResult() {
+		Integer expected = MockDuplicates.setMock()?.withResults(Lead.SObjectType)?.hashCode();
+
+		Test.startTest();
+		MockDuplicates.FindDuplicatesResult result = MockDuplicates.setMock()
+			?.withResults(Lead.SObjectType)
+			?.addRule()
+			?.toTop();
+		Test.stopTest();
+
+		Assert.areEqual(expected, result?.hashCode(), 'Navigated to wrong result');
+	}
+
+	@IsTest
+	private static void shouldNavigateToTopLevelFromFieldDiff() {
+		Integer expected = MockDuplicates.setMock()?.withResults(Lead.SObjectType)?.hashCode();
+
+		Test.startTest();
+		MockDuplicates.FindDuplicatesResult result = MockDuplicates.setMock()
+			?.withResults(Lead.SObjectType)
+			?.addRule()
+			?.addMatch()
+			?.addRecord()
+			?.addFieldDiff(Lead.Email, MockDuplicates.DiffType.IS_DIFFERENT)
+			?.toTop();
+		Test.stopTest();
+
+		Assert.areEqual(expected, result?.hashCode(), 'Navigated to wrong result');
+	}
+
+	@IsTest
+	private static void shouldNavigateToTopLevelFromMatchRecord() {
+		Integer expected = MockDuplicates.setMock()?.withResults(Lead.SObjectType)?.hashCode();
+
+		Test.startTest();
+		MockDuplicates.FindDuplicatesResult result = MockDuplicates.setMock()
+			?.withResults(Lead.SObjectType)
+			?.addRule()
+			?.addMatch()
+			?.addRecord()
+			?.toTop();
+		Test.stopTest();
+
+		Assert.areEqual(expected, result?.hashCode(), 'Navigated to wrong result');
+	}
+
+	@IsTest
+	private static void shouldNavigateToTopLevelFromMatchResult() {
+		Integer expected = MockDuplicates.setMock()?.withResults(Lead.SObjectType)?.hashCode();
+
+		Test.startTest();
+		MockDuplicates.FindDuplicatesResult result = MockDuplicates.setMock()
+			?.withResults(Lead.SObjectType)
+			?.addRule()
+			?.addMatch()
+			?.toTop();
+		Test.stopTest();
+
+		Assert.areEqual(expected, result?.hashCode(), 'Navigated to wrong result');
+	}
+
+	@IsTest
 	private static void shouldThrowExceptionIfEmptyRecords() {
 		// The standard Datacloud.FindDuplicates.findDuplicates method requires at least 1 record
 		List<SObject> records = new List<SObject>{};
