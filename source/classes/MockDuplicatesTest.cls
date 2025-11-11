@@ -15,7 +15,7 @@ private class MockDuplicatesTest {
 	@IsTest
 	private static void shouldUseBaseSimulatorByDefault() {
 		Test.startTest();
-		MockDuplicates.Simulator defaultSimulator = MockDuplicates.simulator; 
+		MockDuplicates.Simulator defaultSimulator = MockDuplicates.simulator;
 		Test.stopTest();
 
 		Assert.isInstanceOfType(defaultSimulator, MockDuplicates.BaseSimulator.class, 'Wrong type');
@@ -76,7 +76,6 @@ private class MockDuplicatesTest {
 		);
 		Assert.areEqual('Lead', dupeResult?.duplicateRuleEntityType, 'Wrong duplicateRuleEntityType value');
 		Assert.areEqual('Duplicate Alert', dupeResult?.errorMessage, 'Wrong errorMessage value');
-		Assert.areEqual('Lead', dupeResult?.duplicateRuleEntityType, 'Wrong duplicateRuleEntityType');
 		List<Duplicates.MatchResult> matchResults = dupeResult?.getMatchResults();
 		Assert.areEqual(1, matchResults?.size(), 'Wrong duplicateRuleEntityType value');
 		Duplicates.MatchResult matchResult = matchResults?.get(0);
@@ -116,19 +115,67 @@ private class MockDuplicatesTest {
 	}
 
 	@IsTest
-	private static void shouldThrowExceptionIfNullOrEmptyRecords() {
-		Assert.fail('You still need to build this test');
+	private static void shouldThrowExceptionIfEmptyRecords() {
+		// The standard Datacloud.FindDuplicates.findDuplicates method requires at least 1 record
+		List<SObject> records = new List<SObject>{};
+
+		Test.startTest();
+		try {
+			DatabaseLayer.Duplicates.findDuplicates(records);
+			Assert.fail('Did not throw a System.HandledException');
+		} catch (System.HandledException error) {
+			// As expected...
+		}
+		Test.stopTest();
+	}
+
+	@IsTest
+	private static void shouldThrowExceptionIfNullRecords() {
+		// The standard Datacloud.FindDuplicates.findDuplicates method requires at least 1 record
+		List<SObject> records = null;
+
+		Test.startTest();
+		try {
+			DatabaseLayer.Duplicates.findDuplicates(records);
+			Assert.fail('Did not throw a System.HandledException');
+		} catch (System.HandledException error) {
+			// As expected...
+		}
+		Test.stopTest();
 	}
 
 	@IsTest
 	private static void shouldThrowExceptionIfMoreThan50Records() {
-		Assert.fail('You still need to build this test');
+		// The standard Datacloud.FindDuplicates.findDuplicates method does not allow more than 50 records at a time
+		List<SObject> records = new List<SObject>{};
+		for (Integer i = 0; i < 51; i++) {
+			records?.add(new Account());
+		}
+
+		Test.startTest();
+		try {
+			DatabaseLayer.Duplicates.findDuplicates(records);
+			Assert.fail('Did not throw a System.HandledException');
+		} catch (System.HandledException error) {
+			// As expected...
+		}
+		Test.stopTest();
 	}
 
 	@IsTest
 	private static void shouldThrowExceptionIfMixedSObjectTypes() {
-		// System.HandledException: The list of records to check contains more than one type of record.
-		Assert.fail('You still need to build this test');
+		List<SObject> records = new List<SObject>{};
+		records?.add(new Account());
+		records?.add(new Contact());
+
+		Test.startTest();
+		try {
+			DatabaseLayer.Duplicates.findDuplicates(records);
+			Assert.fail('Did not throw a System.HandledException');
+		} catch (System.HandledException error) {
+			// As expected...
+		}
+		Test.stopTest();
 	}
 
 	@IsTest
