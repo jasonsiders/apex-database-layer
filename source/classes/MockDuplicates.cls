@@ -99,7 +99,7 @@ global class MockDuplicates extends Duplicates {
 
 		global MockDuplicates.DuplicateResult clearMatches() {
 			this.matchResults?.clear();
-			return this; 
+			return this;
 		}
 
 		global MockDuplicates.DuplicateResult setErrorMessage(String errorMessage) {
@@ -272,7 +272,7 @@ global class MockDuplicates extends Duplicates {
 
 		global MockDuplicates.MatchResult addError() {
 			Exception error = new System.HandledException();
-			return this; 
+			return this;
 		}
 
 		global MockDuplicates.MatchRecord addRecord(SObject record) {
@@ -288,7 +288,7 @@ global class MockDuplicates extends Duplicates {
 
 		global MockDuplicates.MatchResult clearErrors() {
 			this.errors?.clear();
-			return this; 
+			return this;
 		}
 
 		global MockDuplicates.MatchResult clearRecords() {
@@ -340,16 +340,17 @@ global class MockDuplicates extends Duplicates {
 			this.exceptionToThrow = error;
 			return this;
 		}
-		
+
 		global MockDuplicates.BaseSimulator withException() {
 			Exception error = new System.HandledException();
 			return this.withException(error);
-		} 
-		
+		}
+
 		global MockDuplicates.BaseSimulator withResults(SObjectType objectType) {
 			// Define the FindDuplicateResults that will be returned for the current SObjectType
 			String objectApiName = objectType?.toString();
-			MockDuplicates.FindDuplicatesResult response = this.get(objectApiName) ?? new MockDuplicates.FindDuplicatesResult(objectType);
+			MockDuplicates.FindDuplicatesResult response = this.get(objectApiName) ??
+				new MockDuplicates.FindDuplicatesResult(objectType);
 			this.responseByType?.put(objectApiName, response);
 			return this;
 		}
