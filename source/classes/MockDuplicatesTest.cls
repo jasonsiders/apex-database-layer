@@ -1,4 +1,4 @@
-@SuppressWarnings('PMD.ApexUnitTestClassShouldHaveRunAs')
+@SuppressWarnings('PMD.ApexUnitTestClassShouldHaveRunAs,PMD.EmptyCatchBlock')
 @IsTest
 private class MockDuplicatesTest {
 	private static final Contact DUPE_CONTACT;
@@ -23,13 +23,13 @@ private class MockDuplicatesTest {
 
 	@IsTest
 	private static void shouldUseCustomSimulator() {
-		MockDuplicates.Simulator customSimulator = new MockDuplicatesTest.SimpleSimulator();
+		MockDuplicates.Simulator customSimulator = new MockDuplicatesTest.DummySimulator();
 
 		Test.startTest();
 		MockDuplicates.setMock(customSimulator);
 		Test.stopTest();
 
-		Assert.isInstanceOfType(MockDuplicates.simulator, MockDuplicatesTest.SimpleSimulator.class, 'Wrong type');
+		Assert.isInstanceOfType(MockDuplicates.simulator, MockDuplicatesTest.DummySimulator.class, 'Wrong type');
 	}
 
 	@IsTest
@@ -184,11 +184,15 @@ private class MockDuplicatesTest {
 	}
 
 	// **** INNER **** //
-	private class SimpleSimulator implements MockDuplicates.Simulator {
+	private class DummySimulator implements MockDuplicates.Simulator {
+		/**
+		 * @description A mock/empty simulator used to test the simulator mechanism
+		 * @param record Each record in the findDuplicates call
+		 * @return A null MockDuplicates.FindDuplicatesResult object
+		 */
 		public MockDuplicates.FindDuplicatesResult simulate(SObject record) {
 			// The implementation here doesn't matter
-			SObjectType objectType = record?.getSObjectType();
-			return new MockDuplicates.FindDuplicatesResult(objectType);
+			return null;
 		}
 	}
 }
