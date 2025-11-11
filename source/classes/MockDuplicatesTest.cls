@@ -1,17 +1,50 @@
+@SuppressWarnings('PMD.ApexUnitTestClassShouldHaveRunAs')
 @IsTest
 private class MockDuplicatesTest {
+	private static final Contact DUPE_CONTACT;
+	private static final Lead DUPE_LEAD;
+	private static final Lead LEAD;
+
 	static {
 		DatabaseLayer.useMocks();
+		LEAD = (Lead) new MockRecord(Schema.Lead.SObjectType)?.withId()?.toSObject();
+		DUPE_LEAD = (Lead) new MockRecord(Schema.Lead.SObjectType)?.withId()?.toSObject();
+		DUPE_CONTACT = (Contact) new MockRecord(Schema.Contact.SObjectType)?.withId()?.toSObject();
 	}
 
 	@IsTest
-	private static void shouldReturnEmptyResultsByDefault() {
-		Assert.fail('You still need to build this test');
+	private static void shouldUseBaseSimulatorByDefault() {
+		Test.startTest();
+		Duplicates.FindDuplicatesResult result = DatabaseLayer.Duplicates.findDuplicates(LEAD);
+		Test.stopTest();
+
+		Assert.areEqual(0, result?.getDuplicateResults()?.size(), 'Wrong # of DuplicateResults');
+		Assert.areEqual(0, result?.getErrors()?.size(), 'Wrong # of errors');
+		Assert.areEqual(true, result?.isSuccess(), 'Wrong isSuccess value');
+		Assert.isInstanceOfType(MockDuplicates.simulator, MockDuplicates.BaseSimulator.class, 'Wrong type');
 	}
 
 	@IsTest
 	private static void shouldUseCustomSimulator() {
-		Assert.fail('You still need to build this test');
+		MockDuplicates.Simulator simulator = new MockDuplicatesTest.SimpleSimulator();
+		MockDuplicates.setMock(simulator);
+
+		Test.startTest();
+		Duplicates.FindDuplicatesResult result = DatabaseLayer.Duplicates.findDuplicates(LEAD);
+		Test.stopTest();
+
+		Assert.isInstanceOfType(MockDuplicates.simulator, MockDuplicatesTest.SimpleSimulator.class, 'Wrong type');
+	}
+
+	@IsTest
+	private static void shouldReturnEmptyResultsByDefault() {
+		Test.startTest();
+		Duplicates.FindDuplicatesResult result = DatabaseLayer.Duplicates.findDuplicates(LEAD);
+		Test.stopTest();
+
+		Assert.areEqual(0, result?.getDuplicateResults()?.size(), 'Wrong # of DuplicateResults');
+		Assert.areEqual(0, result?.getErrors()?.size(), 'Wrong # of errors');
+		Assert.areEqual(true, result?.isSuccess(), 'Wrong isSuccess value');
 	}
 
 	@IsTest
@@ -69,7 +102,8 @@ private class MockDuplicatesTest {
 	private class SimpleSimulator implements MockDuplicates.Simulator {
 		public MockDuplicates.FindDuplicatesResult simulate(SObject record) {
 			// The implementation here doesn't matter
-			return new MockDuplicates.FindDuplicatesResult(record);
+			SObjectType objectType = record?.getSObjectType();
+			return new MockDuplicates.FindDuplicatesResult(objectType);
 		}
 	}
 }

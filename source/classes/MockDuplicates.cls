@@ -7,7 +7,11 @@
 @IsTest
 global class MockDuplicates extends Duplicates {
 	// **** STATIC **** //
-	private static Simulator simulator;
+	/**
+	 * @description The current simulator instance controlling duplicate detection behavior.
+	 * Access this property to verify which simulator is configured in tests.
+	 */
+	global static MockDuplicates.Simulator simulator { get; private set; }
 
 	static {
 		MockDuplicates.setMock();
@@ -266,7 +270,11 @@ global class MockDuplicates extends Duplicates {
 	global virtual class FindDuplicatesResult extends Duplicates.FindDuplicatesResult {
 		private transient SObjectType objectType;
 
-		private FindDuplicatesResult(SObjectType objectType) {
+		/**
+		 * @description Constructor for FindDuplicatesResult
+		 * @param objectType The SObjectType this result applies to
+		 */
+		global FindDuplicatesResult(SObjectType objectType) {
 			super(null);
 			this.duplicateResults = new List<Duplicates.DuplicateResult>{};
 			this.errors = new List<Database.Error>{};
@@ -526,7 +534,7 @@ global class MockDuplicates extends Duplicates {
 		 * @description Navigates back to the top-level FindDuplicatesResult
 		 * @return The FindDuplicatesResult instance
 		 */
-		global MockDuplicates.MatchResult toTop() {
+		global MockDuplicates.FindDuplicatesResult toTop() {
 			return this.up()?.up();
 		}
 
