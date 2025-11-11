@@ -16,7 +16,7 @@
 - **Cmdt**
   - [Mocking Custom Metadata Records](./Mocking-Custom-Metadata-Records)
 - **Duplicates**
-  - [Performing Mock Duplicates Operations](./Performing-Mock-Duplicates-Operations)
+  - [Performing Duplicates Operations](./Performing-Duplicates-Operations)
   - [Mocking Duplicate Rules](./Mocking-Duplicate-Rules)
 - **Plugins**
   - [About The Plugin Framework](./The-Plugin-Framework)
