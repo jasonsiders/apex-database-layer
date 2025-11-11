@@ -3,11 +3,11 @@
  */
 @IsTest
 public class MockError {
-    /**
+	/**
 	 *  Mocks the `Database.Error` class, since this type cannot be manually constructed.
 	 **/
-    private static final String MOCK_STATUS_CODE = 'MOCK_DML';
-	
+	private static final String MOCK_STATUS_CODE = 'MOCK_DML';
+
 	private String message;
 	private String statusCode;
 
