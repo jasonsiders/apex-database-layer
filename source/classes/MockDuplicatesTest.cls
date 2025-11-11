@@ -94,13 +94,9 @@ private class MockDuplicatesTest {
 		Assert.areEqual(Lead.SObjectType, matchRecord?.record?.Id?.getSObjectType(), 'Wrong type of record');
 	}
 
-	@IsTest 
+	@IsTest
 	private static void shouldReturnWithMultipleDuplicateResults() {
-		MockDuplicates.setMock()
-			?.withResults(Lead.SObjectType)
-			?.addRule()
-			?.up()
-			?.addRule();
+		MockDuplicates.setMock()?.withResults(Lead.SObjectType)?.addRule()?.up()?.addRule();
 
 		Test.startTest();
 		Duplicates.FindDuplicatesResult result = DatabaseLayer.Duplicates.findDuplicates(TEST_LEAD);
@@ -111,25 +107,25 @@ private class MockDuplicatesTest {
 
 	@IsTest
 	private static void shouldReturnWithMultipleMatchResults() {
-		MockDuplicates.setMock()
-			?.withResults(Lead.SObjectType)
-			?.addRule()
-			?.addMatch()
-			?.addRecord()
-			?.up()
-			?.addRecord();
+		Assert.fail('You still need to build this test');
+	}
+
+	@IsTest
+	private static void shouldReturnWithMultipleMatchRecords() {
+		MockDuplicates.setMock()?.withResults(Lead.SObjectType)?.addRule()?.addMatch()?.addRecord()?.up()?.addRecord();
 
 		Test.startTest();
 		Duplicates.FindDuplicatesResult result = DatabaseLayer.Duplicates.findDuplicates(TEST_LEAD);
 		Test.stopTest();
 
-		Assert.areEqual(1, result?.getDuplicateResults()?.size(), 'Wrong # of duplicate results');
-		Duplicates.DuplicateResult dupeResult = result?.getDuplicateResults()?.get(0);
-		Assert.areEqual(1, dupeResult?.getMatchResults()?.size(), 'Wrong # of match results');
-		Duplicates.MatchResult matchResult = dupeResult?.getMatchResults()?.get(0);
+		Duplicates.MatchResult matchResult = result?.getDuplicateResults()?.get(0)?.getMatchResults()?.get(0);
 		Assert.areEqual(2, matchResult?.getSize(), 'Wrong # of match records');
 		for (Duplicates.MatchRecord matchRecord : matchResult?.getMatchRecords()) {
-			Assert.isTrue(matchRecord?.getRecord()?.Id?.toString()?.startsWith('00Q'), 'Wrong type of record matched');
+			Assert.areEqual(
+				Lead.SObjectType,
+				matchRecord?.getRecord()?.Id?.getSObjectType(),
+				'Wrong type of record matched'
+			);
 		}
 	}
 
@@ -147,11 +143,12 @@ private class MockDuplicatesTest {
 		Duplicates.FindDuplicatesResult result = DatabaseLayer.Duplicates.findDuplicates(TEST_LEAD);
 		Test.stopTest();
 
-		Assert.areEqual(1, result?.getDuplicateResults()?.size(), 'Wrong # of duplicate results');
-		Duplicates.DuplicateResult dupeResult = result?.getDuplicateResults()?.get(0);
-		Assert.areEqual(1, dupeResult?.getMatchResults()?.size(), 'Wrong # of match results');
-		Duplicates.MatchResult matchResult = dupeResult?.getMatchResults()?.get(0);
-		List<Duplicates.MatchRecord> matchRecords = matchResult?.getMatchRecords();
+		List<Duplicates.MatchRecord> matchRecords = result
+			?.getDuplicateResults()
+			?.get(0)
+			?.getMatchResults()
+			?.get(0)
+			?.getMatchRecords();
 		Assert.areEqual(2, matchRecords?.size(), 'Wrong # of match records');
 		Set<SObjectType> matchEntities = new Set<SObjectType>{};
 		for (Duplicates.MatchRecord matchRecord : matchRecords) {
@@ -163,14 +160,62 @@ private class MockDuplicatesTest {
 		Assert.isTrue(matchEntities?.contains(Lead.SObjectType), 'Does not contain Lead matches');
 	}
 
-	@IsTest 
+	@IsTest
 	private static void shouldReturnResultWithOptionalRuleDetails() {
-		Assert.fail('You still need to build this test');
+		String customError = 'Whoa there!';
+		String customRule = 'The_Golden_Rule';
+		MockDuplicates.setMock()
+			?.withResults(Lead.SObjectType)
+			?.addRule()
+			?.setErrorMessage(customError)
+			?.setRuleName(customRule)
+			?.setSaveBehavior(MockDuplicates.SaveBehavior.BLOCK);
+
+		Test.startTest();
+		Duplicates.FindDuplicatesResult result = DatabaseLayer.Duplicates.findDuplicates(TEST_LEAD);
+		Test.stopTest();
+
+		Duplicates.DuplicateResult dupeResult = result?.getDuplicateResults()?.get(0);
+		Assert.areEqual(customRule, dupeResult?.getDuplicateRule(), 'Wrong duplicate rule');
+		Assert.areEqual(customError, dupeResult?.getErrorMessage(), 'Wrong error message');
+		Assert.areEqual(false, dupeResult?.isAllowSave(), 'Wrong allowSave');
 	}
 
 	@IsTest
 	private static void shouldReturnWithOptionalMatchDetails() {
-		Assert.fail('You still need to build this test');
+		String customEngine = 'Ferrari';
+		String customRule = 'Murphy_s_Law';
+		MockDuplicates.DiffType diffType = MockDuplicates.DiffType.IS_DIFFERENT;
+		MockDuplicates.setMock()
+			?.withResults(Lead.SObjectType)
+			?.addRule()
+			?.addMatch()
+			?.setMatchEngine(customEngine)
+			?.setRuleName(customRule)
+			?.addRecord()
+			?.addAdditionalInfo('foo', 'bar')
+			?.up()
+			?.addFieldDiff(Lead.Email, diffType);
+
+		Test.startTest();
+		Duplicates.FindDuplicatesResult result = DatabaseLayer.Duplicates.findDuplicates(TEST_LEAD);
+		Test.stopTest();
+
+		Duplicates.MatchResult matchResult = result?.getDuplicateResults()?.get(0)?.getMatchResults()?.get(0);
+		Assert.areEqual(customEngine, matchResult?.getMatchEngine(), 'Wrong match engine');
+		Assert.areEqual(customRule, matchResult?.getRule(), 'Wrong match rule');
+		Assert.areEqual(1, matchResult?.getMatchRecords()?.size(), 'Wrong # of match records');
+		Duplicates.MatchRecord matchRecord = matchResult?.getMatchRecords()?.get(0);
+		List<Duplicates.AdditionalInformationMap> addInfos = matchRecord?.getAdditionalInformation();
+		Assert.areEqual(1, addInfos?.size(), 'Wrong # of additional informations');
+		Duplicates.AdditionalInformationMap addInfo = addInfos?.get(0);
+		Assert.areEqual('foo', addInfo?.getName(), 'Wrong AdditionalInformationMap.name');
+		Assert.areEqual('bar', addInfo?.getValue(), 'Wrong AdditionalInformationMap.value');
+		List<Duplicates.FieldDiff> fieldDiffs = matchRecord?.getFieldDiffs();
+		Assert.areEqual(1, fieldDiffs?.size(), 'Wrong # of field diffs');
+		Duplicates.FieldDiff fieldDiff = fieldDiffs?.get(0);
+		Assert.areEqual(Lead.Email.toString(), fieldDiff?.getName(), 'Wrong FieldDiff.name');
+		Assert.areEqual(diffType.name()?.removeStart('IS_'), fieldDiff?.getDifference(), 'Wrong FieldDiff.difference');
 	}
 
 	@IsTest

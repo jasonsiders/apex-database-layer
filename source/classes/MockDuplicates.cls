@@ -137,6 +137,7 @@ global class MockDuplicates extends Duplicates {
 
 		/**
 		 * @description Adds a match result for a specific SObjectType
+		 * @param objectType the SObjectType associated with the match result
 		 * @return The created MatchResult instance for method chaining
 		 */
 		global MockDuplicates.MatchResult addMatch(SObjectType objectType) {
@@ -378,6 +379,16 @@ global class MockDuplicates extends Duplicates {
 			MockDuplicates.FieldDiff diff = new MockDuplicates.FieldDiff(this, fieldName, difference);
 			this.fieldDiffs?.add(diff);
 			return diff;
+		}
+
+		/**
+		 * @description Adds a field difference to this match record
+		 * @param field The SObjectField to add tot he match record
+		 * @param difference The type of difference (IS_DIFFERENT, IS_NULL, or IS_SAME)
+		 * @return The created FieldDiff instance for method chaining
+		 */
+		global MockDuplicates.FieldDiff addFieldDiff(SObjectField field, MockDuplicates.DiffType difference) {
+			return this.addFieldDiff(field?.toString(), difference);
 		}
 
 		/**
