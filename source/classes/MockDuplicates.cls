@@ -4,7 +4,7 @@
  * Allows tests to configure expected duplicate matches, errors, and field differences.
  */
 @SuppressWarnings('PMD.AvoidGlobalModifier,PMD.CognitiveComplexity')
-// TODO: @IsTest
+@IsTest
 global class MockDuplicates extends Duplicates {
 	// **** STATIC **** //
 	/**
