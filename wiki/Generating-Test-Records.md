@@ -111,44 +111,44 @@ Here’s the resulting `Opportunity`, in JSON:
 
 ```json
 {
-  "attributes": {
-    "type": "Opportunity",
-    "url": "/services/data/v64.0/sobjects/Opportunity/006000000000000003"
-  },
-  "Account": {
-    "attributes": {
-      "type": "Account",
-      "url": "/services/data/v64.0/sobjects/Account/001000000000000001"
-    },
-    "Owner": {
-      "attributes": {
-        "type": "User",
-        "url": "/services/data/v64.0/sobjects/User/005000000000000000"
-      },
-      "Id": "005000000000000000"
-    },
-    "OwnerId": "005000000000000000",
-    "Id": "001000000000000001"
-  },
-  "AccountId": "001000000000000001",
-  "CreatedDate": "2025-06-26T14:32:49.653+0000",
-  "OpportunityContactRoles": {
-    "totalSize": 1,
-    "done": true,
-    "records": [
-      {
-        "attributes": {
-          "type": "OpportunityContactRole",
-          "url": "/services/data/v64.0/sobjects/OpportunityContactRole/00K000000000000004"
-        },
-        "Role": "Primary Contact",
-        "OpportunityId": "006000000000000003",
-        "Id": "00K000000000000004",
-        "ContactId": "003000000000000002"
-      }
-    ]
-  },
-  "Id": "006000000000000003",
-  "SomeFormulaCheckbox__c": true
+	"attributes": {
+		"type": "Opportunity",
+		"url": "/services/data/v64.0/sobjects/Opportunity/006000000000000003"
+	},
+	"Account": {
+		"attributes": {
+			"type": "Account",
+			"url": "/services/data/v64.0/sobjects/Account/001000000000000001"
+		},
+		"Owner": {
+			"attributes": {
+				"type": "User",
+				"url": "/services/data/v64.0/sobjects/User/005000000000000000"
+			},
+			"Id": "005000000000000000"
+		},
+		"OwnerId": "005000000000000000",
+		"Id": "001000000000000001"
+	},
+	"AccountId": "001000000000000001",
+	"CreatedDate": "2025-06-26T14:32:49.653+0000",
+	"OpportunityContactRoles": {
+		"totalSize": 1,
+		"done": true,
+		"records": [
+			{
+				"attributes": {
+					"type": "OpportunityContactRole",
+					"url": "/services/data/v64.0/sobjects/OpportunityContactRole/00K000000000000004"
+				},
+				"Role": "Primary Contact",
+				"OpportunityId": "006000000000000003",
+				"Id": "00K000000000000004",
+				"ContactId": "003000000000000002"
+			}
+		]
+	},
+	"Id": "006000000000000003",
+	"SomeFormulaCheckbox__c": true
 }
 ```

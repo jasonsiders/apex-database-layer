@@ -78,7 +78,7 @@ After a SOQL operation is processed, the plugin issues another `FINEST` log entr
 
 - The text of the query is available in the message body
 - The resulting SObject records are available in the `Related Records` tab
-  - Note: Other query operations (ex., `getCursor`, `countQuery`) that do _not_ output SObjects will be printed in the message body instead
+    - Note: Other query operations (ex., `getCursor`, `countQuery`) that do _not_ output SObjects will be printed in the message body instead
 
 <img width="1431" alt="image" src="https://github.com/user-attachments/assets/51b574ed-ef2f-42ef-b97d-96f965290982" />
 <img width="1406" alt="image" src="https://github.com/user-attachments/assets/e37a5a19-72b0-4701-aa17-06c16343b034" />

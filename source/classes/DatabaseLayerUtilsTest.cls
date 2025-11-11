@@ -2,7 +2,7 @@
 @IsTest
 private class DatabaseLayerUtilsTest {
 	@IsTest
-	static void shouldGetChildRelationshipFromLookupField() {
+	private static void shouldGetChildRelationshipFromLookupField() {
 		SObjectField field = Contact.AccountId;
 
 		Test.startTest();
@@ -13,7 +13,7 @@ private class DatabaseLayerUtilsTest {
 	}
 
 	@IsTest
-	static void shouldGetChildRelationshipFromPolymorphicLookupField() {
+	private static void shouldGetChildRelationshipFromPolymorphicLookupField() {
 		SObjectField field = Task.WhoId; // Polymorphic! Can be a reference to Contact.Tasks OR Lead.Tasks
 		SObjectType referenceTo = Lead.SObjectType; // ...in this case, we want Lead.Tasks
 
@@ -28,7 +28,7 @@ private class DatabaseLayerUtilsTest {
 	}
 
 	@IsTest
-	static void shouldReturnChildRelationshipsUnderHighStress() {
+	private static void shouldReturnChildRelationshipsUnderHighStress() {
 		// The operation to retrieve Schema.ChildRelationships from an object can be expensive,
 		// so the class internally caches these results via an inner class.
 		// Successive calls to retrieve the same SObjectType's relationships
@@ -50,7 +50,7 @@ private class DatabaseLayerUtilsTest {
 	}
 
 	@IsTest
-	static void shouldReturnNullChildRelationshipIfNotLookupField() {
+	private static void shouldReturnNullChildRelationshipIfNotLookupField() {
 		SObjectField field = Contact.CreatedDate;
 
 		Test.startTest();
@@ -61,7 +61,7 @@ private class DatabaseLayerUtilsTest {
 	}
 
 	@IsTest
-	static void shouldReturnWhateverMetadataIsDefinedInOrg() {
+	private static void shouldReturnWhateverMetadataIsDefinedInOrg() {
 		// A validation rule enforces that at most, 1 settings record will exist in an org
 		// This ensures the get() method will return the 1st (and only) record, if one is defined:
 		DatabaseLayerSetting__mdt defaultSetting = DatabaseLayerSetting__mdt.getInstance('Default');
@@ -76,7 +76,7 @@ private class DatabaseLayerUtilsTest {
 	}
 
 	@IsTest
-	static void shouldReturnMockedMetadata() {
+	private static void shouldReturnMockedMetadata() {
 		// To force your test to use a specific DatabaseLayerSetting__mdt record, add ito the `settings` list:
 		DatabaseLayerSetting__mdt mockSetting = new DatabaseLayerSetting__mdt(DeveloperName = 'Test_123');
 		MockCmdt.mock(DatabaseLayerSetting__mdt.SObjectType)?.add(mockSetting);
@@ -90,7 +90,7 @@ private class DatabaseLayerUtilsTest {
 	}
 
 	@IsTest
-	static void shouldReturnNullIfMockedEmtpyList() {
+	private static void shouldReturnNullIfMockedEmtpyList() {
 		// Define `settings` as an empty list to ignore any defined DatabaseLayerSetting__mdt records in an org:
 		MockCmdt.mock(DatabaseLayerSetting__mdt.SObjectType);
 
@@ -103,7 +103,7 @@ private class DatabaseLayerUtilsTest {
 	}
 
 	@IsTest
-	static void shouldInitPluginObjectFromCustomMetadata() {
+	private static void shouldInitPluginObjectFromCustomMetadata() {
 		DatabaseLayerSetting__mdt mockSetting = new DatabaseLayerSetting__mdt(
 			DeveloperName = 'Test_123',
 			DmlPreAndPostProcessor__c = DatabaseLayerTestUtils.SamplePlugin.class.getName()
@@ -119,7 +119,7 @@ private class DatabaseLayerUtilsTest {
 	}
 
 	@IsTest
-	static void shouldReturnNullPluginIfPluginNotConstructable() {
+	private static void shouldReturnNullPluginIfPluginNotConstructable() {
 		DatabaseLayerSetting__mdt mockSetting = new DatabaseLayerSetting__mdt(
 			DeveloperName = 'Test_123',
 			DmlPreAndPostProcessor__c = 'Soql' // No public 0-arg constructor
@@ -135,7 +135,7 @@ private class DatabaseLayerUtilsTest {
 	}
 
 	@IsTest
-	static void shouldReturnNullPluginIfPluginInvalid() {
+	private static void shouldReturnNullPluginIfPluginInvalid() {
 		DatabaseLayerSetting__mdt mockSetting = new DatabaseLayerSetting__mdt(
 			DeveloperName = 'Test_123',
 			DmlPreAndPostProcessor__c = 'not a real object name'
@@ -151,7 +151,7 @@ private class DatabaseLayerUtilsTest {
 	}
 
 	@IsTest
-	static void shouldReturnNullPluginIfMissingPluginName() {
+	private static void shouldReturnNullPluginIfMissingPluginName() {
 		DatabaseLayerSetting__mdt mockSetting = new DatabaseLayerSetting__mdt(
 			DeveloperName = 'Test_123',
 			DmlPreAndPostProcessor__c = null
@@ -167,7 +167,7 @@ private class DatabaseLayerUtilsTest {
 	}
 
 	@IsTest
-	static void shouldReturnNullPluginIfMissingSettingsRecords() {
+	private static void shouldReturnNullPluginIfMissingSettingsRecords() {
 		MockCmdt.mock(DatabaseLayerSetting__mdt.SObjectType);
 		SObjectField field = DatabaseLayerSetting__mdt.DmlPreAndPostProcessor__c;
 
@@ -176,5 +176,17 @@ private class DatabaseLayerUtilsTest {
 		Test.stopTest();
 
 		Assert.isNull(plugin, 'Did not return null plugin');
+	}
+
+	@IsTest
+	private static void shouldCreateNewSObjectsFromIds() {
+		Id recordId = UserInfo.getUserId();
+
+		Test.startTest();
+		SObject record = DatabaseLayer.Utils.SObjects.newSObject(recordId);
+		Test.stopTest();
+
+		Assert.isInstanceOfType(record, User.class, 'Did not create a User');
+		Assert.areEqual(record?.Id, recordId, 'Wrong Id');
 	}
 }

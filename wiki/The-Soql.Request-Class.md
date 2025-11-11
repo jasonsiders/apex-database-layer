@@ -44,24 +44,24 @@ For logging purposes, you can safely JSON-serialize the `Dml.Request`, though So
 
 ```json
 {
-  "queryString": "SELECT Id FROM Account",
-  "query": {
-    "whereCriteria": {
-      "logicType": "ALL_CONDITIONS",
-      "criterion": []
-    },
-    "selectClauses": ["Id"],
-    "orderByClauses": [],
-    "havingCriteria": {
-      "logicType": "ALL_CONDITIONS",
-      "criterion": []
-    },
-    "groupByClauses": [],
-    "entity": "Account",
-    "binds": {},
-    "accessLevelName": "USER_MODE"
-  },
-  "operation": "QUERY",
-  "isMockSoql": false
+	"queryString": "SELECT Id FROM Account",
+	"query": {
+		"whereCriteria": {
+			"logicType": "ALL_CONDITIONS",
+			"criterion": []
+		},
+		"selectClauses": ["Id"],
+		"orderByClauses": [],
+		"havingCriteria": {
+			"logicType": "ALL_CONDITIONS",
+			"criterion": []
+		},
+		"groupByClauses": [],
+		"entity": "Account",
+		"binds": {},
+		"accessLevelName": "USER_MODE"
+	},
+	"operation": "QUERY",
+	"isMockSoql": false
 }
 ```

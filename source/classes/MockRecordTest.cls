@@ -2,7 +2,7 @@
 @IsTest
 private class MockRecordTest {
 	@IsTest
-	static void shouldMockNewRecords() {
+	private static void shouldMockNewRecords() {
 		String accountName = 'John Doe Enterprises';
 		DateTime now = DateTime.now();
 		Contact mockContact = (Contact) new MockRecord(Contact.SObjectType)?.toSObject();
@@ -25,7 +25,7 @@ private class MockRecordTest {
 	}
 
 	@IsTest
-	static void shouldMockExistingRecord() {
+	private static void shouldMockExistingRecord() {
 		Account existingAccount = new Account(BillingCountry = 'US', Name = 'John Doe Enterprises');
 
 		Test.startTest();
@@ -41,7 +41,7 @@ private class MockRecordTest {
 	}
 
 	@IsTest
-	static void shouldGetValuesFromMockRecord() {
+	private static void shouldGetValuesFromMockRecord() {
 		String accountName = 'John Doe Enterprises';
 		DateTime now = DateTime.now();
 		Contact contact = (Contact) new MockRecord(Contact.SObjectType)?.withId()?.toSObject();
@@ -62,7 +62,7 @@ private class MockRecordTest {
 	}
 
 	@IsTest
-	static void shouldAddToExistingRelatedList() {
+	private static void shouldAddToExistingRelatedList() {
 		Contact contact1 = (Contact) new MockRecord(Contact.SObjectType)?.withId()?.toSObject();
 		Contact contact2 = (Contact) new MockRecord(Contact.SObjectType)?.withId()?.toSObject();
 		MockRecord accountMock = new MockRecord(Account.SObjectType)
@@ -80,7 +80,7 @@ private class MockRecordTest {
 	}
 
 	@IsTest
-	static void shouldSetRelatedListWithMockRecords() {
+	private static void shouldSetRelatedListWithMockRecords() {
 		List<MockRecord> mockContacts = new List<MockRecord>();
 		for (Integer i = 0; i < 3; i++) {
 			MockRecord mockContact = new MockRecord(Contact.SObjectType)?.withId();
@@ -98,7 +98,7 @@ private class MockRecordTest {
 	}
 
 	@IsTest
-	static void shouldAddMockRecordToRelatedList() {
+	private static void shouldAddMockRecordToRelatedList() {
 		MockRecord mockContact = new MockRecord(Contact.SObjectType)?.withId();
 
 		Test.startTest();
@@ -113,7 +113,7 @@ private class MockRecordTest {
 	}
 
 	@IsTest
-	static void shouldAddMockAndRealRecordsToRelatedList() {
+	private static void shouldAddMockAndRealRecordsToRelatedList() {
 		MockRecord mockContact = new MockRecord(Contact.SObjectType)?.withId();
 		Contact realContact = (Contact) new MockRecord(Contact.SObjectType)?.withId()?.toSObject();
 		MockRecord mockAccount = new MockRecord(Account.SObjectType)?.withId();
@@ -135,7 +135,7 @@ private class MockRecordTest {
 	}
 
 	@IsTest
-	static void shouldAddMockRecordsToLookup() {
+	private static void shouldAddMockRecordsToLookup() {
 		MockRecord mockAccount = new MockRecord(Account.SObjectType)?.withId();
 
 		Test.startTest();
@@ -150,7 +150,7 @@ private class MockRecordTest {
 	}
 
 	@IsTest
-	static void shouldUseUnderlyingSObjectForObjectMethods() {
+	private static void shouldUseUnderlyingSObjectForObjectMethods() {
 		MockRecord mock = new MockRecord(Account.SObjectType)?.withId();
 		Account account = (Account) mock?.toSObject();
 		Assert.areEqual(account?.hashCode(), mock?.hashCode(), 'Wrong hashCode value');
