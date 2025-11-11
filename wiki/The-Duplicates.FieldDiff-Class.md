@@ -4,10 +4,10 @@ This class wraps `Datacloud.FieldDiff` and provides information about how a spec
 
 ## Properties
 
-| Property Name | Data Type | Details |
-|--------------|-----------|---------|
-| difference | Object | The comparison value showing the difference for this field. Possible values: "DIFFERENT", "NULL", or "SAME". Read-only. |
-| name | String | The name of the field that differs. Read-only. |
+| Property Name | Data Type | Details                                                                                                                 |
+| ------------- | --------- | ----------------------------------------------------------------------------------------------------------------------- |
+| difference    | Object    | The comparison value showing the difference for this field. Possible values: "DIFFERENT", "NULL", or "SAME". Read-only. |
+| name          | String    | The name of the field that differs. Read-only.                                                                          |
 
 ## Methods
 

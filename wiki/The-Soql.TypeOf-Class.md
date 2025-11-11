@@ -11,9 +11,11 @@ This class implements the [`Soql.Selectable`](./The-Soql.Selectable-Interface) i
 Creates a new TypeOf instance with a relationship name.
 
 **Parameters:**
+
 - `relationshipName` - The polymorphic field name to query
 
 **Example:**
+
 ```apex
 Soql.TypeOf typeOfClause = new Soql.TypeOf('What');
 ```
@@ -23,9 +25,11 @@ Soql.TypeOf typeOfClause = new Soql.TypeOf('What');
 Creates a new TypeOf instance with an SObjectField.
 
 **Parameters:**
+
 - `field` - The polymorphic SObjectField to query
 
 **Example:**
+
 ```apex
 Soql.TypeOf typeOfClause = new Soql.TypeOf(Task.WhatId);
 ```
@@ -35,9 +39,11 @@ Soql.TypeOf typeOfClause = new Soql.TypeOf(Task.WhatId);
 Creates a new TypeOf instance with a parent field.
 
 **Parameters:**
+
 - `field` - The polymorphic parent field to query
 
 **Example:**
+
 ```apex
 Soql.ParentField whatField = new Soql.ParentField('What');
 Soql.TypeOf typeOfClause = new Soql.TypeOf(whatField);
@@ -52,15 +58,19 @@ Soql.TypeOf typeOfClause = new Soql.TypeOf(whatField);
 Adds a WHEN clause and returns a builder for specifying fields.
 
 **Signature:**
+
 - `Soql.WhenClause when(SObjectType objectType)`
 
 **Parameters:**
+
 - `objectType` - The SObjectType to match in the WHEN clause
 
 **Returns:**
+
 - A [`Soql.WhenClause`](./The-Soql.WhenClause-Class) builder for specifying the fields to select
 
 **Example:**
+
 ```apex
 Soql.TypeOf typeOfClause = new Soql.TypeOf(Task.WhatId)
     .when(Account.SObjectType)
@@ -72,6 +82,7 @@ Soql.TypeOf typeOfClause = new Soql.TypeOf(Task.WhatId)
 Adds an ELSE clause with field names to select when no WHEN conditions match.
 
 **Signatures:**
+
 - `Soql.TypeOf elseSelect(List<String> fieldNames)`
 - `Soql.TypeOf elseSelect(String fieldName)`
 - `Soql.TypeOf elseSelect(String field1, String field2)`
@@ -80,14 +91,17 @@ Adds an ELSE clause with field names to select when no WHEN conditions match.
 - `Soql.TypeOf elseSelect(String field1, String field2, String field3, String field4, String field5)`
 
 **Parameters:**
+
 - `fieldNames` - List of field names to select in the ELSE clause
 - `fieldName` - Single field name to select
 - `field1`, `field2`, etc. - Individual field names (null values are filtered out)
 
 **Returns:**
+
 - This TypeOf instance for method chaining
 
 **Examples:**
+
 ```apex
 // Single field
 typeOfClause.elseSelect('Name');

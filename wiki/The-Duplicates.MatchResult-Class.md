@@ -4,15 +4,15 @@ This class wraps `Datacloud.MatchResult` and contains matched records and any er
 
 ## Properties
 
-| Property Name | Data Type | Details |
-|--------------|-----------|---------|
-| entityType | String | The entity type for this match result. Read-only. |
-| errors | List&lt;Database.Error&gt; | List of errors that occurred during matching. Read-only. |
-| matchEngine | String | The name of the match engine used for this result. Read-only. |
-| matchRecords | List&lt;[Duplicates.MatchRecord](./The-Duplicates.MatchRecord-Class)&gt; | List of matching records found by this rule. Read-only. |
-| rule | String | The name of the duplicate rule that generated this match result. Read-only. |
-| size | Integer | The number of matching records found. Read-only. |
-| success | Boolean | Indicates whether the match operation was successful. Read-only. |
+| Property Name | Data Type                                                                | Details                                                                     |
+| ------------- | ------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
+| entityType    | String                                                                   | The entity type for this match result. Read-only.                           |
+| errors        | List&lt;Database.Error&gt;                                               | List of errors that occurred during matching. Read-only.                    |
+| matchEngine   | String                                                                   | The name of the match engine used for this result. Read-only.               |
+| matchRecords  | List&lt;[Duplicates.MatchRecord](./The-Duplicates.MatchRecord-Class)&gt; | List of matching records found by this rule. Read-only.                     |
+| rule          | String                                                                   | The name of the duplicate rule that generated this match result. Read-only. |
+| size          | Integer                                                                  | The number of matching records found. Read-only.                            |
+| success       | Boolean                                                                  | Indicates whether the match operation was successful. Read-only.            |
 
 ## Methods
 

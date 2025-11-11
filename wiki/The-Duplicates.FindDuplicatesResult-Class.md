@@ -4,11 +4,11 @@ This class wraps `Datacloud.FindDuplicatesResult` and contains duplicate rule re
 
 ## Properties
 
-| Property Name | Data Type | Details |
-|--------------|-----------|---------|
-| duplicateResults | List&lt;[Duplicates.DuplicateResult](./The-Duplicates.DuplicateResult-Class)&gt; | List of duplicate results for each record that was checked. Read-only. |
-| errors | List&lt;Database.Error&gt; | List of errors that occurred during the duplicate detection operation. Read-only. |
-| success | Boolean | Indicates whether the duplicate detection operation was successful. Read-only. |
+| Property Name    | Data Type                                                                        | Details                                                                           |
+| ---------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| duplicateResults | List&lt;[Duplicates.DuplicateResult](./The-Duplicates.DuplicateResult-Class)&gt; | List of duplicate results for each record that was checked. Read-only.            |
+| errors           | List&lt;Database.Error&gt;                                                       | List of errors that occurred during the duplicate detection operation. Read-only. |
+| success          | Boolean                                                                          | Indicates whether the duplicate detection operation was successful. Read-only.    |
 
 ## Methods
 

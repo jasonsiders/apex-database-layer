@@ -4,10 +4,10 @@ This class wraps `Datacloud.AdditionalInformationMap` and provides name-value pa
 
 ## Properties
 
-| Property Name | Data Type | Details |
-|--------------|-----------|---------|
-| name | String | The name of the additional information field. Read-only. |
-| value | String | The value of the additional information field. Read-only. |
+| Property Name | Data Type | Details                                                   |
+| ------------- | --------- | --------------------------------------------------------- |
+| name          | String    | The name of the additional information field. Read-only.  |
+| value         | String    | The value of the additional information field. Read-only. |
 
 ## Methods
 

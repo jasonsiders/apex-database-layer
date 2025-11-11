@@ -19,14 +19,14 @@ Example:
 
 ```apex
 public class ExampleFailure implements MockDml.ConditionalFailure {
-  public Exception checkFailure(Dml.Operation operation, SObject record) {
-    // Fail any operations that manipulate Account records
-    if (record?.getSObjectType() == Account.SObjectType) {
-      return new System.DmlException();
-    } else {
-      // Success!
-      return null;
-    }
-  }
+	public Exception checkFailure(Dml.Operation operation, SObject record) {
+		// Fail any operations that manipulate Account records
+		if (record?.getSObjectType() == Account.SObjectType) {
+			return new System.DmlException();
+		} else {
+			// Success!
+			return null;
+		}
+	}
 }
 ```

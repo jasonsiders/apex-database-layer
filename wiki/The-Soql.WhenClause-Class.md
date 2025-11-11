@@ -11,6 +11,7 @@ This class is designed to work in conjunction with the [`Soql.TypeOf`](./The-Soq
 Creates a new WhenClause builder instance. This constructor is private and should not be called directly. Instead, use the `when()` method on a [`Soql.TypeOf`](./The-Soql.TypeOf-Class) instance.
 
 **Parameters:**
+
 - `parent` - The parent TypeOf instance
 - `objectType` - The SObjectType for this WHEN clause
 
@@ -23,6 +24,7 @@ Creates a new WhenClause builder instance. This constructor is private and shoul
 Specifies fields to select for this WHEN clause. All methods return the parent [`Soql.TypeOf`](./The-Soql.TypeOf-Class) instance to enable continued chaining.
 
 **Signatures:**
+
 - `Soql.TypeOf thenSelect(List<SObjectField> fields)`
 - `Soql.TypeOf thenSelect(SObjectField field)`
 - `Soql.TypeOf thenSelect(SObjectField field1, SObjectField field2)`
@@ -31,13 +33,16 @@ Specifies fields to select for this WHEN clause. All methods return the parent [
 - `Soql.TypeOf thenSelect(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4, SObjectField field5)`
 
 **Parameters:**
+
 - `fields` - List of SObjectFields to select for this WHEN clause
 - `field`, `field1`, `field2`, etc. - Individual SObjectFields to select (null values are automatically filtered out)
 
 **Returns:**
+
 - The parent [`Soql.TypeOf`](./The-Soql.TypeOf-Class) instance for continued method chaining
 
 **Features:**
+
 - **Null Filtering**: Automatically filters out null SObjectField values
 - **Type Safety**: Ensures only valid SObjectFields are included
 - **Method Chaining**: Returns parent TypeOf for continued fluent interface usage
@@ -113,6 +118,7 @@ The WhenClause class follows the **Builder Pattern** principles:
 4. **Defensive Programming**: Automatic null filtering prevents invalid field references
 
 **Example of Fluent Chaining:**
+
 ```apex
 Soql soql = DatabaseLayer.Soql.newQuery(Task.SObjectType)
     .addSelect(

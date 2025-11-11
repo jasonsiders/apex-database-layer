@@ -40,36 +40,18 @@ if (result?.isSuccess()) {
 
 Executes duplicate detection on one or more records.
 
-**Overloads:**
-
 - `Duplicates.FindDuplicatesResult findDuplicates(SObject record)`
 - `Duplicates.FindDuplicatesResult findDuplicates(Id recordId)`
 - `List<Duplicates.FindDuplicatesResult> findDuplicates(List<SObject> records)`
 - `List<Duplicates.FindDuplicatesResult> findDuplicates(Iterable<Id> recordIds)`
 
-**Examples:**
-
 ```apex
-// Single record
 Account account = new Account(Name = 'Acme Corp');
 Duplicates.FindDuplicatesResult result = DatabaseLayer.Duplicates.findDuplicates(account);
-
-// Single record ID
-Duplicates.FindDuplicatesResult result = DatabaseLayer.Duplicates.findDuplicates(accountId);
-
-// Multiple records
-List<Account> accounts = new List<Account>{
-    new Account(Name = 'Acme Corp'),
-    new Account(Name = 'Globex Inc')
-};
-List<Duplicates.FindDuplicatesResult> results = DatabaseLayer.Duplicates.findDuplicates(accounts);
-
-// Multiple record IDs
-List<Id> accountIds = new List<Id>{id1, id2, id3};
-List<Duplicates.FindDuplicatesResult> results = DatabaseLayer.Duplicates.findDuplicates(accountIds);
 ```
 
-**Notes:**
+## Considerations
+
 - The Datacloud API limits input to 1-50 records per call
 - All records must be of the same SObjectType
 - See [Datacloud.FindDuplicates](https://developer.salesforce.com/docs/atlas.en-us.apexref.meta/apexref/apex_class_Datacloud_FindDuplicatesResult.htm) for more information

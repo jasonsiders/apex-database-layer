@@ -4,12 +4,12 @@ This class wraps `Datacloud.MatchRecord` and contains the matching record, confi
 
 ## Properties
 
-| Property Name | Data Type | Details |
-|--------------|-----------|---------|
-| additionalInformation | List&lt;[Duplicates.AdditionalInformationMap](./The-Duplicates.AdditionalInformationMap-Class)&gt; | Additional information about the match as name-value pairs. Read-only. |
-| fieldDiffs | List&lt;[Duplicates.FieldDiff](./The-Duplicates.FieldDiff-Class)&gt; | List of field differences between the original and matching record. Read-only. |
-| matchConfidence | Decimal | The confidence score for this match. Read-only. |
-| record | SObject | The matching SObject record. Read-only. |
+| Property Name         | Data Type                                                                                          | Details                                                                        |
+| --------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| additionalInformation | List&lt;[Duplicates.AdditionalInformationMap](./The-Duplicates.AdditionalInformationMap-Class)&gt; | Additional information about the match as name-value pairs. Read-only.         |
+| fieldDiffs            | List&lt;[Duplicates.FieldDiff](./The-Duplicates.FieldDiff-Class)&gt;                               | List of field differences between the original and matching record. Read-only. |
+| matchConfidence       | Decimal                                                                                            | The confidence score for this match. Read-only.                                |
+| record                | SObject                                                                                            | The matching SObject record. Read-only.                                        |
 
 ## Methods
 

@@ -64,15 +64,15 @@ DatabaseLayer.Dml.doUpdate(account);
 
 ```apex
 public class FailOnUpdate implements MockDml.ConditionalFailure {
-  public Exception checkFailure(Dml.Operation operation, SObject record) {
-    if (operation == MockDml.DO_UPDATE) {
-      // The operation should fail:
-      return new System.DmlException();
-    } else {
-      // The operation should succeed:
-      return null;
-    }
-  }
+	public Exception checkFailure(Dml.Operation operation, SObject record) {
+		if (operation == MockDml.DO_UPDATE) {
+			// The operation should fail:
+			return new System.DmlException();
+		} else {
+			// The operation should succeed:
+			return null;
+		}
+	}
 }
 ```
 

@@ -4,13 +4,13 @@ Example:
 
 ```apex
 public class SomeLogic implements Soql.PreAndPostProcessor {
-  public void preProcessSoql(Soql.Request request) {
-    if (request?.operation == Soql.Operation.GET_QUERY_LOCATOR) {
-      // Some special processing...
-    }
-  }
+	public void preProcessSoql(Soql.Request request) {
+		if (request?.operation == Soql.Operation.GET_QUERY_LOCATOR) {
+			// Some special processing...
+		}
+	}
 
-  // ... rest of interface omitted for brevity
+	// ... rest of interface omitted for brevity
 }
 ```
 

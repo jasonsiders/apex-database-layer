@@ -4,13 +4,13 @@ This class wraps `Datacloud.DuplicateResult` and contains information about whet
 
 ## Properties
 
-| Property Name | Data Type | Details |
-|--------------|-----------|---------|
-| allowSave | Boolean | Indicates whether saving the record is allowed despite duplicates. Read-only. |
-| duplicateRule | String | The name of the duplicate rule that was evaluated. Read-only. |
-| duplicateRuleEntityType | String | The entity type of the duplicate rule. Read-only. |
-| errorMessage | String | Any error message from the duplicate detection operation. Read-only. |
-| matchResults | List&lt;[Duplicates.MatchResult](./The-Duplicates.MatchResult-Class)&gt; | List of match results containing matching records and their details. Read-only. |
+| Property Name           | Data Type                                                                | Details                                                                         |
+| ----------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
+| allowSave               | Boolean                                                                  | Indicates whether saving the record is allowed despite duplicates. Read-only.   |
+| duplicateRule           | String                                                                   | The name of the duplicate rule that was evaluated. Read-only.                   |
+| duplicateRuleEntityType | String                                                                   | The entity type of the duplicate rule. Read-only.                               |
+| errorMessage            | String                                                                   | Any error message from the duplicate detection operation. Read-only.            |
+| matchResults            | List&lt;[Duplicates.MatchResult](./The-Duplicates.MatchResult-Class)&gt; | List of match results containing matching records and their details. Read-only. |
 
 ## Methods
 

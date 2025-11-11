@@ -31,27 +31,9 @@ To configure specific duplicate detection results, use the [MockDuplicates.BaseS
 
 ```apex
 DatabaseLayer.useMocks();
-// Configure the simulator to return duplicates for Account records:
-Account existingAccount = (Account) new MockRecord(Account.SObjectType)
-    .withId()
-    .withField(Account.Name, 'Acme Corp')
-    .toSObject();
-
-MockDuplicates.simulator
-    .withResults(Account.SObjectType)
-        .addRule()
-            .setRuleName('Account_Duplicate_Rule')
-            .setSaveBehavior(MockDuplicates.SaveBehavior.ALLOW)
-            .addMatch()
-                .addRecord(existingAccount)
-                    .setConfidence(95.0)
-                    .addFieldDiff('Name', MockDuplicates.DiffType.IS_SAME);
-
-// Now duplicate detection will find the configured match:
-Account newAccount = new Account(Name = 'Acme Corp');
-Duplicates.FindDuplicatesResult result = DatabaseLayer.Duplicates.findDuplicates(newAccount);
-Assert.isTrue(result?.isSuccess(), 'Detection failed');
-Assert.areEqual(1, result?.getDuplicateResults()?.size(), 'Expected duplicates');
+MockDuplicates.simulator.withResults(Account.SObjectType).addRule().addMatch().addRecord();
+Account account = new Account(Name = 'Acme Corp');
+Duplicates.FindDuplicatesResult result = DatabaseLayer.Duplicates.findDuplicates(account);
 ```
 
 ## Simulating Failed Duplicate Detection
@@ -60,88 +42,7 @@ If you want duplicate detection to fail with an error, add errors to the result:
 
 ```apex
 DatabaseLayer.useMocks();
-MockDuplicates.simulator
-    .withResults(Account.SObjectType)
-        .addError(new System.HandledException('Duplicate rule error'));
-
-// Now duplicate detection will fail:
+MockDuplicates.simulator.withResults(Account.SObjectType).addError();
 Account account = new Account();
 Duplicates.FindDuplicatesResult result = DatabaseLayer.Duplicates.findDuplicates(account);
-Assert.isFalse(result?.isSuccess(), 'Detection should have failed');
-Assert.areEqual(1, result?.getErrors()?.size(), 'Expected error');
-```
-
-## Simulating Complex Match Scenarios
-
-The fluent API allows you to build complex duplicate detection scenarios:
-
-```apex
-DatabaseLayer.useMocks();
-// Create mock matched records:
-Account match1 = (Account) new MockRecord(Account.SObjectType)
-    .withId()
-    .withField(Account.Name, 'Acme Corporation')
-    .toSObject();
-
-Account match2 = (Account) new MockRecord(Account.SObjectType)
-    .withId()
-    .withField(Account.Name, 'ACME Corp')
-    .toSObject();
-
-// Configure multiple matches with field differences:
-MockDuplicates.simulator
-    .withResults(Account.SObjectType)
-        .addRule()
-            .setRuleName('Account_Fuzzy_Match_Rule')
-            .setSaveBehavior(MockDuplicates.SaveBehavior.BLOCK)
-            .addMatch()
-                .addRecord(match1)
-                    .setConfidence(92.5)
-                    .addFieldDiff('Name', MockDuplicates.DiffType.IS_DIFFERENT)
-                    .addFieldDiff('Phone', MockDuplicates.DiffType.IS_NULL)
-                    .addAdditionalInfo('MatchEngine', 'FuzzyMatch')
-                    .toTop()
-            .addMatch()
-                .addRecord(match2)
-                    .setConfidence(85.0)
-                    .addFieldDiff('Name', MockDuplicates.DiffType.IS_DIFFERENT);
-
-// Test with the configured matches:
-Account newAccount = new Account(Name = 'Acme Corp');
-Duplicates.FindDuplicatesResult result = DatabaseLayer.Duplicates.findDuplicates(newAccount);
-Duplicates.DuplicateResult duplicateResult = result?.getDuplicateResults()?.get(0);
-Assert.isFalse(duplicateResult?.isAllowSave(), 'Save should be blocked');
-Assert.areEqual(1, duplicateResult?.getMatchResults()?.size(), 'Expected match results');
-Assert.areEqual(2, duplicateResult?.getMatchResults()?.get(0)?.getSize(), 'Expected 2 matches');
-```
-
-## Custom Simulator Logic
-
-For advanced scenarios, implement the [MockDuplicates.Simulator](./The-MockDuplicates.Simulator-Interface) interface:
-
-```apex
-public class CustomDuplicateSimulator implements MockDuplicates.Simulator {
-    public MockDuplicates.FindDuplicatesResult simulate(SObject record) {
-        // Custom logic to determine duplicate detection results
-        SObjectType objectType = record?.getSObjectType();
-        MockDuplicates.FindDuplicatesResult result = new MockDuplicates.FindDuplicatesResult(objectType);
-
-        // Add custom logic here...
-        if (record.get('Name') == 'Test') {
-            result.addRule()
-                .addMatch()
-                    .addRecord();
-        }
-
-        return result;
-    }
-}
-```
-
-Then use your custom simulator:
-
-```apex
-DatabaseLayer.useMocks();
-MockDuplicates.setMock(new CustomDuplicateSimulator());
-// Now your custom logic will be used for all duplicate detection
 ```

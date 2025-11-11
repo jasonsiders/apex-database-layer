@@ -11,29 +11,5 @@ This enum corresponds to the `Datacloud.FieldDiff.difference` property values as
 ## Example
 
 ```apex
-DatabaseLayer.useMocks();
-
-MockDuplicates.simulator
-    .withResults(Account.SObjectType)
-        .addRule()
-            .addMatch()
-                .addRecord()
-                    .addFieldDiff('Name', MockDuplicates.DiffType.IS_SAME)
-                    .addFieldDiff('Phone', MockDuplicates.DiffType.IS_DIFFERENT)
-                    .addFieldDiff('Website', MockDuplicates.DiffType.IS_NULL);
-
-Account account = new Account(Name = 'Acme Corp');
-Duplicates.FindDuplicatesResult result = DatabaseLayer.Duplicates.findDuplicates(account);
-
-Duplicates.MatchRecord matchRecord = result.getDuplicateResults()?.get(0)
-    ?.getMatchResults()?.get(0)
-    ?.getMatchRecords()?.get(0);
-
-for (Duplicates.FieldDiff diff : matchRecord.getFieldDiffs()) {
-    System.debug(diff.getName() + ': ' + diff.getDifference());
-    // Output:
-    // Name: SAME
-    // Phone: DIFFERENT
-    // Website: NULL
-}
+matchRecord.addFieldDiff('Name', MockDuplicates.DiffType.IS_SAME);
 ```
