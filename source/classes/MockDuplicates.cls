@@ -4,7 +4,7 @@
  * Allows tests to configure expected duplicate matches, errors, and field differences.
  */
 @SuppressWarnings('PMD.AvoidGlobalModifier,PMD.CognitiveComplexity')
-@IsTest
+// TODO: @IsTest
 global class MockDuplicates extends Duplicates {
 	// **** STATIC **** //
 	/**
@@ -136,13 +136,21 @@ global class MockDuplicates extends Duplicates {
 		}
 
 		/**
-		 * @description Adds a match result for a specific record
+		 * @description Adds a match result for a specific SObjectType
+		 * @return The created MatchResult instance for method chaining
+		 */
+		global MockDuplicates.MatchResult addMatch(SObjectType objectType) {
+			MockDuplicates.MatchResult match = new MockDuplicates.MatchResult(this, objectType);
+			this.matchResults?.add(match);
+			return match;
+		}
+
+		/**
+		 * @description Adds a match result for the current duplicate rule's SObjectType
 		 * @return The created MatchResult instance for method chaining
 		 */
 		global MockDuplicates.MatchResult addMatch() {
-			MockDuplicates.MatchResult match = new MockDuplicates.MatchResult(this, this.objectType);
-			this.matchResults?.add(match);
-			return match;
+			return this.addMatch(this.objectType);
 		}
 
 		/**

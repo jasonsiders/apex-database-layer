@@ -94,13 +94,51 @@ private class MockDuplicatesTest {
 		Assert.areEqual(Lead.SObjectType, matchRecord?.record?.Id?.getSObjectType(), 'Wrong type of record');
 	}
 
-	@IsTest
-	private static void shouldReturnWithMultipleDuplicateResults() {
+	@IsTest 
+	private static void shouldReturnWIthMultipleDuplicateResults() {
 		Assert.fail('You still need to build this test');
 	}
 
 	@IsTest
+	private static void shouldReturnWithMultipleMatchResults() {
+		MockDuplicates.setMock()
+			?.withResults(Lead.SObjectType)
+			?.addRule()
+			?.addMatch()
+			?.addRecord()
+			?.up()
+			?.addRecord();
+
+		Test.startTest();
+		Duplicates.FindDuplicatesResult result = DatabaseLayer.Duplicates.findDuplicates(TEST_LEAD);
+		Test.stopTest();
+
+		Assert.areEqual(1, result?.getDuplicateResults()?.size(), 'Wrong # of duplicate results');
+		Duplicates.DuplicateResult dupeResult = result?.getDuplicateResults()?.get(0);
+		Assert.areEqual(1, dupeResult?.getMatchResults()?.size(), 'Wrong # of match results');
+		Duplicates.MatchResult matchResult = dupeResult?.getMatchResults()?.get(0);
+		Assert.areEqual(2, matchResult?.getSize(), 'Wrong # of match records');
+		for (Duplicates.MatchRecord matchRecord : matchResult?.getMatchRecords()) {
+			Assert.isTrue(matchRecord?.getRecord()?.Id?.toString()?.startsWith('00Q'), 'Wrong type of record matched');
+		}
+	}
+
+	@IsTest
 	private static void shouldReturnWithDuplicatesOfDifferentSObjectTypes() {
+		MockDuplicates.setMock()
+			?.withResults(Lead.SObjectType)
+			?.addRule()
+			?.addMatch()
+			?.addRecord()
+			?.up()
+			?.up()
+			?.addMatch(Contact.SObjectType)
+			?.addRecord();
+
+		Test.startTest();
+		Duplicates.FindDuplicatesResult result = DatabaseLayer.Duplicates.findDuplicates(TEST_LEAD);
+		Test.stopTest();
+
 		Assert.fail('You still need to build this test');
 	}
 
@@ -180,7 +218,16 @@ private class MockDuplicatesTest {
 
 	@IsTest
 	private static void shouldThrowCustomInjectedException() {
-		Assert.fail('You still need to build this test');
+		MockDuplicates.setMock()?.withException();
+
+		Test.startTest();
+		try {
+			DatabaseLayer.Duplicates.findDuplicates(TEST_LEAD);
+			Assert.fail('Did not throw a System.HandledException');
+		} catch (System.HandledException error) {
+			// As expected...
+		}
+		Test.stopTest();
 	}
 
 	// **** INNER **** //
