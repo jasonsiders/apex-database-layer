@@ -95,8 +95,18 @@ private class MockDuplicatesTest {
 	}
 
 	@IsTest 
-	private static void shouldReturnWIthMultipleDuplicateResults() {
-		Assert.fail('You still need to build this test');
+	private static void shouldReturnWithMultipleDuplicateResults() {
+		MockDuplicates.setMock()
+			?.withResults(Lead.SObjectType)
+			?.addRule()
+			?.up()
+			?.addRule();
+
+		Test.startTest();
+		Duplicates.FindDuplicatesResult result = DatabaseLayer.Duplicates.findDuplicates(TEST_LEAD);
+		Test.stopTest();
+
+		Assert.areEqual(2, result?.getDuplicateResults()?.size(), 'Wrong # of duplicate results');
 	}
 
 	@IsTest
@@ -129,16 +139,32 @@ private class MockDuplicatesTest {
 			?.withResults(Lead.SObjectType)
 			?.addRule()
 			?.addMatch()
-			?.addRecord()
+			?.addRecord(DUPE_CONTACT)
 			?.up()
-			?.up()
-			?.addMatch(Contact.SObjectType)
-			?.addRecord();
+			?.addRecord(DUPE_LEAD);
 
 		Test.startTest();
 		Duplicates.FindDuplicatesResult result = DatabaseLayer.Duplicates.findDuplicates(TEST_LEAD);
 		Test.stopTest();
 
+		Assert.areEqual(1, result?.getDuplicateResults()?.size(), 'Wrong # of duplicate results');
+		Duplicates.DuplicateResult dupeResult = result?.getDuplicateResults()?.get(0);
+		Assert.areEqual(1, dupeResult?.getMatchResults()?.size(), 'Wrong # of match results');
+		Duplicates.MatchResult matchResult = dupeResult?.getMatchResults()?.get(0);
+		List<Duplicates.MatchRecord> matchRecords = matchResult?.getMatchRecords();
+		Assert.areEqual(2, matchRecords?.size(), 'Wrong # of match records');
+		Set<SObjectType> matchEntities = new Set<SObjectType>{};
+		for (Duplicates.MatchRecord matchRecord : matchRecords) {
+			SObjectType matchEntity = matchRecord?.getRecord()?.getSObjectType();
+			Assert.isFalse(matchEntities?.contains(matchEntity), matchEntity + ' is already matched');
+			matchEntities?.add(matchEntity);
+		}
+		Assert.isTrue(matchEntities?.contains(Contact.SObjectType), 'Does not contain Contact matches');
+		Assert.isTrue(matchEntities?.contains(Lead.SObjectType), 'Does not contain Lead matches');
+	}
+
+	@IsTest 
+	private static void shouldReturnResultWithOptionalRuleDetails() {
 		Assert.fail('You still need to build this test');
 	}
 
