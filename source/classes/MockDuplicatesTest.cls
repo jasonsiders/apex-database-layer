@@ -225,39 +225,107 @@ private class MockDuplicatesTest {
 		Assert.areEqual(diffType.name()?.removeStart('IS_'), fieldDiff?.getDifference(), 'Wrong FieldDiff.difference');
 	}
 
-	@IsTest 
+	@IsTest
 	private static void shouldClearMatches() {
-		Assert.fail('You still need to build this test');
+		MockDuplicates.DuplicateResult dupeRule = MockDuplicates.setMock()?.withResults(Lead.SObjectType)?.addRule();
+		dupeRule?.addMatch();
+		dupeRule?.addMatch();
+
+		Test.startTest();
+		dupeRule?.clearMatches();
+		Test.stopTest();
+
+		Assert.areEqual(0, dupeRule?.getMatchResults()?.size(), 'Did not clear match results');
 	}
 
-	@IsTest 
+	@IsTest
 	private static void shouldClearDuplicateResults() {
-		Assert.fail('You still need to build this test');
+		MockDuplicates.FindDuplicatesResult result = MockDuplicates.setMock()?.withResults(Lead.SObjectType);
+		result?.addRule();
+		result?.addRule();
+
+		Test.startTest();
+		result?.clearDuplicateResults();
+		Test.stopTest();
+
+		Assert.areEqual(0, result?.getDuplicateResults()?.size(), 'Did not clear duplicate results');
 	}
 
-	@IsTest 
+	@IsTest
 	private static void shouldClearDuplicateResultErrors() {
-		Assert.fail('You still need to build this test');
+		MockDuplicates.FindDuplicatesResult result = MockDuplicates.setMock()?.withResults(Lead.SObjectType);
+		result?.addError();
+
+		Test.startTest();
+		result?.clearErrors();
+		Test.stopTest();
+
+		Assert.areEqual(0, result?.getErrors()?.size(), 'Did not clear errors from duplicate result');
 	}
-	
-	@IsTest 
+
+	@IsTest
 	private static void shouldClearAdditionalInfos() {
-		Assert.fail('You still need to build this test');
+		MockDuplicates.MatchRecord matchRecord = MockDuplicates.setMock()
+			?.withResults(Lead.SObjectType)
+			?.addRule()
+			?.addMatch()
+			?.addRecord();
+		matchRecord?.addAdditionalInfo('key1', 'value1');
+		matchRecord?.addAdditionalInfo('key2', 'value2');
+
+		Test.startTest();
+		matchRecord?.clearAdditionalInfo();
+		Test.stopTest();
+
+		Assert.areEqual(0, matchRecord?.getAdditionalInformation()?.size(), 'Did not clear additional infos');
 	}
 
-	@IsTest 
+	@IsTest
 	private static void shouldClearFieldDiffs() {
-		Assert.fail('You still need to build this test');
+		MockDuplicates.MatchRecord matchRecord = MockDuplicates.setMock()
+			?.withResults(Lead.SObjectType)
+			?.addRule()
+			?.addMatch()
+			?.addRecord();
+		matchRecord?.addFieldDiff(Lead.Email, MockDuplicates.DiffType.IS_DIFFERENT);
+		matchRecord?.addFieldDiff(Lead.FirstName, MockDuplicates.DiffType.IS_SAME);
+
+		Test.startTest();
+		matchRecord?.clearFieldDiffs();
+		Test.stopTest();
+
+		Assert.areEqual(0, matchRecord?.getFieldDiffs()?.size(), 'Did not clear field diffs');
 	}
 
-	@IsTest 
+	@IsTest
 	private static void shouldClearMatchResultErrors() {
-		Assert.fail('You still need to build this test');
+		MockDuplicates.MatchResult matchResult = MockDuplicates.setMock()
+			?.withResults(Lead.SObjectType)
+			?.addRule()
+			?.addMatch();
+		matchResult?.addError();
+
+		Test.startTest();
+		matchResult?.clearErrors();
+		Test.stopTest();
+
+		Assert.areEqual(0, matchResult?.getErrors()?.size(), 'Did not clear errors from match result');
 	}
 
-	@IsTest 
+	@IsTest
 	private static void shouldClearMatchRecords() {
-		Assert.fail('You still need to build this test');
+		MockDuplicates.MatchResult matchResult = MockDuplicates.setMock()
+			?.withResults(Lead.SObjectType)
+			?.addRule()
+			?.addMatch();
+		matchResult?.addRecord();
+		matchResult?.addRecord();
+
+		Test.startTest();
+		matchResult?.clearRecords();
+		Test.stopTest();
+
+		Assert.areEqual(0, matchResult?.getMatchRecords()?.size(), 'Did not clear match records');
 	}
 
 	@IsTest
@@ -282,9 +350,21 @@ private class MockDuplicatesTest {
 		Assert.areEqual(expected, result?.hashCode(), 'Navigated to wrong result');
 	}
 
-	@IsTest 
-	private static void shouldNavigateToTopLevel() {
-		Assert.fail('You still need to build this test');
+	@IsTest
+	private static void shouldNavigateToTopLevelFromAdditionalInfos() {
+		Integer expected = MockDuplicates.setMock()?.withResults(Lead.SObjectType)?.hashCode();
+
+		Test.startTest();
+		MockDuplicates.FindDuplicatesResult result = MockDuplicates.setMock()
+			?.withResults(Lead.SObjectType)
+			?.addRule()
+			?.addMatch()
+			?.addRecord()
+			?.addAdditionalInfo('foo', 'bar')
+			?.toTop();
+		Test.stopTest();
+
+		Assert.areEqual(expected, result?.hashCode(), 'Navigated to wrong result');
 	}
 
 	@IsTest
