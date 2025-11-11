@@ -177,4 +177,16 @@ private class DatabaseLayerUtilsTest {
 
 		Assert.isNull(plugin, 'Did not return null plugin');
 	}
+
+	@IsTest 
+	private static void shouldCreateNewSObjectsFromIds() {
+		Id recordId = UserInfo.getUserId();
+
+		Test.startTest();
+		SObject record = DatabaseLayer.Utils.SObjects.newSObject(recordId);
+		Test.stopTest();
+
+		Assert.isInstanceOfType(record, User.class, 'Did not create a User');
+		Assert.areEqual(record?.Id, recordId, 'Wrong Id');
+	}
 }

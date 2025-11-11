@@ -182,7 +182,7 @@ public without sharing class DatabaseLayerUtils {
 		 * @param recordId The record ID to convert
 		 * @return SObject instance with the provided ID
 		 */
-		private SObject newSObject(Id recordId) {
+		public SObject newSObject(Id recordId) {
 			return this.newSObjects(new List<Id>{ recordId })?.get(0);
 		}
 	}
