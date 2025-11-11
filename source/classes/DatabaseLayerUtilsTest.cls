@@ -178,7 +178,7 @@ private class DatabaseLayerUtilsTest {
 		Assert.isNull(plugin, 'Did not return null plugin');
 	}
 
-	@IsTest 
+	@IsTest
 	private static void shouldCreateNewSObjectsFromIds() {
 		Id recordId = UserInfo.getUserId();
 
