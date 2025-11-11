@@ -10,6 +10,7 @@ private class DatabaseLayerTest {
 
 		Assert.isNotNull(result, 'Did not return result');
 	}
+
 	@IsTest
 	private static void shouldInitRealDmlObjectByDefault() {
 		Test.startTest();
@@ -44,6 +45,42 @@ private class DatabaseLayerTest {
 
 		Assert.isInstanceOfType(result, Dml.class, 'Should be Dml');
 		Assert.isNotInstanceOfType(result, MockDml.class, 'Should not be MockDml');
+	}
+
+	@IsTest
+	private static void shouldInitRealDuplicatesObjectByDefault() {
+		Test.startTest();
+		Duplicates result = DatabaseLayer.Duplicates;
+		Test.stopTest();
+
+		Assert.isInstanceOfType(result, Duplicates.class, 'Should be Duplicates');
+		Assert.isNotInstanceOfType(result, MockDuplicates.class, 'Should not be MockDuplicates');
+	}
+
+	@IsTest
+	private static void shouldInitMockDuplicatesObject() {
+		DatabaseLayer.useMocks();
+
+		Test.startTest();
+		Duplicates result = DatabaseLayer.Duplicates;
+		Test.stopTest();
+
+		Assert.isInstanceOfType(result, Duplicates.class, 'Should be Duplicates');
+		Assert.isInstanceOfType(result, MockDuplicates.class, 'Should be MockDuplicates');
+	}
+
+	@IsTest
+	private static void shouldSwitchToRealDuplicatesObject() {
+		DatabaseLayer.useMocks();
+
+		Test.startTest();
+		// Now switch back to using real database objects
+		DatabaseLayer.useRealData();
+		Duplicates result = DatabaseLayer.Duplicates;
+		Test.stopTest();
+
+		Assert.isInstanceOfType(result, Duplicates.class, 'Should be Duplicates');
+		Assert.isNotInstanceOfType(result, MockDuplicates.class, 'Should not be MockDuplicates');
 	}
 
 	@IsTest

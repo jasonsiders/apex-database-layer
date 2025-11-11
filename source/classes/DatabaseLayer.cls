@@ -119,6 +119,16 @@ global class DatabaseLayer {
 	}
 
 	/**
+	 * @description Switches the Duplicates provider back to real duplicate detection operations.
+	 * @return The real Duplicates instance that was configured
+	 */
+	@TestVisible
+	private static Duplicates useRealDuplicates() {
+		INSTANCE.currentDuplicates = new Duplicates(INSTANCE);
+		return INSTANCE.currentDuplicates;
+	}
+
+	/**
 	 * @description Switches the SOQL provider back to real database operations.
 	 * @return The SOQL provider configured for real operations
 	 */
@@ -133,6 +143,7 @@ global class DatabaseLayer {
 	@TestVisible
 	private static void useRealData() {
 		DatabaseLayer.useRealDml();
+		DatabaseLayer.useRealDuplicates();
 		DatabaseLayer.useRealSoql();
 	}
 
