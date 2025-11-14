@@ -520,7 +520,9 @@ global class MockDml extends Dml {
 			Lead leadRecord = new Lead(Id = leadToConvert?.getLeadId());
 			Account accountRecord = new Account(Id = leadToConvert?.getAccountId());
 			Contact contactRecord = new Contact(Id = leadToConvert?.getContactId());
-			Opportunity opportunityRecord = new Opportunity(Id = leadToConvert?.getOpportunityId());
+			Opportunity opportunityRecord = leadToConvert?.isDoNotCreateOpportunity() == false
+				? new Opportunity(Id = leadToConvert?.getOpportunityId())
+				: null;
 			try {
 				// Note: Process resulting records using allOrNone=true, regardless of its original value
 				// This allows injected errors for Accounts/Contacts/Opps to be caught and handled appropriately
@@ -564,7 +566,7 @@ global class MockDml extends Dml {
 
 		private void simulateInsertIfNew(SObject record) {
 			// If the provided record does not already have an Id, simulate an insert operation
-			if (record?.Id == null) {
+			if (record != null && record?.Id == null) {
 				SObjectType objectType = record?.getSObjectType();
 				record.Id = MockRecord.initRecordId(objectType);
 				this.generateMockResult(MockDml.INSERTED, record, true);
