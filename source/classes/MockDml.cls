@@ -537,6 +537,7 @@ global class MockDml extends Dml {
 					?.setField(Lead.ConvertedAccountId, accountRecord?.Id)
 					?.setField(Lead.ConvertedContactId, contactRecord?.Id)
 					?.setField(Lead.ConvertedOpportunityId, opportunityRecord?.Id)
+					?.setField(Lead.IsConverted, true)
 					?.setField(Lead.Status, leadToConvert?.getConvertedStatus())
 					?.toSObject();
 				this.generateMockResult(MockDml.CONVERTED, convertedLead, true);
