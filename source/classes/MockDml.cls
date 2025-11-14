@@ -528,13 +528,21 @@ global class MockDml extends Dml {
 				// This allows injected errors for Accounts/Contacts/Opps to be caught and handled appropriately
 				// 1. Simulate converting the lead
 				this.validateConvertedLead(leadToConvert);
-				this.generateMockResult(MockDml.CONVERTED, leadRecord, true);
 				// 2. Simulate creating an Account/Contact/Opportunity, if their Id wasn't already provided
 				this.simulateInsertIfNew(accountRecord);
 				this.simulateInsertIfNew(contactRecord);
 				this.simulateInsertIfNew(opportunityRecord);
-				// 3. Build & return the LeadConvertResult w/the resulting record ids
-				return (MockDml.LeadConvertResult) new MockDml.LeadConvertResult(leadRecord)
+				// 3. Set the converted record id fields on the Lead, which are normally read-only:
+				Lead convertedLead = (Lead) new MockRecord(leadRecord)
+					?.setField(Lead.ConvertedAccountId, accountRecord?.Id)
+					?.setField(Lead.ConvertedContactId, contactRecord?.Id)
+					?.setField(Lead.ConvertedOpportunityId, opportunityRecord?.Id)
+					?.setField(Lead.IsConverted, true)
+					?.setField(Lead.Status, leadToConvert?.getConvertedStatus())
+					?.toSObject();
+				this.generateMockResult(MockDml.CONVERTED, convertedLead, true);
+				// 4. Build & return the LeadConvertResult w/the resulting record ids
+				return (MockDml.LeadConvertResult) new MockDml.LeadConvertResult(convertedLead)
 					?.setId(accountRecord)
 					?.setId(contactRecord)
 					?.setId(opportunityRecord);

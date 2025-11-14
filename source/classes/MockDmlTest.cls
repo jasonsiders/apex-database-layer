@@ -14,14 +14,13 @@ private class MockDmlTest {
 	// **** TESTS **** //
 	@IsTest
 	private static void shouldMockLeadConvert() {
-		Map<Id, Lead> leads = new Map<Id, Lead>();
+		String convertedStatus = 'Foo!';
 		List<Database.LeadConvert> leadsToConvert = new List<Database.LeadConvert>();
 		for (Integer i = 0; i < TEST_SIZE; i++) {
 			Lead lead = (Lead) new MockRecord(Lead.SObjectType)?.withId()?.toSObject();
-			leads?.put(lead?.Id, lead);
 			Database.LeadConvert leadToConvert = new Database.LeadConvert();
 			leadToConvert?.setLeadId(lead?.Id);
-			leadToConvert?.setConvertedStatus('Foo!');
+			leadToConvert?.setConvertedStatus(convertedStatus);
 			leadsToConvert?.add(leadToConvert);
 		}
 
@@ -39,11 +38,16 @@ private class MockDmlTest {
 		for (Database.LeadConvertResult result : results) {
 			Assert.isTrue(result?.isSuccess(), 'Did not succeed: ' + result?.getErrors());
 			Id leadId = result?.getLeadId();
-			Lead lead = leads?.get(leadId);
-			Assert.areNotEqual(null, lead, 'No lead w/matching Id: ' + leadId);
-			Assert.areNotEqual(null, result?.getAccountId(), 'Missing ConvertedAccountId');
-			Assert.areNotEqual(null, result?.getContactId(), 'Missing ConvertedContactId');
-			Assert.areNotEqual(null, result?.getOpportunityId(), 'Missing ConvertedOpportunityId');
+			Lead lead = (Lead) MockDml.CONVERTED.get(leadId);
+			Assert.areNotEqual(null, lead, 'Missing lead: ' + leadId);
+			Assert.areNotEqual(null, lead?.ConvertedAccountId, 'Lead: Missing ConvertedAccountId');
+			Assert.areNotEqual(null, lead?.ConvertedContactId, 'Lead: Missing ConvertedContactId');
+			Assert.areNotEqual(null, lead?.ConvertedOpportunityId, 'Lead: Missing ConvertedOpportunityId');
+			Assert.areEqual(true, lead?.IsConverted, 'Lead: Wrong IsConverted value');
+			Assert.areEqual(convertedStatus, lead?.Status, 'Lead: Wrong Status value');
+			Assert.areEqual(lead?.ConvertedAccountId, result?.getAccountId(), 'Result: Wrong AccountId');
+			Assert.areEqual(lead?.ConvertedContactId, result?.getContactId(), 'Result: Wrong ContactId');
+			Assert.areEqual(lead?.ConvertedOpportunityId, result?.getOpportunityId(), 'Result: Wrong OpportunityId');
 		}
 	}
 
