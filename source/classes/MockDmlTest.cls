@@ -47,6 +47,22 @@ private class MockDmlTest {
 		}
 	}
 
+	@IsTest 
+	private static void shouldMockConvertWithNoOpportunity() {
+		Lead lead = (Lead) new MockRecord(Lead.SObjectType)?.withId()?.toSObject();
+		Database.LeadConvert leadToConvert = new Database.LeadConvert();
+		leadToConvert?.setConvertedStatus('Foo');
+		leadToConvert?.setLeadId(lead?.Id);
+		leadToConvert?.setDoNotCreateOpportunity(true);
+
+		Test.startTest();
+		Database.LeadConvertResult result = DatabaseLayer.Dml.doConvert(leadToConvert);
+		Test.stopTest();
+
+		Assert.isTrue(result?.isSuccess(), 'Did not succeed');
+		Assert.isNull(result?.getOpportunityId(), 'Should not have a ConvertedOpportunityId');
+	}
+
 	@IsTest
 	private static void shouldMockLeadConvertWithExistingRecords() {
 		Account account = (Account) new MockRecord(Account.SObjectType)?.withId()?.toSObject();
