@@ -1020,9 +1020,9 @@ private class DmlTest {
 
 	private static Lead initLead() {
 		return new Lead(
-			Company = 'Tharsis Inc.', 
+			Company = 'Tharsis Inc.',
 			Email = 'jdoe@tharsis.inc.invalid',
-			FirstName = 'John', 
+			FirstName = 'John',
 			LastName = 'Doe'
 		);
 	}
