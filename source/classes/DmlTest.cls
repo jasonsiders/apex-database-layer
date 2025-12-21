@@ -1019,7 +1019,12 @@ private class DmlTest {
 	}
 
 	private static Lead initLead() {
-		return new Lead(Company = 'Tharsis Inc.', FirstName = 'John', LastName = 'Doe');
+		return new Lead(
+			Company = 'Tharsis Inc.',
+			Email = 'jdoe@tharsis.inc.invalid',
+			FirstName = 'John',
+			LastName = 'Doe'
+		);
 	}
 
 	private static Database.LeadConvert initLeadConvert(Lead lead) {
