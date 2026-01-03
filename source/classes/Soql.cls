@@ -2261,4 +2261,733 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			return this.thenSelect(field, null);
 		}
 	}
+
+	/**
+	 * @description Utility class for parsing SOQL query strings and constructing Soql.Builder instances.
+	 * This class enables creating Soql objects from SOQL strings like:
+	 * DatabaseLayer.Soql.newQuery('SELECT Id, Name FROM Account WHERE CreatedDate = TODAY LIMIT 10')
+	 */
+	@SuppressWarnings('PMD.CyclomaticComplexity, PMD.CognitiveComplexity, PMD.ExcessivePublicCount')
+	global inherited sharing class Parser {
+		// Clause patterns for extracting different parts of the SOQL query
+		private static final Pattern SELECT_PATTERN = Pattern.compile('(?i)^SELECT\\s+(.+?)\\s+FROM');
+		private static final Pattern FROM_PATTERN = Pattern.compile('(?i)FROM\\s+([\\w]+)');
+		private static final Pattern WHERE_PATTERN = Pattern.compile(
+			'(?i)WHERE\\s+(.+?)(?:\\s+(?:GROUP BY|ORDER BY|LIMIT|OFFSET|FOR|USING|WITH|$))'
+		);
+		private static final Pattern ORDER_BY_PATTERN = Pattern.compile(
+			'(?i)ORDER BY\\s+(.+?)(?:\\s+(?:LIMIT|OFFSET|FOR|USING|WITH|$))'
+		);
+		private static final Pattern GROUP_BY_PATTERN = Pattern.compile(
+			'(?i)GROUP BY\\s+(.+?)(?:\\s+(?:HAVING|ORDER BY|LIMIT|OFFSET|FOR|USING|WITH|$))'
+		);
+		private static final Pattern HAVING_PATTERN = Pattern.compile(
+			'(?i)HAVING\\s+(.+?)(?:\\s+(?:ORDER BY|LIMIT|OFFSET|FOR|USING|WITH|$))'
+		);
+		private static final Pattern LIMIT_PATTERN = Pattern.compile('(?i)LIMIT\\s+(\\d+)');
+		private static final Pattern OFFSET_PATTERN = Pattern.compile('(?i)OFFSET\\s+(\\d+)');
+		private static final Pattern SCOPE_PATTERN = Pattern.compile('(?i)USING SCOPE\\s+(\\w+)');
+		private static final Pattern USAGE_PATTERN = Pattern.compile('(?i)FOR\\s+(VIEW|UPDATE|REFERENCE)');
+		private static final Pattern SECURITY_PATTERN = Pattern.compile('(?i)WITH\\s+SECURITY_ENFORCED');
+		private static final Pattern ALL_ROWS_PATTERN = Pattern.compile('(?i)ALL\\s+ROWS');
+
+		// Operator patterns
+		private static final Map<String, Soql.Operator> OPERATOR_MAP = new Map<String, Soql.Operator>{
+			'=' => Soql.EQUALS,
+			'!=' => Soql.NOT_EQUALS,
+			'<' => Soql.LESS_THAN,
+			'<=' => Soql.LESS_THAN_OR_EQUAL_TO,
+			'>' => Soql.GREATER_THAN,
+			'>=' => Soql.GREATER_THAN_OR_EQUAL_TO,
+			'LIKE' => Soql.LIKE,
+			'IN' => Soql.IS_IN,
+			'NOT IN' => Soql.NOT_IN,
+			'INCLUDES' => Soql.INCLUDES,
+			'EXCLUDES' => Soql.EXCLUDES
+		};
+
+		private Soql.Builder query;
+		private DatabaseLayer factory;
+
+		/**
+		 * @description Constructs a new parser with the specified DatabaseLayer factory
+		 * @param factory The DatabaseLayer instance to use for creating the Soql object
+		 */
+		global Parser(DatabaseLayer factory) {
+			this.factory = factory;
+			this.query = new Soql(factory);
+		}
+
+		/**
+		 * @description Parses a SOQL query string and returns a populated Soql.Builder instance
+		 * @param soqlString The SOQL query string to parse
+		 * @return A Soql.Builder instance populated with the parsed query components
+		 * @throws ParserException if the query string is invalid or cannot be parsed
+		 */
+		global Soql.Builder parse(String soqlString) {
+			if (String.isBlank(soqlString)) {
+				throw new ParserException('SOQL query string cannot be blank');
+			}
+
+			// Normalize whitespace
+			String normalized = normalizeWhitespace(soqlString);
+
+			// Parse each clause in order
+			parseFrom(normalized);
+			parseSelect(normalized);
+			parseWhere(normalized);
+			parseGroupBy(normalized);
+			parseHaving(normalized);
+			parseOrderBy(normalized);
+			parseLimit(normalized);
+			parseOffset(normalized);
+			parseScope(normalized);
+			parseUsage(normalized);
+			parseSecurity(normalized);
+			parseAllRows(normalized);
+
+			return this.query;
+		}
+
+		/**
+		 * @description Normalizes whitespace in the query string while preserving quoted strings
+		 */
+		private String normalizeWhitespace(String soqlString) {
+			// Replace multiple whitespace with single space
+			return soqlString?.trim()?.replaceAll('\\s+', ' ');
+		}
+
+		/**
+		 * @description Parses the FROM clause to determine the SObject type
+		 */
+		private void parseFrom(String soqlString) {
+			Matcher fromMatcher = FROM_PATTERN.matcher(soqlString);
+			if (!fromMatcher.find()) {
+				throw new ParserException('Invalid SOQL: Missing FROM clause');
+			}
+
+			String objectName = fromMatcher.group(1)?.trim();
+			if (String.isBlank(objectName)) {
+				throw new ParserException('Invalid SOQL: FROM clause is empty');
+			}
+
+			// Get the SObjectType from the object name
+			SObjectType objectType = getSObjectType(objectName);
+			if (objectType == null) {
+				throw new ParserException('Invalid SObject type: ' + objectName);
+			}
+
+			this.query.setFrom(objectType);
+		}
+
+		/**
+		 * @description Parses the SELECT clause to add field selections
+		 */
+		private void parseSelect(String soqlString) {
+			Matcher selectMatcher = SELECT_PATTERN.matcher(soqlString);
+			if (!selectMatcher.find()) {
+				throw new ParserException('Invalid SOQL: Missing SELECT clause');
+			}
+
+			String selectClause = selectMatcher.group(1)?.trim();
+			if (String.isBlank(selectClause)) {
+				throw new ParserException('Invalid SOQL: SELECT clause is empty');
+			}
+
+			// Split by comma, but respect parentheses (for subqueries and functions)
+			List<String> fields = splitByCommaRespectingParentheses(selectClause);
+
+			for (String field : fields) {
+				field = field?.trim();
+				if (String.isNotBlank(field)) {
+					parseSelectField(field);
+				}
+			}
+		}
+
+		/**
+		 * @description Parses a single SELECT field (can be a field name, function, or subquery)
+		 */
+		private void parseSelectField(String field) {
+			// Check if it's a COUNT() aggregate without field
+			if (field.equalsIgnoreCase('COUNT()')) {
+				this.query.addSelect(new Soql.Aggregation(Soql.Function.COUNT));
+				return;
+			}
+
+			// Check if it's an aggregate function
+			if (
+				field.toUpperCase().startsWith('COUNT(') ||
+				field.toUpperCase().startsWith('AVG(') ||
+				field.toUpperCase().startsWith('SUM(') ||
+				field.toUpperCase().startsWith('MIN(') ||
+				field.toUpperCase().startsWith('MAX(')
+			) {
+				parseAggregateFunction(field);
+				return;
+			}
+
+			// Check if it's a subquery
+			if (field.startsWith('(') && field.endsWith(')')) {
+				// Subquery - for now, skip parsing (would require recursive parsing)
+				// This is a limitation of the initial implementation
+				return;
+			}
+
+			// Check if it's a TYPEOF clause
+			if (field.toUpperCase().startsWith('TYPEOF')) {
+				// TYPEOF - for now, skip parsing (complex polymorphic queries)
+				// This is a limitation of the initial implementation
+				return;
+			}
+
+			// Parse field with possible alias
+			String fieldName = field;
+			String alias = null;
+
+			// Check for alias (field AS alias or field alias)
+			if (field.toUpperCase().contains(' AS ')) {
+				List<String> parts = field.split('(?i)\\s+AS\\s+', 2);
+				fieldName = parts[0]?.trim();
+				alias = parts.size() > 1 ? parts[1]?.trim() : null;
+			} else {
+				// Check for space-separated alias (e.g., "ProfileId profile")
+				List<String> parts = field.split('\\s+');
+				if (parts.size() == 2 && !parts[1].toUpperCase().equals('FROM')) {
+					fieldName = parts[0]?.trim();
+					alias = parts[1]?.trim();
+				}
+			}
+
+			// Add the field to the query
+			if (fieldName.contains('.')) {
+				// Parent field reference (e.g., Account.Name)
+				this.query.addSelect(parseParentField(fieldName));
+			} else {
+				// Simple field name
+				this.query.addSelect(fieldName);
+			}
+		}
+
+		/**
+		 * @description Parses an aggregate function like COUNT(Id), AVG(Amount), etc.
+		 */
+		private void parseAggregateFunction(String functionStr) {
+			// Extract function name and field
+			Integer openParen = functionStr.indexOf('(');
+			Integer closeParen = functionStr.lastIndexOf(')');
+
+			if (openParen < 0 || closeParen < 0) {
+				return; // Invalid function format
+			}
+
+			String functionName = functionStr.substring(0, openParen)?.trim()?.toUpperCase();
+			String fieldName = functionStr.substring(openParen + 1, closeParen)?.trim();
+
+			// Map function name to Soql.Function enum
+			Soql.Function func = null;
+			switch on functionName {
+				when 'COUNT' {
+					func = Soql.Function.COUNT;
+				}
+				when 'AVG' {
+					func = Soql.Function.AVG;
+				}
+				when 'SUM' {
+					func = Soql.Function.SUM;
+				}
+				when 'MIN' {
+					func = Soql.Function.MIN;
+				}
+				when 'MAX' {
+					func = Soql.Function.MAX;
+				}
+				when 'COUNT_DISTINCT' {
+					func = Soql.Function.COUNT_DISTINCT;
+				}
+			}
+
+			if (func != null) {
+				if (String.isBlank(fieldName)) {
+					// COUNT() without field
+					this.query.addSelect(new Soql.Aggregation(func));
+				} else {
+					// Function with field
+					if (fieldName.contains('.')) {
+						this.query.addSelect(new Soql.Aggregation(func, parseParentField(fieldName)));
+					} else {
+						this.query.addSelect(new Soql.Aggregation(func, fieldName));
+					}
+				}
+			}
+		}
+
+		/**
+		 * @description Parses a parent field reference like Account.Name or Owner.Profile.Name
+		 */
+		private Soql.ParentField parseParentField(String fieldPath) {
+			List<String> parts = fieldPath.split('\\.');
+
+			if (parts.size() == 2) {
+				// One level deep (e.g., Account.Name)
+				return new Soql.ParentField(parts[0], parts[1]);
+			} else if (parts.size() == 3) {
+				// Two levels deep (e.g., Account.Owner.Name)
+				return new Soql.ParentField(parts[0], parts[1], parts[2]);
+			} else if (parts.size() == 4) {
+				// Three levels deep
+				return new Soql.ParentField(parts[0], parts[1], parts[2], parts[3]);
+			} else if (parts.size() == 5) {
+				// Four levels deep
+				return new Soql.ParentField(parts[0], parts[1], parts[2], parts[3], parts[4]);
+			}
+
+			// Fallback: return null or throw exception
+			return null;
+		}
+
+		/**
+		 * @description Parses the WHERE clause to add filter conditions
+		 */
+		private void parseWhere(String soqlString) {
+			Matcher whereMatcher = WHERE_PATTERN.matcher(soqlString);
+			if (!whereMatcher.find()) {
+				return; // WHERE clause is optional
+			}
+
+			String whereClause = whereMatcher.group(1)?.trim();
+			if (String.isBlank(whereClause)) {
+				return;
+			}
+
+			// Parse WHERE conditions
+			parseWhereConditions(whereClause);
+		}
+
+		/**
+		 * @description Parses WHERE conditions (supports simple conditions with AND/OR)
+		 */
+		private void parseWhereConditions(String whereClause) {
+			// For initial implementation, support simple conditions separated by AND/OR
+			// Complex nested logic with parentheses would require more sophisticated parsing
+
+			// Check if it's an OR condition
+			if (whereClause.toUpperCase().contains(' OR ') && !whereClause.contains('(')) {
+				this.query.setOuterWhereLogic(Soql.LogicType.ANY_CONDITIONS);
+				List<String> conditions = whereClause.split('(?i)\\s+OR\\s+');
+				for (String condition : conditions) {
+					parseSingleCondition(condition?.trim());
+				}
+			}
+			// Check if it's an AND condition
+			else if (whereClause.toUpperCase().contains(' AND ') && !whereClause.contains('(')) {
+				this.query.setOuterWhereLogic(Soql.LogicType.ALL_CONDITIONS);
+				List<String> conditions = whereClause.split('(?i)\\s+AND\\s+');
+				for (String condition : conditions) {
+					parseSingleCondition(condition?.trim());
+				}
+			}
+			// Single condition
+			else if (!whereClause.contains('(')) {
+				parseSingleCondition(whereClause);
+			}
+			// Complex nested logic - skip for now
+			// This is a limitation of the initial implementation
+		}
+
+		/**
+		 * @description Parses a single WHERE condition like "Name = 'Test'" or "Id = :recordId"
+		 */
+		private void parseSingleCondition(String condition) {
+			// Find the operator
+			Soql.Operator operator = null;
+			String operatorStr = null;
+			Integer operatorPos = -1;
+
+			// Check for two-character operators first
+			for (String op : new List<String>{ '!=', '<=', '>=', 'NOT IN', 'INCLUDES', 'EXCLUDES' }) {
+				Integer pos = condition.toUpperCase().indexOf(' ' + op + ' ');
+				if (pos >= 0) {
+					operator = OPERATOR_MAP.get(op);
+					operatorStr = op;
+					operatorPos = pos;
+					break;
+				}
+			}
+
+			// Check for single-character operators
+			if (operator == null) {
+				for (String op : new List<String>{ '=', '<', '>', 'LIKE', 'IN' }) {
+					Integer pos = condition.indexOf(' ' + op + ' ');
+					if (pos >= 0 || (op.length() == 1 && condition.indexOf(op) >= 0)) {
+						operator = OPERATOR_MAP.get(op);
+						operatorStr = op;
+						operatorPos = (pos >= 0) ? pos : condition.indexOf(op);
+						break;
+					}
+				}
+			}
+
+			if (operator == null || operatorPos < 0) {
+				return; // Cannot parse this condition
+			}
+
+			// Extract field and value
+			String fieldStr = condition.substring(0, operatorPos)?.trim();
+			String valueStr = condition.substring(operatorPos + operatorStr.length() + 1)?.trim();
+
+			// Parse field
+			Object field = null;
+			if (fieldStr.contains('.')) {
+				field = parseParentField(fieldStr);
+			} else {
+				field = fieldStr;
+			}
+
+			// Parse value
+			Object value = parseValue(valueStr);
+
+			// Add condition to query
+			if (field instanceof String) {
+				this.query.addWhere((String) field, operator, value);
+			} else if (field instanceof Soql.ParentField) {
+				this.query.addWhere((Soql.ParentField) field, operator, value);
+			}
+		}
+
+		/**
+		 * @description Parses a value in a WHERE clause (can be a literal, bind variable, or date function)
+		 */
+		private Object parseValue(String valueStr) {
+			if (String.isBlank(valueStr)) {
+				return null;
+			}
+
+			valueStr = valueStr.trim();
+
+			// Check for bind variable
+			if (valueStr.startsWith(':')) {
+				return new Soql.Binder(valueStr.substring(1));
+			}
+
+			// Check for null
+			if (valueStr.equalsIgnoreCase('null')) {
+				return null;
+			}
+
+			// Check for boolean
+			if (valueStr.equalsIgnoreCase('true')) {
+				return true;
+			}
+			if (valueStr.equalsIgnoreCase('false')) {
+				return false;
+			}
+
+			// Check for date literals
+			if (valueStr.equalsIgnoreCase('TODAY')) {
+				return Date.today();
+			}
+			if (valueStr.equalsIgnoreCase('YESTERDAY')) {
+				return Date.today().addDays(-1);
+			}
+			if (valueStr.equalsIgnoreCase('TOMORROW')) {
+				return Date.today().addDays(1);
+			}
+
+			// Check for string literal (single quotes)
+			if (valueStr.startsWith('\'') && valueStr.endsWith('\'')) {
+				return valueStr.substring(1, valueStr.length() - 1).replace('\\\'', '\'');
+			}
+
+			// Check for number
+			if (valueStr.isNumeric() || (valueStr.startsWith('-') && valueStr.substring(1).isNumeric())) {
+				return Decimal.valueOf(valueStr);
+			}
+
+			// Default: return as string
+			return valueStr;
+		}
+
+		/**
+		 * @description Parses the ORDER BY clause
+		 */
+		private void parseOrderBy(String soqlString) {
+			Matcher orderByMatcher = ORDER_BY_PATTERN.matcher(soqlString);
+			if (!orderByMatcher.find()) {
+				return; // ORDER BY is optional
+			}
+
+			String orderByClause = orderByMatcher.group(1)?.trim();
+			if (String.isBlank(orderByClause)) {
+				return;
+			}
+
+			// Split by comma to handle multiple ORDER BY fields
+			List<String> orderByFields = orderByClause.split(',');
+
+			for (String orderByField : orderByFields) {
+				parseOrderByField(orderByField?.trim());
+			}
+		}
+
+		/**
+		 * @description Parses a single ORDER BY field with direction and null ordering
+		 */
+		private void parseOrderByField(String orderByStr) {
+			String fieldStr = orderByStr;
+			Soql.SortDirection direction = Soql.SortDirection.ASCENDING;
+			Soql.NullOrder nullOrder = null;
+
+			// Check for DESC/ASC
+			if (orderByStr.toUpperCase().contains(' DESC')) {
+				direction = Soql.SortDirection.DESCENDING;
+				fieldStr = orderByStr.substring(0, orderByStr.toUpperCase().indexOf(' DESC'))?.trim();
+			} else if (orderByStr.toUpperCase().contains(' ASC')) {
+				direction = Soql.SortDirection.ASCENDING;
+				fieldStr = orderByStr.substring(0, orderByStr.toUpperCase().indexOf(' ASC'))?.trim();
+			}
+
+			// Check for NULLS FIRST/LAST
+			if (orderByStr.toUpperCase().contains('NULLS FIRST')) {
+				nullOrder = Soql.NullOrder.NULLS_FIRST;
+			} else if (orderByStr.toUpperCase().contains('NULLS LAST')) {
+				nullOrder = Soql.NullOrder.NULLS_LAST;
+			}
+
+			// Add ORDER BY to query
+			if (fieldStr.contains('.')) {
+				Soql.ParentField parentField = parseParentField(fieldStr);
+				if (nullOrder != null) {
+					this.query.addOrderBy(new Soql.SortOrder(parentField, direction, nullOrder));
+				} else {
+					this.query.addOrderBy(parentField, direction);
+				}
+			} else {
+				if (nullOrder != null) {
+					this.query.addOrderBy(new Soql.SortOrder(fieldStr, direction, nullOrder));
+				} else {
+					this.query.addOrderBy(fieldStr, direction);
+				}
+			}
+		}
+
+		/**
+		 * @description Parses the GROUP BY clause
+		 */
+		private void parseGroupBy(String soqlString) {
+			Matcher groupByMatcher = GROUP_BY_PATTERN.matcher(soqlString);
+			if (!groupByMatcher.find()) {
+				return; // GROUP BY is optional
+			}
+
+			String groupByClause = groupByMatcher.group(1)?.trim();
+			if (String.isBlank(groupByClause)) {
+				return;
+			}
+
+			// Split by comma for multiple GROUP BY fields
+			List<String> fields = groupByClause.split(',');
+
+			for (String field : fields) {
+				field = field?.trim();
+				if (String.isNotBlank(field)) {
+					if (field.contains('.')) {
+						this.query.addGroupBy(parseParentField(field));
+					} else {
+						this.query.addGroupBy(field);
+					}
+				}
+			}
+		}
+
+		/**
+		 * @description Parses the HAVING clause
+		 */
+		private void parseHaving(String soqlString) {
+			Matcher havingMatcher = HAVING_PATTERN.matcher(soqlString);
+			if (!havingMatcher.find()) {
+				return; // HAVING is optional
+			}
+
+			String havingClause = havingMatcher.group(1)?.trim();
+			if (String.isBlank(havingClause)) {
+				return;
+			}
+
+			// Parse HAVING conditions (similar to WHERE but with aggregate functions)
+			parseHavingConditions(havingClause);
+		}
+
+		/**
+		 * @description Parses HAVING conditions
+		 */
+		private void parseHavingConditions(String havingClause) {
+			// For now, skip complex HAVING parsing
+			// This is a limitation of the initial implementation
+			// HAVING conditions typically involve aggregate functions which need special handling
+		}
+
+		/**
+		 * @description Parses the LIMIT clause
+		 */
+		private void parseLimit(String soqlString) {
+			Matcher limitMatcher = LIMIT_PATTERN.matcher(soqlString);
+			if (!limitMatcher.find()) {
+				return; // LIMIT is optional
+			}
+
+			String limitStr = limitMatcher.group(1);
+			if (String.isNotBlank(limitStr)) {
+				this.query.setRowLimit(Integer.valueOf(limitStr));
+			}
+		}
+
+		/**
+		 * @description Parses the OFFSET clause
+		 */
+		private void parseOffset(String soqlString) {
+			Matcher offsetMatcher = OFFSET_PATTERN.matcher(soqlString);
+			if (!offsetMatcher.find()) {
+				return; // OFFSET is optional
+			}
+
+			String offsetStr = offsetMatcher.group(1);
+			if (String.isNotBlank(offsetStr)) {
+				this.query.setRowOffset(Integer.valueOf(offsetStr));
+			}
+		}
+
+		/**
+		 * @description Parses the USING SCOPE clause
+		 */
+		private void parseScope(String soqlString) {
+			Matcher scopeMatcher = SCOPE_PATTERN.matcher(soqlString);
+			if (!scopeMatcher.find()) {
+				return; // USING SCOPE is optional
+			}
+
+			String scopeStr = scopeMatcher.group(1)?.toUpperCase();
+			Soql.Scope scope = null;
+
+			switch on scopeStr {
+				when 'EVERYTHING' {
+					scope = Soql.Scope.EVERYTHING;
+				}
+				when 'MINE' {
+					scope = Soql.Scope.MINE;
+				}
+				when 'MINE_AND_MY_GROUPS' {
+					scope = Soql.Scope.MINE_AND_MY_GROUPS;
+				}
+				when 'MY_TERRITORY' {
+					scope = Soql.Scope.MY_TERRITORY;
+				}
+				when 'MY_TEAM_TERRITORY' {
+					scope = Soql.Scope.MY_TEAM_TERRITORY;
+				}
+				when 'TEAM' {
+					scope = Soql.Scope.TEAM;
+				}
+			}
+
+			if (scope != null) {
+				this.query.setScope(scope);
+			}
+		}
+
+		/**
+		 * @description Parses the FOR VIEW/UPDATE/REFERENCE clause
+		 */
+		private void parseUsage(String soqlString) {
+			Matcher usageMatcher = USAGE_PATTERN.matcher(soqlString);
+			if (!usageMatcher.find()) {
+				return; // FOR clause is optional
+			}
+
+			String usageStr = usageMatcher.group(1)?.toUpperCase();
+			Soql.Usage usage = null;
+
+			switch on usageStr {
+				when 'VIEW' {
+					usage = Soql.Usage.FOR_VIEW;
+				}
+				when 'UPDATE' {
+					usage = Soql.Usage.FOR_UPDATE;
+				}
+				when 'REFERENCE' {
+					usage = Soql.Usage.FOR_REFERENCE;
+				}
+			}
+
+			if (usage != null) {
+				this.query.setUsage(usage);
+			}
+		}
+
+		/**
+		 * @description Parses the WITH SECURITY_ENFORCED clause
+		 */
+		private void parseSecurity(String soqlString) {
+			Matcher securityMatcher = SECURITY_PATTERN.matcher(soqlString);
+			if (securityMatcher.find()) {
+				this.query.withSecurityEnforced();
+			}
+		}
+
+		/**
+		 * @description Parses the ALL ROWS clause
+		 */
+		private void parseAllRows(String soqlString) {
+			Matcher allRowsMatcher = ALL_ROWS_PATTERN.matcher(soqlString);
+			if (allRowsMatcher.find()) {
+				this.query.setUsage(Soql.Usage.ALL_ROWS);
+			}
+		}
+
+		/**
+		 * @description Splits a string by comma while respecting parentheses
+		 */
+		private List<String> splitByCommaRespectingParentheses(String input) {
+			List<String> result = new List<String>();
+			Integer parenDepth = 0;
+			Integer lastSplit = 0;
+
+			for (Integer i = 0; i < input.length(); i++) {
+				String ch = input.substring(i, i + 1);
+
+				if (ch == '(') {
+					parenDepth++;
+				} else if (ch == ')') {
+					parenDepth--;
+				} else if (ch == ',' && parenDepth == 0) {
+					result.add(input.substring(lastSplit, i));
+					lastSplit = i + 1;
+				}
+			}
+
+			// Add the last segment
+			if (lastSplit < input.length()) {
+				result.add(input.substring(lastSplit));
+			}
+
+			return result;
+		}
+
+		/**
+		 * @description Gets the SObjectType from a string name using dynamic Apex
+		 */
+		private SObjectType getSObjectType(String objectName) {
+			try {
+				return Schema.getGlobalDescribe().get(objectName)?.getDescribe()?.getSObjectType();
+			} catch (Exception e) {
+				return null;
+			}
+		}
+
+		/**
+		 * @description Exception thrown when SOQL parsing fails
+		 */
+		global class ParserException extends Exception {
+		}
+	}
 }

@@ -51,7 +51,7 @@ private class MockDmlTest {
 		}
 	}
 
-	@IsTest 
+	@IsTest
 	private static void shouldMockConvertWithNoOpportunity() {
 		Lead lead = (Lead) new MockRecord(Lead.SObjectType)?.withId()?.toSObject();
 		Database.LeadConvert leadToConvert = new Database.LeadConvert();

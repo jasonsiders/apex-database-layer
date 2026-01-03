@@ -173,6 +173,24 @@ global class DatabaseLayer {
 			return query?.setFrom(objectType)?.toSoql();
 		}
 
+		/**
+		 * @description Creates a new SOQL query builder from a SOQL query string.
+		 * Parses the provided SOQL string and constructs a Soql.Builder instance with the parsed components.
+		 *
+		 * @param soqlString The SOQL query string to parse (e.g., 'SELECT Id, Name FROM Account WHERE CreatedDate = TODAY LIMIT 10')
+		 * @return A configured SOQL builder instance populated from the parsed query string
+		 * @throws Soql.Parser.ParserException if the query string is invalid or cannot be parsed
+		 *
+		 * @example
+		 * String queryStr = 'SELECT Id, Name FROM Account WHERE CreatedDate = TODAY ORDER BY Name ASC LIMIT 10';
+		 * Soql query = DatabaseLayer.Soql.newQuery(queryStr);
+		 * List<Account> accounts = query.query();
+		 */
+		global Soql newQuery(String soqlString) {
+			Soql.Parser parser = new Soql.Parser(INSTANCE);
+			return parser.parse(soqlString)?.toSoql();
+		}
+
 		private DatabaseLayer.SoqlProvider useMocks(Boolean value) {
 			this.useMocks = value;
 			return this;
