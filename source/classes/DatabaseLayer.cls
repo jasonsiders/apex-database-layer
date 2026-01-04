@@ -187,8 +187,7 @@ global class DatabaseLayer {
 		 * List<Account> accounts = query.query();
 		 */
 		global Soql newQuery(String soqlString) {
-			Soql.Parser parser = new Soql.Parser(INSTANCE);
-			return parser.parse(soqlString)?.toSoql();
+			return Soql.Parser.fromString(soqlString, INSTANCE)?.toSoql();
 		}
 
 		private DatabaseLayer.SoqlProvider useMocks(Boolean value) {

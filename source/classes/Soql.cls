@@ -2310,12 +2310,25 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		private DatabaseLayer factory;
 
 		/**
-		 * @description Constructs a new parser with the specified DatabaseLayer factory
+		 * @description Private constructor - use fromString() factory method instead
 		 * @param factory The DatabaseLayer instance to use for creating the Soql object
 		 */
-		global Parser(DatabaseLayer factory) {
+		private Parser(DatabaseLayer factory) {
 			this.factory = factory;
 			this.query = new Soql(factory);
+		}
+
+		/**
+		 * @description Factory method to create a parser and parse a SOQL string
+		 * This is the only way to construct a Parser instance - constructor is private
+		 * @param soqlString The SOQL query string to parse
+		 * @param factory The DatabaseLayer instance to use for creating the Soql object
+		 * @return A Soql.Builder instance populated with the parsed query components
+		 * @throws ParserException if the query string is invalid or cannot be parsed
+		 */
+		global static Soql.Builder fromString(String soqlString, DatabaseLayer factory) {
+			Parser parser = new Parser(factory);
+			return parser.parse(soqlString);
 		}
 
 		/**
@@ -2324,7 +2337,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @return A Soql.Builder instance populated with the parsed query components
 		 * @throws ParserException if the query string is invalid or cannot be parsed
 		 */
-		global Soql.Builder parse(String soqlString) {
+		private Soql.Builder parse(String soqlString) {
 			if (String.isBlank(soqlString)) {
 				throw new ParserException('SOQL query string cannot be blank');
 			}
