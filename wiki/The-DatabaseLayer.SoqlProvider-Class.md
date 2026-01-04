@@ -25,11 +25,12 @@ Generates a new `Soql` query using the given `SObjectType` as the FROM object.
 Generates a new `Soql` query from a SOQL query string. Parses the provided SOQL string and constructs a Soql.Builder instance with the parsed components.
 
 - `Soql newQuery(String soqlString)`
-  - **soqlString** - The SOQL query string to parse (e.g., 'SELECT Id, Name FROM Account WHERE CreatedDate = TODAY LIMIT 10')
-  - **Returns** - A configured SOQL builder instance populated from the parsed query string
-  - **Throws** - `Soql.Parser.ParserException` if the query string is invalid or cannot be parsed
+    - **soqlString** - The SOQL query string to parse (e.g., 'SELECT Id, Name FROM Account WHERE CreatedDate = TODAY LIMIT 10')
+    - **Returns** - A configured SOQL builder instance populated from the parsed query string
+    - **Throws** - `Soql.Parser.ParserException` if the query string is invalid or cannot be parsed
 
 **Example:**
+
 ```apex
 String queryStr = 'SELECT Id, Name FROM Account WHERE CreatedDate = TODAY ORDER BY Name ASC LIMIT 10';
 Soql query = DatabaseLayer.Soql.newQuery(queryStr);

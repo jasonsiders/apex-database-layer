@@ -14,6 +14,7 @@ This exception is thrown automatically by the parser when it encounters:
 - Missing required clauses
 
 **Example:**
+
 ```apex
 try {
     // This will throw a ParserException due to invalid syntax
@@ -29,22 +30,24 @@ try {
 The `ParserException` is typically thrown in these scenarios:
 
 1. **Invalid SOQL Syntax:**
-   ```apex
-   // Missing FROM clause
-   String invalidSoql = 'SELECT Id, Name';
-   ```
+
+    ```apex
+    // Missing FROM clause
+    String invalidSoql = 'SELECT Id, Name';
+    ```
 
 2. **Unsupported Features:**
-   ```apex
-   // Complex nested parentheses (not yet supported)
-   String complexSoql = 'SELECT Id FROM Account WHERE (Type = \'A\' AND (Status = \'Active\' OR Status = \'Pending\'))';
-   ```
+
+    ```apex
+    // Complex nested parentheses (not yet supported)
+    String complexSoql = 'SELECT Id FROM Account WHERE (Type = \'A\' AND (Status = \'Active\' OR Status = \'Pending\'))';
+    ```
 
 3. **Malformed Field References:**
-   ```apex
-   // Invalid field syntax
-   String malformedSoql = 'SELECT Id,, Name FROM Account';
-   ```
+    ```apex
+    // Invalid field syntax
+    String malformedSoql = 'SELECT Id,, Name FROM Account';
+    ```
 
 ## Error Handling Best Practices
 

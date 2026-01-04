@@ -7,7 +7,7 @@ This inner class of `Soql` uses regex-based tokenization to parse most common SO
 The parser supports parsing the following SOQL clauses and features:
 
 - **SELECT** - Simple field selections and parent field references
-- **FROM** - Target SObject specification  
+- **FROM** - Target SObject specification
 - **WHERE** - Conditions with AND/OR logic
 - **ORDER BY** - Sorting with ASC/DESC and NULLS FIRST/LAST
 - **GROUP BY** - Grouping with single and multiple fields
@@ -26,7 +26,7 @@ The parser supports parsing the following SOQL clauses and features:
 Current implementation limitations include:
 
 - Complex nested WHERE logic with parentheses not yet supported
-- HAVING clause parsing not yet implemented  
+- HAVING clause parsing not yet implemented
 - Subqueries and TYPEOF polymorphic queries not supported
 - These features may be added in future iterations
 
@@ -39,12 +39,13 @@ Current implementation limitations include:
 Creates a new `Soql.Builder` instance by parsing the provided SOQL query string.
 
 - `static Soql.Builder fromString(String soqlString, DatabaseLayer factory)`
-  - **soqlString** - The SOQL query string to parse
-  - **factory** - The DatabaseLayer instance to use for creating the Soql object
-  - **Returns** - A configured `Soql.Builder` instance populated from the parsed query string
-  - **Throws** - `Soql.Parser.ParserException` if the query string is invalid or cannot be parsed
+    - **soqlString** - The SOQL query string to parse
+    - **factory** - The DatabaseLayer instance to use for creating the Soql object
+    - **Returns** - A configured `Soql.Builder` instance populated from the parsed query string
+    - **Throws** - `Soql.Parser.ParserException` if the query string is invalid or cannot be parsed
 
 **Example:**
+
 ```apex
 String soqlString = 'SELECT Id, Name FROM Account WHERE Type = \'Customer\' ORDER BY Name LIMIT 10';
 Soql.Builder builder = Soql.Parser.fromString(soqlString, DatabaseLayer.INSTANCE);
@@ -65,6 +66,7 @@ Exception thrown when SOQL string parsing fails due to invalid syntax or unsuppo
 **Extends:** `Exception`
 
 **Usage:**
+
 ```apex
 try {
     Soql query = DatabaseLayer.Soql.newQuery('INVALID SOQL SYNTAX');
