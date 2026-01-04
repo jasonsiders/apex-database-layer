@@ -82,6 +82,8 @@
     - [Soql.Operation](./The-Soql.Operation-Enum)
     - [Soql.Operator](./The-Soql.Operator-Class)
     - [Soql.ParentField](./The-Soql.ParentField-Class)
+    - [Soql.Parser](./The-Soql.Parser-Class)
+    - [Soql.Parser.ParserException](./The-Soql.Parser.ParserException-Class)
     - [Soql.PreAndPostProcessor](./The-Soql.PreAndPostProcessor-Interface)
     - [Soql.QueryLocator](./The-Soql.QueryLocator-Class)
     - [Soql.Request](./The-Soql.Request-Class)
