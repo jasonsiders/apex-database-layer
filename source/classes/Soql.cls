@@ -2342,22 +2342,19 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 				throw new ParserException('SOQL query string cannot be blank');
 			}
 
-			// Normalize whitespace
-			String normalized = normalizeWhitespace(soqlString);
-
-			// Parse each clause in order
-			parseFrom(normalized);
-			parseSelect(normalized);
-			parseWhere(normalized);
-			parseGroupBy(normalized);
-			parseHaving(normalized);
-			parseOrderBy(normalized);
-			parseLimit(normalized);
-			parseOffset(normalized);
-			parseScope(normalized);
-			parseUsage(normalized);
-			parseSecurity(normalized);
-			parseAllRows(normalized);
+			String normalized = this.normalizeWhitespace(soqlString);
+			this.parseFrom(normalized);
+			this.parseSelect(normalized);
+			this.parseWhere(normalized);
+			this.parseGroupBy(normalized);
+			this.parseHaving(normalized);
+			this.parseOrderBy(normalized);
+			this.parseLimit(normalized);
+			this.parseOffset(normalized);
+			this.parseScope(normalized);
+			this.parseUsage(normalized);
+			this.parseSecurity(normalized);
+			this.parseAllRows(normalized);
 
 			return this.query;
 		}
@@ -2366,7 +2363,6 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @description Normalizes whitespace in the query string while preserving quoted strings
 		 */
 		private String normalizeWhitespace(String soqlString) {
-			// Replace multiple whitespace with single space
 			return soqlString?.trim()?.replaceAll('\\s+', ' ');
 		}
 
@@ -2384,8 +2380,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 				throw new ParserException('Invalid SOQL: FROM clause is empty');
 			}
 
-			// Get the SObjectType from the object name
-			SObjectType objectType = getSObjectType(objectName);
+			SObjectType objectType = this.getSObjectType(objectName);
 			if (objectType == null) {
 				throw new ParserException('Invalid SObject type: ' + objectName);
 			}
@@ -2407,13 +2402,12 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 				throw new ParserException('Invalid SOQL: SELECT clause is empty');
 			}
 
-			// Split by comma, but respect parentheses (for subqueries and functions)
-			List<String> fields = splitByCommaRespectingParentheses(selectClause);
+			List<String> fields = this.splitByCommaRespectingParentheses(selectClause);
 
 			for (String field : fields) {
 				field = field?.trim();
 				if (String.isNotBlank(field)) {
-					parseSelectField(field);
+					this.parseSelectField(field);
 				}
 			}
 		}
@@ -2422,13 +2416,11 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @description Parses a single SELECT field (can be a field name, function, or subquery)
 		 */
 		private void parseSelectField(String field) {
-			// Check if it's a COUNT() aggregate without field
 			if (field.equalsIgnoreCase('COUNT()')) {
 				this.query.addSelect(new Soql.Aggregation(Soql.Function.COUNT));
 				return;
 			}
 
-			// Check if it's an aggregate function
 			if (
 				field.toUpperCase().startsWith('COUNT(') ||
 				field.toUpperCase().startsWith('AVG(') ||
@@ -2436,35 +2428,30 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 				field.toUpperCase().startsWith('MIN(') ||
 				field.toUpperCase().startsWith('MAX(')
 			) {
-				parseAggregateFunction(field);
+				this.parseAggregateFunction(field);
 				return;
 			}
 
-			// Check if it's a subquery
 			if (field.startsWith('(') && field.endsWith(')')) {
-				// Subquery - for now, skip parsing (would require recursive parsing)
+				// Subquery parsing would require recursive parsing
 				// This is a limitation of the initial implementation
 				return;
 			}
 
-			// Check if it's a TYPEOF clause
 			if (field.toUpperCase().startsWith('TYPEOF')) {
-				// TYPEOF - for now, skip parsing (complex polymorphic queries)
+				// Polymorphic TYPEOF queries are complex and skipped for now
 				// This is a limitation of the initial implementation
 				return;
 			}
 
-			// Parse field with possible alias
 			String fieldName = field;
 			String alias = null;
 
-			// Check for alias (field AS alias or field alias)
 			if (field.toUpperCase().contains(' AS ')) {
 				List<String> parts = field.split('(?i)\\s+AS\\s+', 2);
 				fieldName = parts[0]?.trim();
 				alias = parts.size() > 1 ? parts[1]?.trim() : null;
 			} else {
-				// Check for space-separated alias (e.g., "ProfileId profile")
 				List<String> parts = field.split('\\s+');
 				if (parts.size() == 2 && !parts[1].toUpperCase().equals('FROM')) {
 					fieldName = parts[0]?.trim();
@@ -2472,12 +2459,9 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 				}
 			}
 
-			// Add the field to the query
 			if (fieldName.contains('.')) {
-				// Parent field reference (e.g., Account.Name)
-				this.query.addSelect(parseParentField(fieldName));
+				this.query.addSelect(this.parseParentField(fieldName));
 			} else {
-				// Simple field name
 				this.query.addSelect(fieldName);
 			}
 		}
@@ -2497,7 +2481,6 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			String functionName = functionStr.substring(0, openParen)?.trim()?.toUpperCase();
 			String fieldName = functionStr.substring(openParen + 1, closeParen)?.trim();
 
-			// Map function name to Soql.Function enum
 			Soql.Function func = null;
 			switch on functionName {
 				when 'COUNT' {
@@ -2522,12 +2505,10 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 
 			if (func != null) {
 				if (String.isBlank(fieldName)) {
-					// COUNT() without field
 					this.query.addSelect(new Soql.Aggregation(func));
 				} else {
-					// Function with field
 					if (fieldName.contains('.')) {
-						this.query.addSelect(new Soql.Aggregation(func, parseParentField(fieldName)));
+						this.query.addSelect(new Soql.Aggregation(func, this.parseParentField(fieldName)));
 					} else {
 						this.query.addSelect(new Soql.Aggregation(func, fieldName));
 					}
@@ -2574,7 +2555,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			}
 
 			// Parse WHERE conditions
-			parseWhereConditions(whereClause);
+			this.parseWhereConditions(whereClause);
 		}
 
 		/**
@@ -2589,7 +2570,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 				this.query.setOuterWhereLogic(Soql.LogicType.ANY_CONDITIONS);
 				List<String> conditions = whereClause.split('(?i)\\s+OR\\s+');
 				for (String condition : conditions) {
-					parseSingleCondition(condition?.trim());
+					this.parseSingleCondition(condition?.trim());
 				}
 			}
 			// Check if it's an AND condition
@@ -2597,12 +2578,12 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 				this.query.setOuterWhereLogic(Soql.LogicType.ALL_CONDITIONS);
 				List<String> conditions = whereClause.split('(?i)\\s+AND\\s+');
 				for (String condition : conditions) {
-					parseSingleCondition(condition?.trim());
+					this.parseSingleCondition(condition?.trim());
 				}
 			}
 			// Single condition
 			else if (!whereClause.contains('(')) {
-				parseSingleCondition(whereClause);
+				this.parseSingleCondition(whereClause);
 			}
 			// Complex nested logic - skip for now
 			// This is a limitation of the initial implementation
@@ -2652,13 +2633,13 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			// Parse field
 			Object field = null;
 			if (fieldStr.contains('.')) {
-				field = parseParentField(fieldStr);
+				field = this.parseParentField(fieldStr);
 			} else {
 				field = fieldStr;
 			}
 
 			// Parse value
-			Object value = parseValue(valueStr);
+			Object value = this.parseValue(valueStr);
 
 			// Add condition to query
 			if (field instanceof String) {
@@ -2739,7 +2720,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			List<String> orderByFields = orderByClause.split(',');
 
 			for (String orderByField : orderByFields) {
-				parseOrderByField(orderByField?.trim());
+				this.parseOrderByField(orderByField?.trim());
 			}
 		}
 
@@ -2769,7 +2750,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 
 			// Add ORDER BY to query
 			if (fieldStr.contains('.')) {
-				Soql.ParentField parentField = parseParentField(fieldStr);
+				Soql.ParentField parentField = this.parseParentField(fieldStr);
 				if (nullOrder != null) {
 					this.query.addOrderBy(new Soql.SortOrder(parentField, direction, nullOrder));
 				} else {
@@ -2805,7 +2786,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 				field = field?.trim();
 				if (String.isNotBlank(field)) {
 					if (field.contains('.')) {
-						this.query.addGroupBy(parseParentField(field));
+						this.query.addGroupBy(this.parseParentField(field));
 					} else {
 						this.query.addGroupBy(field);
 					}
@@ -2828,7 +2809,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			}
 
 			// Parse HAVING conditions (similar to WHERE but with aggregate functions)
-			parseHavingConditions(havingClause);
+			this.parseHavingConditions(havingClause);
 		}
 
 		/**
