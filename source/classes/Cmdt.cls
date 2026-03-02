@@ -86,7 +86,9 @@ global inherited sharing class Cmdt {
 		 * @return A Soql query builder instance
 		 */
 		protected virtual Soql buildQuery() {
-			Soql query = Cmdt.SoqlProvider.newQuery(this.objectType)?.toSoql();
+			Soql query = Cmdt.SoqlProvider.newQuery(this.objectType)
+				?.setAccessLevel(System.AccessLevel.SYSTEM_MODE)
+				?.toSoql();
 			this.selectAllFieldsExceptLongText(query);
 			return query;
 		}
@@ -134,7 +136,7 @@ global inherited sharing class Cmdt {
 			for (SObjectField field : allFields) {
 				DescribeFieldResult describe = field?.getDescribe();
 				Integer len = describe?.getLength() ?? 0;
-				if (len < 255) {
+				if (len <= 255) {
 					query?.addSelect(field);
 				}
 			}
