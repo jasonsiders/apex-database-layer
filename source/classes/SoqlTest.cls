@@ -1,5 +1,5 @@
 @SuppressWarnings(
-	'PMD.ApexUnitTestClassShouldHaveAsserts,PMD.ApexUnitTestClassShouldHaveRunAs,PMD.CyclomaticComplexity'
+	'PMD.ApexUnitTestClassShouldHaveAsserts,PMD.ApexUnitTestClassShouldHaveRunAs,PMD.CyclomaticComplexity,PMD.NcssCount'
 )
 @IsTest
 private class SoqlTest {
@@ -1661,6 +1661,22 @@ private class SoqlTest {
 		Test.stopTest();
 
 		String expected = 'TYPEOF What WHEN Account THEN Name ELSE Name END';
+		Assert.areEqual(expected, result, 'TypeOf query with SObjectField not formatted correctly');
+	}
+
+	@IsTest
+	private static void shouldBuildTypeOfQueryWithParentField() {
+		Soql.Selectable parentField = new Soql.ParentField(Account.OwnerId, User.Name);
+		Soql.TypeOf typeOfClause = new Soql.TypeOf(Task.WhatId)
+			.when(Account.SObjectType)
+			.thenSelect(parentField)
+			.elseSelect('Name');
+
+		Test.startTest();
+		String result = typeOfClause?.toString();
+		Test.stopTest();
+
+		String expected = 'TYPEOF What WHEN Account THEN Owner.Name ELSE Name END';
 		Assert.areEqual(expected, result, 'TypeOf query with SObjectField not formatted correctly');
 	}
 
