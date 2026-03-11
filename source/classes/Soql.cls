@@ -2260,5 +2260,89 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		global Soql.TypeOf thenSelect(SObjectField field) {
 			return this.thenSelect(field, null);
 		}
+
+		/**
+		 * @description Specifies fields to select for this WHEN clause using a list of Soql.Selectables.
+		 * @param fields List of Soql.Selectables to select
+		 * @return The parent TypeOf instance for continued chaining
+		 */
+		global Soql.TypeOf thenSelect(List<Soql.Selectable> fields) {
+			List<String> fieldNames = new List<String>();
+			for (Soql.Selectable field : fields) {
+				if (field != null) {
+					fieldNames.add(field?.toString());
+				}
+			}
+			this.parent?.addWhenClause(this.objectType, fieldNames);
+			return this.parent;
+		}
+
+		/**
+		 * @description Specifies up to 5 Soql.Selectables to select for this WHEN clause.
+		 * @param field1 First Soql.Selectable
+		 * @param field2 Second Soql.Selectable
+		 * @param field3 Third Soql.Selectable
+		 * @param field4 Fourth Soql.Selectable
+		 * @param field5 Fifth Soql.Selectable
+		 * @return The parent TypeOf instance for continued chaining
+		 */
+		@SuppressWarnings('PMD.ExcessiveParameterList')
+		global Soql.TypeOf thenSelect(
+			Soql.Selectable field1,
+			Soql.Selectable field2,
+			Soql.Selectable field3,
+			Soql.Selectable field4,
+			Soql.Selectable field5
+		) {
+			return this.thenSelect(new List<Soql.Selectable>{ field1, field2, field3, field4, field5 });
+		}
+
+		/**
+		 * @description Specifies 4 Soql.Selectables to select for this WHEN clause.
+		 * @param field1 First Soql.Selectable
+		 * @param field2 Second Soql.Selectable
+		 * @param field3 Third Soql.Selectable
+		 * @param field4 Fourth Soql.Selectable
+		 * @return The parent TypeOf instance for continued chaining
+		 */
+		@SuppressWarnings('PMD.ExcessiveParameterList')
+		global Soql.TypeOf thenSelect(
+			Soql.Selectable field1,
+			Soql.Selectable field2,
+			Soql.Selectable field3,
+			Soql.Selectable field4
+		) {
+			return this.thenSelect(field1, field2, field3, field4, null);
+		}
+
+		/**
+		 * @description Specifies 3 Soql.Selectables to select for this WHEN clause.
+		 * @param field1 First Soql.Selectable
+		 * @param field2 Second Soql.Selectable
+		 * @param field3 Third Soql.Selectable
+		 * @return The parent TypeOf instance for continued chaining
+		 */
+		global Soql.TypeOf thenSelect(Soql.Selectable field1, Soql.Selectable field2, Soql.Selectable field3) {
+			return this.thenSelect(field1, field2, field3, null);
+		}
+
+		/**
+		 * @description Specifies 2 Soql.Selectables to select for this WHEN clause.
+		 * @param field1 First Soql.Selectable
+		 * @param field2 Second Soql.Selectable
+		 * @return The parent TypeOf instance for continued chaining
+		 */
+		global Soql.TypeOf thenSelect(Soql.Selectable field1, Soql.Selectable field2) {
+			return this.thenSelect(field1, field2, null);
+		}
+
+		/**
+		 * @description Specifies 1 Soql.Selectable to select for this WHEN clause.
+		 * @param field The Soql.Selectable to select
+		 * @return The parent TypeOf instance for continued chaining
+		 */
+		global Soql.TypeOf thenSelect(Soql.Selectable field) {
+			return this.thenSelect(field, null);
+		}
 	}
 }
