@@ -121,8 +121,6 @@ public without sharing class DatabaseLayerUtils {
 	 */
 	@SuppressWarnings('PMD.AvoidDebugStatements')
 	public class Plugins {
-		private static final String DML_PARAM = 'DmlPreAndPostProcessor';
-		private static final String SOQL_PARAM = 'SoqlPreAndPostProcessor';
 
 		/**
 		 * @description The DML pre and post processor instance for this plugin configuration.
@@ -167,8 +165,8 @@ public without sharing class DatabaseLayerUtils {
 		@TestVisible
 		private void init() {
 			DatabaseLayer.Utils?.resetParameters();
-			this.Dml = (Dml.PreAndPostProcessor) this.initPlugin(DML_PARAM);
-			this.Soql = (Soql.PreAndPostProcessor) this.initPlugin(SOQL_PARAM);
+			this.Dml = (Dml.PreAndPostProcessor) this.initPlugin('DmlPreAndPostProcessor');
+			this.Soql = (Soql.PreAndPostProcessor) this.initPlugin('SoqlPreAndPostProcessor');
 		}
 	}
 
