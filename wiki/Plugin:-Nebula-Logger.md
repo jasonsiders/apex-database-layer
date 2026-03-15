@@ -25,12 +25,14 @@ sf package install --package <<package_version_id>> --wait 10
 
 ### Setup
 
-Once installed, navigate to `Setup > Custom Metadata Types > Database Layer Parameter > Manage Records` and create two records:
+No manual setup required. The plugin package includes pre-configured `DatabaseLayerParameter__mdt` records that automatically register `DatabaseLayerNebulaLoggerAdapter` as the DML and SOQL processor.
 
-| DeveloperName             | Value                              |
-| ------------------------- | ---------------------------------- |
-| `DmlPreAndPostProcessor`  | `DatabaseLayerNebulaLoggerAdapter` |
-| `SoqlPreAndPostProcessor` | `DatabaseLayerNebulaLoggerAdapter` |
+> **Note:** If you are copying the Apex classes manually (managed package scenario), you will also need to manually create these two `DatabaseLayerParameter__mdt` records:
+>
+> | DeveloperName | Value |
+> |---|---|
+> | `DmlPreAndPostProcessor` | `DatabaseLayerNebulaLoggerAdapter` |
+> | `SoqlPreAndPostProcessor` | `DatabaseLayerNebulaLoggerAdapter` |
 
 **Note:** Once configured, these custom metadata records won't be altered by upgrading the _Apex Database Layer_ package, or the plugin package itself.
 
