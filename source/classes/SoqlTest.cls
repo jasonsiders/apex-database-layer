@@ -162,7 +162,7 @@ private class SoqlTest {
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)?.setRowLimit(1)?.toSoql();
 
 		Test.startTest();
-		Map<Id, User> users = (Map<Id, User>) soql?.queryAndMap();
+		Map<Id, SObject> users = soql?.queryAndMap();
 		Test.stopTest();
 
 		Assert.areEqual(1, users?.size(), 'Wrong # of Users returned');
