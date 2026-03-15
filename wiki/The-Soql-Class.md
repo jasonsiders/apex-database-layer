@@ -84,6 +84,14 @@ Executes the query and returns the results as a list of `SObject`. Alternatively
 - `List<SObject> query()`
 - `Object query(Type returnType)`
 
+### `queryAndMap`
+
+Executes the SOQL query and returns matching records mapped by their Id. Returns `Map<Id, SObject>` rather than a typed subtype because Apex does not support covariant casting of generic Map types.
+
+**Note:** Even if all records are `Account` instances, a `Map<Id, SObject>` cannot be cast to `Map<Id, Account>` at runtime. If a typed map is needed, use `query()` and construct the map directly: `new Map<Id, User>((List<User>) soql.query())`
+
+- `Map<Id, SObject> queryAndMap()`
+
 ### `queryFirst`
 
 Fetches the first result of the query or returns `null` if no results are found. This method is useful for cases where only a single result is expected.
