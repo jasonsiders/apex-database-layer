@@ -121,7 +121,6 @@ public without sharing class DatabaseLayerUtils {
 	 */
 	@SuppressWarnings('PMD.AvoidDebugStatements')
 	public class Plugins {
-
 		/**
 		 * @description The DML pre and post processor instance for this plugin configuration.
 		 */

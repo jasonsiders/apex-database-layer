@@ -1,11 +1,11 @@
 @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveRunAs')
 @IsTest
 private class CmdtTest {
-	private static final SObjectType CMDT_OBJECT = DatabaseLayerParameter__mdt.SObjectType;
+	private static final SObjectType REAL_CMDT_OBJECT = DatabaseLayerParameter__mdt.SObjectType;
 
 	@IsTest
 	private static void shouldQueryWhatIsInOrg() {
-		Cmdt.Repository repository = DatabaseLayer.Cmdt?.ofType(CMDT_OBJECT);
+		Cmdt.Repository repository = DatabaseLayer.Cmdt?.ofType(REAL_CMDT_OBJECT);
 
 		Test.startTest();
 		List<DatabaseLayerParameter__mdt> results = (List<DatabaseLayerParameter__mdt>) repository?.getAll()?.values();
@@ -25,11 +25,11 @@ private class CmdtTest {
 			setting.DeveloperName = 'Test_Record_' + i;
 			settings?.add(setting);
 		}
-		MockCmdt.mock(CMDT_OBJECT)?.add(settings);
+		MockCmdt.mock(REAL_CMDT_OBJECT)?.add(settings);
 
 		Test.startTest();
 		List<DatabaseLayerParameter__mdt> results = (List<DatabaseLayerParameter__mdt>) DatabaseLayer.Cmdt
-			?.ofType(CMDT_OBJECT)
+			?.ofType(REAL_CMDT_OBJECT)
 			?.getAll()
 			?.values();
 		Test.stopTest();
@@ -40,8 +40,8 @@ private class CmdtTest {
 	@IsTest
 	private static void shouldMockCmdtRecords() {
 		DatabaseLayerParameter__mdt settings = new DatabaseLayerParameter__mdt(DeveloperName = 'Test_Record');
-		MockCmdt.mock(CMDT_OBJECT)?.add(settings);
-		Cmdt.Repository repo = DatabaseLayer.Cmdt.ofType(CMDT_OBJECT);
+		MockCmdt.mock(REAL_CMDT_OBJECT)?.add(settings);
+		Cmdt.Repository repo = DatabaseLayer.Cmdt.ofType(REAL_CMDT_OBJECT);
 
 		Test.startTest();
 		Map<String, SObject> records = repo?.getAll();
@@ -56,11 +56,11 @@ private class CmdtTest {
 
 	@IsTest
 	private static void shouldMockEmptyListOfRecords() {
-		MockCmdt.mock(CMDT_OBJECT);
+		MockCmdt.mock(REAL_CMDT_OBJECT);
 		// No further calls - `get` calls should return empty
 
 		Test.startTest();
-		Map<String, SObject> records = DatabaseLayer.Cmdt.ofType(CMDT_OBJECT)?.getAll();
+		Map<String, SObject> records = DatabaseLayer.Cmdt.ofType(REAL_CMDT_OBJECT)?.getAll();
 		Assert.areEqual(0, Limits.getQueries(), 'Should not have used SOQL');
 		Test.stopTest();
 
@@ -71,7 +71,7 @@ private class CmdtTest {
 	private static void shouldRemoveSpecificMockRecordsByKey() {
 		DatabaseLayerParameter__mdt setting1 = new DatabaseLayerParameter__mdt(DeveloperName = 'Test_Record_1');
 		DatabaseLayerParameter__mdt setting2 = new DatabaseLayerParameter__mdt(DeveloperName = 'Test_Record_2');
-		MockCmdt.Repository repo = MockCmdt.mock(CMDT_OBJECT)?.add(setting1)?.add(setting2);
+		MockCmdt.Repository repo = MockCmdt.mock(REAL_CMDT_OBJECT)?.add(setting1)?.add(setting2);
 		String key = setting1?.DeveloperName;
 
 		Test.startTest();
@@ -85,7 +85,7 @@ private class CmdtTest {
 	private static void shouldRemoveSpecificMockRecordByItsValue() {
 		DatabaseLayerParameter__mdt setting1 = new DatabaseLayerParameter__mdt(DeveloperName = 'Test_Record_1');
 		DatabaseLayerParameter__mdt setting2 = new DatabaseLayerParameter__mdt(DeveloperName = 'Test_Record_2');
-		MockCmdt.Repository repo = MockCmdt.mock(CMDT_OBJECT)?.add(setting1)?.add(setting2);
+		MockCmdt.Repository repo = MockCmdt.mock(REAL_CMDT_OBJECT)?.add(setting1)?.add(setting2);
 
 		Test.startTest();
 		repo?.remove(setting1);
@@ -99,7 +99,7 @@ private class CmdtTest {
 	private static void shouldClearMockRecords() {
 		DatabaseLayerParameter__mdt setting1 = new DatabaseLayerParameter__mdt(DeveloperName = 'Test_Record_1');
 		DatabaseLayerParameter__mdt setting2 = new DatabaseLayerParameter__mdt(DeveloperName = 'Test_Record_2');
-		MockCmdt.Repository repo = MockCmdt.mock(CMDT_OBJECT)?.add(setting1)?.add(setting2);
+		MockCmdt.Repository repo = MockCmdt.mock(REAL_CMDT_OBJECT)?.add(setting1)?.add(setting2);
 
 		Test.startTest();
 		repo?.clear();
@@ -110,16 +110,16 @@ private class CmdtTest {
 
 	@IsTest
 	private static void shouldMapNamespacedRecordsByFullyQualifiedApiName() {
-		DatabaseLayerParameter__mdt settings = (DatabaseLayerParameter__mdt) new MockRecord(CMDT_OBJECT)
+		DatabaseLayerParameter__mdt settings = (DatabaseLayerParameter__mdt) new MockRecord(REAL_CMDT_OBJECT)
 			?.setField(DatabaseLayerParameter__mdt.NamespacePrefix, 'somenamespace')
 			?.setField(DatabaseLayerParameter__mdt.DeveloperName, 'Test_Record')
 			?.toSObject();
-		MockCmdt.mock(CMDT_OBJECT)?.add(settings);
+		MockCmdt.mock(REAL_CMDT_OBJECT)?.add(settings);
 		String key = settings?.NamespacePrefix + '__' + settings?.DeveloperName;
 
 		Test.startTest();
 		DatabaseLayerParameter__mdt matching = (DatabaseLayerParameter__mdt) DatabaseLayer.Cmdt
-			?.ofType(CMDT_OBJECT)
+			?.ofType(REAL_CMDT_OBJECT)
 			?.getInstance(key);
 		Test.stopTest();
 
@@ -132,13 +132,13 @@ private class CmdtTest {
 	private static void shouldClearRealRecordsWhenMockIsInstantiated() {
 		DatabaseLayerParameter__mdt setting = CmdtTest.initMockSetting();
 		String key = setting?.DeveloperName;
-		SObject before = DatabaseLayer.Cmdt.ofType(CMDT_OBJECT)?.getInstance(key);
+		SObject before = DatabaseLayer.Cmdt.ofType(REAL_CMDT_OBJECT)?.getInstance(key);
 		Assert.isNotNull(before, 'Before: Did not find record');
 		// Now instantiate the mocks:
-		MockCmdt.mock(CMDT_OBJECT);
+		MockCmdt.mock(REAL_CMDT_OBJECT);
 
 		Test.startTest();
-		SObject after = DatabaseLayer.Cmdt.ofType(CMDT_OBJECT)?.getInstance(key);
+		SObject after = DatabaseLayer.Cmdt.ofType(REAL_CMDT_OBJECT)?.getInstance(key);
 		Test.stopTest();
 
 		Assert.isNull(after, 'After: Did not clear mocked records');
@@ -151,7 +151,7 @@ private class CmdtTest {
 
 		Test.startTest();
 		DatabaseLayerParameter__mdt instance = (DatabaseLayerParameter__mdt) DatabaseLayer.Cmdt
-			?.ofType(CMDT_OBJECT)
+			?.ofType(REAL_CMDT_OBJECT)
 			?.getInstance(key);
 		Test.stopTest();
 
@@ -165,8 +165,8 @@ private class CmdtTest {
 		for (Integer i = 1; i < 4; i++) {
 			String name = 'Test_Record_' + i;
 			DatabaseLayerParameter__mdt settings = new DatabaseLayerParameter__mdt(DeveloperName = name);
-			MockCmdt.mock(CMDT_OBJECT)?.add(settings);
-			Set<String> mocked = DatabaseLayer.Cmdt.ofType(CMDT_OBJECT)?.getAll()?.keySet();
+			MockCmdt.mock(REAL_CMDT_OBJECT)?.add(settings);
+			Set<String> mocked = DatabaseLayer.Cmdt.ofType(REAL_CMDT_OBJECT)?.getAll()?.keySet();
 			Assert.areEqual(i, mocked?.size(), 'Wrong # of mocked records');
 			Assert.isTrue(mocked?.contains(name), 'Did not mock ' + i);
 		}
@@ -177,17 +177,17 @@ private class CmdtTest {
 	private static void shouldResetMetadataRetrieval() {
 		DatabaseLayerParameter__mdt mockSetting1 = new DatabaseLayerParameter__mdt(DeveloperName = 'Test_Record_1');
 		DatabaseLayerParameter__mdt mockSetting2 = new DatabaseLayerParameter__mdt(DeveloperName = 'Test_Record_2');
-		MockCmdt.mock(CMDT_OBJECT)?.add(mockSetting1)?.add(mockSetting2);
+		MockCmdt.mock(REAL_CMDT_OBJECT)?.add(mockSetting1)?.add(mockSetting2);
 
 		Test.startTest();
-		MockCmdt.reset(CMDT_OBJECT);
+		MockCmdt.reset(REAL_CMDT_OBJECT);
 		// After the reset, mock again, but with a new 3rd setting object:
 		DatabaseLayerParameter__mdt mockSetting3 = new DatabaseLayerParameter__mdt(DeveloperName = 'Test_Record_3');
-		MockCmdt.mock(CMDT_OBJECT)?.add(mockSetting3);
+		MockCmdt.mock(REAL_CMDT_OBJECT)?.add(mockSetting3);
 		Test.stopTest();
 
 		List<DatabaseLayerParameter__mdt> results = (List<DatabaseLayerParameter__mdt>) DatabaseLayer.Cmdt.ofType(
-				CMDT_OBJECT
+				REAL_CMDT_OBJECT
 			)
 			?.getAll()
 			?.values();
@@ -198,8 +198,8 @@ private class CmdtTest {
 	@IsTest
 	private static void shouldUseCustomRepository() {
 		DatabaseLayerParameter__mdt setting = CmdtTest.initMockSetting();
-		CmdtTest.CustomRepository customRepo = (CmdtTest.CustomRepository) MockCmdt.mock(CMDT_OBJECT)
-			?.withRepository(new CmdtTest.CustomRepository(CMDT_OBJECT));
+		CmdtTest.CustomRepository customRepo = (CmdtTest.CustomRepository) MockCmdt.mock(REAL_CMDT_OBJECT)
+			?.withRepository(new CmdtTest.CustomRepository(REAL_CMDT_OBJECT));
 		customRepo?.add(setting);
 
 		Test.startTest();

@@ -24,28 +24,31 @@ A static spy implementation for tracking SOQL plugin method invocations during t
 
 ### `initDmlAndSoqlPlugins`
 
-Mocks DatabaseLayerParameter__mdt records for DML and SOQL plugins and re-initializes plugins.
+Mocks DatabaseLayerParameter\_\_mdt records for DML and SOQL plugins and re-initializes plugins.
 
 **Signature:**
+
 ```apex
 global static void initDmlAndSoqlPlugins(String className)
 ```
 
 **Parameters:**
+
 - `className` (String): The fully-qualified Apex class name to use for both DML and SOQL pre/post processing
 
 **Example:**
+
 ```apex
 @IsTest
 private class MyTest {
-    @IsTest
-    static void testWithPlugins() {
-        // Initialize plugins for testing
-        DatabaseLayerTestUtils.initDmlAndSoqlPlugins('MyTestPlugin');
-        
-        // Your test logic here
-        // Both DML and SOQL operations will use MyTestPlugin for processing
-    }
+	@IsTest
+	static void testWithPlugins() {
+		// Initialize plugins for testing
+		DatabaseLayerTestUtils.initDmlAndSoqlPlugins('MyTestPlugin');
+
+		// Your test logic here
+		// Both DML and SOQL operations will use MyTestPlugin for processing
+	}
 }
 ```
 
@@ -56,8 +59,9 @@ private class MyTest {
 Spy implementation for tracking plugin method invocations during testing.
 
 **Properties:**
+
 - `numPreCalls` (Integer): Number of times the pre-processing method was called
-- `numPostCalls` (Integer): Number of times the post-processing method was called  
+- `numPostCalls` (Integer): Number of times the post-processing method was called
 - `numErrorCalls` (Integer): Number of times the error processing method was called
 
 ### `SamplePlugin`
@@ -65,6 +69,7 @@ Spy implementation for tracking plugin method invocations during testing.
 Sample plugin implementation for testing both DML and SOQL processing hooks. Implements both `Dml.PreAndPostProcessor` and `Soql.PreAndPostProcessor` interfaces.
 
 **Methods:**
+
 - `processPreDml(Dml.Request request)`: Processes DML requests before execution for testing purposes
 - `processPostDml(Dml.Request request, List<Object> databaseResults)`: Processes DML requests after execution for testing purposes
 - `processDmlError(Dml.Request request, Exception error)`: Processes DML errors for testing purposes
