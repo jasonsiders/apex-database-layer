@@ -32,11 +32,13 @@ public class SomeApexClass implements Dml.PreAndPostProcessor {
 }
 ```
 
-Next, create a _Database Layer Setting_/`DatabaseLayerSetting__mdt` custom metadata record, called "Default" (unless one already exists).
+Next, navigate to `Setup > Custom Metadata Types > Database Layer Parameter > Manage Records` and create a new record with the following values:
 
-Finally, list your apex class from the previous step in the `DML: Pre & Post Processor` field, as shown below:
-
-<img width="1182" height="437" alt="image" src="https://github.com/user-attachments/assets/3aeda326-ae2e-4df7-8565-929dcff4025b" />
+| Field | Value |
+|---|---|
+| **Label** | DML Pre And Post Processor _(or any label you prefer)_ |
+| **DeveloperName** | `DmlPreAndPostProcessor` |
+| **Value** | The fully-qualified name of your Apex class (e.g., `SomeApexClass`) |
 
 ---
 
