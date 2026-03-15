@@ -34,11 +34,11 @@ public class SomeApexClass implements Dml.PreAndPostProcessor {
 
 Next, navigate to `Setup > Custom Metadata Types > Database Layer Parameter > Manage Records` and create a new record with the following values:
 
-| Field | Value |
-|---|---|
-| **Label** | DML Pre And Post Processor _(or any label you prefer)_ |
-| **DeveloperName** | `DmlPreAndPostProcessor` |
-| **Value** | The fully-qualified name of your Apex class (e.g., `SomeApexClass`) |
+| Field             | Value                                                               |
+| ----------------- | ------------------------------------------------------------------- |
+| **Label**         | DML Pre And Post Processor _(or any label you prefer)_              |
+| **DeveloperName** | `DmlPreAndPostProcessor`                                            |
+| **Value**         | The fully-qualified name of your Apex class (e.g., `SomeApexClass`) |
 
 ---
 

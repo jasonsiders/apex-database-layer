@@ -27,9 +27,9 @@ sf package install --package <<package_version_id>> --wait 10
 
 Once installed, navigate to `Setup > Custom Metadata Types > Database Layer Parameter > Manage Records` and create two records:
 
-| DeveloperName | Value |
-|---|---|
-| `DmlPreAndPostProcessor` | `DatabaseLayerNebulaLoggerAdapter` |
+| DeveloperName             | Value                              |
+| ------------------------- | ---------------------------------- |
+| `DmlPreAndPostProcessor`  | `DatabaseLayerNebulaLoggerAdapter` |
 | `SoqlPreAndPostProcessor` | `DatabaseLayerNebulaLoggerAdapter` |
 
 **Note:** Once configured, these custom metadata records won't be altered by upgrading the _Apex Database Layer_ package, or the plugin package itself.

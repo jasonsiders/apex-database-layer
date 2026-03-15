@@ -31,11 +31,11 @@ public class SomeApexClass implements Soql.PreAndPostProcessor {
 
 Next, navigate to `Setup > Custom Metadata Types > Database Layer Parameter > Manage Records` and create a new record with the following values:
 
-| Field | Value |
-|---|---|
-| **Label** | SOQL Pre And Post Processor _(or any label you prefer)_ |
-| **DeveloperName** | `SoqlPreAndPostProcessor` |
-| **Value** | The fully-qualified name of your Apex class (e.g., `SomeApexClass`) |
+| Field             | Value                                                               |
+| ----------------- | ------------------------------------------------------------------- |
+| **Label**         | SOQL Pre And Post Processor _(or any label you prefer)_             |
+| **DeveloperName** | `SoqlPreAndPostProcessor`                                           |
+| **Value**         | The fully-qualified name of your Apex class (e.g., `SomeApexClass`) |
 
 ---
 
