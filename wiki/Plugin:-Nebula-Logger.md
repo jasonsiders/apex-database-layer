@@ -29,9 +29,9 @@ No manual setup required. The plugin package includes pre-configured `DatabaseLa
 
 > **Note:** If you are copying the Apex classes manually (managed package scenario), you will also need to manually create these two `DatabaseLayerParameter__mdt` records:
 >
-> | DeveloperName | Value |
-> |---|---|
-> | `DmlPreAndPostProcessor` | `DatabaseLayerNebulaLoggerAdapter` |
+> | DeveloperName             | Value                              |
+> | ------------------------- | ---------------------------------- |
+> | `DmlPreAndPostProcessor`  | `DatabaseLayerNebulaLoggerAdapter` |
 > | `SoqlPreAndPostProcessor` | `DatabaseLayerNebulaLoggerAdapter` |
 
 **Note:** Once configured, these custom metadata records won't be altered by upgrading the _Apex Database Layer_ package, or the plugin package itself.
