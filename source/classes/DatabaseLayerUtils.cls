@@ -21,10 +21,10 @@ public without sharing class DatabaseLayerUtils {
 	@SuppressWarnings('PMD.PropertyNamingConventions')
 	public DatabaseLayerUtils.SObjects SObjects { get; private set; }
 
-	private Map<String, String> Parameters {
+	private Map<String, String> parameters {
 		get {
-			this.Parameters = this.Parameters ?? this.loadParameters();
-			return this.Parameters;
+			this.parameters = this.parameters ?? this.loadParameters();
+			return this.parameters;
 		}
 		private set;
 	}
@@ -46,7 +46,7 @@ public without sharing class DatabaseLayerUtils {
 	 * @return The Value__c of the matching parameter, or null if not found
 	 */
 	public String getParameter(String developerName) {
-		return this.Parameters?.get(developerName);
+		return this.parameters?.get(developerName);
 	}
 
 	private Map<String, String> loadParameters() {
@@ -65,7 +65,7 @@ public without sharing class DatabaseLayerUtils {
 
 	@TestVisible
 	private void resetParameters() {
-		this.Parameters = null;
+		this.parameters = null;
 	}
 
 	// **** INNER **** //

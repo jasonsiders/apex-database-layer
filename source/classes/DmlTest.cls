@@ -1,4 +1,4 @@
-@SuppressWarnings('PMD.ApexUnitTestClassShouldHaveRunAs,PMD.CyclomaticComplexity')
+@SuppressWarnings('PMD.ApexUnitTestClassShouldHaveRunAs,PMD.CyclomaticComplexity,PMD.NcssCount')
 @IsTest
 private class DmlTest {
 	// **** VARIABLES **** //
