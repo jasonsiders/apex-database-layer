@@ -1,4 +1,4 @@
-@SuppressWarnings('PMD.ApexUnitTestClassShouldHaveRunAs,PMD.CyclomaticComplexity')
+@SuppressWarnings('PMD.ApexUnitTestClassShouldHaveRunAs,PMD.CyclomaticComplexity,PMD.NcssCount')
 @IsTest
 private class DmlTest {
 	// **** VARIABLES **** //
@@ -11,7 +11,7 @@ private class DmlTest {
 		deleteCallbacksMade = new List<Database.DeleteResult>();
 		saveCallbacksMade = new List<Database.SaveResult>();
 		// Custom metadata actually defined in the org should not interfere with this test:
-		MockCmdt.mock(DatabaseLayerSetting__mdt.SObjectType);
+		MockCmdt.mock(DatabaseLayerParameter__mdt.SObjectType);
 	}
 
 	// **** TESTS **** //
@@ -953,7 +953,7 @@ private class DmlTest {
 
 	@IsTest
 	private static void shouldNotRunProcessorLogicIfNoSettingsDefined() {
-		MockCmdt.mock(DatabaseLayerSetting__mdt.SObjectType);
+		MockCmdt.mock(DatabaseLayerParameter__mdt.SObjectType);
 		DatabaseLayer.Utils.Plugins.init();
 		Account account = DmlTest.initAccount();
 

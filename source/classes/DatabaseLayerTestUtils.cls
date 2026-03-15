@@ -11,35 +11,20 @@ global class DatabaseLayerTestUtils {
 	public static final PreAndPostProcessorSpy SoqlPluginSpy = new PreAndPostProcessorSpy();
 
 	/**
-	 * @description Creates a mock DatabaseLayerSetting__mdt for testing and injects it into the metadata selector.
-	 * @param setting The custom metadata record being injected.
-	 * @return The created test settings object
+	 * @description Mocks DatabaseLayerParameter__mdt records for DML and SOQL plugins and re-initializes plugins.
+	 * @param className The fully-qualified Apex class name to use for both DML and SOQL pre/post processing
 	 */
-	global static DatabaseLayerSetting__mdt initSettings(DatabaseLayerSetting__mdt setting) {
-		MockCmdt.mock(DatabaseLayerSetting__mdt.SObjectType)?.add(setting);
-		DatabaseLayer.Utils.Plugins.init();
-		return setting;
-	}
-
-	/**
-	 * @description Creates an empty DatabaseLayerSetting__mdt for testing and injects it into the metadata selector.
-	 * @return The created test settings object
-	 */
-	global static DatabaseLayerSetting__mdt initSettings() {
-		return DatabaseLayerTestUtils.initSettings(new DatabaseLayerSetting__mdt());
-	}
-
-	/**
-	 * @description Creates a DatabaseLayerSetting__mdt for testing with both DML and SOQL plugins configured to use the same class.
-	 * @param className The name of the class to use for both DML and SOQL pre/post processing
-	 * @return The created test settings object with plugin configuration
-	 */
-	global static DatabaseLayerSetting__mdt initDmlAndSoqlPlugins(String className) {
-		DatabaseLayerSetting__mdt setting = new DatabaseLayerSetting__mdt(
-			DmlPreAndPostProcessor__c = className,
-			SoqlPreAndPostProcessor__c = className
+	global static void initDmlAndSoqlPlugins(String className) {
+		DatabaseLayerParameter__mdt dmlParam = new DatabaseLayerParameter__mdt(
+			DeveloperName = 'DmlPreAndPostProcessor',
+			Value__c = className
 		);
-		return DatabaseLayerTestUtils.initSettings(setting);
+		DatabaseLayerParameter__mdt soqlParam = new DatabaseLayerParameter__mdt(
+			DeveloperName = 'SoqlPreAndPostProcessor',
+			Value__c = className
+		);
+		MockCmdt.mock(DatabaseLayerParameter__mdt.SObjectType)?.add(dmlParam)?.add(soqlParam);
+		DatabaseLayer.Utils.Plugins.init();
 	}
 
 	// **** INNER **** //

@@ -4,15 +4,13 @@ Apex Database Layer includes a mechanism to inject custom logic, or "plugins" in
 
 ## How It Works
 
-The framework includes a custom metadata type, _Database Layer Setting_ / `DatabaseLayerSetting__mdt`.
+The framework reads configuration from the `DatabaseLayerParameter__mdt` custom metadata type. Each record represents a single named parameter, identified by its `DeveloperName`, with a string `Value__c` field.
 
-> _**Note**: This object is \_optional_ - you do not need to create any records to enable the framework's core functionality.\_
+> _**Note**: This object is **optional** — you do not need to create any records to enable the framework's core functionality._
 
-To leverage the plugin framework, create a `DatabaseLayerSetting__mdt` record. There can only be one such record, and it must be called "Default":
+To configure a plugin, create a `DatabaseLayerParameter__mdt` record whose `DeveloperName` matches the parameter name for that plugin, and set `Value__c` to the fully-qualified Apex class name that implements the plugin interface.
 
-<img width="1182" height="437" alt="image" src="https://github.com/user-attachments/assets/7595376c-afb0-4498-8c2e-5a7e1f0df3cb" />
-
-Each plugin looks at field(s) in the _Plugins_ section on the custom metadata record. For example, [Dml.PreAndPostProcessor](./Plugin:-Dml.PreAndPostProcessor) uses an apex class named in the _DML: Pre & Post Processor_ field to perform its logic.
+For the full list of supported parameter names and what they configure, see [DatabaseLayerParameter\_\_mdt Parameters](./DatabaseLayerParameter__mdt).
 
 ## Currently Supported Plugins
 

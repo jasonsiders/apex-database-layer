@@ -6,7 +6,7 @@ First, create an apex class that will be used to define your logic. Requirements
 
 - Class must be `public`.
 - Class must have a `public` 0-arg constructor (either explicit or implicit).
-- Class must implement the [`Dml.PreAndPostProcessor`](./The-Dml.PreAndPostProcessor-Interface) interface.
+- Class must implement the [`Soql.PreAndPostProcessor`](./The-Soql.PreAndPostProcessor-Interface) interface.
 
 ```apex
 public class SomeApexClass implements Soql.PreAndPostProcessor {
@@ -21,7 +21,7 @@ public class SomeApexClass implements Soql.PreAndPostProcessor {
     Logger.finest('Processed query ' + JSON.serialize(request))?.setRecord(records);
   }
 
-  public void processDmlError(Soql.Request request, Exception error) {
+  public void processSoqlError(Soql.Request request, Exception error) {
     String msg = request?.operation + ' error: ' + error;
     Logger.error(msg)?.setExceptionDetails(error);
     Logger.saveLog();
@@ -29,11 +29,13 @@ public class SomeApexClass implements Soql.PreAndPostProcessor {
 }
 ```
 
-Next, create a _Database Layer Setting_/`DatabaseLayerSetting__mdt` custom metadata record, called "Default" (unless one already exists).
+Next, navigate to `Setup > Custom Metadata Types > Database Layer Parameter > Manage Records` and create a new record with the following values:
 
-Finally, list your apex class from the previous step in the `SOQL: Pre & Post Processor` field, as shown below:
-
-<img width="1191" height="443" alt="image" src="https://github.com/user-attachments/assets/d7d0aac9-b78b-43d9-aa68-8544b91d9443" />
+| Field             | Value                                                               |
+| ----------------- | ------------------------------------------------------------------- |
+| **Label**         | SOQL Pre And Post Processor _(or any label you prefer)_             |
+| **DeveloperName** | `SoqlPreAndPostProcessor`                                           |
+| **Value**         | The fully-qualified name of your Apex class (e.g., `SomeApexClass`) |
 
 ---
 
