@@ -2,7 +2,7 @@
  * @description Handles all SOQL query operations with the Salesforce database. Provides a mockable, fluent query builder interface with comprehensive operator support and plugin capabilities.
  */
 @SuppressWarnings(
-	'PMD.AvoidGlobalModifier,PMD.CognitiveComplexity,PMD.CyclomaticComplexity,PMD.ExcessiveClassLength,PMD.ExcessivePublicCount'
+	'PMD.AvoidGlobalModifier,PMD.CognitiveComplexity,PMD.CyclomaticComplexity,PMD.ExcessiveClassLength,PMD.ExcessivePublicCount,PMD.NcssCount'
 )
 global inherited sharing virtual class Soql extends Soql.Builder {
 	global static final Operator EQUALS = new Soql.Operator('=');
@@ -92,6 +92,15 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	global Object query(Type returnType) {
 		Object result = this.initRequest(Soql.Operation.QUERY)?.process();
 		return JSON.deserialize(JSON.serialize(result), returnType);
+	}
+
+	/**
+	 * @description Executes the SOQL query and returns matching records, mapped by their Id
+	 * @return Map of SObject records matching the query criteria, grouped by their Id
+	 */
+	global Map<Id, SObject> queryAndMap() {
+		List<SObject> records = this.query();
+		return new Map<Id, SObject>(records);
 	}
 
 	/**
