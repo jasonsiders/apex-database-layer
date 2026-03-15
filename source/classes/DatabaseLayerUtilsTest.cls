@@ -62,57 +62,63 @@ private class DatabaseLayerUtilsTest {
 
 	@IsTest
 	private static void shouldReturnWhateverMetadataIsDefinedInOrg() {
-		// A validation rule enforces that at most, 1 settings record will exist in an org
-		// This ensures the get() method will return the 1st (and only) record, if one is defined:
-		DatabaseLayerSetting__mdt defaultSetting = DatabaseLayerSetting__mdt.getInstance('Default');
+		// Verify that getParameter() retrieves real org data without using SOQL:
+		String parameterName = 'DmlPreAndPostProcessor';
+		String expected = DatabaseLayerParameter__mdt.getInstance(parameterName)?.Value__c;
 		DatabaseLayerUtils utils = DatabaseLayer.Utils;
 
 		Test.startTest();
-		DatabaseLayerSetting__mdt results = utils?.Settings;
+		String result = utils?.getParameter(parameterName);
 		Assert.areEqual(0, Limits.getQueries(), 'Should not retrieve CMDT via SOQL');
 		Test.stopTest();
 
-		Assert.areEqual(defaultSetting?.DeveloperName, results?.DeveloperName, 'Wrong DatabaseLayerSetting__mdt value');
+		Assert.areEqual(expected, result, 'Wrong DatabaseLayerParameter__mdt value');
 	}
 
 	@IsTest
 	private static void shouldReturnMockedMetadata() {
-		// To force your test to use a specific DatabaseLayerSetting__mdt record, add ito the `settings` list:
-		DatabaseLayerSetting__mdt mockSetting = new DatabaseLayerSetting__mdt(DeveloperName = 'Test_123');
-		MockCmdt.mock(DatabaseLayerSetting__mdt.SObjectType)?.add(mockSetting);
+		// To force your test to use a specific DatabaseLayerParameter__mdt record, add it to the mock:
+		String parameterName = 'Test_123';
+		DatabaseLayerParameter__mdt mockParam = new DatabaseLayerParameter__mdt(
+			DeveloperName = parameterName,
+			Value__c = 'TestValue'
+		);
+		MockCmdt.mock(DatabaseLayerParameter__mdt.SObjectType)?.add(mockParam);
 
 		Test.startTest();
-		DatabaseLayerSetting__mdt results = DatabaseLayer.Utils.Settings;
+		String result = DatabaseLayer.Utils.getParameter(parameterName);
 		Assert.areEqual(0, Limits.getQueries(), 'Should not retrieve CMDT via SOQL');
 		Test.stopTest();
 
-		Assert.areEqual(mockSetting?.DeveloperName, results?.DeveloperName, 'Wrong DatabaseLayerSetting__mdt value');
+		Assert.areEqual(mockParam?.Value__c, result, 'Wrong parameter value');
 	}
 
 	@IsTest
 	private static void shouldReturnNullIfMockedEmtpyList() {
-		// Define `settings` as an empty list to ignore any defined DatabaseLayerSetting__mdt records in an org:
-		MockCmdt.mock(DatabaseLayerSetting__mdt.SObjectType);
+		// Define an empty mock to ignore any defined DatabaseLayerParameter__mdt records in an org:
+		MockCmdt.mock(DatabaseLayerParameter__mdt.SObjectType);
 
 		Test.startTest();
-		DatabaseLayerSetting__mdt results = DatabaseLayer.Utils.Settings;
+		String result = DatabaseLayer.Utils.getParameter('DmlPreAndPostProcessor');
 		Assert.areEqual(0, Limits.getQueries(), 'Should not retrieve CMDT via SOQL');
 		Test.stopTest();
 
-		Assert.isNull(results, 'Should not have returned a CMDT value');
+		Assert.isNull(result, 'Should not have returned a parameter value');
 	}
 
 	@IsTest
 	private static void shouldInitPluginObjectFromCustomMetadata() {
-		DatabaseLayerSetting__mdt mockSetting = new DatabaseLayerSetting__mdt(
-			DeveloperName = 'Test_123',
-			DmlPreAndPostProcessor__c = DatabaseLayerTestUtils.SamplePlugin.class.getName()
+		String parameterName = 'DmlPreAndPostProcessor';
+		DatabaseLayerParameter__mdt mockParam = new DatabaseLayerParameter__mdt(
+			DeveloperName = parameterName,
+			Value__c = DatabaseLayerTestUtils.SamplePlugin.class.getName()
 		);
-		MockCmdt.mock(DatabaseLayerSetting__mdt.SObjectType)?.add(mockSetting);
-		SObjectField field = DatabaseLayerSetting__mdt.DmlPreAndPostProcessor__c;
+		MockCmdt.mock(DatabaseLayerParameter__mdt.SObjectType)?.add(mockParam);
 
 		Test.startTest();
-		Dml.PreAndPostProcessor example = (Dml.PreAndPostProcessor) DatabaseLayer.Utils.Plugins.initPlugin(field);
+		Dml.PreAndPostProcessor example = (Dml.PreAndPostProcessor) DatabaseLayer.Utils.Plugins.initPlugin(
+			parameterName
+		);
 		Test.stopTest();
 
 		Assert.isNotNull(example, 'Did not generate an object from CMDT');
@@ -120,15 +126,15 @@ private class DatabaseLayerUtilsTest {
 
 	@IsTest
 	private static void shouldReturnNullPluginIfPluginNotConstructable() {
-		DatabaseLayerSetting__mdt mockSetting = new DatabaseLayerSetting__mdt(
-			DeveloperName = 'Test_123',
-			DmlPreAndPostProcessor__c = 'Soql' // No public 0-arg constructor
+		String parameterName = 'DmlPreAndPostProcessor';
+		DatabaseLayerParameter__mdt mockParam = new DatabaseLayerParameter__mdt(
+			DeveloperName = parameterName,
+			Value__c = 'Soql' // No public 0-arg constructor
 		);
-		MockCmdt.mock(DatabaseLayerSetting__mdt.SObjectType)?.add(mockSetting);
-		SObjectField field = DatabaseLayerSetting__mdt.DmlPreAndPostProcessor__c;
+		MockCmdt.mock(DatabaseLayerParameter__mdt.SObjectType)?.add(mockParam);
 
 		Test.startTest();
-		Object plugin = DatabaseLayer.Utils.Plugins.initPlugin(field);
+		Object plugin = DatabaseLayer.Utils.Plugins.initPlugin(parameterName);
 		Test.stopTest();
 
 		Assert.isNull(plugin, 'Did not return null plugin');
@@ -136,15 +142,15 @@ private class DatabaseLayerUtilsTest {
 
 	@IsTest
 	private static void shouldReturnNullPluginIfPluginInvalid() {
-		DatabaseLayerSetting__mdt mockSetting = new DatabaseLayerSetting__mdt(
-			DeveloperName = 'Test_123',
-			DmlPreAndPostProcessor__c = 'not a real object name'
+		String parameterName = 'DmlPreAndPostProcessor';
+		DatabaseLayerParameter__mdt mockParam = new DatabaseLayerParameter__mdt(
+			DeveloperName = parameterName,
+			Value__c = 'not a real object name'
 		);
-		MockCmdt.mock(DatabaseLayerSetting__mdt.SObjectType)?.add(mockSetting);
-		SObjectField field = DatabaseLayerSetting__mdt.DmlPreAndPostProcessor__c;
+		MockCmdt.mock(DatabaseLayerParameter__mdt.SObjectType)?.add(mockParam);
 
 		Test.startTest();
-		Object plugin = DatabaseLayer.Utils.Plugins.initPlugin(field);
+		Object plugin = DatabaseLayer.Utils.Plugins.initPlugin(parameterName);
 		Test.stopTest();
 
 		Assert.isNull(plugin, 'Did not return null plugin');
@@ -152,15 +158,15 @@ private class DatabaseLayerUtilsTest {
 
 	@IsTest
 	private static void shouldReturnNullPluginIfMissingPluginName() {
-		DatabaseLayerSetting__mdt mockSetting = new DatabaseLayerSetting__mdt(
-			DeveloperName = 'Test_123',
-			DmlPreAndPostProcessor__c = null
+		String parameterName = 'DmlPreAndPostProcessor';
+		DatabaseLayerParameter__mdt mockParam = new DatabaseLayerParameter__mdt(
+			DeveloperName = parameterName,
+			Value__c = null
 		);
-		MockCmdt.mock(DatabaseLayerSetting__mdt.SObjectType)?.add(mockSetting);
-		SObjectField field = DatabaseLayerSetting__mdt.DmlPreAndPostProcessor__c;
+		MockCmdt.mock(DatabaseLayerParameter__mdt.SObjectType)?.add(mockParam);
 
 		Test.startTest();
-		Object plugin = DatabaseLayer.Utils.Plugins.initPlugin(field);
+		Object plugin = DatabaseLayer.Utils.Plugins.initPlugin(parameterName);
 		Test.stopTest();
 
 		Assert.isNull(plugin, 'Did not return null plugin');
@@ -168,11 +174,10 @@ private class DatabaseLayerUtilsTest {
 
 	@IsTest
 	private static void shouldReturnNullPluginIfMissingSettingsRecords() {
-		MockCmdt.mock(DatabaseLayerSetting__mdt.SObjectType);
-		SObjectField field = DatabaseLayerSetting__mdt.DmlPreAndPostProcessor__c;
+		MockCmdt.mock(DatabaseLayerParameter__mdt.SObjectType);
 
 		Test.startTest();
-		Object plugin = DatabaseLayer.Utils.Plugins.initPlugin(field);
+		Object plugin = DatabaseLayer.Utils.Plugins.initPlugin('DmlPreAndPostProcessor');
 		Test.stopTest();
 
 		Assert.isNull(plugin, 'Did not return null plugin');

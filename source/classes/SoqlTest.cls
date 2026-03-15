@@ -1608,7 +1608,7 @@ private class SoqlTest {
 
 	@IsTest
 	private static void shouldNotRunProcessorLogicIfNoSettingsDefined() {
-		MockCmdt.mock(DatabaseLayerSetting__mdt.SObjectType);
+		MockCmdt.mock(DatabaseLayerParameter__mdt.SObjectType);
 		DatabaseLayer.Utils.Plugins.init();
 
 		Test.startTest();
@@ -1629,11 +1629,6 @@ private class SoqlTest {
 	}
 
 	// **** HELPER **** //
-	private static DatabaseLayerSetting__mdt initSettings() {
-		DatabaseLayerSetting__mdt settings = new DatabaseLayerSetting__mdt();
-		MockCmdt.mock(DatabaseLayerSetting__mdt.SObjectType)?.add(settings);
-		return settings;
-	}
 
 	private static Object validateQuery(Soql soql, String expected) {
 		Assert.areEqual('"' + expected + '"', '"' + soql + '"', 'Unexpected SOQL output');

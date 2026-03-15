@@ -14,23 +14,20 @@ public without sharing class DatabaseLayerUtils {
 	 */
 	@SuppressWarnings('PMD.PropertyNamingConventions')
 	public final DatabaseLayerUtils.Plugins Plugins { get; private set; }
-	/**
-	 * @description Utility for retrieving DatabaseLayerSetting__mdt configuration records.
-	 */
-	@SuppressWarnings('PMD.PropertyNamingConventions')
-	public DatabaseLayerSetting__mdt Settings {
-		get {
-			this.Settings = this.Settings ?? this.getSettings();
-			return this.Settings;
-		}
-		private set;
-	}
 
 	/**
 	 * @description Utility for working with SObject instances.
 	 */
 	@SuppressWarnings('PMD.PropertyNamingConventions')
 	public DatabaseLayerUtils.SObjects SObjects { get; private set; }
+
+	private Map<String, String> Parameters {
+		get {
+			this.Parameters = this.Parameters ?? this.loadParameters();
+			return this.Parameters;
+		}
+		private set;
+	}
 
 	/**
 	 * @description Constructor that initializes all utility sub-components
@@ -43,14 +40,32 @@ public without sharing class DatabaseLayerUtils {
 		this.SObjects = new DatabaseLayerUtils.SObjects();
 	}
 
-	private DatabaseLayerSetting__mdt getSettings() {
-		// Return the first mapped Database Layer Setting object
-		// A validation rule ensures there will only be one record of this type in an org:
-		Map<String, SObject> allSettingsMap = DatabaseLayer.Cmdt
-			?.ofType(DatabaseLayerSetting__mdt.SObjectType)
+	/**
+	 * @description Retrieves the value of a named DatabaseLayerParameter__mdt record.
+	 * @param developerName The DeveloperName of the parameter to retrieve
+	 * @return The Value__c of the matching parameter, or null if not found
+	 */
+	public String getParameter(String developerName) {
+		return this.Parameters?.get(developerName);
+	}
+
+	private Map<String, String> loadParameters() {
+		Map<String, String> result = new Map<String, String>();
+		Map<String, SObject> allParameters = DatabaseLayer.Cmdt
+			?.ofType(DatabaseLayerParameter__mdt.SObjectType)
 			?.getAll();
-		List<DatabaseLayerSetting__mdt> allSettings = (List<DatabaseLayerSetting__mdt>) allSettingsMap?.values();
-		return allSettings?.isEmpty() == false ? allSettings?.get(0) : null;
+		if (allParameters != null) {
+			for (SObject record : allParameters.values()) {
+				DatabaseLayerParameter__mdt param = (DatabaseLayerParameter__mdt) record;
+				result.put(param.DeveloperName, param.Value__c);
+			}
+		}
+		return result;
+	}
+
+	@TestVisible
+	private void resetParameters() {
+		this.Parameters = null;
 	}
 
 	// **** INNER **** //
@@ -106,6 +121,9 @@ public without sharing class DatabaseLayerUtils {
 	 */
 	@SuppressWarnings('PMD.AvoidDebugStatements')
 	public class Plugins {
+		private static final String DML_PARAM = 'DmlPreAndPostProcessor';
+		private static final String SOQL_PARAM = 'SoqlPreAndPostProcessor';
+
 		/**
 		 * @description The DML pre and post processor instance for this plugin configuration.
 		 */
@@ -125,31 +143,32 @@ public without sharing class DatabaseLayerUtils {
 		}
 
 		/**
-		 * @description Initializes a plugin instance based on custom metadata configuration.
-		 * @param field The SObjectField on DatabaseLayerSetting__mdt containing the plugin class name
+		 * @description Initializes a plugin instance based on a named DatabaseLayerParameter__mdt record.
+		 * @param parameterName The DeveloperName of the parameter containing the plugin class name
 		 * @return The instantiated plugin object, or null if initialization fails
 		 */
-		public Object initPlugin(SObjectField field) {
+		public Object initPlugin(String parameterName) {
 			String className;
 			try {
-				className = (String) DatabaseLayer.Utils?.Settings?.get(field);
+				className = DatabaseLayer.Utils?.getParameter(parameterName);
 				return (className != null) ? Type.forName(className)?.newInstance() : null;
 			} catch (Exception error) {
-				String source = DatabaseLayerUtils.Plugin.class.getName();
-				String msg = source + ': Invalid ' + field + ': "' + className + '". Details: ' + error;
+				String source = DatabaseLayerUtils.Plugins.class.getName();
+				String msg = source + ': Invalid "' + parameterName + '": "' + className + '". Details: ' + error;
 				System.debug(System.LoggingLevel.WARN, msg);
 				return null;
 			}
 		}
 
 		/**
-		 * @description Initialize the Dml/Soql plugins based on current DatabaseLayerSetting__mdt values
+		 * @description Initialize the Dml/Soql plugins based on current DatabaseLayerParameter__mdt values
 		 */
 		/* prettier-ignore */
 		@TestVisible
 		private void init() {
-			this.Dml = (Dml.PreAndPostProcessor) this.initPlugin(DatabaseLayerSetting__mdt.DmlPreAndPostProcessor__c);
-			this.Soql = (Soql.PreAndPostProcessor) this.initPlugin(DatabaseLayerSetting__mdt.SoqlPreAndPostProcessor__c);
+			DatabaseLayer.Utils?.resetParameters();
+			this.Dml = (Dml.PreAndPostProcessor) this.initPlugin(DML_PARAM);
+			this.Soql = (Soql.PreAndPostProcessor) this.initPlugin(SOQL_PARAM);
 		}
 	}
 
