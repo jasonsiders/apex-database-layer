@@ -94,7 +94,7 @@ private class DuplicatesTest {
 	}
 
 	// **** HELPER **** //
-	@SuppressWarnings('PMD.NcssMethodCount')
+	@SuppressWarnings('PMD.NcssMethodCount,PMD.NcssCount')
 	private static void assertOutputIsCorrect(Duplicates.FindDuplicatesResult findResult) {
 		Datacloud.FindDuplicatesResult nativeFindResult = findResult?.toDatacloudType();
 		Assert.isNotNull(nativeFindResult, 'Missing underlying Datacloud.FindDuplicateResult');

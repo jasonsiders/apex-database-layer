@@ -20,6 +20,7 @@
     - [Mocking Duplicate Rules](./Mocking-Duplicate-Rules)
 - **Plugins**
     - [About The Plugin Framework](./The-Plugin-Framework)
+    - [DatabaseLayerParameter\_\_mdt Parameters](./DatabaseLayerParameter__mdt)
     - [About Dml.PreAndPostProcessor Plugins](./Plugin:-Dml.PreAndPostProcessor)
     - [About Soql.PreAndPostProcessor Plugins](./Plugin:-Soql.PreAndPostProcessor)
     - [Plugin: Nebula Logger](./Plugin:-Nebula-Logger)
@@ -28,6 +29,7 @@
 
 - [**DatabaseLayer**](./The-DatabaseLayer-Class)
     - [DatabaseLayer.SoqlProvider](./The-DatabaseLayer.SoqlProvider-Class)
+- [**DatabaseLayerTestUtils**](./The-DatabaseLayerTestUtils-Class)
 - [**Dml**](./The-Dml-Class)
     - [Dml.Operation](./The-Dml.Operation-Enum)
     - [Dml.PreAndPostProcessor](./The-Dml.PreAndPostProcessor-Interface)
@@ -94,6 +96,7 @@
     - [Soql.Usage](./The-Soql.Usage-Enum)
     - [Soql.WhenClause](./The-Soql.WhenClause-Class)
 
-## Migration Gudes
+## Migration Guides
 
+- [v4.0.0](./Migration-Guide-v4.0.0)
 - [v3.0.0](./Migration-Guide-v3.0.0)

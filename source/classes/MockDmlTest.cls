@@ -1,4 +1,4 @@
-@SuppressWarnings('PMD.ApexUnitTestClassShouldHaveRunAs,PMD.CyclomaticComplexity')
+@SuppressWarnings('PMD.ApexUnitTestClassShouldHaveRunAs,PMD.CyclomaticComplexity,PMD.NcssCount')
 @IsTest
 private class MockDmlTest {
 	// **** VARIABLES **** //
@@ -7,7 +7,7 @@ private class MockDmlTest {
 	static {
 		TEST_SIZE = 20;
 		// Custom metadata actually defined in the org should not interfere with this test:
-		MockCmdt.mock(DatabaseLayerSetting__mdt.SObjectType);
+		MockCmdt.mock(DatabaseLayerParameter__mdt.SObjectType);
 		DatabaseLayer.useMockDml();
 	}
 
@@ -51,7 +51,7 @@ private class MockDmlTest {
 		}
 	}
 
-	@IsTest 
+	@IsTest
 	private static void shouldMockConvertWithNoOpportunity() {
 		Lead lead = (Lead) new MockRecord(Lead.SObjectType)?.withId()?.toSObject();
 		Database.LeadConvert leadToConvert = new Database.LeadConvert();
@@ -1004,7 +1004,7 @@ private class MockDmlTest {
 
 	@IsTest
 	private static void shouldNotRunProcessorLogicIfNoSettingsDefined() {
-		MockCmdt.mock(DatabaseLayerSetting__mdt.SObjectType);
+		MockCmdt.mock(DatabaseLayerParameter__mdt.SObjectType);
 		DatabaseLayer.Utils.Plugins.init();
 		List<Account> accounts = MockDmlTest.initRecords(Account.SObjectType, false);
 
@@ -1038,12 +1038,6 @@ private class MockDmlTest {
 
 	private static List<SObject> initRecords(SObjectType objectType) {
 		return MockDmlTest.initRecords(objectType, false);
-	}
-
-	private static DatabaseLayerSetting__mdt initSettings() {
-		DatabaseLayerSetting__mdt settings = new DatabaseLayerSetting__mdt();
-		MockCmdt.mock(DatabaseLayerSetting__mdt.SObjectType)?.add(settings);
-		return settings;
 	}
 
 	// **** INNER **** //
