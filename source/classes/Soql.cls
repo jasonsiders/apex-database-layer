@@ -95,7 +95,12 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	}
 
 	/**
-	 * @description Executes the SOQL query and returns matching records, mapped by their Id
+	 * @description Executes the SOQL query and returns matching records, mapped by their Id.
+	 * Note: Returns `Map<Id, SObject>` rather than a specific SObject subtype because Apex does not
+	 * support covariant casting of generic Map types — a `Map<Id, SObject>` cannot be cast to
+	 * `Map<Id, User>` at runtime, even if all values are User records. If a typed map is needed,
+	 * use `query()` and construct the map directly:
+	 * `new Map<Id, User>((List<User>) soql.query())`
 	 * @return Map of SObject records matching the query criteria, grouped by their Id
 	 */
 	global Map<Id, SObject> queryAndMap() {
