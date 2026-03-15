@@ -19,7 +19,7 @@ public class SomeApexClass implements Soql.PreAndPostProcessor {
     Logger.finest('Processed query ' + JSON.serialize(request))?.setRecord(records);
   }
 
-  public void processDmlError(Soql.Request request, Exception error) {
+  public void processSoqlError(Soql.Request request, Exception error) {
     String msg = request?.operation + ' error: ' + error;
     Logger.error(msg)?.setExceptionDetails(error);
     Logger.saveLog();
@@ -45,7 +45,7 @@ Defines logic to be run immediately before a SOQL operation.
 
 ### `processPostSoql`
 
-Defines logic to be run immediately before a SOQL operation.
+Defines logic to be run immediately after a SOQL operation.
 
 Note: This method is not called if the SOQL operation yields a thrown exception. You can use the [`processSoqlError`](./The-Soql.PreAndPostProcessor-Interface#processdmlerror) method to handle these errors instead.
 
