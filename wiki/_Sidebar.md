@@ -28,6 +28,7 @@
 
 - [**DatabaseLayer**](./The-DatabaseLayer-Class)
     - [DatabaseLayer.SoqlProvider](./The-DatabaseLayer.SoqlProvider-Class)
+- [**DatabaseLayerTestUtils**](./The-DatabaseLayerTestUtils-Class)
 - [**Dml**](./The-Dml-Class)
     - [Dml.Operation](./The-Dml.Operation-Enum)
     - [Dml.PreAndPostProcessor](./The-Dml.PreAndPostProcessor-Interface)
