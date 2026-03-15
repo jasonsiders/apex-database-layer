@@ -4,8 +4,8 @@
 			"path": "source",
 			"default": true,
 			"package": "apex-database-layer-unlocked",
-			"versionName": "v4.0.0",
-			"versionNumber": "4.0.0.NEXT",
+			"versionName": "v3.7.9",
+			"versionNumber": "3.7.9.NEXT",
 			"versionDescription": ""
 		}
 	],
@@ -46,6 +46,7 @@
 		"apex-database-layer-unlocked@3.7.6-1": "04tDn0000011P1LIAU",
 		"apex-database-layer-unlocked@3.7.7-1": "04tDn0000011P88IAE",
 		"apex-database-layer-unlocked@3.7.8-1": "04tDn0000011P8DIAU",
-		"apex-database-layer-unlocked@3.7.9-1": "04tDn0000011P8IIAU"
+		"apex-database-layer-unlocked@3.7.9-1": "04tDn0000011P8IIAU",
+		"apex-database-layer-unlocked@3.7.9-2": "04tDn0000011P8NIAU"
 	}
 }
