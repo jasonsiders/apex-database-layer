@@ -8,19 +8,19 @@
 			"versionNumber": "4.0.0.NEXT"
 		},
 		{
-			"versionName": "v1.0.0",
-			"versionNumber": "1.0.0.NEXT",
+			"versionName": "v1.1.0",
+			"versionNumber": "1.1.0.NEXT",
 			"path": "plugins/nebula-logger/source",
 			"default": false,
-			"package": "apex-database-layer-plugin-nebula-logger",
+			"package": "plugin-nebula-logger",
 			"versionDescription": "Use Nebula Logger to automatically log details of DML & SOQL operations",
 			"dependencies": [
 				{
-					"package": "apex-database-layer-unlocked",
-					"versionNumber": "3.2.0.LATEST"
+					"package": "apex-database-layer",
+					"versionNumber": "4.0.0.LATEST"
 				},
 				{
-					"package": "nebula-logger-unlocked@4.16.4"
+					"package": "nebula-logger-unlocked@4.17.3"
 				}
 			]
 		}
@@ -30,10 +30,9 @@
 	"sfdcLoginUrl": "https://login.salesforce.com",
 	"sourceApiVersion": "66.0",
 	"packageAliases": {
-		"apex-database-layer-managed": "0HoDn0000010wCnKAI",
-		"apex-database-layer-unlocked": "0HoDn000000kAONKA2",
-		"apex-database-layer-plugin-nebula-logger": "0HoDn0000010wCxKAI",
-		"nebula-logger-unlocked@4.16.4": "04tKe0000011MyWIAU",
-		"apex-database-layer-plugin-nebula-logger@1.0.0-1": "04tDn0000011OVJIA2"
+		"apex-database-layer": "0HoDn000000kAONKA2",
+		"nebula-logger-unlocked@4.17.3": "04tg70000001IMHAA2",
+		"plugin-nebula-logger": "0HoDn0000010wCxKAI",
+		"plugin-nebula-logger@1.0.0-1": "04tDn0000011OVJIA2"
 	}
 }
