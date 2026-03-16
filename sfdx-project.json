@@ -1,7 +1,7 @@
 {
 	"packageDirectories": [
 		{
-			"path": "source",
+			"path": "src/core",
 			"default": true,
 			"package": "Apex Database Layer",
 			"versionName": "v4.0.0",
@@ -10,7 +10,7 @@
 		{
 			"versionName": "v1.1.0",
 			"versionNumber": "1.1.0.NEXT",
-			"path": "plugins/nebula-logger/source",
+			"path": "src/plugins/nebula-logger",
 			"default": false,
 			"package": "plugin-nebula-logger",
 			"versionDescription": "Use Nebula Logger to automatically log details of DML & SOQL operations",
