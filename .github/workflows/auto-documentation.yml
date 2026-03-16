@@ -1,16 +1,8 @@
 name: Auto Documentation
 
 on:
-  pull_request:
-    branches: [main]
-    types: [opened, ready_for_review, reopened, synchronize]
-    paths:
-      - "source/**"
-      - "plugins/**"
-
-concurrency:
-  group: auto-doc
-  cancel-in-progress: true
+  workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: write
@@ -20,7 +12,6 @@ permissions:
 jobs:
   auto-documentation:
     name: Generate Documentation
-    if: ${{ !github.event.pull_request.draft && !contains(github.actor, '[bot]') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -29,7 +20,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          ref: ${{ github.head_ref }}
+          ref: ${{ github.head_ref || github.ref_name }}
           fetch-depth: 0
 
       - name: Check if last commit was auto-documentation
@@ -147,4 +138,4 @@ jobs:
 
           Generated documentation for new global classes/methods/properties"
 
-          git push origin ${{ github.head_ref }}
+          git push origin ${{ github.head_ref || github.ref_name }}
