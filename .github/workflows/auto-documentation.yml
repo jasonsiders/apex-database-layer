@@ -101,9 +101,9 @@ jobs:
           fi
           if git log --format="%B" "${BASE}..HEAD" 2>/dev/null | grep -qi "co-authored-by.*claude"; then
             echo "Stripping Claude Co-authored-by trailers from new commits..."
-            FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch -f --msg-filter \
-              'sed "/[Cc]o-[Aa]uthored-[Bb]y.*[Cc]laude/d"' \
-              "${BASE}..HEAD"
+            GIT_SEQUENCE_EDITOR="sed -i 's/^pick /reword /g'" \
+            GIT_EDITOR="sed -i '/[Cc]o-[Aa]uthored-[Bb]y.*[Cc]laude/d'" \
+            git rebase -i "${BASE}"
             git push origin "HEAD:${BRANCH}" --force
           else
             echo "No Claude attribution found in new commits"

@@ -88,7 +88,7 @@ jobs:
         if: ${{ steps.scan.outputs.num-violations-above-threshold > 0 }}
         run: |
           # If any violations above the specified threshold, post the results to the PR and fail the check:
-          NUM_VIOLATIONS=${{ steps.scan.outputs.num-violations-above-threshold}}
+          NUM_VIOLATIONS=${{ steps.scan.outputs.num-violations-above-threshold }}
           echo "⚠️ Detected $NUM_VIOLATIONS violations that meet/exceed the set threshold. View the job summary for more details:"
           echo "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           exit 1
