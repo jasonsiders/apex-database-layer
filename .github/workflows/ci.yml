@@ -158,11 +158,12 @@ jobs:
             --wait 10
       - name: Run Tests
         run: |
+          # Note: Tests for plugins packages aren't supported at this time:
           sf project deploy start \
             --coverage-formatters json-summary \
             --dry-run \
             --ignore-conflicts \
-            --source-dir src \
+            --source-dir src/core \
             --test-level RunLocalTests \
             --verbose \
             --wait 30
