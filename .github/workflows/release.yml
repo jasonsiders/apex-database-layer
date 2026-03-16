@@ -8,19 +8,21 @@ on:
       - "src/**"
   workflow_dispatch:
     inputs:
-      promote-package:
+      promote:
         description: Promote New Package Versions?
         required: false
         default: true
         type: boolean
-      unlocked-version:
-        description: Unlocked Package Version (#.#.#)
+      create-release:
+        description: Create GitHub Releases?
         required: false
-        type: string
-      nebula-version:
-        description: Nebula Plugin Package Version (#.#.#)
+        default: true
+        type: boolean
+      skip-validation:
+        description: Skip validation and code coverage checks
         required: false
-        type: string
+        default: false
+        type: boolean
 
 concurrency:
   # Queue releases to prevent version collisions - don't cancel, let them run sequentially
@@ -33,151 +35,65 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
-      core-changed: ${{ steps.check.outputs.core-changed }}
-      nebula-changed: ${{ steps.check.outputs.nebula-changed }}
+      packages: ${{ steps.check.outputs.packages }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 2
 
-      - name: Check Changed Paths
+      - name: Detect Changed Package Directories
         id: check
+        shell: bash
         run: |
-          if git diff --name-only HEAD~1 HEAD | grep -q "^src/core/"; then
-            echo "core-changed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "core-changed=false" >> "$GITHUB_OUTPUT"
-          fi
-          if git diff --name-only HEAD~1 HEAD | grep -q "^src/plugins/nebula-logger/"; then
-            echo "nebula-changed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "nebula-changed=false" >> "$GITHUB_OUTPUT"
-          fi
+          PACKAGES='[]'
 
-  versioning:
-    name: Versioning
-    needs: [detect-changes]
-    outputs:
-      unlocked-version: ${{ steps.determine-version.outputs.unlocked-version }}
-      nebula-version: ${{ steps.determine-version.outputs.nebula-version }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
+          while IFS= read -r entry; do
+            PKG_ALIAS=$(echo "$entry" | jq -r '.package')
+            PKG_PATH=$(echo "$entry" | jq -r '.path')
+            CURR_VERSION=$(echo "$entry" | jq -r '.versionNumber' | sed 's/\.NEXT$//')
 
-      - name: Determine Versions
-        id: determine-version
-        env:
-          CORE_CHANGED: ${{ needs.detect-changes.outputs.core-changed }}
-          NEBULA_CHANGED: ${{ needs.detect-changes.outputs.nebula-changed }}
-          INPUT_UNLOCKED_VERSION: ${{ inputs.unlocked-version }}
-          INPUT_NEBULA_VERSION: ${{ inputs.nebula-version }}
-        run: |
-          strip_next() { echo "${1%.NEXT}"; }
-          increment_patch() {
-            IFS='.' read -ra P <<< "$1"
-            echo "${P[0]}.${P[1]}.$((P[2] + 1))"
-          }
+            # Include package if: workflow_dispatch (run all), or files changed under its path
+            if [[ "${{ github.event_name }}" == "workflow_dispatch" ]] || \
+               git diff --name-only HEAD~1 HEAD | grep -q "^${PKG_PATH}/"; then
 
-          UNLOCKED_CURR=$(strip_next "$(jq -r '.packageDirectories[] | select(.default == true) | .versionNumber' sfdx-project.json)")
-          NEBULA_CURR=$(strip_next "$(jq -r '.packageDirectories[] | select(.path == "src/plugins/nebula-logger") | .versionNumber' sfdx-project.json)")
+              # On push: auto-increment patch if version is unchanged from previous commit
+              if [[ "${{ github.event_name }}" == "push" ]]; then
+                PREV_VERSION=$(git show HEAD~1:sfdx-project.json | \
+                  jq -r --arg path "$PKG_PATH" \
+                  '.packageDirectories[] | select(.path == $path) | .versionNumber' | \
+                  sed 's/\.NEXT$//')
+                if [[ "$CURR_VERSION" == "$PREV_VERSION" ]]; then
+                  IFS='.' read -ra P <<< "$CURR_VERSION"
+                  CURR_VERSION="${P[0]}.${P[1]}.$((P[2] + 1))"
+                  echo "Auto-incremented $PKG_ALIAS version to $CURR_VERSION"
+                fi
+              fi
 
-          if [[ "${{ github.event_name }}" == "push" ]]; then
-            UNLOCKED_PREV=$(strip_next "$(git show HEAD~1:sfdx-project.json | jq -r '.packageDirectories[] | select(.default == true) | .versionNumber')")
-            NEBULA_PREV=$(strip_next "$(git show HEAD~1:sfdx-project.json | jq -r '.packageDirectories[] | select(.path == "src/plugins/nebula-logger") | .versionNumber')")
-
-            if [[ "$UNLOCKED_CURR" == "$UNLOCKED_PREV" && "$CORE_CHANGED" == "true" ]]; then
-              UNLOCKED_CURR=$(increment_patch "$UNLOCKED_CURR")
-              echo "Auto-incremented unlocked version to: $UNLOCKED_CURR"
+              PACKAGES=$(echo "$PACKAGES" | jq \
+                --arg pkg "$PKG_ALIAS" --arg ver "$CURR_VERSION" \
+                '. + [{"package": $pkg, "version": $ver}]')
             fi
-            if [[ "$NEBULA_CURR" == "$NEBULA_PREV" && "$NEBULA_CHANGED" == "true" ]]; then
-              NEBULA_CURR=$(increment_patch "$NEBULA_CURR")
-              echo "Auto-incremented nebula version to: $NEBULA_CURR"
-            fi
-          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            [[ -n "$INPUT_UNLOCKED_VERSION" ]] && UNLOCKED_CURR="$INPUT_UNLOCKED_VERSION"
-            [[ -n "$INPUT_NEBULA_VERSION" ]] && NEBULA_CURR="$INPUT_NEBULA_VERSION"
-          fi
+          done < <(jq -c '.packageDirectories[] | select(.package != null)' sfdx-project.json)
 
-          echo "Unlocked version: $UNLOCKED_CURR"
-          echo "Nebula version: $NEBULA_CURR"
-
-          if [[ ! "$UNLOCKED_CURR" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "ERROR: Unlocked version '$UNLOCKED_CURR' is not valid semver"
-            exit 1
-          fi
-          if [[ ! "$NEBULA_CURR" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "ERROR: Nebula version '$NEBULA_CURR' is not valid semver"
-            exit 1
-          fi
-
-          echo "unlocked-version=$UNLOCKED_CURR" >> "$GITHUB_OUTPUT"
-          echo "nebula-version=$NEBULA_CURR" >> "$GITHUB_OUTPUT"
+          echo "Changed packages: $PACKAGES"
+          echo "packages=$PACKAGES" >> "$GITHUB_OUTPUT"
 
   create-package-versions:
-    name: Create Package Versions
-    needs: [versioning, detect-changes]
+    name: Create Package Version
+    needs: [detect-changes]
+    if: ${{ needs.detect-changes.outputs.packages != '[]' && needs.detect-changes.outputs.packages != '' }}
+    strategy:
+      matrix:
+        pkg: ${{ fromJson(needs.detect-changes.outputs.packages) }}
+      fail-fast: false
     permissions:
       contents: write
     uses: ./.github/workflows/packaging.yml
     secrets: inherit
     with:
-      run-unlocked-package: ${{ needs.detect-changes.outputs.core-changed == 'true' || github.event_name == 'workflow_dispatch' }}
-      run-nebula-plugin-package: ${{ needs.detect-changes.outputs.nebula-changed == 'true' || github.event_name == 'workflow_dispatch' }}
-      promote-package: ${{ inputs.promote-package || false }}
-      unlocked-version: ${{ needs.versioning.outputs.unlocked-version }}
-      nebula-version: ${{ needs.versioning.outputs.nebula-version }}
-
-  create-unlocked-release:
-    name: Create Unlocked Release
-    needs: [versioning, detect-changes, create-package-versions]
-    if: ${{ success() && (needs.detect-changes.outputs.core-changed == 'true' || github.event_name == 'workflow_dispatch') && needs.create-package-versions.outputs.unlocked-version-id != '' }}
-    permissions:
-      contents: write
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Create Release
-        uses: softprops/action-gh-release@v2.3.2
-        with:
-          body: |
-            ## Installation
-
-            ### Unlocked Package
-            **Package Version**: `${{ needs.create-package-versions.outputs.unlocked-version-id }}`
-            ```bash
-            sf package install --package ${{ needs.create-package-versions.outputs.unlocked-version-id }} --wait 20
-            ```
-          generate_release_notes: true
-          make_latest: true
-          tag_name: unlocked/v${{ needs.versioning.outputs.unlocked-version }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-  create-nebula-release:
-    name: Create Nebula Plugin Release
-    needs: [versioning, detect-changes, create-package-versions]
-    if: ${{ success() && (needs.detect-changes.outputs.nebula-changed == 'true' || github.event_name == 'workflow_dispatch') && needs.create-package-versions.outputs.nebula-version-id != '' }}
-    permissions:
-      contents: write
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Create Release
-        uses: softprops/action-gh-release@v2.3.2
-        with:
-          body: |
-            ## Installation
-
-            ### Nebula Logger Plugin
-            **Package Version**: `${{ needs.create-package-versions.outputs.nebula-version-id }}`
-            ```bash
-            sf package install --package ${{ needs.create-package-versions.outputs.nebula-version-id }} --wait 20
-            ```
-          generate_release_notes: true
-          make_latest: false
-          tag_name: plugin-nebula/v${{ needs.versioning.outputs.nebula-version }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+      package: ${{ matrix.pkg.package }}
+      version: ${{ matrix.pkg.version }}
+      promote: ${{ inputs.promote || false }}
+      create-release: ${{ inputs.create-release == true || github.event_name == 'push' }}
+      skip-validation: ${{ inputs.skip-validation || false }}
