@@ -90,6 +90,25 @@ jobs:
             ## Expected Output:
             Create or modify files in the `wiki/` directory as needed. I will review these changes as part of the PR.
 
+      - name: Remove Claude Attribution
+        if: steps.check-auto-commit.outputs.auto-commit == 'false' && steps.changed-files.outputs.has-apex-changes == 'true'
+        run: |
+          BRANCH="${{ github.head_ref || github.ref_name }}"
+          BASE=$(git rev-parse "origin/${BRANCH}" 2>/dev/null || echo "")
+          if [ -z "$BASE" ]; then
+            echo "Cannot determine base commit; skipping attribution cleanup"
+            exit 0
+          fi
+          if git log --format="%B" "${BASE}..HEAD" 2>/dev/null | grep -qi "co-authored-by.*claude"; then
+            echo "Stripping Claude Co-authored-by trailers from new commits..."
+            FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch -f --msg-filter \
+              'sed "/[Cc]o-[Aa]uthored-[Bb]y.*[Cc]laude/d"' \
+              "${BASE}..HEAD"
+            git push origin "HEAD:${BRANCH}" --force
+          else
+            echo "No Claude attribution found in new commits"
+          fi
+
       - name: Check if Home.md Changed
         if: steps.check-auto-commit.outputs.auto-commit == 'false'
         id: check-home
