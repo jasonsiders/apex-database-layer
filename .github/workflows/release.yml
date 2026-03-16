@@ -77,7 +77,11 @@ jobs:
           done < <(jq -c '.packageDirectories[] | select(.package != null)' sfdx-project.json)
 
           echo "Changed packages: $PACKAGES"
-          echo "packages=$PACKAGES" >> "$GITHUB_OUTPUT"
+          {
+            echo 'packages<<EOF'
+            echo "$PACKAGES"
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
 
   create-package-versions:
     name: Create Package Version
