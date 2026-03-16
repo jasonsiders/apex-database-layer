@@ -4,12 +4,20 @@ on:
   workflow_call:
     inputs:
       package:
-        description: Package Directory ("managed" or "unlocked")
-        default: unlocked
+        description: Package alias (from sfdx-project.json)
+        required: true
+        type: string
+      version:
+        description: Version number (#.#.#). If omitted, uses value from sfdx-project.json
         required: false
         type: string
-      promote-package:
-        description: Promote New Package Version?
+      promote:
+        description: Promote new package version?
+        default: false
+        required: false
+        type: boolean
+      create-release:
+        description: Create a GitHub release?
         default: false
         required: false
         type: boolean
@@ -18,23 +26,30 @@ on:
         default: false
         required: false
         type: boolean
-      version:
-        description: Version Number (#.#.#)
-        required: false
-        type: string
     outputs:
       version-id:
         description: "Package Version ID"
         value: ${{ jobs.create-package-version.outputs.version-id }}
+      version-name:
+        description: "Package Version Name"
+        value: ${{ jobs.create-package-version.outputs.version-name }}
   workflow_dispatch:
     inputs:
       package:
-        description: Package Directory ("managed" or "unlocked")
-        default: unlocked
+        description: Package alias (from sfdx-project.json)
+        required: true
+        type: string
+      version:
+        description: Version number (#.#.#). If omitted, uses value from sfdx-project.json
         required: false
         type: string
-      promote-package:
-        description: Promote New Package Version?
+      promote:
+        description: Promote new package version?
+        default: false
+        required: false
+        type: boolean
+      create-release:
+        description: Create a GitHub release?
         default: false
         required: false
         type: boolean
@@ -43,16 +58,13 @@ on:
         default: false
         required: false
         type: boolean
-      version:
-        description: Version Number (#.#.#)
-        required: false
-        type: string
 
 jobs:
   create-package-version:
-    name: Create Package Version
+    name: Create Package Version (${{ inputs.package }})
     outputs:
       version-id: ${{ steps.create-package.outputs.version-id }}
+      version-name: ${{ steps.get-version.outputs.version-name }}
     permissions:
       contents: write
     runs-on: ubuntu-latest
@@ -92,34 +104,22 @@ jobs:
             --username "$USERNAME"
           trap 'rm -f server.key' EXIT
 
-      - name: Switch Package Context
-        shell: bash
-        run: |
-          # Validate package directory and sfdx-project.json file exist
-          if [[ ! -f "packages/${{ inputs.package }}/sfdx-project.json" ]]; then
-            echo "ERROR: 'packages/${{ inputs.package }}/sfdx-project.json' not found"
-            exit 1
-          fi
-          # Swap the sfdx-project.json file for the one listed in the package directory
-          mkdir -p tmp
-          mv sfdx-project.json tmp/
-          cp "packages/${{ inputs.package }}/sfdx-project.json" .
-
       - name: Get Version Number
         id: get-version
         env:
+          PACKAGE: ${{ inputs.package }}
           INPUT_VERSION: ${{ inputs.version }}
         shell: bash
         run: |
-          # If an input version number isn't set, use the current version defined in sfdx-project.json:
           if [[ -z "$INPUT_VERSION" ]]; then
-            VERSION_NUMBER=$(jq -r '.packageDirectories[] | select(.default == true) | .versionNumber' sfdx-project.json)
+            VERSION_NUMBER=$(jq -r --arg pkg "$PACKAGE" \
+              '.packageDirectories[] | select(.package == $pkg) | .versionNumber' \
+              sfdx-project.json)
             echo "Using the version number defined in sfdx-project.json: $VERSION_NUMBER"
           else
             VERSION_NUMBER="${INPUT_VERSION}.NEXT"
             echo "Using specified version number: $VERSION_NUMBER"
           fi
-          # Create version name by removing .NEXT suffix
           VERSION_NAME="v${VERSION_NUMBER%.NEXT}"
           echo "version-number=$VERSION_NUMBER" >> "$GITHUB_OUTPUT"
           echo "version-name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
@@ -127,33 +127,27 @@ jobs:
       - name: Update Package Version
         shell: bash
         env:
+          PACKAGE: ${{ inputs.package }}
           VERSION_NUMBER: ${{ steps.get-version.outputs.version-number }}
           VERSION_NAME: ${{ steps.get-version.outputs.version-name }}
         run: |
-          # Update the version number/name in both project files:
-          # Update the package file
-          jq --arg vn "$VERSION_NUMBER" --arg vnm "$VERSION_NAME" \
-            '.packageDirectories[0].versionNumber = $vn | .packageDirectories[0].versionName = $vnm' \
+          jq --arg pkg "$PACKAGE" --arg vn "$VERSION_NUMBER" --arg vnm "$VERSION_NAME" \
+            '(.packageDirectories[] | select(.package == $pkg) | .versionNumber) = $vn |
+             (.packageDirectories[] | select(.package == $pkg) | .versionName) = $vnm' \
             sfdx-project.json > sfdx-project.json.tmp && mv sfdx-project.json.tmp sfdx-project.json
-          # Update version in the original root file
-          jq --arg vn "$VERSION_NUMBER" --arg vnm "$VERSION_NAME" \
-            '.packageDirectories[0].versionNumber = $vn | .packageDirectories[0].versionName = $vnm' \
-            tmp/sfdx-project.json > tmp/sfdx-project.json.tmp && mv tmp/sfdx-project.json.tmp tmp/sfdx-project.json
 
       - name: Create New Package Version
         id: create-package
         env:
-          VERSION_NUMBER: ${{ steps.get-version.outputs.version-number }}
+          PACKAGE: ${{ inputs.package }}
           WIKI_URL: "https://github.com/jasonsiders/apex-database-layer/wiki"
         shell: bash
         run: |
           set -euo pipefail
-          PACKAGE_ALIAS=$(jq -r '.packageDirectories[] | select(.default == true) | .package' sfdx-project.json)
           VALIDATION_FLAG=$([[ "${{ inputs.skip-validation }}" == "true" ]] && echo "skip-validation" || echo "code-coverage")
-          COMMAND="sf package version create --$VALIDATION_FLAG --installation-key-bypass --json --package \"$PACKAGE_ALIAS\" --post-install-url \"$WIKI_URL\" --wait 29"
+          COMMAND="sf package version create --$VALIDATION_FLAG --installation-key-bypass --json --package \"$PACKAGE\" --post-install-url \"$WIKI_URL\" --wait 29"
           echo "$COMMAND"
           if RESULT=$(eval "$COMMAND" 2>&1); then
-            # Success - extract version ID
             VERSION_ID=$(echo "$RESULT" | jq -r '.result.SubscriberPackageVersionId')
             echo "Package Version ID: $VERSION_ID"
             echo "version-id=$VERSION_ID" >> "$GITHUB_OUTPUT"
@@ -164,31 +158,20 @@ jobs:
           fi
 
       - name: Promote Package Version
-        if: ${{ inputs.promote-package == 'true' }}
+        if: ${{ inputs.promote == true }}
         env:
-          PACKAGE_TYPE: ${{ inputs.package }}
           VERSION_ID: ${{ steps.create-package.outputs.version-id }}
           VERSION_NAME: ${{ steps.get-version.outputs.version-name }}
+          PACKAGE: ${{ inputs.package }}
         shell: bash
         run: |
           set -euo pipefail
           sf package version promote --package "$VERSION_ID" --no-prompt
-          echo "::success:: Promoted $PACKAGE_TYPE package $VERSION_NAME - $VERSION_ID"
+          echo "Promoted $PACKAGE $VERSION_NAME - $VERSION_ID"
 
       - name: Run Prettier
         shell: bash
-        run: |
-          # Run Prettier on sfdx-project.json files, since packaging overwrites spacing:
-          npx prettier -w sfdx-project.json
-          npx prettier -w tmp/sfdx-project.json
-
-      - name: Cleanup
-        shell: bash
-        run: |
-          # Relocate root & package's project files back to their original location
-          cp sfdx-project.json "packages/${{ inputs.package }}/" 
-          mv tmp/sfdx-project.json .         
-          rm -rf tmp/
+        run: npx prettier -w sfdx-project.json
 
       - name: Pull Latest Changes
         shell: bash
@@ -203,5 +186,36 @@ jobs:
       - name: Tag & Commit Changes
         uses: "stefanzweifel/git-auto-commit-action@v6"
         with:
-          commit_message: "Packaged new ${{ inputs.package }} version ${{ steps.get-version.outputs.version-name }}"
+          commit_message: "Packaged ${{ inputs.package }} version ${{ steps.get-version.outputs.version-name }}"
           skip_dirty_check: true
+
+      - name: Compute Release Metadata
+        id: release-meta
+        if: ${{ inputs.create-release == true }}
+        env:
+          PACKAGE: ${{ inputs.package }}
+          VERSION_NAME: ${{ steps.get-version.outputs.version-name }}
+        shell: bash
+        run: |
+          TAG_PREFIX=$(echo "$PACKAGE" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
+          echo "tag=${TAG_PREFIX}/${VERSION_NAME}" >> "$GITHUB_OUTPUT"
+          IS_DEFAULT=$(jq -r --arg pkg "$PACKAGE" \
+            '.packageDirectories[] | select(.package == $pkg) | .default // false' \
+            sfdx-project.json)
+          echo "make-latest=$IS_DEFAULT" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        if: ${{ inputs.create-release == true }}
+        uses: softprops/action-gh-release@v2.3.2
+        with:
+          body: |
+            ## Installation
+
+            **Package Version**: `${{ steps.create-package.outputs.version-id }}`
+            ```bash
+            sf package install --package ${{ steps.create-package.outputs.version-id }} --wait 20
+            ```
+          generate_release_notes: true
+          make_latest: ${{ steps.release-meta.outputs.make-latest }}
+          tag_name: ${{ steps.release-meta.outputs.tag }}
+          token: ${{ secrets.GITHUB_TOKEN }}
