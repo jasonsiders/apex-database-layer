@@ -102,7 +102,7 @@ global class MockDml extends Dml {
 	global static void eraseAllHistories() {
 		MockDml.MockDatabase = new MockDml.Database();
 	}
-
+	
 	/**
 	 * @description Configures all DML operations to fail.
 	 */
@@ -237,16 +237,48 @@ global class MockDml extends Dml {
 		global Database snapshot() {
 			return (MockDml.Database) JSON.deserialize(JSON.serialize(this), MockDml.Database.class);
 		}
+
+		/**
+		 * @description Represents the total number of DML statements in the transaction; similar to Limits.getDmlStatements()
+		 * @return The cumulative total of all History objects' numDmlStatements property
+		 */
+		global Integer getTotalDmlStatements() {
+			Integer total = 0;
+			for (MockDml.History history : this.getAllHistories()) {
+				total += history?.numDmlStatements ?? 0;
+			}
+			return total;
+		}
+
+		private List<MockDml.History> getAllHistories() {
+			return new List<MockDml.History>{
+				this.converted,
+				this.deleted,
+				this.inserted,
+				this.published,
+				this.purged,
+				this.undeleted,
+				this.updated,
+				this.upserted
+			};
+		}
 	}
 
 	/**
 	 * @description Base class for tracking DML operation history and providing assertion capabilities.
 	 */
 	global abstract class History {
+		/**
+		 * @description Indicates the number of times this particular DML statement was called in a mock context
+		 * Allows callers to verify the number of times a specific DML operation was processed, 
+		 * since Limits.getDmlDmlStatements() cannot track mock DML statements
+		 */
+		public Integer numDmlStatements { get; protected set; }
 		protected Dml.Operation operation;
 		protected Map<String, Map<String, SObject>> recordMap;
 
 		protected History(Dml.Operation operation) {
+			this.numDmlStatements = 0;
 			this.operation = operation;
 			this.recordMap = new Map<String, Map<String, SObject>>();
 		}
@@ -320,6 +352,13 @@ global class MockDml extends Dml {
 		 */
 		global SObject get(SObject record) {
 			return this.get(record?.Id);
+		}
+
+		/**
+		 * @desceription Increments the numDmlStatements counter
+		 */
+		global void incrementDmlStatements() {
+			this.numDmlStatements++;
 		}
 
 		/**
@@ -410,6 +449,7 @@ global class MockDml extends Dml {
 
 		// ** OVERRIDES
 		protected override List<Database.LeadConvertResult> doConvert() {
+			MockDml.CONVERTED.incrementDmlStatements();
 			List<MockDml.Result> mockResults = new List<MockDml.Result>();
 			for (Database.LeadConvert leadToConvert : this.leadsToConvert) {
 				MockDml.Result result = this.generateMockResult(leadToConvert, this.options?.OptAllOrNone);
@@ -419,6 +459,7 @@ global class MockDml extends Dml {
 		}
 
 		protected override List<Database.DeleteResult> doDelete() {
+			MockDml.DELETED.incrementDmlStatements();
 			List<MockDml.Result> mockResults = new List<MockDml.Result>();
 			for (SObject record : this.records) {
 				MockDml.Result result = this.generateMockResult(MockDml.DELETED, record, this.allOrNone);
@@ -430,6 +471,7 @@ global class MockDml extends Dml {
 		}
 
 		protected override List<Database.SaveResult> doInsert() {
+			MockDml.INSERTED.incrementDmlStatements();
 			List<MockDml.Result> mockResults = new List<MockDml.Result>();
 			for (SObject record : this.records) {
 				MockDml.Result result = this.generateMockResult(MockDml.INSERTED, record, this.options?.OptAllOrNone);
@@ -442,6 +484,7 @@ global class MockDml extends Dml {
 
 		protected override List<Database.SaveResult> doPublish() {
 			// Ensure the callback is set; if null, use the default value
+			MockDml.PUBLISHED.incrementDmlStatements();
 			List<MockDml.Result> mockResults = new List<MockDml.Result>();
 			for (SObject event : this.records) {
 				// Note: EventBus.publish() always runs in allOrNone=false context
@@ -452,6 +495,7 @@ global class MockDml extends Dml {
 		}
 
 		protected override List<Database.UndeleteResult> doUndelete() {
+			MockDml.UNDELETED.incrementDmlStatements();
 			List<MockDml.Result> mockResults = new List<MockDml.Result>();
 			for (SObject record : records) {
 				MockDml.Result result = this.generateMockResult(MockDml.UNDELETED, record, allOrNone);
@@ -461,6 +505,7 @@ global class MockDml extends Dml {
 		}
 
 		protected override List<Database.SaveResult> doUpdate() {
+			MockDml.UPDATED.incrementDmlStatements();
 			List<MockDml.Result> mockResults = new List<MockDml.Result>();
 			for (SObject record : this.records) {
 				MockDml.Result result = this.generateMockResult(MockDml.UPDATED, record, this.options?.OptAllOrNone);
@@ -472,6 +517,7 @@ global class MockDml extends Dml {
 		}
 
 		protected override List<Database.UpsertResult> doUpsert() {
+			MockDml.UPSERTED.incrementDmlStatements();
 			List<MockDml.Result> mockResults = new List<MockDml.Result>();
 			for (SObject record : this.records) {
 				MockDml.Result result = this.generateMockResult(MockDml.UPSERTED, record, this.allOrNone);
@@ -481,6 +527,7 @@ global class MockDml extends Dml {
 		}
 
 		protected override List<Database.EmptyRecycleBinResult> emptyRecycleBin() {
+			MockDml.PURGED.incrementDmlStatements();
 			List<MockDml.Result> mockResults = new List<MockDml.Result>();
 			for (SObject record : this.records) {
 				MockDml.Result result = this.generateMockResult(MockDml.PURGED, record, true);

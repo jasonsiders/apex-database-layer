@@ -29,6 +29,7 @@ private class MockDmlTest {
 		Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
 		Test.stopTest();
 
+		Assert.areEqual(1, MockDml.CONVERTED.numDmlStatements, 'Wrong # of converted DML statements');
 		Assert.areEqual(leadsToConvert?.size(), results?.size(), 'Wrong # of results');
 		Assert.areEqual(
 			results?.size(),
@@ -213,6 +214,8 @@ private class MockDmlTest {
 		Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
 		Test.stopTest();
 
+		Assert.areEqual(1, MockDml.MockDatabase.getTotalDmlStatements(), 'Wrong # of DML statements');
+		Assert.areEqual(1, MockDml.DELETED.numDmlStatements, 'Wrong # of delete DML statements');
 		Assert.areEqual(leads?.size(), results?.size(), 'Wrong # of results');
 		Assert.areEqual(
 			leads?.size(),
@@ -274,6 +277,8 @@ private class MockDmlTest {
 		Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
 		Test.stopTest();
 
+		Assert.areEqual(1, MockDml.MockDatabase.getTotalDmlStatements(), 'Wrong # of DML statements');
+		Assert.areEqual(1, MockDml.PURGED.numDmlStatements, 'Wrong # of delete DML statements');
 		Assert.areEqual(leads?.size(), results?.size(), 'Wrong # of results');
 		Assert.areEqual(results?.size(), MockDml.PURGED?.getRecords(Lead.SObjectType)?.size(), 'Wrong # purged');
 		for (Database.EmptyRecycleBinResult result : results) {
@@ -327,6 +332,8 @@ private class MockDmlTest {
 		Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
 		Test.stopTest();
 
+		Assert.areEqual(1, MockDml.MockDatabase.getTotalDmlStatements(), 'Wrong # of DML statements');
+		Assert.areEqual(1, MockDml.INSERTED.numDmlStatements, 'Wrong # of insert DML statements');
 		Assert.areEqual(leads?.size(), results?.size(), 'Wrong # of results');
 		Assert.areEqual(
 			leads?.size(),
@@ -427,6 +434,8 @@ private class MockDmlTest {
 		Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
 		Test.stopTest();
 
+		Assert.areEqual(1, MockDml.MockDatabase.getTotalDmlStatements(), 'Wrong # of DML statements');
+		Assert.areEqual(1, MockDml.PUBLISHED.numDmlStatements, 'Wrong # of publish DML statements');
 		Assert.areEqual(events?.size(), results?.size(), 'Wrong # of results');
 		Assert.areEqual(
 			events?.size(),
@@ -489,6 +498,8 @@ private class MockDmlTest {
 		Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
 		Test.stopTest();
 
+		Assert.areEqual(1, MockDml.MockDatabase.getTotalDmlStatements(), 'Wrong # of DML statements');
+		Assert.areEqual(1, MockDml.UNDELETED.numDmlStatements, 'Wrong # of undelete DML statements');
 		Assert.areEqual(leads?.size(), results?.size(), 'Wrong # of results');
 		Assert.areEqual(
 			leads?.size(),
@@ -547,6 +558,8 @@ private class MockDmlTest {
 		Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
 		Test.stopTest();
 
+		Assert.areEqual(1, MockDml.MockDatabase.getTotalDmlStatements(), 'Wrong # of DML statements');
+		Assert.areEqual(1, MockDml.UPDATED.numDmlStatements, 'Wrong # of update DML statements');
 		Assert.areEqual(leads?.size(), results?.size(), 'Wrong # of results');
 		Assert.areEqual(
 			leads?.size(),
@@ -647,6 +660,8 @@ private class MockDmlTest {
 		Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
 		Test.stopTest();
 
+		Assert.areEqual(1, MockDml.MockDatabase.getTotalDmlStatements(), 'Wrong # of DML statements');
+		Assert.areEqual(1, MockDml.UPSERTED.numDmlStatements, 'Wrong # of upsert DML statements');
 		Assert.areEqual(leads?.size(), results?.size(), 'Wrong # of results');
 		Assert.areEqual(
 			leads?.size(),
