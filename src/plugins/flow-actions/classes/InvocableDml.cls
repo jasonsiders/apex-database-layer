@@ -1,4 +1,5 @@
 public abstract class InvocableDml {
+    // **** INPUTS **** //
     public class BaseInput {
         @InvocableVariable(label='Access Level' defaultValue='USER_MODE' description='Specifies whether the method runs in SYSTEM_MODE or USER_MODE [default]. In system mode, the object and field-level permissions of the current user are ignored, and the record sharing rules are controlled the flow. In user mode, the object permissions, field-level security, and sharing rules of the current user are enforced.')
         public String accessLevelName;
@@ -9,7 +10,7 @@ public abstract class InvocableDml {
         @InvocableVariable(label='DML Options' description='Specifies additional data for the transaction')
         public FlowDmlOptions dmlOptions;
 
-        @InvocableVariable(label='SObject Record [single]' description='A single SObject record to be processed.')
+        @InvocableVariable(label='SObject Record' description='A single SObject record to be processed.')
         public SObject record; 
 
         @InvocableVariable(label='SObject Records [collection]' description='A collection of SObject records to be processed')
@@ -22,12 +23,46 @@ public abstract class InvocableDml {
         }
     }
 
+    public class DeleteInput {
+        @InvocableVariable(label='Base Input')
+        public InvocableDml.BaseInput baseInput;
+
+        @InvocableVariable(label='Record Id [single]' description='The Id of a single SObject record to be processed.')
+        public Id recordId;
+
+        @InvocableVariable(label='Record Ids [collection]' description='A collection of SObject record Ids to be processed.')
+        public List<Id> recordIds;
+
+        public DeleteInput() {
+            this.baseInput = new InvocableDml.BaseInput();
+            this.recordIds = new List<Id>{};
+        }
+    }
+
+    // **** OUTPUTS **** //
     public class BaseOutput {
+        @InvocableVariable(label='Records')
+        public List<SObject> records;
+
         @InvocableVariable(label='Results')
-        public List<FlowDmlResult> results;
+        public List<FlowDmlBaseResult> results;
 
         public BaseOutput() {
-            this.results = new List<FlowDmlResult>{};
+            this.records = new List<SObject>{};
+            this.results = new List<FlowDmlBaseResult>{};
+        }
+    }
+
+    public class UpsertOutput {
+        @InvocableVariable(label='Records')
+        public List<SObject> records;
+
+        @InvocableVariable(label='Results')
+        public List<FlowDmlUpsertResult> results;
+
+        public UpsertOutput() {
+            this.records = new List<SObject>{};
+            this.results = new List<FlowDmlUpsertResult>{};
         }
     }
 }

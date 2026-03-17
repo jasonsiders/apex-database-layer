@@ -1,22 +1,19 @@
-public class FlowDmlResult {
+public class FlowDmlBaseResult {
     @AuraEnabled
     public List<FlowDmlError> errors;
-
     @AuraEnabled
     public String id;
-
     @AuraEnabled
     public Boolean isSuccess;
-
     @AuraEnabled
     public SObject record;
 
-    public FlowDmlResult() {
+    public FlowDmlBaseResult() {
         this.errors = new List<FlowDmlError>{};
         this.isSuccess = false;
     }
 
-    public FlowDmlResult(Database.DeleteResult result) {
+    public FlowDmlBaseResult(Database.DeleteResult result) {
         this();
         List<Database.Error> errors = result?.getErrors();
         this.errors = this.wrapErrors(errors);
@@ -25,7 +22,7 @@ public class FlowDmlResult {
         this.record = record;
     }
 
-    public FlowDmlResult(SObject record, Database.SaveResult result) {
+    public FlowDmlBaseResult(SObject record, Database.SaveResult result) {
         this();
         List<Database.Error> errors = result?.getErrors();
         this.errors = this.wrapErrors(errors);
@@ -34,7 +31,7 @@ public class FlowDmlResult {
         this.record = record;
     }
 
-    public FlowDmlResult(Database.UndeleteResult result) {
+    public FlowDmlBaseResult(Database.UndeleteResult result) {
         this();
         List<Database.Error> errors = result?.getErrors();
         this.errors = this.wrapErrors(errors);
@@ -43,7 +40,7 @@ public class FlowDmlResult {
         this.record = record;
     }
 
-    public FlowDmlResult(SObject record, Database.UpsertResult result) {
+    public FlowDmlBaseResult(SObject record, Database.UpsertResult result) {
         this();
         List<Database.Error> errors = result?.getErrors();
         this.errors = this.wrapErrors(errors);

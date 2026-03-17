@@ -1,8 +1,8 @@
-public abstract class InvocableUpsertRecords {
+public abstract class InvocableDmlUpsertRecords {
     @InvocableMethod(category='Database Layer' label='Upsert Record(s)' iconName='slds:standard:record')
-    public static List<InvocableDml.BaseOutput> invoke(List<InvocableUpsertRecords.Input> inputs) {
-        return new List<InvocableDml.BaseOutput>{};
-    } 
+    public static List<InvocableDml.UpsertOutput> invoke(List<InvocableDmlUpsertRecords.Input> inputs) {
+        return new List<InvocableDml.UpsertOutput>{};
+    }
 
     public class Input {
         @InvocableVariable(label='Base Input')
