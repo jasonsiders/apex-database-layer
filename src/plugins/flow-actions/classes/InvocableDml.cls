@@ -7,7 +7,7 @@ public abstract class InvocableDml {
         public Boolean allOrNone; 
 
         @InvocableVariable(label='DML Options' description='Specifies additional data for the transaction')
-        public DmlOptionsRepresentation dmlOptions; 
+        public FlowDmlOptions dmlOptions;
 
         @InvocableVariable(label='SObject Record [single]' description='A single SObject record to be processed.')
         public SObject record; 
@@ -24,10 +24,10 @@ public abstract class InvocableDml {
 
     public class BaseOutput {
         @InvocableVariable(label='Results')
-        public List<DmlResultRepresentation> results;
+        public List<FlowDmlResult> results;
 
         public BaseOutput() {
-            this.results = new List<DmlResultRepresentation>{};
+            this.results = new List<FlowDmlResult>{};
         }
     }
 }
