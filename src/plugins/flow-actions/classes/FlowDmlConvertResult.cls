@@ -21,18 +21,14 @@ public class FlowDmlConvertResult {
         this();
         this.accountId = result?.getAccountId();
         this.contactId = result?.getContactId();
-        this.errors = this.wrapErrors(result?.getErrors());
+        this.errors = this.wrapErrors(result);
         this.isSuccess = result?.isSuccess();
         this.leadId = result?.getLeadId();
         this.opportunityId = result?.getOpportunityId();
     }
 
-    private List<FlowDmlError> wrapErrors(List<Database.Error> databaseErrors) {
-        List<FlowDmlError> errors = new List<FlowDmlError>{};
-        for (Database.Error databaseError: databaseErrors) {
-            FlowDmlError error = new FlowDmlError(databaseError);
-            errors?.add(error);
-        }
-        return errors;
+    private List<FlowDmlError> wrapErrors(Database.LeadConvertResult result) {
+        List<Database.Error> errors = result?.getErrors();
+        return FlowDmlError.wrap(errors);
     }
 }

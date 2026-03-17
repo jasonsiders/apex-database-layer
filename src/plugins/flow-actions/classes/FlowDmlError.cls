@@ -19,4 +19,12 @@ public class FlowDmlError {
         this.message = error?.getMessage();
         this.statusCode = error?.getStatusCode()?.name();
     }
+
+    public static List<FlowDmlError> wrap(List<Database.Error> databaseErrors) {
+        List<FlowDmlError> errors = new List<FlowDmlError>{};
+        for (Database.Error databaseError : databaseErrors) {
+            errors.add(new FlowDmlError(databaseError));
+        }
+        return errors;
+    }
 }
