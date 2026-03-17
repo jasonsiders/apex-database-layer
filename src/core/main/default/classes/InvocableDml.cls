@@ -148,4 +148,14 @@ public abstract class InvocableDml {
             this.allowFieldTruncation = false;
         }
     }
+
+    public class UpsertInput {
+        // Note: These properties will display as flattened by the CPE
+        // This is to make up for a current limitation of @InvocableVariable classes, which don't implement proper inheritance
+        @InvocableVariable
+        public InvocableDml.BaseInput baseInput;
+
+        @InvocableVariable(label='External ID Field API Name' description='The field to use as the upsert key')
+        public String externalIdField;
+    }
 }
