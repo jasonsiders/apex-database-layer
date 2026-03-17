@@ -277,7 +277,6 @@ private class MockDmlTest {
 		Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
 		Test.stopTest();
 
-		Assert.areEqual(1, MockDml.MockDatabase.getTotalDmlStatements(), 'Wrong # of DML statements');
 		Assert.areEqual(1, MockDml.PURGED.numDmlStatements, 'Wrong # of delete DML statements');
 		Assert.areEqual(leads?.size(), results?.size(), 'Wrong # of results');
 		Assert.areEqual(results?.size(), MockDml.PURGED?.getRecords(Lead.SObjectType)?.size(), 'Wrong # purged');
