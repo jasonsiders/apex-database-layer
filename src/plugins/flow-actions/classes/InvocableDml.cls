@@ -26,7 +26,7 @@ public abstract class InvocableDml {
     public class ConvertInput {
         @InvocableVariable(label='Lead ID' description='The ID of the Lead to be converted')
         public Id leadId;
-        
+
         // TODO: Add more inputs from Database.LeadConvert:
         // https://developer.salesforce.com/docs/atlas.en-us.apexref.meta/apexref/apex_dml_convertLead.htm
     }
@@ -70,7 +70,7 @@ public abstract class InvocableDml {
 
         public ConvertOutput() {
             this.leads = new List<Lead>{};
-            this.results = new List<FlowDmlUpsertResult>{};
+            this.results = new List<FlowDmlConvertResult>{};
         }
     }
 
