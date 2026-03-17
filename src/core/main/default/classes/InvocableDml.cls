@@ -35,8 +35,8 @@ public abstract class InvocableDml {
         @InvocableVariable(label='Error(s)' description='Contains the raw ')
         public List<InvocableDml.Error> errors; 
 
-        @InvocableVariable(label='Record ID' description='The ID of the SObject record that was processed')
-        public Id id;
+        @InvocableVariable(label='Record ID' description='The ID of the SObject record or Platform Event that was processed')
+        public String id;
 
         @InvocableVariable(label='Is Success?' defaultValue='false' description='Indicates if the DML operation succeeded for this record')
         public Boolean isSuccess;
@@ -92,6 +92,28 @@ public abstract class InvocableDml {
                 errors?.add(error);
             }
             return errors;
+        }
+    }
+
+    public class DeleteInput {
+        @InvocableVariable(label='Hard Delete' description='When set to true, deleted records will be purged from the recycle bin')
+        public Boolean doHardDelete; 
+
+        @InvocableVariable(label='Record ID [single]' description='The ID of the SObject record to delete')
+        public Id recordId;
+
+        @InvocableVariable(label='Record ID [collection]' description='A collection of IDs representing SObject records to delete')
+        public List<Id> recordIds; 
+
+        // Note: These properties will display as flattened by the CPE
+        // This is to make up for a current limitation of @InvocableVariable classes, which don't implement proper inheritance
+        @InvocableVariable
+        public InvocableDml.BaseInput baseInput;
+
+        public DeleteInput() {
+            this.baseInput = new InvocableDml.BaseInput();
+            this.doHardDelete = false;
+            this.recordIds = new List<Id>{};
         }
     }
 
