@@ -1,19 +1,30 @@
 public class FlowDmlConvertResult {
     @AuraEnabled
+    public String accountId;
+    @AuraEnabled
+    public String contactId;
+    @AuraEnabled
     public List<FlowDmlError> errors;
     @AuraEnabled
     public Boolean isSuccess;
-    // TODO: Add more properties from Database.LeadConvertResult:
-    // https://developer.salesforce.com/docs/atlas.en-us.apexref.meta/apexref/apex_class_database_leadconvertresult.htm
+    @AuraEnabled
+    public String leadId;
+    @AuraEnabled
+    public String opportunityId;
 
     public FlowDmlConvertResult() {
         this.errors = new List<FlowDmlError>{};
         this.isSuccess = false;
     }
 
-    public FlowDmlConvertResult(Database.LeadConvert leadConvert) {
+    public FlowDmlConvertResult(Database.LeadConvertResult result) {
         this();
-        // TODO!
+        this.accountId = result?.getAccountId();
+        this.contactId = result?.getContactId();
+        this.errors = this.wrapErrors(result?.getErrors());
+        this.isSuccess = result?.isSuccess();
+        this.leadId = result?.getLeadId();
+        this.opportunityId = result?.getOpportunityId();
     }
 
     private List<FlowDmlError> wrapErrors(List<Database.Error> databaseErrors) {
