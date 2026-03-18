@@ -1,11 +1,11 @@
 public class FlowDmlAssignmentRule {
-    @AuraEnabled
-    public String assignmentRuleId;
+	@AuraEnabled
+	public String assignmentRuleId;
 
-    @AuraEnabled
-    public Boolean useDefaultRule;
+	@AuraEnabled
+	public Boolean useDefaultRule;
 
-    public FlowDmlAssignmentRule() {
-        this.useDefaultRule = false;
-    }
+	public FlowDmlAssignmentRule() {
+		this.useDefaultRule = false;
+	}
 }

@@ -7,7 +7,7 @@ export default class FlowDmlSection extends LightningElement {
 	@track _isExpanded;
 
 	connectedCallback() {
-		this._isExpanded = !!this.isRequired && this.isRequired !== 'false';
+		this._isExpanded = !!this.isRequired && this.isRequired !== "false";
 	}
 
 	get isExpanded() {

@@ -1,190 +1,196 @@
 @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveRunAs')
 @IsTest
 private class InvocableDmlDeleteRecordsTest {
-    static {
-        DatabaseLayer.useMocks();
-    }
+	static {
+		DatabaseLayer.useMocks();
+	}
 
-    @IsTest
-    private static void shouldDeleteSingleRecord() {
-        Id recordId = MockRecord.initRecordId(Account.SObjectType);
-        FlowDmlDeleteInput input = new FlowDmlDeleteInput();
-        input.recordId = recordId;
-        List<FlowDmlDeleteInput> inputs = new List<FlowDmlDeleteInput>{ input };
+	@IsTest
+	private static void shouldDeleteSingleRecord() {
+		Id recordId = MockRecord.initRecordId(Account.SObjectType);
+		FlowDmlDeleteInput input = new FlowDmlDeleteInput();
+		input.recordId = recordId;
+		List<FlowDmlDeleteInput> inputs = new List<FlowDmlDeleteInput>{ input };
 
-        Test.startTest();
-        List<FlowDmlBaseOutput> outputs = InvocableDmlDeleteRecords.invoke(inputs);
-        Test.stopTest();
+		Test.startTest();
+		List<FlowDmlBaseOutput> outputs = InvocableDmlDeleteRecords.invoke(inputs);
+		Test.stopTest();
 
-        Assert.areEqual(1, MockDml.DELETED.getAll().size(), 'Wrong # of deleted records');
-        Assert.isTrue(MockDml.DELETED.wasProcessed(recordId), 'Test record was not processed');
-    }
+		Assert.areEqual(1, MockDml.DELETED.getAll().size(), 'Wrong # of deleted records');
+		Assert.isTrue(MockDml.DELETED.wasProcessed(recordId), 'Test record was not processed');
+	}
 
-    @IsTest
-    private static void shouldDeleteMultipleRecords() {
-        FlowDmlDeleteInput input = new FlowDmlDeleteInput();
-        input.recordIds = new List<Id>{};
-        for (Integer i = 0; i < 3; i++) {
-            input.recordIds?.add(MockRecord.initRecordId(Account.SObjectType));
-        }
-        List<FlowDmlDeleteInput> inputs = new List<FlowDmlDeleteInput>{ input };
+	@IsTest
+	private static void shouldDeleteMultipleRecords() {
+		FlowDmlDeleteInput input = new FlowDmlDeleteInput();
+		input.recordIds = new List<Id>{};
+		for (Integer i = 0; i < 3; i++) {
+			input.recordIds?.add(MockRecord.initRecordId(Account.SObjectType));
+		}
+		List<FlowDmlDeleteInput> inputs = new List<FlowDmlDeleteInput>{ input };
 
-        Test.startTest();
-        List<FlowDmlBaseOutput> outputs = InvocableDmlDeleteRecords.invoke(inputs);
-        Test.stopTest();
+		Test.startTest();
+		List<FlowDmlBaseOutput> outputs = InvocableDmlDeleteRecords.invoke(inputs);
+		Test.stopTest();
 
-        Assert.areEqual(3, MockDml.DELETED.getAll().size(), 'Wrong # of deleted records');
-        for (Id recordId : input.recordIds) {
-            Assert.isTrue(MockDml.DELETED.wasProcessed(recordId), 'Test record was not processed');
-        }
-    }
+		Assert.areEqual(3, MockDml.DELETED.getAll().size(), 'Wrong # of deleted records');
+		for (Id recordId : input.recordIds) {
+			Assert.isTrue(MockDml.DELETED.wasProcessed(recordId), 'Test record was not processed');
+		}
+	}
 
-    @IsTest
-    private static void shouldHandleBothInputsPopulated() {
-        FlowDmlDeleteInput input = new FlowDmlDeleteInput();
-        input.recordId = MockRecord.initRecordId(Account.SObjectType);
-        input.recordIds = new List<Id>{};
-        for (Integer i = 0; i < 3; i++) {
-            input.recordIds?.add(MockRecord.initRecordId(Account.SObjectType));
-        }
-        List<FlowDmlDeleteInput> inputs = new List<FlowDmlDeleteInput>{ input };
+	@IsTest
+	private static void shouldHandleBothInputsPopulated() {
+		FlowDmlDeleteInput input = new FlowDmlDeleteInput();
+		input.recordId = MockRecord.initRecordId(Account.SObjectType);
+		input.recordIds = new List<Id>{};
+		for (Integer i = 0; i < 3; i++) {
+			input.recordIds?.add(MockRecord.initRecordId(Account.SObjectType));
+		}
+		List<FlowDmlDeleteInput> inputs = new List<FlowDmlDeleteInput>{ input };
 
-        Test.startTest();
-        List<FlowDmlBaseOutput> outputs = InvocableDmlDeleteRecords.invoke(inputs);
-        Test.stopTest();
+		Test.startTest();
+		List<FlowDmlBaseOutput> outputs = InvocableDmlDeleteRecords.invoke(inputs);
+		Test.stopTest();
 
-        Assert.areEqual(4, MockDml.DELETED.getAll().size(), 'Wrong # of deleted records');
-        Assert.isTrue(MockDml.DELETED.wasProcessed(input?.recordId), 'Single record was not processed');
-        for (Id recordId : input.recordIds) {
-            Assert.isTrue(MockDml.DELETED.wasProcessed(recordId), 'Test record was not processed');
-        }
-    }
+		Assert.areEqual(4, MockDml.DELETED.getAll().size(), 'Wrong # of deleted records');
+		Assert.isTrue(MockDml.DELETED.wasProcessed(input?.recordId), 'Single record was not processed');
+		for (Id recordId : input.recordIds) {
+			Assert.isTrue(MockDml.DELETED.wasProcessed(recordId), 'Test record was not processed');
+		}
+	}
 
-    @IsTest
-    private static void shouldDeleteSingleRecordViaIdInput() {
-        FlowDmlDeleteInput input = new FlowDmlDeleteInput();
-        input.recordId = MockRecord.initRecordId(Account.SObjectType);
-        input.baseInput.records = new List<SObject>{};
-        for (Integer i = 0; i < 3; i++) {
-            input.baseInput.records?.add(new MockRecord(Account.SObjectType).toSObject());
-        }
-        List<FlowDmlDeleteInput> inputs = new List<FlowDmlDeleteInput>{ input };
+	@IsTest
+	private static void shouldDeleteSingleRecordViaIdInput() {
+		FlowDmlDeleteInput input = new FlowDmlDeleteInput();
+		input.recordId = MockRecord.initRecordId(Account.SObjectType);
+		input.baseInput.records = new List<SObject>{};
+		for (Integer i = 0; i < 3; i++) {
+			input.baseInput.records?.add(new MockRecord(Account.SObjectType).toSObject());
+		}
+		List<FlowDmlDeleteInput> inputs = new List<FlowDmlDeleteInput>{ input };
 
-        Test.startTest();
-        List<FlowDmlBaseOutput> outputs = InvocableDmlDeleteRecords.invoke(inputs);
-        Test.stopTest();
+		Test.startTest();
+		List<FlowDmlBaseOutput> outputs = InvocableDmlDeleteRecords.invoke(inputs);
+		Test.stopTest();
 
-        Assert.areEqual(4, MockDml.DELETED.getAll().size(), 'Wrong # of deleted records');
-        Assert.isTrue(MockDml.DELETED.wasProcessed(input?.recordId), 'Single Id record was not processed');
-        for (SObject rec : input.baseInput.records) {
-            Assert.isTrue(MockDml.DELETED.wasProcessed(rec), 'SObject record was not processed');
-        }
-    }
+		Assert.areEqual(4, MockDml.DELETED.getAll().size(), 'Wrong # of deleted records');
+		Assert.isTrue(MockDml.DELETED.wasProcessed(input?.recordId), 'Single Id record was not processed');
+		for (SObject rec : input.baseInput.records) {
+			Assert.isTrue(MockDml.DELETED.wasProcessed(rec), 'SObject record was not processed');
+		}
+	}
 
-    @IsTest
-    private static void shouldDeleteMultipleRecordsViaIdInput() {
-        FlowDmlDeleteInput input = new FlowDmlDeleteInput();
-        input.recordIds = new List<Id>{};
-        for (Integer i = 0; i < 3; i++) {
-            input.recordIds?.add(MockRecord.initRecordId(Account.SObjectType));
-        }
-        input.baseInput.record = new MockRecord(Account.SObjectType).toSObject();
-        List<FlowDmlDeleteInput> inputs = new List<FlowDmlDeleteInput>{ input };
+	@IsTest
+	private static void shouldDeleteMultipleRecordsViaIdInput() {
+		FlowDmlDeleteInput input = new FlowDmlDeleteInput();
+		input.recordIds = new List<Id>{};
+		for (Integer i = 0; i < 3; i++) {
+			input.recordIds?.add(MockRecord.initRecordId(Account.SObjectType));
+		}
+		input.baseInput.record = new MockRecord(Account.SObjectType).toSObject();
+		List<FlowDmlDeleteInput> inputs = new List<FlowDmlDeleteInput>{ input };
 
-        Test.startTest();
-        List<FlowDmlBaseOutput> outputs = InvocableDmlDeleteRecords.invoke(inputs);
-        Test.stopTest();
+		Test.startTest();
+		List<FlowDmlBaseOutput> outputs = InvocableDmlDeleteRecords.invoke(inputs);
+		Test.stopTest();
 
-        Assert.areEqual(4, MockDml.DELETED.getAll().size(), 'Wrong # of deleted records');
-        Assert.isTrue(MockDml.DELETED.wasProcessed(input?.baseInput?.record), 'Single SObject record was not processed');
-        for (Id recordId : input.recordIds) {
-            Assert.isTrue(MockDml.DELETED.wasProcessed(recordId), 'Id record was not processed');
-        }
-    }
+		Assert.areEqual(4, MockDml.DELETED.getAll().size(), 'Wrong # of deleted records');
+		Assert.isTrue(
+			MockDml.DELETED.wasProcessed(input?.baseInput?.record),
+			'Single SObject record was not processed'
+		);
+		for (Id recordId : input.recordIds) {
+			Assert.isTrue(MockDml.DELETED.wasProcessed(recordId), 'Id record was not processed');
+		}
+	}
 
-    @IsTest
-    private static void shouldHandleAllInputTypesPopulated() {
-        FlowDmlDeleteInput input = new FlowDmlDeleteInput();
-        input.recordId = MockRecord.initRecordId(Account.SObjectType);
-        input.baseInput.record = new MockRecord(Account.SObjectType).toSObject();
-        for (Integer i = 0; i < 3; i++) {
-            Id recordId = MockRecord.initRecordId(Account.SObjectType);
-            input.recordIds?.add(recordId);
-            SObject record = new MockRecord(Account.SObjectType).toSObject();
-            input.baseInput?.records?.add(record);
-        }
-        List<FlowDmlDeleteInput> inputs = new List<FlowDmlDeleteInput>{ input };
+	@IsTest
+	private static void shouldHandleAllInputTypesPopulated() {
+		FlowDmlDeleteInput input = new FlowDmlDeleteInput();
+		input.recordId = MockRecord.initRecordId(Account.SObjectType);
+		input.baseInput.record = new MockRecord(Account.SObjectType).toSObject();
+		for (Integer i = 0; i < 3; i++) {
+			Id recordId = MockRecord.initRecordId(Account.SObjectType);
+			input.recordIds?.add(recordId);
+			SObject record = new MockRecord(Account.SObjectType).toSObject();
+			input.baseInput?.records?.add(record);
+		}
+		List<FlowDmlDeleteInput> inputs = new List<FlowDmlDeleteInput>{ input };
 
-        Test.startTest();
-        List<FlowDmlBaseOutput> outputs = InvocableDmlDeleteRecords.invoke(inputs);
-        Test.stopTest();
+		Test.startTest();
+		List<FlowDmlBaseOutput> outputs = InvocableDmlDeleteRecords.invoke(inputs);
+		Test.stopTest();
 
-        Assert.areEqual(8, MockDml.DELETED.getAll().size(), 'Wrong # of deleted records');
-        Assert.isTrue(MockDml.DELETED.wasProcessed(input?.recordId), 'Single Id record was not processed');
-        Assert.isTrue(MockDml.DELETED.wasProcessed(input?.baseInput?.record), 'Single SObject record was not processed');
-        for (Id recordId : input.recordIds) {
-            Assert.isTrue(MockDml.DELETED.wasProcessed(recordId), 'Id record was not processed');
-        }
-        for (SObject record : input.baseInput.records) {
-            Assert.isTrue(MockDml.DELETED.wasProcessed(record), 'SObject record was not processed');
-        }
-    }
+		Assert.areEqual(8, MockDml.DELETED.getAll().size(), 'Wrong # of deleted records');
+		Assert.isTrue(MockDml.DELETED.wasProcessed(input?.recordId), 'Single Id record was not processed');
+		Assert.isTrue(
+			MockDml.DELETED.wasProcessed(input?.baseInput?.record),
+			'Single SObject record was not processed'
+		);
+		for (Id recordId : input.recordIds) {
+			Assert.isTrue(MockDml.DELETED.wasProcessed(recordId), 'Id record was not processed');
+		}
+		for (SObject record : input.baseInput.records) {
+			Assert.isTrue(MockDml.DELETED.wasProcessed(record), 'SObject record was not processed');
+		}
+	}
 
-    @IsTest
-    private static void shouldSplitDifferentConfigurationsIntoDifferentDmlStatements() {
-        // 3 different input configurations --> 3 different DML statements
-        FlowDmlDeleteInput input1 = new FlowDmlDeleteInput();
-        input1.baseInput.accessLevelName = System.AccessLevel.USER_MODE.toString();
-        input1.baseInput.allOrNone = false;
-        input1.recordId = MockRecord.initRecordId(Account.SObjectType);
-        FlowDmlDeleteInput input2 = new FlowDmlDeleteInput();
-        input2.baseInput.accessLevelName = System.AccessLevel.USER_MODE.toString();
-        input2.baseInput.allOrNone = true;
-        input2.recordId = MockRecord.initRecordId(Account.SObjectType);
-        FlowDmlDeleteInput input3 = new FlowDmlDeleteInput();
-        input3.baseInput.accessLevelName = System.AccessLevel.SYSTEM_MODE.toString();
-        input3.baseInput.allOrNone = true;
-        input3.recordId = MockRecord.initRecordId(Account.SObjectType);
-        List<FlowDmlDeleteInput> inputs = new List<FlowDmlDeleteInput>{ input1, input2, input3 };
+	@IsTest
+	private static void shouldSplitDifferentConfigurationsIntoDifferentDmlStatements() {
+		// 3 different input configurations --> 3 different DML statements
+		FlowDmlDeleteInput input1 = new FlowDmlDeleteInput();
+		input1.baseInput.accessLevelName = System.AccessLevel.USER_MODE.toString();
+		input1.baseInput.allOrNone = false;
+		input1.recordId = MockRecord.initRecordId(Account.SObjectType);
+		FlowDmlDeleteInput input2 = new FlowDmlDeleteInput();
+		input2.baseInput.accessLevelName = System.AccessLevel.USER_MODE.toString();
+		input2.baseInput.allOrNone = true;
+		input2.recordId = MockRecord.initRecordId(Account.SObjectType);
+		FlowDmlDeleteInput input3 = new FlowDmlDeleteInput();
+		input3.baseInput.accessLevelName = System.AccessLevel.SYSTEM_MODE.toString();
+		input3.baseInput.allOrNone = true;
+		input3.recordId = MockRecord.initRecordId(Account.SObjectType);
+		List<FlowDmlDeleteInput> inputs = new List<FlowDmlDeleteInput>{ input1, input2, input3 };
 
-        Test.startTest();
-        List<FlowDmlBaseOutput> outputs = InvocableDmlDeleteRecords.invoke(inputs);
-        Test.stopTest();
+		Test.startTest();
+		List<FlowDmlBaseOutput> outputs = InvocableDmlDeleteRecords.invoke(inputs);
+		Test.stopTest();
 
-        Assert.areEqual(3, MockDml.DELETED.numDmlStatements, 'Wrong # of delete calls');
-        Assert.areEqual(3, MockDml.DELETED.getAll().size(), 'Wrong # of deleted records');
-        for (FlowDmlDeleteInput input : inputs) {
-            Assert.isTrue(MockDml.DELETED.wasProcessed(input?.recordId), 'Test record was not processed');
-        }
-    }
+		Assert.areEqual(3, MockDml.DELETED.numDmlStatements, 'Wrong # of delete calls');
+		Assert.areEqual(3, MockDml.DELETED.getAll().size(), 'Wrong # of deleted records');
+		for (FlowDmlDeleteInput input : inputs) {
+			Assert.isTrue(MockDml.DELETED.wasProcessed(input?.recordId), 'Test record was not processed');
+		}
+	}
 
-    @IsTest
-    private static void shouldNoOpIfNeitherInputPopulated() {
-        FlowDmlDeleteInput input = new FlowDmlDeleteInput();
-        List<FlowDmlDeleteInput> inputs = new List<FlowDmlDeleteInput>{ input };
+	@IsTest
+	private static void shouldNoOpIfNeitherInputPopulated() {
+		FlowDmlDeleteInput input = new FlowDmlDeleteInput();
+		List<FlowDmlDeleteInput> inputs = new List<FlowDmlDeleteInput>{ input };
 
-        Test.startTest();
-        List<FlowDmlBaseOutput> outputs = InvocableDmlDeleteRecords.invoke(inputs);
-        Test.stopTest();
+		Test.startTest();
+		List<FlowDmlBaseOutput> outputs = InvocableDmlDeleteRecords.invoke(inputs);
+		Test.stopTest();
 
-        Assert.areEqual(0, MockDml.DELETED.getAll().size(), 'Wrong # of deleted records');
-    }
+		Assert.areEqual(0, MockDml.DELETED.getAll().size(), 'Wrong # of deleted records');
+	}
 
-    @SuppressWarnings('PMD.EmptyCatchBlock')
-    @IsTest
-    private static void shouldHandleAndRethrowErrors() {
-        MockDml.shouldFail();
-        FlowDmlDeleteInput input = new FlowDmlDeleteInput();
-        input.recordId = MockRecord.initRecordId(Account.SObjectType);
-        List<FlowDmlDeleteInput> inputs = new List<FlowDmlDeleteInput>{ input };
+	@SuppressWarnings('PMD.EmptyCatchBlock')
+	@IsTest
+	private static void shouldHandleAndRethrowErrors() {
+		MockDml.shouldFail();
+		FlowDmlDeleteInput input = new FlowDmlDeleteInput();
+		input.recordId = MockRecord.initRecordId(Account.SObjectType);
+		List<FlowDmlDeleteInput> inputs = new List<FlowDmlDeleteInput>{ input };
 
-        Test.startTest();
-        try {
-            InvocableDmlDeleteRecords.invoke(inputs);
-            Assert.fail('Did not throw a System.DmlException');
-        } catch (System.DmlException error) {
-            // As expected...
-        }
-        Test.stopTest();
-    }
+		Test.startTest();
+		try {
+			InvocableDmlDeleteRecords.invoke(inputs);
+			Assert.fail('Did not throw a System.DmlException');
+		} catch (System.DmlException error) {
+			// As expected...
+		}
+		Test.stopTest();
+	}
 }
