@@ -1,5 +1,5 @@
 public class FlowDmlDeleteInput {
-    @InvocableVariable(label='Base Input')
+    @InvocableVariable(label='Base Input' required='true')
     public FlowDmlBaseInput baseInput;
 
     @InvocableVariable(label='Record Id [single]' description='The Id of a single SObject record to be processed.')

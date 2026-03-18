@@ -5,7 +5,7 @@ public abstract class InvocableDmlUpsertRecords {
     }
 
     public class Input {
-        @InvocableVariable(label='Base Input')
+        @InvocableVariable(label='Base Input' required='true')
         public FlowDmlBaseInput baseInput;
 
         @InvocableVariable(label='External ID Field' description='The API Name of the field to use as the upsert primary key')
