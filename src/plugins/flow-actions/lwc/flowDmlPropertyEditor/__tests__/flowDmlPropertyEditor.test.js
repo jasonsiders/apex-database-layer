@@ -97,6 +97,12 @@ describe("c-flow-dml-property-editor", () => {
 			expect(getInput(element, "record")).not.toBeNull();
 		});
 
+		it("treats null inputVariables as BASE and applies defaults", () => {
+			const element = createComponent({ inputVariables: null });
+			expect(getInput(element, "record")).not.toBeNull();
+			expect(getCombobox(element, "accessLevelName").value).toBe("USER_MODE");
+		});
+
 		it("does not render Group B/C/D elements for BASE type", () => {
 			const element = createComponent({ inputVariables: BASE_VARS });
 			expect(getInput(element, "recordId")).toBeFalsy();
@@ -148,6 +154,13 @@ describe("c-flow-dml-property-editor", () => {
 			expect(getInput(element, "recordId").value).toBe("001abc");
 		});
 
+		it("defaults missing DELETE values when only recordId is provided", () => {
+			const element = createComponent({ inputVariables: [{ name: "recordId", value: "001abc" }] });
+			expect(getInput(element, "recordIds").value).toEqual([]);
+			expect(getCombobox(element, "baseInput_accessLevelName").value).toBe("USER_MODE");
+			expect(getInput(element, "baseInput_allOrNone").checked).toBe(true);
+		});
+
 		it("populates externalIdField in Group C from inputVariables", () => {
 			const vars = UPSERT_VARS.map((v) =>
 				v.name === "externalIdField" ? { ...v, value: "MyField__c" } : v
@@ -156,10 +169,39 @@ describe("c-flow-dml-property-editor", () => {
 			expect(getInput(element, "externalIdField").value).toBe("MyField__c");
 		});
 
+		it("defaults missing UPSERT baseInput values when only externalIdField is provided", () => {
+			const element = createComponent({
+				inputVariables: [{ name: "externalIdField", value: "External_Id__c" }]
+			});
+			expect(getCombobox(element, "baseInput_accessLevelName").value).toBe("USER_MODE");
+			expect(getInput(element, "baseInput_allOrNone").checked).toBe(true);
+			expect(getInput(element, "baseInput_record").value).toBeNull();
+		});
+
 		it("populates leadId in Group D from inputVariables", () => {
 			const vars = CONVERT_VARS.map((v) => (v.name === "leadId" ? { ...v, value: "00Qabc" } : v));
 			const element = createComponent({ inputVariables: vars });
 			expect(getInput(element, "leadId").value).toBe("00Qabc");
+		});
+
+		it("defaults missing CONVERT values when only leadId is provided", () => {
+			const element = createComponent({ inputVariables: [{ name: "leadId", value: "00Qabc" }] });
+			expect(getInput(element, "doNotCreateOpportunity").checked).toBe(false);
+			expect(getInput(element, "overwriteLeadSource").checked).toBe(false);
+			expect(getInput(element, "sendNotificationEmail").checked).toBe(false);
+			expect(getCombobox(element, "accessLevelName").value).toBe("USER_MODE");
+			expect(getInput(element, "allOrNone").checked).toBe(true);
+			expect(getDmlOptions(element).value).toEqual({
+				allowFieldTruncation: false,
+				localeOptions: null,
+				assignmentRuleHeader: { assignmentRuleId: null, useDefaultRule: false },
+				duplicateRuleHeader: { allowSave: false, runAsCurrentUser: false },
+				emailHeader: {
+					triggerAutoResponseEmail: false,
+					triggerOtherEmail: false,
+					triggerUserEmail: false
+				}
+			});
 		});
 	});
 
@@ -307,6 +349,20 @@ describe("c-flow-dml-property-editor", () => {
 			expect(detail.newValueDataType).toBe("FlowDmlBaseInput");
 		});
 
+		it("emits FlowDmlBaseInput event for baseInput_accessLevelName combobox change", () => {
+			const element = createComponent({ inputVariables: UPSERT_VARS });
+			const handler = captureConfigEvent(element);
+			fireCombobox(
+				getCombobox(element, "baseInput_accessLevelName"),
+				"baseInput_accessLevelName",
+				"SYSTEM_MODE"
+			);
+			const detail = handler.mock.calls[0][0].detail;
+			expect(detail.name).toBe("baseInput");
+			expect(detail.newValue.accessLevelName).toBe("SYSTEM_MODE");
+			expect(detail.newValueDataType).toBe("FlowDmlBaseInput");
+		});
+
 		it("emits updated baseInput containing dmlOptions on baseInput dmlOptions change", () => {
 			const element = createComponent({ inputVariables: UPSERT_VARS });
 			const handler = captureConfigEvent(element);
@@ -422,6 +478,13 @@ describe("c-flow-dml-property-editor", () => {
 			it("returns no errors when baseInput.record is set via text change", async () => {
 				const element = createComponent({ inputVariables: UPSERT_VARS });
 				fireText(getInput(element, "baseInput_record"), "baseInput_record", "accRec");
+				await Promise.resolve();
+				expect(element.validate()).toHaveLength(0);
+			});
+
+			it("returns no errors when baseInput.records is non-empty", async () => {
+				const element = createComponent({ inputVariables: UPSERT_VARS });
+				fireText(getInput(element, "baseInput_records"), "baseInput_records", ["accRec"]);
 				await Promise.resolve();
 				expect(element.validate()).toHaveLength(0);
 			});

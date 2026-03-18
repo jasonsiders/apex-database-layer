@@ -78,5 +78,11 @@ describe("c-flow-dml-section", () => {
 			expect(element.shadowRoot.querySelector(".section-body")).not.toBeNull();
 			expect(element.shadowRoot.querySelector("lightning-icon")).toBeNull();
 		});
+
+		it('treats the string "false" the same as boolean false', () => {
+			const element = createComponent({ label: "Section", isRequired: "false" });
+			expect(element.shadowRoot.querySelector(".section-body")).toBeNull();
+			expect(element.shadowRoot.querySelector("lightning-icon").iconName).toBe("utility:chevronright");
+		});
 	});
 });
