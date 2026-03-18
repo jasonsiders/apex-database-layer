@@ -1,0 +1,249 @@
+<template>
+    <!-- Group A: Insert / Update (FlowDmlBaseInput flat) -->
+    <template lwc:if={isGroupA}>
+        <div class="editor">
+            <lightning-input
+                type="text"
+                name="record"
+                label="SObject Record"
+                value={vals.record}
+                onchange={handleText}
+            ></lightning-input>
+            <lightning-input
+                type="text"
+                name="records"
+                label="SObject Records [collection]"
+                value={vals.records}
+                onchange={handleText}
+            ></lightning-input>
+            <lightning-combobox
+                name="accessLevelName"
+                label="Access Level"
+                value={vals.accessLevelName}
+                options={accessLevelOptions}
+                onchange={handleCombobox}
+            ></lightning-combobox>
+            <lightning-input
+                type="toggle"
+                name="allOrNone"
+                label="All Or None"
+                checked={vals.allOrNone}
+                onchange={handleToggle}
+            ></lightning-input>
+            <c-flow-dml-section label="DML Options" is-required={false}>
+                <c-flow-dml-options
+                    value={vals.dmlOptions}
+                    ondmloptionschange={handleDmlOptionsChange}
+                ></c-flow-dml-options>
+            </c-flow-dml-section>
+        </div>
+    </template>
+
+    <!-- Group B: Delete / Purge / Undelete (FlowDmlDeleteInput) -->
+    <template lwc:elseif={isGroupB}>
+        <div class="editor">
+            <lightning-input
+                type="text"
+                name="recordId"
+                label="Record Id [single]"
+                value={vals.recordId}
+                onchange={handleText}
+            ></lightning-input>
+            <lightning-input
+                type="text"
+                name="recordIds"
+                label="Record Ids [collection]"
+                value={vals.recordIds}
+                onchange={handleText}
+            ></lightning-input>
+            <c-flow-dml-section label="Base Input" is-required={true}>
+                <lightning-combobox
+                    name="baseInput_accessLevelName"
+                    label="Access Level"
+                    value={baseInputVal.accessLevelName}
+                    options={accessLevelOptions}
+                    onchange={handleBaseInputCombobox}
+                ></lightning-combobox>
+                <lightning-input
+                    type="toggle"
+                    name="baseInput_allOrNone"
+                    label="All Or None"
+                    checked={baseInputVal.allOrNone}
+                    onchange={handleBaseInputToggle}
+                ></lightning-input>
+                <lightning-input
+                    type="text"
+                    name="baseInput_record"
+                    label="SObject Record"
+                    value={baseInputVal.record}
+                    onchange={handleBaseInputText}
+                ></lightning-input>
+                <lightning-input
+                    type="text"
+                    name="baseInput_records"
+                    label="SObject Records [collection]"
+                    value={baseInputVal.records}
+                    onchange={handleBaseInputText}
+                ></lightning-input>
+                <c-flow-dml-section label="DML Options" is-required={false}>
+                    <c-flow-dml-options
+                        value={baseInputVal.dmlOptions}
+                        ondmloptionschange={handleBaseInputDmlOptionsChange}
+                    ></c-flow-dml-options>
+                </c-flow-dml-section>
+            </c-flow-dml-section>
+        </div>
+    </template>
+
+    <!-- Group C: Upsert (InvocableDmlUpsertRecords.Input) -->
+    <template lwc:elseif={isGroupC}>
+        <div class="editor">
+            <lightning-input
+                type="text"
+                name="externalIdField"
+                label="External ID Field"
+                value={vals.externalIdField}
+                onchange={handleText}
+            ></lightning-input>
+            <c-flow-dml-section label="Base Input" is-required={true}>
+                <lightning-combobox
+                    name="baseInput_accessLevelName"
+                    label="Access Level"
+                    value={baseInputVal.accessLevelName}
+                    options={accessLevelOptions}
+                    onchange={handleBaseInputCombobox}
+                ></lightning-combobox>
+                <lightning-input
+                    type="toggle"
+                    name="baseInput_allOrNone"
+                    label="All Or None"
+                    checked={baseInputVal.allOrNone}
+                    onchange={handleBaseInputToggle}
+                ></lightning-input>
+                <lightning-input
+                    type="text"
+                    name="baseInput_record"
+                    label="SObject Record"
+                    value={baseInputVal.record}
+                    onchange={handleBaseInputText}
+                ></lightning-input>
+                <lightning-input
+                    type="text"
+                    name="baseInput_records"
+                    label="SObject Records [collection]"
+                    value={baseInputVal.records}
+                    onchange={handleBaseInputText}
+                ></lightning-input>
+                <c-flow-dml-section label="DML Options" is-required={false}>
+                    <c-flow-dml-options
+                        value={baseInputVal.dmlOptions}
+                        ondmloptionschange={handleBaseInputDmlOptionsChange}
+                    ></c-flow-dml-options>
+                </c-flow-dml-section>
+            </c-flow-dml-section>
+        </div>
+    </template>
+
+    <!-- Group D: Convert (InvocableDmlConvertRecords.Input flat) -->
+    <template lwc:elseif={isGroupD}>
+        <div class="editor">
+            <lightning-input
+                type="text"
+                name="leadId"
+                label="Lead ID"
+                value={vals.leadId}
+                onchange={handleText}
+            ></lightning-input>
+            <lightning-input
+                type="text"
+                name="accountId"
+                label="Account ID"
+                value={vals.accountId}
+                onchange={handleText}
+            ></lightning-input>
+            <lightning-input
+                type="text"
+                name="accountName"
+                label="Account Name"
+                value={vals.accountName}
+                onchange={handleText}
+            ></lightning-input>
+            <lightning-input
+                type="text"
+                name="contactId"
+                label="Contact ID"
+                value={vals.contactId}
+                onchange={handleText}
+            ></lightning-input>
+            <lightning-input
+                type="text"
+                name="convertedStatus"
+                label="Converted Status"
+                value={vals.convertedStatus}
+                onchange={handleText}
+            ></lightning-input>
+            <lightning-input
+                type="toggle"
+                name="doNotCreateOpportunity"
+                label="Do Not Create Opportunity"
+                checked={vals.doNotCreateOpportunity}
+                onchange={handleToggle}
+            ></lightning-input>
+            <lightning-input
+                type="text"
+                name="opportunityId"
+                label="Opportunity ID"
+                value={vals.opportunityId}
+                onchange={handleText}
+            ></lightning-input>
+            <lightning-input
+                type="text"
+                name="opportunityName"
+                label="Opportunity Name"
+                value={vals.opportunityName}
+                onchange={handleText}
+            ></lightning-input>
+            <lightning-input
+                type="toggle"
+                name="overwriteLeadSource"
+                label="Overwrite Lead Source"
+                checked={vals.overwriteLeadSource}
+                onchange={handleToggle}
+            ></lightning-input>
+            <lightning-input
+                type="text"
+                name="ownerId"
+                label="Owner ID"
+                value={vals.ownerId}
+                onchange={handleText}
+            ></lightning-input>
+            <lightning-input
+                type="toggle"
+                name="sendNotificationEmail"
+                label="Send Notification Email"
+                checked={vals.sendNotificationEmail}
+                onchange={handleToggle}
+            ></lightning-input>
+            <lightning-combobox
+                name="accessLevelName"
+                label="Access Level"
+                value={vals.accessLevelName}
+                options={accessLevelOptions}
+                onchange={handleCombobox}
+            ></lightning-combobox>
+            <lightning-input
+                type="toggle"
+                name="allOrNone"
+                label="All Or None"
+                checked={vals.allOrNone}
+                onchange={handleToggle}
+            ></lightning-input>
+            <c-flow-dml-section label="DML Options" is-required={false}>
+                <c-flow-dml-options
+                    value={vals.dmlOptions}
+                    ondmloptionschange={handleDmlOptionsChange}
+                ></c-flow-dml-options>
+            </c-flow-dml-section>
+        </div>
+    </template>
+</template>

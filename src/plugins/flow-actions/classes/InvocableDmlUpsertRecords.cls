@@ -1,5 +1,5 @@
 public abstract class InvocableDmlUpsertRecords {
-    @InvocableMethod(category='Database Layer' label='Upsert Record(s)' iconName='slds:standard:replace')
+    @InvocableMethod(category='Database Layer' label='Upsert Record(s)' iconName='slds:standard:replace' configurationEditor='c-flow-dml-property-editor')
     public static List<InvocableDmlUpsertRecords.Output> invoke(List<InvocableDmlUpsertRecords.Input> inputs) {
         return new List<InvocableDmlUpsertRecords.Output>{};
     }

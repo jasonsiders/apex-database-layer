@@ -1,5 +1,5 @@
 public abstract class InvocableDmlConvertRecords {
-    @InvocableMethod(category='Database Layer' label='Convert Record(s)' iconName='slds:standard:maintenance_work_rule')
+    @InvocableMethod(category='Database Layer' label='Convert Record(s)' iconName='slds:standard:maintenance_work_rule' configurationEditor='c-flow-dml-property-editor')
     public static List<InvocableDmlConvertRecords.Output> invoke(List<InvocableDmlConvertRecords.Input> inputs) {
         return new List<InvocableDmlConvertRecords.Output>{};
     }

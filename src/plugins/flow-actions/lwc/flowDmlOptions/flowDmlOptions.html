@@ -1,0 +1,74 @@
+<template>
+    <lightning-input
+        type="toggle"
+        name="allowFieldTruncation"
+        label="Allow Field Truncation"
+        checked={safeValue.allowFieldTruncation}
+        onchange={handleToggle}
+    ></lightning-input>
+    <lightning-input
+        type="text"
+        name="localeOptions"
+        label="Locale Options"
+        value={safeValue.localeOptions}
+        onchange={handleText}
+    ></lightning-input>
+
+    <c-flow-dml-section label="Assignment Rule" is-required={false}>
+        <lightning-input
+            type="text"
+            name="assignmentRuleId"
+            label="Assignment Rule ID"
+            value={assignmentRule.assignmentRuleId}
+            onchange={handleAssignmentRuleText}
+        ></lightning-input>
+        <lightning-input
+            type="toggle"
+            name="useDefaultRule"
+            label="Use Default Rule"
+            checked={assignmentRule.useDefaultRule}
+            onchange={handleAssignmentRuleToggle}
+        ></lightning-input>
+    </c-flow-dml-section>
+
+    <c-flow-dml-section label="Duplicate Rule" is-required={false}>
+        <lightning-input
+            type="toggle"
+            name="allowSave"
+            label="Allow Save"
+            checked={duplicateRule.allowSave}
+            onchange={handleDuplicateRuleToggle}
+        ></lightning-input>
+        <lightning-input
+            type="toggle"
+            name="runAsCurrentUser"
+            label="Run As Current User"
+            checked={duplicateRule.runAsCurrentUser}
+            onchange={handleDuplicateRuleToggle}
+        ></lightning-input>
+    </c-flow-dml-section>
+
+    <c-flow-dml-section label="Email Header" is-required={false}>
+        <lightning-input
+            type="toggle"
+            name="triggerAutoResponseEmail"
+            label="Trigger Auto-Response Email"
+            checked={emailHeader.triggerAutoResponseEmail}
+            onchange={handleEmailHeaderToggle}
+        ></lightning-input>
+        <lightning-input
+            type="toggle"
+            name="triggerOtherEmail"
+            label="Trigger Other Email"
+            checked={emailHeader.triggerOtherEmail}
+            onchange={handleEmailHeaderToggle}
+        ></lightning-input>
+        <lightning-input
+            type="toggle"
+            name="triggerUserEmail"
+            label="Trigger User Email"
+            checked={emailHeader.triggerUserEmail}
+            onchange={handleEmailHeaderToggle}
+        ></lightning-input>
+    </c-flow-dml-section>
+</template>
