@@ -1,6 +1,6 @@
 @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveRunAs')
 @IsTest
-private class InvocableUndeleteRecordsTest {
+private class InvocableDmlUndeleteRecordsTest {
 	static {
 		DatabaseLayer.useMocks();
 	}
@@ -13,7 +13,7 @@ private class InvocableUndeleteRecordsTest {
 		List<FlowDmlDeleteInput> inputs = new List<FlowDmlDeleteInput>{ input };
 
 		Test.startTest();
-		List<FlowDmlBaseOutput> outputs = InvocableUndeleteRecords.invoke(inputs);
+		List<FlowDmlBaseOutput> outputs = InvocableDmlUndeleteRecords.invoke(inputs);
 		Test.stopTest();
 
 		Assert.areEqual(1, MockDml.UNDELETED.getAll().size(), 'Wrong # of undeleted records');
@@ -30,7 +30,7 @@ private class InvocableUndeleteRecordsTest {
 		List<FlowDmlDeleteInput> inputs = new List<FlowDmlDeleteInput>{ input };
 
 		Test.startTest();
-		List<FlowDmlBaseOutput> outputs = InvocableUndeleteRecords.invoke(inputs);
+		List<FlowDmlBaseOutput> outputs = InvocableDmlUndeleteRecords.invoke(inputs);
 		Test.stopTest();
 
 		Assert.areEqual(3, MockDml.UNDELETED.getAll().size(), 'Wrong # of undeleted records');
@@ -50,7 +50,7 @@ private class InvocableUndeleteRecordsTest {
 		List<FlowDmlDeleteInput> inputs = new List<FlowDmlDeleteInput>{ input };
 
 		Test.startTest();
-		List<FlowDmlBaseOutput> outputs = InvocableUndeleteRecords.invoke(inputs);
+		List<FlowDmlBaseOutput> outputs = InvocableDmlUndeleteRecords.invoke(inputs);
 		Test.stopTest();
 
 		Assert.areEqual(4, MockDml.UNDELETED.getAll().size(), 'Wrong # of undeleted records');
@@ -71,7 +71,7 @@ private class InvocableUndeleteRecordsTest {
 		List<FlowDmlDeleteInput> inputs = new List<FlowDmlDeleteInput>{ input };
 
 		Test.startTest();
-		List<FlowDmlBaseOutput> outputs = InvocableUndeleteRecords.invoke(inputs);
+		List<FlowDmlBaseOutput> outputs = InvocableDmlUndeleteRecords.invoke(inputs);
 		Test.stopTest();
 
 		Assert.areEqual(4, MockDml.UNDELETED.getAll().size(), 'Wrong # of undeleted records');
@@ -92,7 +92,7 @@ private class InvocableUndeleteRecordsTest {
 		List<FlowDmlDeleteInput> inputs = new List<FlowDmlDeleteInput>{ input };
 
 		Test.startTest();
-		List<FlowDmlBaseOutput> outputs = InvocableUndeleteRecords.invoke(inputs);
+		List<FlowDmlBaseOutput> outputs = InvocableDmlUndeleteRecords.invoke(inputs);
 		Test.stopTest();
 
 		Assert.areEqual(4, MockDml.UNDELETED.getAll().size(), 'Wrong # of undeleted records');
@@ -119,7 +119,7 @@ private class InvocableUndeleteRecordsTest {
 		List<FlowDmlDeleteInput> inputs = new List<FlowDmlDeleteInput>{ input };
 
 		Test.startTest();
-		List<FlowDmlBaseOutput> outputs = InvocableUndeleteRecords.invoke(inputs);
+		List<FlowDmlBaseOutput> outputs = InvocableDmlUndeleteRecords.invoke(inputs);
 		Test.stopTest();
 
 		Assert.areEqual(8, MockDml.UNDELETED.getAll().size(), 'Wrong # of undeleted records');
@@ -154,7 +154,7 @@ private class InvocableUndeleteRecordsTest {
 		List<FlowDmlDeleteInput> inputs = new List<FlowDmlDeleteInput>{ input1, input2, input3 };
 
 		Test.startTest();
-		List<FlowDmlBaseOutput> outputs = InvocableUndeleteRecords.invoke(inputs);
+		List<FlowDmlBaseOutput> outputs = InvocableDmlUndeleteRecords.invoke(inputs);
 		Test.stopTest();
 
 		Assert.areEqual(3, MockDml.UNDELETED.numDmlStatements, 'Wrong # of undelete calls');
@@ -170,7 +170,7 @@ private class InvocableUndeleteRecordsTest {
 		List<FlowDmlDeleteInput> inputs = new List<FlowDmlDeleteInput>{ input };
 
 		Test.startTest();
-		List<FlowDmlBaseOutput> outputs = InvocableUndeleteRecords.invoke(inputs);
+		List<FlowDmlBaseOutput> outputs = InvocableDmlUndeleteRecords.invoke(inputs);
 		Test.stopTest();
 
 		Assert.areEqual(0, MockDml.UNDELETED.getAll().size(), 'Wrong # of undeleted records');
@@ -186,7 +186,7 @@ private class InvocableUndeleteRecordsTest {
 
 		Test.startTest();
 		try {
-			InvocableUndeleteRecords.invoke(inputs);
+			InvocableDmlUndeleteRecords.invoke(inputs);
 			Assert.fail('Did not throw a System.DmlException');
 		} catch (System.DmlException error) {
 			// As expected...

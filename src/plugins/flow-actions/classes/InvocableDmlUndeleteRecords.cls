@@ -1,4 +1,4 @@
-public abstract class InvocableUndeleteRecords {
+public abstract class InvocableDmlUndeleteRecords {
 	@InvocableMethod(
 		category='Database Layer'
 		label='Undelete Record(s)'
