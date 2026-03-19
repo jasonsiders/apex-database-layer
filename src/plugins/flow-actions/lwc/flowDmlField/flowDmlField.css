@@ -1,31 +1,35 @@
 .field-row {
+	position: relative;
 	display: grid;
-	grid-template-columns: auto minmax(0, 1fr);
+	grid-template-columns: minmax(0, 1fr) auto;
 	align-items: start;
-	column-gap: 0.875rem;
-	row-gap: 0.5rem;
-	padding: 0.125rem 0;
+	column-gap: 1rem;
+	row-gap: 0.2rem;
+	padding: 0.35rem 0 0.7rem 2.25rem;
 }
 
 .field-type {
+	position: absolute;
+	top: 0.45rem;
+	left: 0;
 	display: flex;
-	align-items: flex-start;
+	align-items: center;
 	justify-content: center;
-	width: 1.875rem;
-	padding-top: 1.85rem;
+	width: 1.5rem;
 }
 
 .type-marker {
 	color: var(--lwc-colorTextWeak, #706e6b);
-	font-size: 1.1rem;
-	font-weight: 500;
+	font-size: 0.95rem;
+	font-weight: 400;
 	line-height: 1;
-	letter-spacing: -0.02em;
+	letter-spacing: -0.01em;
+	opacity: 0.6;
 }
 
 .field-main {
 	display: grid;
-	gap: 0.35rem;
+	gap: 0.3rem;
 	min-width: 0;
 }
 
@@ -35,28 +39,41 @@
 	align-items: center;
 	gap: 0.35rem;
 	color: var(--lwc-colorTextDefault, #181818);
-	font-size: 0.9rem;
+	font-size: 0.88rem;
 	line-height: 1.35;
 }
 
 .required-indicator {
 	color: var(--lwc-colorTextError, #ba0517);
-	font-weight: 700;
+	font-weight: 400;
 }
 
 .field-label {
-	font-weight: 500;
+	font-weight: 400;
 }
 
 .control-row {
-	display: grid;
-	grid-template-columns: minmax(0, 1fr);
-	gap: 0.5rem;
-	max-width: 40rem;
+	max-width: 36rem;
 }
 
 .control-cell {
 	min-width: 0;
+}
+
+.control-input-wrap {
+	position: relative;
+	max-width: 36rem;
+}
+
+.control-input-wrap_has-menu {
+	padding-right: 2.5rem;
+}
+
+.resource-menu {
+	position: absolute;
+	top: 0.45rem;
+	right: 0.4rem;
+	z-index: 1;
 }
 
 .control-shell {
@@ -67,47 +84,41 @@
 	border: 1px solid var(--lwc-colorBorderInput, #c9c9c9);
 	border-radius: 0.25rem;
 	background: var(--lwc-colorBackgroundInput, #ffffff);
-	max-width: 40rem;
+	max-width: 36rem;
 }
 
 .empty-state {
-	min-height: 0.5rem;
+	display: none;
 }
 
 .field-toggle {
 	display: flex;
 	flex-direction: column;
 	align-items: flex-end;
+	align-self: flex-start;
 	justify-content: flex-start;
 	gap: 0.25rem;
-	padding-top: 1.6rem;
+	padding-top: 0.1rem;
 }
 
 .toggle-label {
 	max-width: 10rem;
 	color: var(--lwc-colorTextWeak, #444444);
-	font-size: 0.82rem;
+	font-size: 0.78rem;
 	line-height: 1.35;
 	text-align: right;
 }
 
-@media (min-width: 48rem) {
-	.field-row {
-		grid-template-columns: auto minmax(0, 1fr) auto;
-		column-gap: 1rem;
-	}
-
-	.control-row {
-		grid-template-columns: minmax(0, 1fr) auto;
-		align-items: start;
-	}
-}
-
 @media (max-width: 47.99rem) {
+	.field-row {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
 	.field-toggle {
-		grid-column: 2;
+		grid-column: 1;
 		align-items: flex-start;
-		padding-top: 0.25rem;
+		padding-left: 0;
+		padding-top: 0.35rem;
 	}
 
 	.toggle-label {

@@ -24,73 +24,78 @@
 			<template lwc:if={showLiteralControl}>
 				<div class="control-row">
 					<div class="control-cell">
-						<template lwc:if={isPicklist}>
-							<lightning-combobox
-								name={name}
-								label={label}
-								variant="label-hidden"
-								value={currentPicklistValue}
-								options={options}
-								placeholder={effectivePlaceholder}
-								onchange={handlePicklistChange}
-							></lightning-combobox>
-						</template>
-						<template lwc:else>
-							<lightning-input
-								type="text"
-								name={name}
-								label={label}
-								variant="label-hidden"
-								value={currentTextValue}
-								placeholder={effectivePlaceholder}
-								onchange={handleTextChange}
-							></lightning-input>
-						</template>
-					</div>
-
-					<template lwc:if={showResourceMenu}>
-						<lightning-button-menu
-							alternative-text="Search resources"
-							icon-name="utility:search"
-							variant="border-filled"
-							menu-alignment="right"
-							onselect={handleResourceMenuSelect}
-						>
-							<template for:each={resourceOptions} for:item="resourceOption">
-								<lightning-menu-item
-									key={resourceOption.value}
-									value={resourceOption.value}
-									label={resourceOption.label}
-								></lightning-menu-item>
+						<div class={controlInputWrapClass}>
+							<template lwc:if={isPicklist}>
+								<lightning-combobox
+									name={name}
+									label={label}
+									variant="label-hidden"
+									value={currentPicklistValue}
+									options={options}
+									placeholder={effectivePlaceholder}
+									onchange={handlePicklistChange}
+								></lightning-combobox>
 							</template>
-						</lightning-button-menu>
-					</template>
+							<template lwc:else>
+								<lightning-input
+									type="text"
+									name={name}
+									label={label}
+									variant="label-hidden"
+									value={currentTextValue}
+									placeholder={effectivePlaceholder}
+									onchange={handleTextChange}
+								></lightning-input>
+							</template>
+
+							<template lwc:if={showResourceMenu}>
+								<lightning-button-menu
+									class="resource-menu"
+									alternative-text="Search resources"
+									icon-name="utility:search"
+									variant="bare"
+									menu-alignment="right"
+									onselect={handleResourceMenuSelect}
+								>
+									<template for:each={resourceOptions} for:item="resourceOption">
+										<lightning-menu-item
+											key={resourceOption.value}
+											value={resourceOption.value}
+											label={resourceOption.label}
+										></lightning-menu-item>
+									</template>
+								</lightning-button-menu>
+							</template>
+						</div>
+					</div>
 				</div>
 			</template>
 
 			<template lwc:if={showDefaultControl}>
 				<div class="control-row">
 					<div class="control-cell">
-						<template lwc:if={isPicklist}>
-							<lightning-combobox
-								name={name}
-								label={label}
-								variant="label-hidden"
-								value={defaultPicklistValue}
-								options={options}
-								disabled
-							></lightning-combobox>
-						</template>
-						<template lwc:else>
-							<lightning-input
-								type="text"
-								name={name}
-								label={label}
-								variant="label-hidden"
-								value={defaultTextValue}
-								disabled
-							></lightning-input>
-						</template>
+						<div class="control-input-wrap">
+							<template lwc:if={isPicklist}>
+								<lightning-combobox
+									name={name}
+									label={label}
+									variant="label-hidden"
+									value={defaultPicklistValue}
+									options={options}
+									disabled
+								></lightning-combobox>
+							</template>
+							<template lwc:else>
+								<lightning-input
+									type="text"
+									name={name}
+									label={label}
+									variant="label-hidden"
+									value={defaultTextValue}
+									disabled
+								></lightning-input>
+							</template>
+						</div>
 					</div>
 				</div>
 			</template>

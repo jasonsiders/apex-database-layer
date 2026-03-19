@@ -83,14 +83,6 @@ export default class FlowDmlField extends LightningElement {
 	}
 
 	get typeMarker() {
-		if (this.fieldDataType === "Boolean") {
-			return "TF";
-		}
-
-		if (this.fieldDataType === "SObject") {
-			return this.name?.endsWith("records") || this.name?.endsWith("Ids") ? "{}[]" : "{}";
-		}
-
 		return "Aa";
 	}
 
@@ -172,6 +164,10 @@ export default class FlowDmlField extends LightningElement {
 		}
 
 		return "Enter a value";
+	}
+
+	get controlInputWrapClass() {
+		return this.showResourceMenu ? "control-input-wrap control-input-wrap_has-menu" : "control-input-wrap";
 	}
 
 	handleTextChange(event) {
