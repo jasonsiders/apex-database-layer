@@ -82,6 +82,18 @@ export default class FlowDmlField extends LightningElement {
 		return this.selectedResource?.pillLabel ?? this.selectedResourceName ?? "";
 	}
 
+	get typeMarker() {
+		if (this.fieldDataType === "Boolean") {
+			return "TF";
+		}
+
+		if (this.fieldDataType === "SObject") {
+			return this.name?.endsWith("records") || this.name?.endsWith("Ids") ? "{}[]" : "{}";
+		}
+
+		return "Aa";
+	}
+
 	get showLiteralControl() {
 		return this.isIncluded && !this.isReferenceValue;
 	}
@@ -90,7 +102,7 @@ export default class FlowDmlField extends LightningElement {
 		return this.isIncluded && this.isReferenceValue;
 	}
 
-	get showResourcePicker() {
+	get showResourceMenu() {
 		return this.showLiteralControl && (this.resourceOptions || []).length > 0;
 	}
 
@@ -146,13 +158,13 @@ export default class FlowDmlField extends LightningElement {
 		return "Not Included";
 	}
 
-	get resourcePickerPlaceholder() {
-		return "Reference a flow resource";
-	}
-
 	get effectivePlaceholder() {
 		if (this.placeholder) {
 			return this.placeholder;
+		}
+
+		if (this.showResourceMenu && !this.isPicklist) {
+			return "Enter value or search resources...";
 		}
 
 		if (this.isPicklist) {
@@ -204,6 +216,10 @@ export default class FlowDmlField extends LightningElement {
 				}
 			})
 		);
+	}
+
+	handleResourceMenuSelect(event) {
+		this.handleResourceChange({ detail: { value: event.detail.value } });
 	}
 
 	handleResourceRemove() {

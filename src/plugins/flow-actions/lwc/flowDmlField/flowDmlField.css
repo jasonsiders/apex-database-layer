@@ -1,13 +1,31 @@
 .field-row {
 	display: grid;
-	grid-template-columns: minmax(0, 1fr);
-	align-items: end;
-	row-gap: 0.75rem;
+	grid-template-columns: auto minmax(0, 1fr);
+	align-items: start;
+	column-gap: 0.875rem;
+	row-gap: 0.5rem;
+	padding: 0.125rem 0;
+}
+
+.field-type {
+	display: flex;
+	align-items: flex-start;
+	justify-content: center;
+	width: 1.875rem;
+	padding-top: 1.85rem;
+}
+
+.type-marker {
+	color: var(--lwc-colorTextWeak, #706e6b);
+	font-size: 1.1rem;
+	font-weight: 500;
+	line-height: 1;
+	letter-spacing: -0.02em;
 }
 
 .field-main {
 	display: grid;
-	gap: 0.5rem;
+	gap: 0.35rem;
 	min-width: 0;
 }
 
@@ -17,7 +35,7 @@
 	align-items: center;
 	gap: 0.35rem;
 	color: var(--lwc-colorTextDefault, #181818);
-	font-size: 0.95rem;
+	font-size: 0.9rem;
 	line-height: 1.35;
 }
 
@@ -27,11 +45,18 @@
 }
 
 .field-label {
-	font-weight: 600;
+	font-weight: 500;
 }
 
-.resource-picker {
-	padding-top: 0.125rem;
+.control-row {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	gap: 0.5rem;
+	max-width: 40rem;
+}
+
+.control-cell {
+	min-width: 0;
 }
 
 .control-shell {
@@ -42,31 +67,50 @@
 	border: 1px solid var(--lwc-colorBorderInput, #c9c9c9);
 	border-radius: 0.25rem;
 	background: var(--lwc-colorBackgroundInput, #ffffff);
+	max-width: 40rem;
 }
 
 .empty-state {
-	min-height: 2.75rem;
+	min-height: 0.5rem;
 }
 
 .field-toggle {
 	display: flex;
 	flex-direction: column;
 	align-items: flex-end;
-	justify-content: flex-end;
+	justify-content: flex-start;
 	gap: 0.25rem;
+	padding-top: 1.6rem;
 }
 
 .toggle-label {
-	max-width: 11rem;
+	max-width: 10rem;
 	color: var(--lwc-colorTextWeak, #444444);
-	font-size: 0.9rem;
+	font-size: 0.82rem;
 	line-height: 1.35;
 	text-align: right;
 }
 
 @media (min-width: 48rem) {
 	.field-row {
+		grid-template-columns: auto minmax(0, 1fr) auto;
+		column-gap: 1rem;
+	}
+
+	.control-row {
 		grid-template-columns: minmax(0, 1fr) auto;
-		column-gap: 1.25rem;
+		align-items: start;
+	}
+}
+
+@media (max-width: 47.99rem) {
+	.field-toggle {
+		grid-column: 2;
+		align-items: flex-start;
+		padding-top: 0.25rem;
+	}
+
+	.toggle-label {
+		text-align: left;
 	}
 }

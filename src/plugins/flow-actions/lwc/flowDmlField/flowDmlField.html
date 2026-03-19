@@ -1,5 +1,9 @@
 <template>
 	<div class="field-row">
+		<div class="field-type">
+			<span class="type-marker">{typeMarker}</span>
+		</div>
+
 		<div class="field-main">
 			<div class="field-label-row">
 				<template lwc:if={required}>
@@ -18,63 +22,77 @@
 			</template>
 
 			<template lwc:if={showLiteralControl}>
-				<template lwc:if={isPicklist}>
-					<lightning-combobox
-						name={name}
-						label={label}
-						variant="label-hidden"
-						value={currentPicklistValue}
-						options={options}
-						placeholder={effectivePlaceholder}
-						onchange={handlePicklistChange}
-					></lightning-combobox>
-				</template>
-				<template lwc:else>
-					<lightning-input
-						type="text"
-						name={name}
-						label={label}
-						variant="label-hidden"
-						value={currentTextValue}
-						placeholder={effectivePlaceholder}
-						onchange={handleTextChange}
-					></lightning-input>
-				</template>
+				<div class="control-row">
+					<div class="control-cell">
+						<template lwc:if={isPicklist}>
+							<lightning-combobox
+								name={name}
+								label={label}
+								variant="label-hidden"
+								value={currentPicklistValue}
+								options={options}
+								placeholder={effectivePlaceholder}
+								onchange={handlePicklistChange}
+							></lightning-combobox>
+						</template>
+						<template lwc:else>
+							<lightning-input
+								type="text"
+								name={name}
+								label={label}
+								variant="label-hidden"
+								value={currentTextValue}
+								placeholder={effectivePlaceholder}
+								onchange={handleTextChange}
+							></lightning-input>
+						</template>
+					</div>
 
-				<template lwc:if={showResourcePicker}>
-					<lightning-combobox
-						name={name}
-						label="Flow Resource"
-						variant="label-hidden"
-						class="resource-picker"
-						options={resourceOptions}
-						placeholder={resourcePickerPlaceholder}
-						onchange={handleResourceChange}
-					></lightning-combobox>
-				</template>
+					<template lwc:if={showResourceMenu}>
+						<lightning-button-menu
+							alternative-text="Search resources"
+							icon-name="utility:search"
+							variant="border-filled"
+							menu-alignment="right"
+							onselect={handleResourceMenuSelect}
+						>
+							<template for:each={resourceOptions} for:item="resourceOption">
+								<lightning-menu-item
+									key={resourceOption.value}
+									value={resourceOption.value}
+									label={resourceOption.label}
+								></lightning-menu-item>
+							</template>
+						</lightning-button-menu>
+					</template>
+				</div>
 			</template>
 
 			<template lwc:if={showDefaultControl}>
-				<template lwc:if={isPicklist}>
-					<lightning-combobox
-						name={name}
-						label={label}
-						variant="label-hidden"
-						value={defaultPicklistValue}
-						options={options}
-						disabled
-					></lightning-combobox>
-				</template>
-				<template lwc:else>
-					<lightning-input
-						type="text"
-						name={name}
-						label={label}
-						variant="label-hidden"
-						value={defaultTextValue}
-						disabled
-					></lightning-input>
-				</template>
+				<div class="control-row">
+					<div class="control-cell">
+						<template lwc:if={isPicklist}>
+							<lightning-combobox
+								name={name}
+								label={label}
+								variant="label-hidden"
+								value={defaultPicklistValue}
+								options={options}
+								disabled
+							></lightning-combobox>
+						</template>
+						<template lwc:else>
+							<lightning-input
+								type="text"
+								name={name}
+								label={label}
+								variant="label-hidden"
+								value={defaultTextValue}
+								disabled
+							></lightning-input>
+						</template>
+					</div>
+				</div>
 			</template>
 
 			<template lwc:if={showEmptyState}>
@@ -89,6 +107,8 @@
 					label={includedStateLabel}
 					variant="label-hidden"
 					checked={isIncluded}
+					message-toggle-active=""
+					message-toggle-inactive=""
 					onchange={handleIncludedChange}
 				></lightning-input>
 				<span class="toggle-label">{includedStateLabel}</span>
