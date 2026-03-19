@@ -1,6 +1,6 @@
 <template>
 	<div class="field-row">
-		<div class="field-type">
+		<div class="field-type slds-text-color_weak">
 			<span class="type-marker">{typeMarker}</span>
 		</div>
 
@@ -9,7 +9,7 @@
 				<template lwc:if={required}>
 					<span class="required-indicator">*</span>
 				</template>
-				<span class="field-label">{label}</span>
+				<span class="field-label slds-form-element__label">{label}</span>
 				<template lwc:if={helpText}>
 					<lightning-helptext content={helpText}></lightning-helptext>
 				</template>
@@ -17,7 +17,11 @@
 
 			<template lwc:if={showReferencePill}>
 				<div class="control-shell">
-					<lightning-pill label={selectedResourceLabel} onremove={handleResourceRemove}></lightning-pill>
+					<lightning-pill
+						class="resource-pill"
+						label={selectedResourceLabel}
+						onremove={handleResourceRemove}
+					></lightning-pill>
 				</div>
 			</template>
 
@@ -27,6 +31,7 @@
 						<div class={controlInputWrapClass}>
 							<template lwc:if={isPicklist}>
 								<lightning-combobox
+									class="field-control field-control_select"
 									name={name}
 									label={label}
 									variant="label-hidden"
@@ -38,6 +43,7 @@
 							</template>
 							<template lwc:else>
 								<lightning-input
+									class="field-control"
 									type="text"
 									name={name}
 									label={label}
@@ -50,9 +56,10 @@
 
 							<template lwc:if={showResourceMenu}>
 								<lightning-button-menu
-									class="resource-menu"
+									class="resource-menu field-action"
 									alternative-text="Search resources"
 									icon-name="utility:search"
+									icon-size="x-small"
 									variant="bare"
 									menu-alignment="right"
 									onselect={handleResourceMenuSelect}
@@ -77,6 +84,7 @@
 						<div class="control-input-wrap">
 							<template lwc:if={isPicklist}>
 								<lightning-combobox
+									class="field-control field-control_select"
 									name={name}
 									label={label}
 									variant="label-hidden"
@@ -87,6 +95,7 @@
 							</template>
 							<template lwc:else>
 								<lightning-input
+									class="field-control"
 									type="text"
 									name={name}
 									label={label}
@@ -108,6 +117,7 @@
 		<template lwc:if={showIncludedToggle}>
 			<div class="field-toggle">
 				<lightning-input
+					class="field-toggle-input"
 					type="toggle"
 					label={includedStateLabel}
 					variant="label-hidden"

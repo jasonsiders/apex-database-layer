@@ -10,21 +10,20 @@
 
 .field-type {
 	position: absolute;
-	top: 0.45rem;
+	top: 0.3rem;
 	left: 0;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: 1.5rem;
+	width: 1.05rem;
 }
 
 .type-marker {
-	color: var(--lwc-colorTextWeak, #706e6b);
-	font-size: 0.95rem;
+	font-size: 0.6875rem;
 	font-weight: 400;
 	line-height: 1;
 	letter-spacing: -0.01em;
-	opacity: 0.6;
+	opacity: 0.5;
 }
 
 .field-main {
@@ -37,9 +36,7 @@
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
-	gap: 0.35rem;
-	color: var(--lwc-colorTextDefault, #181818);
-	font-size: 0.88rem;
+	gap: 0.3rem;
 	line-height: 1.35;
 }
 
@@ -49,6 +46,7 @@
 }
 
 .field-label {
+	margin: 0;
 	font-weight: 400;
 }
 
@@ -69,6 +67,16 @@
 	padding-right: 2.5rem;
 }
 
+.field-control {
+	--slds-c-input-text-font-size: 0.8125rem;
+	--slds-c-input-spacing-inline-start: 0.75rem;
+	--slds-c-input-spacing-inline-end: 1rem;
+}
+
+.field-control_select {
+	--slds-c-combobox-input-font-size: 0.8125rem;
+}
+
 .resource-menu {
 	position: absolute;
 	top: 0.45rem;
@@ -87,6 +95,15 @@
 	max-width: 36rem;
 }
 
+.resource-pill {
+	--slds-c-pill-text-font-size: 0.8125rem;
+}
+
+.field-action {
+	--slds-c-button-color-background: transparent;
+	--slds-c-button-color-border: transparent;
+}
+
 .empty-state {
 	display: none;
 }
@@ -103,8 +120,8 @@
 
 .toggle-label {
 	max-width: 10rem;
-	color: var(--lwc-colorTextWeak, #444444);
-	font-size: 0.78rem;
+	color: var(--lwc-colorTextWeak, #706e6b);
+	font-size: 0.6875rem;
 	line-height: 1.35;
 	text-align: right;
 }
