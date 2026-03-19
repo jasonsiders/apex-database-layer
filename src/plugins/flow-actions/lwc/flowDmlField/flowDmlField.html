@@ -1,0 +1,98 @@
+<template>
+	<div class="field-row">
+		<div class="field-main">
+			<div class="field-label-row">
+				<template lwc:if={required}>
+					<span class="required-indicator">*</span>
+				</template>
+				<span class="field-label">{label}</span>
+				<template lwc:if={helpText}>
+					<lightning-helptext content={helpText}></lightning-helptext>
+				</template>
+			</div>
+
+			<template lwc:if={showReferencePill}>
+				<div class="control-shell">
+					<lightning-pill label={selectedResourceLabel} onremove={handleResourceRemove}></lightning-pill>
+				</div>
+			</template>
+
+			<template lwc:if={showLiteralControl}>
+				<template lwc:if={isPicklist}>
+					<lightning-combobox
+						name={name}
+						label={label}
+						variant="label-hidden"
+						value={currentPicklistValue}
+						options={options}
+						placeholder={effectivePlaceholder}
+						onchange={handlePicklistChange}
+					></lightning-combobox>
+				</template>
+				<template lwc:else>
+					<lightning-input
+						type="text"
+						name={name}
+						label={label}
+						variant="label-hidden"
+						value={currentTextValue}
+						placeholder={effectivePlaceholder}
+						onchange={handleTextChange}
+					></lightning-input>
+				</template>
+
+				<template lwc:if={showResourcePicker}>
+					<lightning-combobox
+						name={name}
+						label="Flow Resource"
+						variant="label-hidden"
+						class="resource-picker"
+						options={resourceOptions}
+						placeholder={resourcePickerPlaceholder}
+						onchange={handleResourceChange}
+					></lightning-combobox>
+				</template>
+			</template>
+
+			<template lwc:if={showDefaultControl}>
+				<template lwc:if={isPicklist}>
+					<lightning-combobox
+						name={name}
+						label={label}
+						variant="label-hidden"
+						value={defaultPicklistValue}
+						options={options}
+						disabled
+					></lightning-combobox>
+				</template>
+				<template lwc:else>
+					<lightning-input
+						type="text"
+						name={name}
+						label={label}
+						variant="label-hidden"
+						value={defaultTextValue}
+						disabled
+					></lightning-input>
+				</template>
+			</template>
+
+			<template lwc:if={showEmptyState}>
+				<div class="empty-state"></div>
+			</template>
+		</div>
+
+		<template lwc:if={showIncludedToggle}>
+			<div class="field-toggle">
+				<lightning-input
+					type="toggle"
+					label={includedStateLabel}
+					variant="label-hidden"
+					checked={isIncluded}
+					onchange={handleIncludedChange}
+				></lightning-input>
+				<span class="toggle-label">{includedStateLabel}</span>
+			</div>
+		</template>
+	</div>
+</template>

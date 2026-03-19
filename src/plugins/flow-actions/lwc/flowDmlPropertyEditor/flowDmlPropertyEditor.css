@@ -1,0 +1,10 @@
+.editor {
+	display: grid;
+	gap: 1.25rem;
+	padding: 0.75rem 0 1.25rem;
+}
+
+.field-stack {
+	display: grid;
+	gap: 1rem;
+}

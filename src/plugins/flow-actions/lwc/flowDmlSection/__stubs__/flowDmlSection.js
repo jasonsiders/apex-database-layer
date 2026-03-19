@@ -7,4 +7,6 @@ import { LightningElement, api } from "lwc";
 export default class FlowDmlSection extends LightningElement {
 	@api label;
 	@api isRequired;
+	@api expanded;
+	@api collapsible;
 }

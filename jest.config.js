@@ -10,5 +10,11 @@ module.exports = {
 			"<rootDir>/src/plugins/flow-actions/lwc/flowDmlSection/__stubs__/flowDmlSection.js",
 		...jestConfig.moduleNameMapper
 	},
-	collectCoverageFrom: ["src/plugins/flow-actions/lwc/**/*.js", "!**/__tests__/**", "!**/__stubs__/**"]
+	collectCoverageFrom: [
+		"src/plugins/flow-actions/lwc/**/*",
+		"!**/__tests__/**",
+		"!**/__stubs__/**",
+		"!**/*.html",
+		"!**/*.css"
+	]
 };

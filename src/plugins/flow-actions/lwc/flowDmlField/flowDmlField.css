@@ -1,0 +1,72 @@
+.field-row {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	align-items: end;
+	row-gap: 0.75rem;
+}
+
+.field-main {
+	display: grid;
+	gap: 0.5rem;
+	min-width: 0;
+}
+
+.field-label-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.35rem;
+	color: var(--lwc-colorTextDefault, #181818);
+	font-size: 0.95rem;
+	line-height: 1.35;
+}
+
+.required-indicator {
+	color: var(--lwc-colorTextError, #ba0517);
+	font-weight: 700;
+}
+
+.field-label {
+	font-weight: 600;
+}
+
+.resource-picker {
+	padding-top: 0.125rem;
+}
+
+.control-shell {
+	display: flex;
+	align-items: center;
+	min-height: 2.75rem;
+	padding: 0.45rem 0.75rem;
+	border: 1px solid var(--lwc-colorBorderInput, #c9c9c9);
+	border-radius: 0.25rem;
+	background: var(--lwc-colorBackgroundInput, #ffffff);
+}
+
+.empty-state {
+	min-height: 2.75rem;
+}
+
+.field-toggle {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	justify-content: flex-end;
+	gap: 0.25rem;
+}
+
+.toggle-label {
+	max-width: 11rem;
+	color: var(--lwc-colorTextWeak, #444444);
+	font-size: 0.9rem;
+	line-height: 1.35;
+	text-align: right;
+}
+
+@media (min-width: 48rem) {
+	.field-row {
+		grid-template-columns: minmax(0, 1fr) auto;
+		column-gap: 1.25rem;
+	}
+}

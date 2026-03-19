@@ -1,16 +1,11 @@
 <template>
 	<div class="section">
-		<template lwc:if={isRequiredSection}>
-			<div class="section-header section-header_required">
-				<span class="section-label">{label}</span>
-			</div>
-		</template>
-		<template lwc:else>
-			<div class="section-header" onclick={handleToggle}>
+		<div class="section-header" onclick={handleToggle}>
+			<template lwc:if={isCollapsible}>
 				<lightning-icon icon-name={chevronIcon} size="x-small" class="chevron"></lightning-icon>
-				<span class="section-label">{label}</span>
-			</div>
-		</template>
+			</template>
+			<span class="section-label">{label}</span>
+		</div>
 		<template lwc:if={isExpanded}>
 			<div class="section-body">
 				<slot></slot>
