@@ -121,6 +121,25 @@ describe("c-flow-dml-field", () => {
 		expect(element.shadowRoot.querySelectorAll(".resource-option")).toHaveLength(3);
 	});
 
+	it("uses the picklist icon for picklist literal values", async () => {
+		const element = createComponent({
+			name: "localeOptions",
+			label: "Locale",
+			fieldDataType: "String",
+			inputType: "picklist",
+			included: true,
+			options: [{ label: "en_US", value: "en_US" }]
+		});
+
+		const input = getTextInput(element);
+		input.dispatchEvent(new CustomEvent("focus"));
+		await Promise.resolve();
+
+		expect(element.shadowRoot.querySelector(".resource-option lightning-icon").iconName).toBe(
+			"utility:picklist_type"
+		);
+	});
+
 	it("emits a reference value when a filtered resource is selected", async () => {
 		const element = createComponent({
 			name: "record",

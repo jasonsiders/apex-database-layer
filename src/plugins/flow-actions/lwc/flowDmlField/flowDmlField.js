@@ -143,6 +143,18 @@ function normalizeLiteralOptionValue(inputType, optionValue) {
 	return optionValue;
 }
 
+function deriveLiteralIconName(inputType) {
+	if (inputType === "picklist") {
+		return "utility:picklist_type";
+	}
+
+	if (inputType === "boolean") {
+		return "utility:toggle";
+	}
+
+	return "utility:choice";
+}
+
 function matchesLiteralOptionByValue(option, value) {
 	return option.value === value || option.rawValue === value;
 }
@@ -252,7 +264,7 @@ export default class FlowDmlField extends LightningElement {
 				rawValue: option.value,
 				value,
 				valueDataType: this.fieldDataType,
-				iconName: "utility:choice"
+				iconName: deriveLiteralIconName(this.inputType)
 			};
 		});
 	}
