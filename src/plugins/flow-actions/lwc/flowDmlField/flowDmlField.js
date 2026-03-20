@@ -190,6 +190,11 @@ export default class FlowDmlField extends LightningElement {
 
 	_draftTextValue = null;
 	_isResourcePickerOpen = false;
+	_ignoreNextTextChange = false;
+	_ignoreNextResourceClick = false;
+	_suppressTextCommitAfterSelection = false;
+	_pendingSelection = null;
+	_forceLiteralInput = false;
 
 	@api
 	get value() {
@@ -200,6 +205,9 @@ export default class FlowDmlField extends LightningElement {
 		this._value = nextValue;
 
 		this._draftTextValue = null;
+		this._suppressTextCommitAfterSelection = false;
+		this._pendingSelection = null;
+		this._forceLiteralInput = false;
 		this._setResourcePickerOpen(false);
 	}
 
@@ -242,6 +250,24 @@ export default class FlowDmlField extends LightningElement {
 		);
 	}
 
+	get decoratedSelectedResource() {
+		const selectedResource = this.selectedResource;
+
+		if (!selectedResource) {
+			return null;
+		}
+
+		const categoryKey = deriveCategoryKey(selectedResource);
+
+		return {
+			...selectedResource,
+			categoryKey,
+			groupLabel: deriveGroupLabel(categoryKey),
+			displayLabel: deriveDisplayLabel(selectedResource),
+			iconName: deriveIconName(selectedResource, categoryKey)
+		};
+	}
+
 	get typeMarker() {
 		return "Aa";
 	}
@@ -273,8 +299,24 @@ export default class FlowDmlField extends LightningElement {
 		return this.inputType === "picklist";
 	}
 
+	get activeReferenceSelection() {
+		if (this._forceLiteralInput) {
+			return null;
+		}
+
+		return this._pendingSelection ?? this.decoratedSelectedResource;
+	}
+
+	get showSelectedResourcePill() {
+		return this.isIncluded && !!this.activeReferenceSelection;
+	}
+
 	get showResourceDropdown() {
-		return this.isIncluded && this._isResourcePickerOpen;
+		return this.isIncluded && !this.showSelectedResourcePill && this._isResourcePickerOpen;
+	}
+
+	get hasResourceOptions() {
+		return (this.resourceOptions || []).length > 0;
 	}
 
 	get visibleResourceOptions() {
@@ -383,6 +425,14 @@ export default class FlowDmlField extends LightningElement {
 	}
 
 	get displayTextValue() {
+		if (this._forceLiteralInput) {
+			return this._draftTextValue ?? "";
+		}
+
+		if (this._pendingSelection) {
+			return this._pendingSelection.displayLabel;
+		}
+
 		if (this._draftTextValue !== null) {
 			return this._draftTextValue;
 		}
@@ -432,6 +482,12 @@ export default class FlowDmlField extends LightningElement {
 			: "control-input-wrap control-input-wrap_has-menu";
 	}
 
+	get resourceComboboxClass() {
+		return this.showResourceDropdown
+			? "resource-combobox slds-combobox slds-dropdown-trigger slds-dropdown-trigger_click slds-is-open"
+			: "resource-combobox slds-combobox slds-dropdown-trigger slds-dropdown-trigger_click";
+	}
+
 	get resourceTriggerIcon() {
 		return "utility:search";
 	}
@@ -476,8 +532,13 @@ export default class FlowDmlField extends LightningElement {
 	}
 
 	_emitSelection(option) {
-		this._draftTextValue = option.displayLabel;
+		this._value = option.value;
+		this._pendingSelection = option;
+		this._draftTextValue = null;
+		this._forceLiteralInput = false;
+		this._suppressTextCommitAfterSelection = true;
 		this._setResourcePickerOpen(false);
+		this._syncRenderedInputValue();
 		this._emitFieldChange(option.value, option.valueDataType);
 	}
 
@@ -490,11 +551,30 @@ export default class FlowDmlField extends LightningElement {
 	}
 
 	handleTextInput(event) {
+		if (this._pendingSelection && event.target.value !== this._pendingSelection.displayLabel) {
+			this._pendingSelection = null;
+		}
+
+		this._forceLiteralInput = false;
+		this._suppressTextCommitAfterSelection = false;
 		this._draftTextValue = event.target.value;
 		this._setResourcePickerOpen(true);
 	}
 
 	handleTextChange(event) {
+		if (this._pendingSelection && event.target.value === this._pendingSelection.displayLabel) {
+			return;
+		}
+
+		if (this._suppressTextCommitAfterSelection) {
+			return;
+		}
+
+		if (this._ignoreNextTextChange) {
+			this._ignoreNextTextChange = false;
+			return;
+		}
+
 		const nextTextValue = event.target.value;
 		const matchingLiteralOption = this._findLiteralOptionByText(nextTextValue);
 
@@ -516,6 +596,10 @@ export default class FlowDmlField extends LightningElement {
 			return;
 		}
 
+		if (this.hasResourceOptions) {
+			return;
+		}
+
 		this._draftTextValue = nextTextValue;
 		this._setResourcePickerOpen(false);
 		this._emitFieldChange(nextTextValue, this.fieldDataType);
@@ -534,6 +618,11 @@ export default class FlowDmlField extends LightningElement {
 					this._draftTextValue = null;
 				}
 			}
+		}
+
+		if (!this.allowsLiteralChoices && this._draftTextValue !== null && !this._suppressTextCommitAfterSelection) {
+			this._value = this._draftTextValue;
+			this._emitFieldChange(this._draftTextValue, this.fieldDataType);
 		}
 
 		this._setResourcePickerOpen(false);
@@ -559,9 +648,18 @@ export default class FlowDmlField extends LightningElement {
 
 	handleResourceOptionMouseDown(event) {
 		event.preventDefault();
+		this._ignoreNextTextChange = true;
+		this._ignoreNextResourceClick = true;
+		this.handleResourceOptionClick(event);
 	}
 
 	handleResourceOptionClick(event) {
+		if (event.type === "click" && this._ignoreNextResourceClick) {
+			this._ignoreNextResourceClick = false;
+			return;
+		}
+
+		this._ignoreNextTextChange = true;
 		const selectedOption =
 			this.dropdownOptions.find((option) => option.key === event.currentTarget.dataset.key) ?? null;
 
@@ -570,6 +668,16 @@ export default class FlowDmlField extends LightningElement {
 		}
 
 		this._emitSelection(selectedOption);
+	}
+
+	handleSelectedResourceRemove() {
+		this._pendingSelection = null;
+		this._forceLiteralInput = true;
+		this._draftTextValue = "";
+		this._value = null;
+		this._suppressTextCommitAfterSelection = false;
+		this._setResourcePickerOpen(false);
+		this._emitFieldChange(null, this.fieldDataType);
 	}
 
 	handleIncludedChange(event) {

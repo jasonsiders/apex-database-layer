@@ -54,6 +54,7 @@ describe("c-flow-dml-field", () => {
 		);
 		expect(sections).toEqual(["Record Variables", "Variables"]);
 		expect(element.shadowRoot.querySelectorAll(".resource-option")).toHaveLength(2);
+		expect(element.shadowRoot.querySelector(".resource-combobox").className).toContain("slds-is-open");
 	});
 
 	it("filters resource options inline as text is entered", async () => {
@@ -225,7 +226,40 @@ describe("c-flow-dml-field", () => {
 			value: "{!record}",
 			valueDataType: "reference"
 		});
+		expect(element.shadowRoot.querySelector("lightning-pill").label).toBe("record");
 		expect(element.classList.contains("resource-picker-open")).toBe(false);
+	});
+
+	it("keeps a clicked resource selection from being overwritten by the typed search text", async () => {
+		const element = createComponent({
+			name: "record",
+			label: "SObject Record",
+			included: true,
+			resourceOptions: [
+				{ label: "Variable: record", value: "{!record}", pillLabel: "record", referenceName: "record" }
+			]
+		});
+		const handler = jest.fn();
+		element.addEventListener("fieldchange", handler);
+
+		const input = getTextInput(element);
+		input.dispatchEvent(new CustomEvent("focus"));
+		input.value = "record";
+		input.dispatchEvent(new Event("input"));
+		await Promise.resolve();
+
+		const option = element.shadowRoot.querySelector(".resource-option");
+		option.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+		input.dispatchEvent(new Event("change"));
+		option.click();
+		await Promise.resolve();
+
+		expect(handler).toHaveBeenCalledTimes(1);
+		expect(handler.mock.calls[0][0].detail).toEqual({
+			name: "record",
+			value: "{!record}",
+			valueDataType: "reference"
+		});
 	});
 
 	it("emits a literal boolean when the typed value matches a boolean choice", () => {
@@ -317,7 +351,7 @@ describe("c-flow-dml-field", () => {
 		expect(element.shadowRoot.querySelector(".resource-option").textContent).toContain("False");
 	});
 
-	it("emits a literal value when the searchable input is changed without selecting a resource", async () => {
+	it("emits a literal value when the searchable input is blurred without selecting a resource", async () => {
 		const element = createComponent({
 			name: "ownerId",
 			label: "Owner ID",
@@ -333,7 +367,7 @@ describe("c-flow-dml-field", () => {
 		const input = getTextInput(element);
 		input.value = "005-test";
 		input.dispatchEvent(new Event("input"));
-		input.dispatchEvent(new Event("change"));
+		input.dispatchEvent(new CustomEvent("blur"));
 
 		expect(handler).toHaveBeenCalledTimes(1);
 		expect(handler.mock.calls[0][0].detail).toEqual({

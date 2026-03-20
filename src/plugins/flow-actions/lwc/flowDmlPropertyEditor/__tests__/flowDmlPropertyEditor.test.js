@@ -62,6 +62,12 @@ describe("c-flow-dml-property-editor", () => {
 		return handler;
 	}
 
+	function captureGenericTypeMappingChangedEvent(element) {
+		const handler = jest.fn();
+		element.addEventListener("configuration_editor_generic_type_mapping_changed", handler);
+		return handler;
+	}
+
 	afterEach(() => {
 		Toast.show.mockClear();
 		while (document.body.firstChild) {
@@ -132,8 +138,62 @@ describe("c-flow-dml-property-editor", () => {
 			expect(handler.mock.calls[0][0].detail).toEqual({
 				name: "record",
 				newValue: "{!accountRecord}",
-				newValueDataType: "reference"
+				newValueDataType: "SObject"
 			});
+		});
+
+		it("emits a generic type mapping when a top-level record resource is selected", () => {
+			const element = createComponent({
+				inputVariables: BASE_VARS,
+				builderContext: {
+					variables: [{ name: "accountRecord", dataType: "SObject", objectType: "Account" }]
+				}
+			});
+			const handler = captureGenericTypeMappingChangedEvent(element);
+
+			getField(element, "record").dispatchEvent(
+				new CustomEvent("fieldchange", {
+					detail: {
+						name: "record",
+						value: "{!accountRecord}",
+						valueDataType: "reference"
+					}
+				})
+			);
+
+			expect(handler).toHaveBeenCalledTimes(2);
+			expect(handler.mock.calls.map((call) => call[0].detail)).toEqual([
+				{ typeName: "T__record", typeValue: "Account" },
+				{ typeName: "T__records", typeValue: "Account" }
+			]);
+		});
+
+		it("maps a selected record resource to the field's SObject data type for Flow Builder", async () => {
+			const element = createComponent({
+				inputVariables: BASE_VARS
+			});
+			const handler = captureChangedEvent(element);
+			const field = getField(element, "record");
+
+			field.dispatchEvent(
+				new CustomEvent("fieldchange", {
+					detail: {
+						name: "record",
+						value: "{!record}",
+						valueDataType: "reference"
+					}
+				})
+			);
+			await flushPromises();
+
+			expect(handler).toHaveBeenCalledTimes(1);
+			expect(handler.mock.calls[0][0].detail).toEqual({
+				name: "record",
+				newValue: "{!record}",
+				newValueDataType: "SObject"
+			});
+			expect(getField(element, "record").value).toBe("{!record}");
+			expect(element.validate()).toEqual([]);
 		});
 
 		it("emits a delete event when an optional top-level field is excluded", () => {
@@ -381,7 +441,16 @@ describe("c-flow-dml-property-editor", () => {
 		});
 
 		it("accepts a selected record reference for BASE actions", async () => {
-			const element = createComponent({ inputVariables: BASE_VARS });
+			const element = createComponent({
+				inputVariables: BASE_VARS,
+				builderContext: {
+					variables: [{ name: "accountRecord", dataType: "SObject", objectType: "Account" }]
+				},
+				genericTypeMappings: [
+					{ typeName: "T__record", typeValue: "Account" },
+					{ typeName: "T__records", typeValue: "Account" }
+				]
+			});
 
 			element.validate();
 			await flushPromises();
@@ -400,6 +469,31 @@ describe("c-flow-dml-property-editor", () => {
 			expect(element.validate()).toEqual([]);
 			await flushPromises();
 			expect(getField(element, "record").errorMessage).toBeUndefined();
+		});
+
+		it("shows a field error when a selected record resource is missing its generic type mapping", async () => {
+			const element = createComponent({
+				inputVariables: [
+					{ name: "record", value: "{!accountRecord}", valueDataType: "SObject" },
+					{ name: "records", value: [] }
+				],
+				builderContext: {
+					variables: [{ name: "accountRecord", dataType: "SObject", objectType: "Account" }]
+				},
+				genericTypeMappings: [{ typeName: "T__record", typeValue: "Account" }]
+			});
+
+			await flushPromises();
+			expect(element.validate()).toEqual([
+				{
+					key: "record",
+					errorString: "SObject Record must use an Account object type mapping."
+				}
+			]);
+			await flushPromises();
+			expect(getField(element, "record").errorMessage).toBe(
+				"SObject Record must use an Account object type mapping."
+			);
 		});
 
 		it("deduplicates identical toast messages across repeated validate calls", () => {

@@ -58,6 +58,7 @@ const LEGACY_DML_OPTION_SECTIONS = {
 	duplicateRuleHeader: ["allowSave", "runAsCurrentUser"],
 	emailHeader: ["triggerAutoResponseEmail", "triggerOtherEmail", "triggerUserEmail"]
 };
+const SHARED_GENERIC_INPUT_GROUPS = [["record", "records"]];
 const VALIDATION_DEPENDENCIES = {
 	record: ["record", "records"],
 	recordId: ["recordId", "recordIds"],
@@ -237,6 +238,18 @@ function isReferenceValue(valueDataType, value) {
 	);
 }
 
+function normalizeReferenceName(value) {
+	if (typeof value !== "string") {
+		return "";
+	}
+
+	if (value.startsWith("{!") && value.endsWith("}")) {
+		return value.slice(2, -1);
+	}
+
+	return value;
+}
+
 function isCollectionResource(resource) {
 	return (
 		resource?.isCollection === true ||
@@ -372,6 +385,15 @@ function normalizeStringValue(value) {
 	return typeof value === "string" ? value.trim() : "";
 }
 
+function buildGenericTypeName(inputName) {
+	const normalizedName = normalizeStringValue(inputName);
+	return normalizedName ? `T__${normalizedName}` : "";
+}
+
+function getSharedGenericInputGroup(fieldName) {
+	return SHARED_GENERIC_INPUT_GROUPS.find((group) => group.includes(fieldName)) ?? [fieldName];
+}
+
 function extractActionCallInputNames(actionCall) {
 	const inputNames = new Set();
 
@@ -426,12 +448,13 @@ function hasMalformedApexDefinedDataType(dataType, className) {
 
 export default class FlowDmlPropertyEditor extends LightningElement {
 	_inputVariables = [];
+	_genericTypeMappings = [];
 	_pendingNormalizationChanges = [];
+	_pendingGenericTypeMappingValues = new Map();
 	_hasValidated = false;
 	_lastToastSignature = null;
 
 	@api outputVariables = [];
-	@api genericTypeMappings = [];
 	@api builderContext = {};
 	@api elementInfo = {};
 
@@ -450,12 +473,35 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 		this._hydrateState();
 	}
 
+	@api
+	get genericTypeMappings() {
+		return this._genericTypeMappings;
+	}
+
+	set genericTypeMappings(nextValue) {
+		this._genericTypeMappings = Array.isArray(nextValue) ? nextValue : [];
+		const persistedMappings = new Map(
+			this._genericTypeMappings
+				.map((mapping) => [normalizeStringValue(mapping?.typeName), normalizeStringValue(mapping?.typeValue)])
+				.filter(([typeName]) => !!typeName)
+		);
+
+		[...this._pendingGenericTypeMappingValues.entries()].forEach(([typeName, typeValue]) => {
+			if (persistedMappings.get(typeName) === typeValue) {
+				this._pendingGenericTypeMappingValues.delete(typeName);
+			}
+		});
+
+		this._refreshValidationErrors();
+	}
+
 	connectedCallback() {
 		this._hydrateState();
 	}
 
 	renderedCallback() {
 		if (!this._pendingNormalizationChanges.length) {
+			this._syncInferredGenericTypeMappings();
 			return;
 		}
 
@@ -465,6 +511,7 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 		pendingChanges.forEach(({ name, value, className }) => {
 			this._emitChange(name, value, this._getApexDefinedValueDataType(name, className));
 		});
+		this._syncInferredGenericTypeMappings();
 	}
 
 	get inputVariableMap() {
@@ -615,6 +662,14 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 		});
 
 		return [...deduped.values()];
+	}
+
+	get genericTypeMappingMap() {
+		return new Map(
+			(this.genericTypeMappings || [])
+				.map((mapping) => [normalizeStringValue(mapping?.typeName), normalizeStringValue(mapping?.typeValue)])
+				.filter(([typeName]) => !!typeName)
+		);
 	}
 
 	_hydrateState() {
@@ -840,6 +895,109 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 		return matchesResourceType(metadata, resource);
 	}
 
+	_findResourceByValue(value) {
+		const referenceName = normalizeReferenceName(value);
+
+		if (!referenceName) {
+			return null;
+		}
+
+		return (
+			this.availableResources.find(
+				(resource) =>
+					resource.referenceName === referenceName || normalizeReferenceName(resource.value) === referenceName
+			) ?? null
+		);
+	}
+
+	_resolveExpectedGenericType(name, value) {
+		if (name.includes(".")) {
+			return "";
+		}
+
+		const metadata = FIELD_METADATA[name];
+
+		if (metadata?.dataType !== "SObject" || !isReferenceValue(null, value)) {
+			return "";
+		}
+
+		return this._findResourceByValue(value)?.objectType ?? "";
+	}
+
+	_resolveExpectedGenericTypeForGroup(fieldNames, overrideValues = {}) {
+		for (const fieldName of fieldNames) {
+			const value = Object.prototype.hasOwnProperty.call(overrideValues, fieldName)
+				? overrideValues[fieldName]
+				: this._vals[fieldName];
+			const expectedType = this._resolveExpectedGenericType(fieldName, value);
+
+			if (expectedType) {
+				return expectedType;
+			}
+		}
+
+		return "";
+	}
+
+	_emitGenericTypeMappingChanges(fieldNames, typeValue) {
+		if (!typeValue) {
+			return;
+		}
+
+		fieldNames.forEach((fieldName) => {
+			const typeName = buildGenericTypeName(fieldName);
+
+			if (
+				!typeName ||
+				this.genericTypeMappingMap.get(typeName) === typeValue ||
+				this._pendingGenericTypeMappingValues.get(typeName) === typeValue
+			) {
+				return;
+			}
+
+			this._pendingGenericTypeMappingValues.set(typeName, typeValue);
+			this.dispatchEvent(
+				new CustomEvent("configuration_editor_generic_type_mapping_changed", {
+					bubbles: true,
+					composed: true,
+					cancelable: false,
+					detail: { typeName, typeValue }
+				})
+			);
+		});
+	}
+
+	_syncInferredGenericTypeMappings() {
+		SHARED_GENERIC_INPUT_GROUPS.forEach((fieldNames) => {
+			const expectedType = this._resolveExpectedGenericTypeForGroup(fieldNames);
+			this._emitGenericTypeMappingChanges(fieldNames, expectedType);
+		});
+	}
+
+	_resolveEmittedValueDataType(name, value, valueDataType) {
+		if (!isReferenceValue(valueDataType, value)) {
+			return valueDataType;
+		}
+
+		const pathParts = name.split(".");
+		const fieldName = pathParts[pathParts.length - 1];
+		const metadata = FIELD_METADATA[fieldName];
+
+		if (!metadata) {
+			return valueDataType;
+		}
+
+		if (pathParts.length === 1) {
+			const existingValueDataType = this._getValueDataType(name);
+
+			if (existingValueDataType && existingValueDataType !== "reference") {
+				return existingValueDataType;
+			}
+		}
+
+		return metadata.dataType;
+	}
+
 	_emitChange(name, newValue, newValueDataType) {
 		this.dispatchEvent(
 			new CustomEvent("configuration_editor_input_value_changed", {
@@ -864,6 +1022,7 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 
 	handleFieldChange(event) {
 		const { name, value, valueDataType } = event.detail;
+		const emittedValueDataType = this._resolveEmittedValueDataType(name, value, valueDataType);
 
 		if (name.startsWith("baseInput.")) {
 			const fieldName = name.replace("baseInput.", "");
@@ -879,8 +1038,38 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 		this._vals = { ...this._vals, [name]: value };
 		this._includedState = { ...this._includedState, [name]: true };
 		this._markFieldTouched(name);
-		this._emitChange(name, value, valueDataType);
+		this._emitGenericTypeMappingChanges(
+			getSharedGenericInputGroup(name),
+			this._resolveExpectedGenericTypeForGroup(getSharedGenericInputGroup(name), { [name]: value })
+		);
+		this._emitChange(name, value, emittedValueDataType);
 		this._refreshValidationErrors();
+	}
+
+	_collectGenericTypeMappingErrors(fieldNames) {
+		const expectedType = this._resolveExpectedGenericTypeForGroup(fieldNames);
+
+		if (!expectedType) {
+			return [];
+		}
+
+		const activeFieldName =
+			fieldNames.find((fieldName) => hasMeaningfulValue(this._vals[fieldName])) ?? fieldNames[0] ?? "record";
+		const metadata = FIELD_METADATA[activeFieldName];
+		const hasMissingOrMismatchedMapping = fieldNames.some(
+			(fieldName) => this.genericTypeMappingMap.get(buildGenericTypeName(fieldName)) !== expectedType
+		);
+
+		if (!metadata || !hasMissingOrMismatchedMapping) {
+			return [];
+		}
+
+		return [
+			{
+				key: activeFieldName,
+				errorString: `${metadata.label} must use an ${expectedType} object type mapping.`
+			}
+		];
 	}
 
 	handleFieldIncludedChange(event) {
@@ -1008,6 +1197,7 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 
 		if (type === "BASE") {
 			errors.push(...this._collectTypeValidationErrors(["record", "records", "accessLevelName", "allOrNone"]));
+			errors.push(...this._collectGenericTypeMappingErrors(["record", "records"]));
 		} else if (type === "DELETE") {
 			errors.push(...this._collectTypeValidationErrors(["recordId", "recordIds"]));
 			errors.push(
