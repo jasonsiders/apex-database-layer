@@ -176,6 +176,68 @@ describe("c-flow-dml-field", () => {
 		});
 	});
 
+	it("shows only flow resources in the boolean dropdown", async () => {
+		const element = createComponent({
+			name: "allOrNone",
+			label: "All Or None",
+			fieldDataType: "Boolean",
+			inputType: "boolean",
+			included: true,
+			options: [
+				{ label: "True", value: "true" },
+				{ label: "False", value: "false" }
+			],
+			resourceOptions: [
+				{
+					label: "Global Constant: True",
+					value: "{!$GlobalConstant.True}",
+					pillLabel: "$GlobalConstant.True",
+					referenceName: "$GlobalConstant.True",
+					dataType: "Boolean"
+				}
+			]
+		});
+
+		const input = getTextInput(element);
+		input.dispatchEvent(new CustomEvent("focus"));
+		await Promise.resolve();
+
+		expect(element.shadowRoot.querySelector(".resource-dropdown-header").textContent).toContain("All Resources");
+		expect(
+			[...element.shadowRoot.querySelectorAll(".resource-section-title")].map((section) =>
+				section.textContent.trim()
+			)
+		).toEqual(["Global Constants"]);
+		expect(element.shadowRoot.querySelector(".resource-option").textContent).toContain("True");
+	});
+
+	it("handles non-string field values when filtering resource options", async () => {
+		const element = createComponent({
+			name: "useDefaultRule",
+			label: "Use Default Rule",
+			fieldDataType: "Boolean",
+			inputType: "boolean",
+			value: false,
+			included: true,
+			resourceOptions: [
+				{
+					label: "Global Constant: False",
+					value: "{!$GlobalConstant.False}",
+					pillLabel: "$GlobalConstant.False",
+					referenceName: "$GlobalConstant.False",
+					dataType: "Boolean"
+				}
+			]
+		});
+
+		const input = getTextInput(element);
+		input.dispatchEvent(new CustomEvent("focus"));
+		await Promise.resolve();
+
+		expect(element.shadowRoot.querySelector(".resource-dropdown")).not.toBeNull();
+		expect(element.shadowRoot.querySelector(".resource-option").textContent).toContain("False");
+	});
+
 	it("emits a literal value when the searchable input is changed without selecting a resource", async () => {
 		const element = createComponent({
 			name: "ownerId",

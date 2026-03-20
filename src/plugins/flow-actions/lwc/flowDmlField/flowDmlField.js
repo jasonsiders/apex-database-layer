@@ -9,7 +9,7 @@ function normalizeTextValue(value) {
 		return value.join(", ");
 	}
 
-	return value;
+	return String(value);
 }
 
 function normalizeComparableValue(value) {
@@ -39,7 +39,7 @@ function normalizeReferenceName(value) {
 }
 
 function matchesResourceOption(resourceOption, query) {
-	const normalizedQuery = query.trim().toLowerCase();
+	const normalizedQuery = normalizeComparableValue(query);
 
 	if (!normalizedQuery) {
 		return true;
@@ -116,6 +116,10 @@ function deriveDisplayLabel(resourceOption) {
 }
 
 function deriveIconName(resourceOption, categoryKey) {
+	if (resourceOption.dataType === "Boolean" || resourceOption.valueDataType === "Boolean") {
+		return "utility:toggle";
+	}
+
 	if (categoryKey === "recordVariables") {
 		return "utility:sobject";
 	}
@@ -253,6 +257,10 @@ export default class FlowDmlField extends LightningElement {
 		});
 	}
 
+	get showLiteralOptionsInDropdown() {
+		return this.inputType === "picklist";
+	}
+
 	get showResourceDropdown() {
 		return this.isIncluded && this._isResourcePickerOpen;
 	}
@@ -281,6 +289,10 @@ export default class FlowDmlField extends LightningElement {
 	}
 
 	get visibleLiteralOptions() {
+		if (!this.showLiteralOptionsInDropdown) {
+			return [];
+		}
+
 		const query = this.displayTextValue;
 
 		return this.literalOptions.filter((option) => matchesResourceOption(option, query));
