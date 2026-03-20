@@ -1,4 +1,5 @@
 import { LightningElement, api, track } from "lwc";
+import Toast from "lightning/toast";
 
 const ACCESS_LEVEL_OPTIONS = [
 	{ label: "User Mode", value: "USER_MODE" },
@@ -44,6 +45,24 @@ const CATEGORY_LABELS = {
 	constants: "Constant",
 	formulas: "Formula",
 	variables: "Variable"
+};
+
+const APEX_DEFINED_PREFIX = "apex://";
+const APEX_DATA_TYPE = "Apex";
+const APEX_DEFINED_INPUT_CLASS_NAMES = {
+	baseInput: "FlowDmlBaseInput",
+	dmlOptions: "FlowDmlOptions"
+};
+const LEGACY_DML_OPTION_SECTIONS = {
+	assignmentRuleHeader: ["assignmentRuleId", "useDefaultRule"],
+	duplicateRuleHeader: ["allowSave", "runAsCurrentUser"],
+	emailHeader: ["triggerAutoResponseEmail", "triggerOtherEmail", "triggerUserEmail"]
+};
+const VALIDATION_DEPENDENCIES = {
+	record: ["record", "records"],
+	recordId: ["recordId", "recordIds"],
+	"baseInput.record": ["baseInput.record", "baseInput.records"],
+	leadId: ["leadId"]
 };
 
 const FIELD_METADATA = {
@@ -214,19 +233,148 @@ function isReferenceValue(valueDataType, value) {
 	);
 }
 
+function isCollectionResource(resource) {
+	return (
+		resource?.isCollection === true ||
+		resource?.isCollection === "true" ||
+		(typeof resource?.dataType === "string" && resource.dataType.endsWith("[]"))
+	);
+}
+
+function getBaseResourceDataType(resource) {
+	if (typeof resource?.dataType !== "string") {
+		return resource?.dataType;
+	}
+
+	return resource.dataType.endsWith("[]") ? resource.dataType.slice(0, -2) : resource.dataType;
+}
+
+function matchesResourceType(metadata, resource) {
+	const resourceIsCollection = isCollectionResource(resource);
+	const resourceDataType = getBaseResourceDataType(resource);
+	const expectsCollection = metadata.isCollection === true;
+
+	if (expectsCollection !== resourceIsCollection) {
+		return false;
+	}
+
+	if (metadata.dataType === "SObject") {
+		return !!resource.objectType;
+	}
+
+	if (resource.objectType) {
+		return false;
+	}
+
+	if (metadata.dataType === "String") {
+		return resourceDataType === "String" || resourceDataType === undefined || resourceDataType === null;
+	}
+
+	return resourceDataType === metadata.dataType;
+}
+
 function cloneValue(value) {
 	return value ? JSON.parse(JSON.stringify(value)) : {};
 }
 
+function normalizeDmlOptionsValue(value) {
+	const next = cloneValue(value);
+
+	Object.entries(LEGACY_DML_OPTION_SECTIONS).forEach(([sectionName, fieldNames]) => {
+		const sectionValue = next[sectionName];
+
+		if (!sectionValue || typeof sectionValue !== "object" || Array.isArray(sectionValue)) {
+			delete next[sectionName];
+			return;
+		}
+
+		fieldNames.forEach((fieldName) => {
+			if (!hasOwnValue(next, fieldName) && hasOwnValue(sectionValue, fieldName)) {
+				next[fieldName] = sectionValue[fieldName];
+			}
+		});
+
+		delete next[sectionName];
+	});
+
+	return next;
+}
+
+function valuesAreEqual(left, right) {
+	return JSON.stringify(left ?? null) === JSON.stringify(right ?? null);
+}
+
+function normalizeStringValue(value) {
+	return typeof value === "string" ? value.trim() : "";
+}
+
+function extractActionCallInputNames(actionCall) {
+	const inputNames = new Set();
+
+	[actionCall?.inputParameters, actionCall?.inputVariables, actionCall?.inputAssignments].forEach((collection) => {
+		if (!Array.isArray(collection)) {
+			return;
+		}
+
+		collection.forEach((input) => {
+			const name = normalizeStringValue(input?.name);
+
+			if (name) {
+				inputNames.add(name);
+			}
+		});
+	});
+
+	return inputNames;
+}
+
+function doSetsMatch(left, right) {
+	if (left.size !== right.size) {
+		return false;
+	}
+
+	return [...left].every((value) => right.has(value));
+}
+
+function isApexDefinedDataType(dataType, className) {
+	if (typeof dataType !== "string" || !dataType) {
+		return false;
+	}
+
+	if (dataType.toLowerCase() === APEX_DATA_TYPE.toLowerCase()) {
+		return true;
+	}
+
+	if (dataType === className || dataType.endsWith(`.${className}`)) {
+		return true;
+	}
+
+	return dataType.startsWith(APEX_DEFINED_PREFIX);
+}
+
+function hasMalformedApexDefinedDataType(dataType, className) {
+	if (typeof dataType !== "string" || !dataType) {
+		return false;
+	}
+
+	return dataType !== APEX_DATA_TYPE && isApexDefinedDataType(dataType, className);
+}
+
 export default class FlowDmlPropertyEditor extends LightningElement {
 	_inputVariables = [];
+	_pendingNormalizationChanges = [];
+	_hasValidated = false;
+	_lastToastSignature = null;
 
 	@api outputVariables = [];
 	@api genericTypeMappings = [];
 	@api builderContext = {};
+	@api elementInfo = {};
 
 	@track _vals = {};
 	@track _includedState = {};
+	@track _fieldErrors = {};
+	@track _touchedFields = {};
 
 	@api
 	get inputVariables() {
@@ -242,12 +390,41 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 		this._hydrateState();
 	}
 
+	renderedCallback() {
+		if (!this._pendingNormalizationChanges.length) {
+			return;
+		}
+
+		const pendingChanges = [...this._pendingNormalizationChanges];
+		this._pendingNormalizationChanges = [];
+
+		pendingChanges.forEach(({ name, value, className }) => {
+			this._emitChange(name, value, this._getApexDefinedValueDataType(name, className));
+		});
+	}
+
 	get inputVariableMap() {
 		return new Map((this._inputVariables || []).map((variable) => [variable.name, variable]));
 	}
 
 	get configuredBaseInput() {
 		return this._get("baseInput") ?? {};
+	}
+
+	get apexValueTypeNamespace() {
+		const firstApexType = (this._inputVariables || [])
+			.map((variable) => variable?.valueDataType)
+			.find(
+				(valueDataType) => typeof valueDataType === "string" && valueDataType.startsWith(APEX_DEFINED_PREFIX)
+			);
+
+		if (!firstApexType) {
+			return "";
+		}
+
+		const qualifiedName = firstApexType.slice(APEX_DEFINED_PREFIX.length);
+		const dotIndex = qualifiedName.indexOf(".");
+		return dotIndex === -1 ? "" : qualifiedName.slice(0, dotIndex);
 	}
 
 	get vals() {
@@ -260,6 +437,43 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 
 	get actionType() {
 		return detectActionType(this._inputVariables);
+	}
+
+	get inputVariableNames() {
+		return new Set(
+			(this._inputVariables || []).map((variable) => normalizeStringValue(variable?.name)).filter(Boolean)
+		);
+	}
+
+	get currentActionCall() {
+		const actionCalls = this.builderContext?.actionCalls ?? [];
+		const apiName = normalizeStringValue(this.elementInfo?.apiName || this.elementInfo?.name);
+
+		if (apiName) {
+			return (
+				actionCalls.find(
+					(actionCall) =>
+						normalizeStringValue(actionCall?.name) === apiName ||
+						normalizeStringValue(actionCall?.apiName) === apiName
+				) ?? null
+			);
+		}
+
+		const matchingActionCalls = actionCalls.filter((actionCall) =>
+			doSetsMatch(extractActionCallInputNames(actionCall), this.inputVariableNames)
+		);
+
+		return matchingActionCalls.length === 1 ? matchingActionCalls[0] : null;
+	}
+
+	get toastContextLabel() {
+		return (
+			normalizeStringValue(this.elementInfo?.apiName) ||
+			normalizeStringValue(this.currentActionCall?.label) ||
+			normalizeStringValue(this.currentActionCall?.name) ||
+			normalizeStringValue(this.elementInfo?.label) ||
+			normalizeStringValue(this.elementInfo?.name)
+		);
 	}
 
 	get isGroupA() {
@@ -342,6 +556,10 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 	_hydrateState() {
 		this._vals = this._buildVals();
 		this._includedState = this._buildIncludedState();
+		this._pendingNormalizationChanges = this._collectLegacyNormalizationChanges();
+		this._touchedFields = {};
+		this._fieldErrors = {};
+		this._hasValidated = false;
 	}
 
 	_get(name) {
@@ -349,7 +567,8 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 	}
 
 	_getValueDataType(name) {
-		return this.inputVariableMap.get(name)?.valueDataType;
+		const variable = this.inputVariableMap.get(name);
+		return variable?.valueDataType ?? variable?.dataType;
 	}
 
 	_buildVals() {
@@ -456,27 +675,96 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 			included: this._includedState[path] ?? metadata.required ?? false,
 			value,
 			valueDataType,
-			resourceOptions: this._buildResourceOptions(metadata)
+			resourceOptions: this._buildResourceOptions(metadata),
+			errorMessage: this._fieldErrors[path]
 		};
+	}
+
+	_getApexDefinedValueDataType(name, className) {
+		const existingValueDataType = this._getValueDataType(name);
+		if (isApexDefinedDataType(existingValueDataType, className)) {
+			return APEX_DATA_TYPE;
+		}
+
+		return APEX_DATA_TYPE;
+	}
+
+	_collectLegacyNormalizationChanges() {
+		const pendingChanges = new Map();
+		const queueChange = (name, value, className) => {
+			pendingChanges.set(name, { name, value, className });
+		};
+		const rawDmlOptions = this._get("dmlOptions");
+		const normalizedDmlOptions = normalizeDmlOptionsValue(rawDmlOptions);
+		const dmlOptionsTypeMalformed = hasMalformedApexDefinedDataType(
+			this._getValueDataType("dmlOptions"),
+			"FlowDmlOptions"
+		);
+
+		if (!valuesAreEqual(rawDmlOptions, normalizedDmlOptions) || dmlOptionsTypeMalformed) {
+			queueChange("dmlOptions", normalizedDmlOptions, "FlowDmlOptions");
+		}
+
+		const rawBaseInput = cloneValue(this._get("baseInput"));
+		const normalizedBaseInput = hasOwnValue(rawBaseInput, "dmlOptions")
+			? {
+					...rawBaseInput,
+					dmlOptions: normalizeDmlOptionsValue(rawBaseInput.dmlOptions)
+				}
+			: rawBaseInput;
+		const baseInputTypeMalformed = hasMalformedApexDefinedDataType(
+			this._getValueDataType("baseInput"),
+			"FlowDmlBaseInput"
+		);
+
+		if (
+			(!valuesAreEqual(rawBaseInput, normalizedBaseInput) || baseInputTypeMalformed) &&
+			this.inputVariableMap.has("baseInput")
+		) {
+			queueChange("baseInput", normalizedBaseInput, "FlowDmlBaseInput");
+		}
+
+		Object.entries(APEX_DEFINED_INPUT_CLASS_NAMES).forEach(([name, className]) => {
+			const malformedType = hasMalformedApexDefinedDataType(this._getValueDataType(name), className);
+
+			if (!malformedType || pendingChanges.has(name) || !this.inputVariableMap.has(name)) {
+				return;
+			}
+
+			queueChange(name, cloneValue(this._get(name)), className);
+		});
+
+		return [...pendingChanges.values()];
 	}
 
 	_flattenBuilderResources() {
 		return ["variables", "formulas", "constants"].flatMap((category) =>
 			(this.builderContext?.[category] ?? [])
 				.filter((resource) => !!resource?.name)
-				.map((resource) => ({
-					name: resource.name,
-					label: `${CATEGORY_LABELS[category] ?? "Resource"}: ${resource.name}`,
-					pillLabel: resource.name,
-					value: `{!${resource.name}}`,
-					referenceName: resource.name,
-					dataType: resource.dataType,
-					objectType: resource.objectType,
-					isCollection:
+				.map((resource) => {
+					const isCollection =
 						resource.isCollection === true ||
 						resource.isCollection === "true" ||
-						(typeof resource.dataType === "string" && resource.dataType.endsWith("[]"))
-				}))
+						(typeof resource.dataType === "string" && resource.dataType.endsWith("[]"));
+					const resolvedCategory =
+						category === "variables" && resource.objectType
+							? isCollection
+								? "recordCollections"
+								: "recordVariables"
+							: category;
+
+					return {
+						name: resource.name,
+						label: `${CATEGORY_LABELS[category] ?? "Resource"}: ${resource.name}`,
+						pillLabel: resource.name,
+						value: `{!${resource.name}}`,
+						referenceName: resource.name,
+						category: resolvedCategory,
+						dataType: resource.dataType,
+						objectType: resource.objectType,
+						isCollection
+					};
+				})
 		);
 	}
 
@@ -485,23 +773,7 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 	}
 
 	_matchesResource(metadata, resource) {
-		if (metadata.dataType === "Boolean") {
-			return resource.dataType === "Boolean";
-		}
-
-		if (metadata.isCollection) {
-			return resource.isCollection === true;
-		}
-
-		if (metadata.dataType === "SObject") {
-			return !resource.isCollection && !!resource.objectType;
-		}
-
-		return (
-			!resource.isCollection &&
-			!resource.objectType &&
-			(resource.dataType === "String" || resource.dataType === undefined || resource.dataType === null)
-		);
+		return matchesResourceType(metadata, resource);
 	}
 
 	_emitChange(name, newValue, newValueDataType) {
@@ -534,13 +806,17 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 			const updated = { ...this.baseInputVal, [fieldName]: value };
 			this._vals = { ...this._vals, baseInput: updated };
 			this._includedState = { ...this._includedState, [name]: true };
-			this._emitChange("baseInput", updated, "FlowDmlBaseInput");
+			this._markFieldTouched(name);
+			this._emitChange("baseInput", updated, this._getApexDefinedValueDataType("baseInput", "FlowDmlBaseInput"));
+			this._refreshValidationErrors();
 			return;
 		}
 
 		this._vals = { ...this._vals, [name]: value };
 		this._includedState = { ...this._includedState, [name]: true };
+		this._markFieldTouched(name);
 		this._emitChange(name, value, valueDataType);
+		this._refreshValidationErrors();
 	}
 
 	handleFieldIncludedChange(event) {
@@ -550,6 +826,7 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 		const metadata = FIELD_METADATA[fieldName];
 
 		this._includedState = { ...this._includedState, [name]: included };
+		this._markFieldTouched(name);
 
 		if (name.startsWith("baseInput.")) {
 			const updated = { ...this.baseInputVal };
@@ -558,15 +835,21 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 				if (!hasOwnValue(updated, fieldName) && metadata.defaultValue !== undefined) {
 					updated[fieldName] = metadata.defaultValue;
 					this._vals = { ...this._vals, baseInput: updated };
-					this._emitChange("baseInput", updated, "FlowDmlBaseInput");
+					this._emitChange(
+						"baseInput",
+						updated,
+						this._getApexDefinedValueDataType("baseInput", "FlowDmlBaseInput")
+					);
 				}
 
+				this._refreshValidationErrors();
 				return;
 			}
 
 			delete updated[fieldName];
 			this._vals = { ...this._vals, baseInput: updated };
-			this._emitChange("baseInput", updated, "FlowDmlBaseInput");
+			this._emitChange("baseInput", updated, this._getApexDefinedValueDataType("baseInput", "FlowDmlBaseInput"));
+			this._refreshValidationErrors();
 			return;
 		}
 
@@ -576,27 +859,40 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 				this._emitChange(name, metadata.defaultValue, metadata.dataType);
 			}
 
+			this._refreshValidationErrors();
 			return;
 		}
 
 		const resetValue = metadata.defaultValue ?? (metadata.isCollection ? [] : null);
 		this._vals = { ...this._vals, [name]: resetValue };
 		this._emitDelete(name);
+		this._refreshValidationErrors();
+	}
+
+	handleFieldBlur(event) {
+		this._markFieldTouched(event.detail.name);
+		this._refreshValidationErrors();
 	}
 
 	handleDmlOptionsChange(event) {
 		const updated = event.detail.value;
 		this._vals = { ...this._vals, dmlOptions: updated };
-		this._emitChange("dmlOptions", updated, "FlowDmlOptions");
+		this._emitChange("dmlOptions", updated, this._getApexDefinedValueDataType("dmlOptions", "FlowDmlOptions"));
+		this._refreshValidationErrors();
 	}
 
 	handleBaseInputDmlOptionsChange(event) {
 		const updatedBaseInput = { ...this.baseInputVal, dmlOptions: event.detail.value };
 		this._vals = { ...this._vals, baseInput: updatedBaseInput };
-		this._emitChange("baseInput", updatedBaseInput, "FlowDmlBaseInput");
+		this._emitChange(
+			"baseInput",
+			updatedBaseInput,
+			this._getApexDefinedValueDataType("baseInput", "FlowDmlBaseInput")
+		);
+		this._refreshValidationErrors();
 	}
 
-	@api validate() {
+	_collectValidationErrors() {
 		const errors = [];
 		const type = this.actionType;
 
@@ -616,7 +912,7 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 
 			if (!base.record && !base.records?.length) {
 				errors.push({
-					key: "baseInput",
+					key: "baseInput.record",
 					errorString: "Provide at least one record or a collection of records in Base Input."
 				});
 			}
@@ -624,6 +920,68 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 			errors.push({ key: "leadId", errorString: "Lead ID is required." });
 		}
 
+		return errors;
+	}
+
+	_setValidationErrors(errors) {
+		this._fieldErrors = errors.reduce((result, error) => ({ ...result, [error.key]: error.errorString }), {});
+	}
+
+	_markFieldTouched(name) {
+		this._touchedFields = { ...this._touchedFields, [name]: true };
+	}
+
+	_isErrorVisible(errorKey) {
+		if (this._hasValidated) {
+			return true;
+		}
+
+		return (VALIDATION_DEPENDENCIES[errorKey] ?? [errorKey]).some((name) => this._touchedFields[name]);
+	}
+
+	_filterVisibleErrors(errors) {
+		return errors.filter((error) => this._isErrorVisible(error.key));
+	}
+
+	_showValidationToast(errors) {
+		const messages = [...new Set(errors.map((error) => error.errorString))];
+		const contextLabel = this.toastContextLabel;
+		const signature = JSON.stringify({ contextLabel, messages });
+
+		if (!messages.length) {
+			this._lastToastSignature = null;
+			return;
+		}
+
+		if (signature === this._lastToastSignature) {
+			return;
+		}
+
+		this._lastToastSignature = signature;
+		Toast.show(
+			{
+				label: contextLabel
+					? `${contextLabel}: ${messages.length === 1 ? "Validation Error" : "Validation Errors"}`
+					: messages.length === 1
+						? "Validation Error"
+						: "Validation Errors",
+				message: messages.join(" "),
+				variant: "error",
+				mode: "dismissible"
+			},
+			this
+		);
+	}
+
+	_refreshValidationErrors() {
+		this._setValidationErrors(this._filterVisibleErrors(this._collectValidationErrors()));
+	}
+
+	@api validate() {
+		const errors = this._collectValidationErrors();
+		this._hasValidated = true;
+		this._setValidationErrors(errors);
+		this._showValidationToast(errors);
 		return errors;
 	}
 }

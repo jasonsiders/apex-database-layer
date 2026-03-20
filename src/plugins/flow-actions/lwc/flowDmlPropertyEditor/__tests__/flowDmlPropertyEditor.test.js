@@ -1,5 +1,17 @@
 import { createElement } from "lwc";
 import FlowDmlPropertyEditor from "c/flowDmlPropertyEditor";
+import Toast from "lightning/toast";
+
+jest.mock(
+	"lightning/toast",
+	() => ({
+		__esModule: true,
+		default: {
+			show: jest.fn()
+		}
+	}),
+	{ virtual: true }
+);
 
 const BASE_VARS = [
 	{ name: "record", value: null },
@@ -18,6 +30,7 @@ const UPSERT_VARS = [
 ];
 
 const CONVERT_VARS = [{ name: "leadId", value: null }];
+const flushPromises = () => Promise.resolve();
 
 describe("c-flow-dml-property-editor", () => {
 	function createComponent(props = {}) {
@@ -50,6 +63,7 @@ describe("c-flow-dml-property-editor", () => {
 	}
 
 	afterEach(() => {
+		Toast.show.mockClear();
 		while (document.body.firstChild) {
 			document.body.removeChild(document.body.firstChild);
 		}
@@ -159,7 +173,92 @@ describe("c-flow-dml-property-editor", () => {
 			expect(handler.mock.calls[0][0].detail).toEqual({
 				name: "baseInput",
 				newValue: { allOrNone: false },
-				newValueDataType: "FlowDmlBaseInput"
+				newValueDataType: "Apex"
+			});
+		});
+
+		it("emits an Apex-defined data type when DML options change", () => {
+			const element = createComponent({
+				inputVariables: [
+					...BASE_VARS,
+					{ name: "dmlOptions", value: null, dataType: "apex://test.FlowDmlOptions" }
+				]
+			});
+			const handler = captureChangedEvent(element);
+
+			element.shadowRoot.querySelector("c-flow-dml-options").dispatchEvent(
+				new CustomEvent("dmloptionschange", {
+					detail: {
+						value: {
+							allowFieldTruncation: false
+						}
+					}
+				})
+			);
+
+			expect(handler).toHaveBeenCalledTimes(1);
+			expect(handler.mock.calls[0][0].detail).toEqual({
+				name: "dmlOptions",
+				newValue: {
+					allowFieldTruncation: false
+				},
+				newValueDataType: "Apex"
+			});
+		});
+
+		it("normalizes legacy top-level dmlOptions values on load", async () => {
+			const element = createComponent();
+			const handler = captureChangedEvent(element);
+
+			element.inputVariables = [
+				...BASE_VARS,
+				{
+					name: "dmlOptions",
+					value: {
+						assignmentRuleHeader: {
+							useDefaultRule: true
+						}
+					},
+					dataType: "apex://test.FlowDmlOptions"
+				}
+			];
+
+			await flushPromises();
+
+			expect(handler).toHaveBeenCalledTimes(1);
+			expect(handler.mock.calls[0][0].detail).toEqual({
+				name: "dmlOptions",
+				newValue: {
+					useDefaultRule: true
+				},
+				newValueDataType: "Apex"
+			});
+		});
+
+		it("normalizes malformed apex-defined data types on load", async () => {
+			const element = createComponent();
+			const handler = captureChangedEvent(element);
+
+			element.inputVariables = [
+				...BASE_VARS,
+				{
+					name: "dmlOptions",
+					value: {
+						allowFieldTruncation: true
+					},
+					dataType: "FlowDmlOptions"
+				}
+			];
+
+			await flushPromises();
+
+			expect(handler).toHaveBeenCalledTimes(1);
+			expect(handler.mock.calls[0][0].detail).toEqual({
+				name: "dmlOptions",
+				newValue: {
+					allowFieldTruncation: true
+				},
+				newValueDataType: "Apex"
 			});
 		});
 	});
@@ -193,21 +292,99 @@ describe("c-flow-dml-property-editor", () => {
 				])
 			);
 		});
+
+		it("filters record id collections to string collections only", () => {
+			const element = createComponent({
+				inputVariables: DELETE_VARS,
+				builderContext: {
+					variables: [
+						{ name: "recordCollection", dataType: "SObject[]", objectType: "Account", isCollection: true },
+						{ name: "recordIdCollection", dataType: "String[]", isCollection: true }
+					]
+				}
+			});
+
+			const resourceOptions = getField(element, "recordIds").resourceOptions;
+			expect(resourceOptions).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						value: "{!recordIdCollection}",
+						pillLabel: "recordIdCollection"
+					})
+				])
+			);
+			expect(resourceOptions).not.toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						value: "{!recordCollection}"
+					})
+				])
+			);
+		});
 	});
 
 	describe("validate()", () => {
-		it("requires record or records for BASE actions", () => {
-			const element = createComponent({ inputVariables: BASE_VARS });
+		it("requires record or records for BASE actions", async () => {
+			const element = createComponent({
+				inputVariables: BASE_VARS,
+				elementInfo: {
+					apiName: "Insert_Record_s"
+				}
+			});
 			expect(element.validate()).toEqual([
 				{
 					key: "record",
 					errorString: "Provide at least one record or a collection of records."
 				}
 			]);
+			await flushPromises();
+			expect(Toast.show).toHaveBeenCalledTimes(1);
+			expect(Toast.show.mock.calls[0][0]).toEqual(
+				expect.objectContaining({
+					label: "Insert_Record_s: Validation Error",
+					message: "Provide at least one record or a collection of records.",
+					variant: "error",
+					mode: "dismissible"
+				})
+			);
+			expect(getField(element, "record").errorMessage).toBe(
+				"Provide at least one record or a collection of records."
+			);
 		});
 
-		it("accepts a selected record reference for BASE actions", () => {
+		it("does not surface validation errors before blur or save", async () => {
 			const element = createComponent({ inputVariables: BASE_VARS });
+
+			await flushPromises();
+
+			expect(getField(element, "record").errorMessage).toBeUndefined();
+			expect(Toast.show).not.toHaveBeenCalled();
+		});
+
+		it("surfaces a field error after the field is blurred", async () => {
+			const element = createComponent({ inputVariables: BASE_VARS });
+
+			getField(element, "record").dispatchEvent(
+				new CustomEvent("fieldblur", {
+					detail: {
+						name: "record"
+					}
+				})
+			);
+
+			await flushPromises();
+
+			expect(getField(element, "record").errorMessage).toBe(
+				"Provide at least one record or a collection of records."
+			);
+			expect(Toast.show).not.toHaveBeenCalled();
+		});
+
+		it("accepts a selected record reference for BASE actions", async () => {
+			const element = createComponent({ inputVariables: BASE_VARS });
+
+			element.validate();
+			await flushPromises();
 
 			getField(element, "record").dispatchEvent(
 				new CustomEvent("fieldchange", {
@@ -218,8 +395,50 @@ describe("c-flow-dml-property-editor", () => {
 					}
 				})
 			);
+			await flushPromises();
 
 			expect(element.validate()).toEqual([]);
+			await flushPromises();
+			expect(getField(element, "record").errorMessage).toBeUndefined();
+		});
+
+		it("deduplicates identical toast messages across repeated validate calls", () => {
+			const element = createComponent({
+				inputVariables: BASE_VARS,
+				elementInfo: {
+					apiName: "Insert_Record_s"
+				}
+			});
+
+			expect(element.validate()).toHaveLength(1);
+			expect(element.validate()).toHaveLength(1);
+
+			expect(Toast.show).toHaveBeenCalledTimes(1);
+		});
+
+		it("falls back to the action label when the element api name is blank", () => {
+			const element = createComponent({
+				inputVariables: BASE_VARS,
+				elementInfo: {
+					apiName: ""
+				},
+				builderContext: {
+					actionCalls: [
+						{
+							name: "",
+							label: "Insert Record(s)",
+							inputParameters: [{ name: "record" }, { name: "records" }]
+						}
+					]
+				}
+			});
+
+			expect(element.validate()).toHaveLength(1);
+			expect(Toast.show.mock.calls[0][0]).toEqual(
+				expect.objectContaining({
+					label: "Insert Record(s): Validation Error"
+				})
+			);
 		});
 
 		it("requires leadId for convert actions", () => {
@@ -241,6 +460,21 @@ describe("c-flow-dml-property-editor", () => {
 			);
 
 			expect(element.validate()).toEqual([]);
+		});
+
+		it("shows the base input validation message on the record field", async () => {
+			const element = createComponent({ inputVariables: UPSERT_VARS });
+
+			expect(element.validate()).toEqual([
+				{
+					key: "baseInput.record",
+					errorString: "Provide at least one record or a collection of records in Base Input."
+				}
+			]);
+			await flushPromises();
+			expect(getField(element, "baseInput.record").errorMessage).toBe(
+				"Provide at least one record or a collection of records in Base Input."
+			);
 		});
 	});
 });

@@ -229,6 +229,46 @@ function isReferenceValue(value) {
 	return typeof value === "string" && value.startsWith("{!") && value.endsWith("}");
 }
 
+function isCollectionResource(resource) {
+	return (
+		resource?.isCollection === true ||
+		resource?.isCollection === "true" ||
+		(typeof resource?.dataType === "string" && resource.dataType.endsWith("[]"))
+	);
+}
+
+function getBaseResourceDataType(resource) {
+	if (typeof resource?.dataType !== "string") {
+		return resource?.dataType;
+	}
+
+	return resource.dataType.endsWith("[]") ? resource.dataType.slice(0, -2) : resource.dataType;
+}
+
+function matchesResourceType(metadata, resource) {
+	const resourceIsCollection = isCollectionResource(resource);
+	const resourceDataType = getBaseResourceDataType(resource);
+	const expectsCollection = metadata.isCollection === true;
+
+	if (expectsCollection !== resourceIsCollection) {
+		return false;
+	}
+
+	if (metadata.dataType === "SObject") {
+		return !!resource.objectType;
+	}
+
+	if (resource.objectType) {
+		return false;
+	}
+
+	if (metadata.dataType === "String") {
+		return resourceDataType === "String" || resourceDataType === undefined || resourceDataType === null;
+	}
+
+	return resourceDataType === metadata.dataType;
+}
+
 function cloneValue(value) {
 	return value ? JSON.parse(JSON.stringify(value)) : {};
 }
@@ -392,14 +432,7 @@ export default class FlowDmlOptions extends LightningElement {
 					referenceName: resource.name,
 					dataType: resource.dataType,
 					objectType: resource.objectType,
-					isCollection:
-						resource.isCollection === true ||
-						resource.isCollection === "true" ||
-						typeof resource.dataType === "string"
-							? resource.dataType?.endsWith("[]") ||
-								resource.isCollection === true ||
-								resource.isCollection === "true"
-							: false
+					isCollection: isCollectionResource(resource)
 				}))
 		);
 	}
@@ -415,15 +448,7 @@ export default class FlowDmlOptions extends LightningElement {
 	}
 
 	_matchesResource(metadata, resource) {
-		if (metadata.dataType === "Boolean") {
-			return resource.dataType === "Boolean";
-		}
-
-		return (
-			!resource.isCollection &&
-			!resource.objectType &&
-			(resource.dataType === "String" || resource.dataType === undefined || resource.dataType === null)
-		);
+		return matchesResourceType(metadata, resource);
 	}
 
 	_emit(updated) {

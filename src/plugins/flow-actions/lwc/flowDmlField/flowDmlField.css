@@ -1,3 +1,13 @@
+:host {
+	display: block;
+	position: relative;
+	z-index: 0;
+}
+
+:host(.resource-picker-open) {
+	z-index: 20;
+}
+
 .field-row {
 	position: relative;
 	display: grid;
@@ -63,49 +73,158 @@
 	max-width: 36rem;
 }
 
-.control-input-wrap_has-menu {
-	padding-right: 2.5rem;
+.control-input-wrap_open {
+	z-index: 5;
 }
 
 .field-control {
+	display: block;
+	width: 100%;
 	--slds-c-input-text-font-size: 0.8125rem;
 	--slds-c-input-spacing-inline-start: 0.75rem;
 	--slds-c-input-spacing-inline-end: 1rem;
 }
 
-.field-control_select {
-	--slds-c-combobox-input-font-size: 0.8125rem;
+.resource-combobox {
+	position: relative;
+	width: 100%;
 }
 
-.resource-menu {
+.resource-combobox-input-wrap {
+	position: relative;
+	width: 100%;
+}
+
+.resource-combobox-input {
+	--slds-c-input-spacing-inline-end: 2.5rem;
+	color: var(--lwc-colorTextDefault, #181818);
+	font-size: 0.8125rem;
+	line-height: 1.25;
+}
+
+.resource-trigger {
 	position: absolute;
-	top: 0.45rem;
-	right: 0.4rem;
+	top: 50%;
+	right: 0.55rem;
+	transform: translateY(-50%);
 	z-index: 1;
 }
 
-.control-shell {
+.resource-trigger-button {
+	color: var(--lwc-colorTextIconDefault, #706e6b);
+}
+
+.resource-trigger-button lightning-icon {
+	--slds-c-icon-color-foreground-default: var(--lwc-colorTextIconDefault, #706e6b);
+}
+
+.resource-dropdown {
+	position: absolute;
+	top: calc(100% + 0.125rem);
+	left: 0;
+	right: 0;
+	width: 100%;
+	z-index: 5;
+	display: block;
+	max-height: 15rem;
+	overflow-y: auto;
+	overflow-x: hidden;
+	padding: 0;
+	border-color: var(--lwc-colorBorderInput, #c9c9c9);
+	border-radius: 0.25rem;
+	background: var(--lwc-colorBackgroundAlt, #ffffff);
+	box-shadow: 0 4px 12px rgba(24, 24, 24, 0.16);
+}
+
+.resource-dropdown-header {
+	padding: 0.55rem 0.75rem;
+	border-bottom: 1px solid var(--lwc-colorBorder, #dddbda);
+	background: var(--lwc-colorBackground, #f3f2f2);
+	color: var(--lwc-colorTextLabel, #444444);
+	font-size: 0.75rem;
+	font-weight: 400;
+	line-height: 1.25;
+}
+
+.resource-section {
+	display: block;
+	padding: 0.25rem 0 0;
+}
+
+.resource-section + .resource-section {
+	border-top: 1px solid var(--lwc-colorBorder, #ecebea);
+}
+
+.resource-section-title {
+	padding: 0.35rem 0.75rem 0.25rem;
+	color: var(--lwc-colorTextDefault, #181818);
+	font-size: 0.8125rem;
+	font-weight: 700;
+	line-height: 1.25;
+	letter-spacing: 0;
+	text-transform: none;
+}
+
+.resource-section-options {
+	padding-bottom: 0.25rem;
+}
+
+.resource-option {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr);
+	align-items: center;
+	column-gap: 0.5rem;
+	width: 100%;
+	padding: 0.45rem 0.75rem;
+	border: 0;
+	background: transparent;
+	color: var(--lwc-colorTextDefault, #181818);
+	cursor: pointer;
+	font: inherit;
+	min-height: 2.25rem;
+	text-align: left;
+}
+
+.resource-option:hover,
+.resource-option:focus {
+	background: var(--lwc-colorBackgroundRowHover, #f3f3f3);
+	outline: none;
+}
+
+.resource-option-figure {
 	display: flex;
 	align-items: center;
-	min-height: 2.75rem;
-	padding: 0.45rem 0.75rem;
-	border: 1px solid var(--lwc-colorBorderInput, #c9c9c9);
-	border-radius: 0.25rem;
-	background: var(--lwc-colorBackgroundInput, #ffffff);
-	max-width: 36rem;
+	justify-content: center;
+	width: 0.875rem;
 }
 
-.resource-pill {
-	--slds-c-pill-text-font-size: 0.8125rem;
+.resource-option-icon {
+	--slds-c-icon-color-foreground-default: var(--lwc-colorTextIconDefault, #706e6b);
 }
 
-.field-action {
-	--slds-c-button-color-background: transparent;
-	--slds-c-button-color-border: transparent;
+.resource-option-label {
+	display: block;
+	font-size: 0.8125rem;
+	font-weight: 400;
+	line-height: 1.25;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.resource-empty {
+	padding: 0.75rem;
+	color: var(--lwc-colorTextWeak, #706e6b);
+	font-size: 0.8125rem;
+	line-height: 1.25;
 }
 
 .empty-state {
 	display: none;
+}
+
+.field-error {
+	line-height: 1.35;
 }
 
 .field-toggle {

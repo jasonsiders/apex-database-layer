@@ -15,64 +15,86 @@
 				</template>
 			</div>
 
-			<template lwc:if={showReferencePill}>
-				<div class="control-shell">
-					<lightning-pill
-						class="resource-pill"
-						label={selectedResourceLabel}
-						onremove={handleResourceRemove}
-					></lightning-pill>
-				</div>
-			</template>
-
-			<template lwc:if={showLiteralControl}>
+			<template lwc:if={isIncluded}>
 				<div class="control-row">
 					<div class="control-cell">
 						<div class={controlInputWrapClass}>
-							<template lwc:if={isPicklist}>
-								<lightning-combobox
-									class="field-control field-control_select"
-									name={name}
-									label={label}
-									variant="label-hidden"
-									value={currentPicklistValue}
-									options={options}
-									placeholder={effectivePlaceholder}
-									onchange={handlePicklistChange}
-								></lightning-combobox>
-							</template>
-							<template lwc:else>
-								<lightning-input
-									class="field-control"
-									type="text"
-									name={name}
-									label={label}
-									variant="label-hidden"
-									value={currentTextValue}
-									placeholder={effectivePlaceholder}
-									onchange={handleTextChange}
-								></lightning-input>
-							</template>
+							<div
+								class="resource-combobox"
+								role="combobox"
+								aria-expanded={showResourceDropdown}
+								aria-haspopup="listbox"
+							>
+								<div class="resource-combobox-input-wrap">
+									<lightning-input
+										data-id="resource-input"
+										class="field-control resource-combobox-input"
+										type="text"
+										name={name}
+										label={label}
+										variant="label-hidden"
+										value={displayTextValue}
+										placeholder={effectivePlaceholder}
+										onfocus={handleTextFocus}
+										oninput={handleTextInput}
+										onblur={handleBlur}
+										onchange={handleTextChange}
+									></lightning-input>
 
-							<template lwc:if={showResourceMenu}>
-								<lightning-button-menu
-									class="resource-menu field-action"
-									alternative-text="Search resources"
-									icon-name="utility:search"
-									icon-size="x-small"
-									variant="bare"
-									menu-alignment="right"
-									onselect={handleResourceMenuSelect}
-								>
-									<template for:each={resourceOptions} for:item="resourceOption">
-										<lightning-menu-item
-											key={resourceOption.value}
-											value={resourceOption.value}
-											label={resourceOption.label}
-										></lightning-menu-item>
-									</template>
-								</lightning-button-menu>
-							</template>
+									<div class="resource-trigger">
+										<lightning-button-icon
+											class="resource-trigger-button field-action"
+											alternative-text="Search resources"
+											icon-name={resourceTriggerIcon}
+											size="x-small"
+											variant="bare"
+											onclick={handleResourceTriggerClick}
+										></lightning-button-icon>
+									</div>
+								</div>
+
+								<template lwc:if={showResourceDropdown}>
+									<div class="resource-dropdown" role="listbox">
+										<div class="resource-dropdown-header">{dropdownHeaderLabel}</div>
+
+										<template lwc:if={hasVisibleOptions}>
+											<template for:each={dropdownSections} for:item="section">
+												<div key={section.key} class="resource-section">
+													<div class="resource-section-title">{section.label}</div>
+
+													<div class="resource-section-options">
+														<template for:each={section.options} for:item="resourceOption">
+															<button
+																key={resourceOption.key}
+																class="resource-option"
+																type="button"
+																data-key={resourceOption.key}
+																onmousedown={handleResourceOptionMouseDown}
+																onclick={handleResourceOptionClick}
+															>
+																<span class="resource-option-figure">
+																	<lightning-icon
+																		class="resource-option-icon"
+																		icon-name={resourceOption.iconName}
+																		size="xx-small"
+																	></lightning-icon>
+																</span>
+																<span class="resource-option-label"
+																	>{resourceOption.displayLabel}</span
+																>
+															</button>
+														</template>
+													</div>
+												</div>
+											</template>
+										</template>
+
+										<template lwc:else>
+											<div class="resource-empty">No matching values or resources</div>
+										</template>
+									</div>
+								</template>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -82,28 +104,15 @@
 				<div class="control-row">
 					<div class="control-cell">
 						<div class="control-input-wrap">
-							<template lwc:if={isPicklist}>
-								<lightning-combobox
-									class="field-control field-control_select"
-									name={name}
-									label={label}
-									variant="label-hidden"
-									value={defaultPicklistValue}
-									options={options}
-									disabled
-								></lightning-combobox>
-							</template>
-							<template lwc:else>
-								<lightning-input
-									class="field-control"
-									type="text"
-									name={name}
-									label={label}
-									variant="label-hidden"
-									value={defaultTextValue}
-									disabled
-								></lightning-input>
-							</template>
+							<lightning-input
+								class="field-control"
+								type="text"
+								name={name}
+								label={label}
+								variant="label-hidden"
+								value={defaultDisplayValue}
+								disabled
+							></lightning-input>
 						</div>
 					</div>
 				</div>
@@ -111,6 +120,10 @@
 
 			<template lwc:if={showEmptyState}>
 				<div class="empty-state"></div>
+			</template>
+
+			<template lwc:if={errorMessage}>
+				<div class="field-error slds-text-color_error slds-text-body_small">{errorMessage}</div>
 			</template>
 		</div>
 
