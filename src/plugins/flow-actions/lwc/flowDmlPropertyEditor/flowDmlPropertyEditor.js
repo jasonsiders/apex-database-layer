@@ -227,6 +227,10 @@ function hasMeaningfulValue(value) {
 	return value !== null && value !== undefined && value !== "";
 }
 
+function isPlainObject(value) {
+	return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
 function isReferenceValue(valueDataType, value) {
 	return (
 		valueDataType === "reference" || (typeof value === "string" && value.startsWith("{!") && value.endsWith("}"))
@@ -271,6 +275,66 @@ function matchesResourceType(metadata, resource) {
 	}
 
 	return resourceDataType === metadata.dataType;
+}
+
+function isValidLiteralForMetadata(metadata, value) {
+	if (!hasMeaningfulValue(value) || isReferenceValue(null, value)) {
+		return true;
+	}
+
+	if (metadata.isCollection) {
+		if (!Array.isArray(value)) {
+			return false;
+		}
+
+		if (metadata.dataType === "String") {
+			return value.every((item) => typeof item === "string");
+		}
+
+		if (metadata.dataType === "SObject") {
+			return value.every((item) => isPlainObject(item));
+		}
+
+		if (metadata.dataType === "Boolean") {
+			return value.every((item) => typeof item === "boolean");
+		}
+
+		return true;
+	}
+
+	if (metadata.dataType === "String") {
+		return typeof value === "string";
+	}
+
+	if (metadata.dataType === "Boolean") {
+		return typeof value === "boolean";
+	}
+
+	if (metadata.dataType === "SObject") {
+		return isPlainObject(value);
+	}
+
+	return true;
+}
+
+function buildTypeValidationMessage(metadata) {
+	if (metadata.dataType === "Boolean") {
+		return `${metadata.label} must be a Boolean value or Boolean resource.`;
+	}
+
+	if (metadata.isCollection && metadata.dataType === "SObject") {
+		return `${metadata.label} must be a record collection or collection resource.`;
+	}
+
+	if (metadata.dataType === "SObject") {
+		return `${metadata.label} must be a record value or record resource.`;
+	}
+
+	if (metadata.isCollection && metadata.dataType === "String") {
+		return `${metadata.label} must be a text collection or collection resource.`;
+	}
+
+	return `${metadata.label} must be a ${metadata.dataType} value.`;
 }
 
 function cloneValue(value) {
@@ -892,6 +956,28 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 		this._refreshValidationErrors();
 	}
 
+	_collectTypeValidationErrors(fieldNames, scope) {
+		const container = scope ? this.baseInputVal : this._vals;
+
+		return fieldNames.flatMap((fieldName) => {
+			const metadata = FIELD_METADATA[fieldName];
+			const path = scope ? `${scope}.${fieldName}` : fieldName;
+			const isIncluded = this._includedState[path] ?? metadata.required ?? false;
+			const value = container?.[fieldName];
+
+			if (!isIncluded || !metadata || isValidLiteralForMetadata(metadata, value)) {
+				return [];
+			}
+
+			return [
+				{
+					key: path,
+					errorString: buildTypeValidationMessage(metadata)
+				}
+			];
+		});
+	}
+
 	_collectValidationErrors() {
 		const errors = [];
 		const type = this.actionType;
@@ -918,6 +1004,38 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 			}
 		} else if (type === "CONVERT" && !this._vals.leadId) {
 			errors.push({ key: "leadId", errorString: "Lead ID is required." });
+		}
+
+		if (type === "BASE") {
+			errors.push(...this._collectTypeValidationErrors(["record", "records", "accessLevelName", "allOrNone"]));
+		} else if (type === "DELETE") {
+			errors.push(...this._collectTypeValidationErrors(["recordId", "recordIds"]));
+			errors.push(
+				...this._collectTypeValidationErrors(["record", "records", "accessLevelName", "allOrNone"], "baseInput")
+			);
+		} else if (type === "UPSERT") {
+			errors.push(...this._collectTypeValidationErrors(["externalIdField"]));
+			errors.push(
+				...this._collectTypeValidationErrors(["record", "records", "accessLevelName", "allOrNone"], "baseInput")
+			);
+		} else if (type === "CONVERT") {
+			errors.push(
+				...this._collectTypeValidationErrors([
+					"leadId",
+					"accountId",
+					"accountName",
+					"contactId",
+					"convertedStatus",
+					"doNotCreateOpportunity",
+					"opportunityId",
+					"opportunityName",
+					"overwriteLeadSource",
+					"ownerId",
+					"sendNotificationEmail",
+					"accessLevelName",
+					"allOrNone"
+				])
+			);
 		}
 
 		return errors;

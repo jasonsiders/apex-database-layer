@@ -476,5 +476,61 @@ describe("c-flow-dml-property-editor", () => {
 				"Provide at least one record or a collection of records in Base Input."
 			);
 		});
+
+		it("rejects an invalid literal for record inputs", async () => {
+			const element = createComponent({ inputVariables: BASE_VARS });
+
+			getField(element, "record").dispatchEvent(
+				new CustomEvent("fieldchange", {
+					detail: {
+						name: "record",
+						value: "not-a-record",
+						valueDataType: "String"
+					}
+				})
+			);
+
+			expect(element.validate()).toEqual([
+				{
+					key: "record",
+					errorString: "SObject Record must be a record value or record resource."
+				}
+			]);
+			await flushPromises();
+			expect(getField(element, "record").errorMessage).toBe(
+				"SObject Record must be a record value or record resource."
+			);
+		});
+
+		it("rejects an invalid literal for boolean inputs", async () => {
+			const element = createComponent({
+				inputVariables: [...BASE_VARS, { name: "allOrNone", value: true }]
+			});
+
+			getField(element, "allOrNone").dispatchEvent(
+				new CustomEvent("fieldchange", {
+					detail: {
+						name: "allOrNone",
+						value: "maybe",
+						valueDataType: "String"
+					}
+				})
+			);
+
+			expect(element.validate()).toEqual([
+				{
+					key: "record",
+					errorString: "Provide at least one record or a collection of records."
+				},
+				{
+					key: "allOrNone",
+					errorString: "All Or None must be a Boolean value or Boolean resource."
+				}
+			]);
+			await flushPromises();
+			expect(getField(element, "allOrNone").errorMessage).toBe(
+				"All Or None must be a Boolean value or Boolean resource."
+			);
+		});
 	});
 });

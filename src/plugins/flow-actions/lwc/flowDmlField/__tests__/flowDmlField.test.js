@@ -140,6 +140,66 @@ describe("c-flow-dml-field", () => {
 		);
 	});
 
+	it("keeps matching picklist values visible while typing a partial search", async () => {
+		const element = createComponent({
+			name: "accessLevelName",
+			label: "Access Level",
+			fieldDataType: "String",
+			inputType: "picklist",
+			included: true,
+			options: [
+				{ label: "User Mode", value: "USER_MODE" },
+				{ label: "System Mode", value: "SYSTEM_MODE" }
+			]
+		});
+		const handler = jest.fn();
+		element.addEventListener("fieldchange", handler);
+
+		const input = getTextInput(element);
+		input.dispatchEvent(new CustomEvent("focus"));
+		input.value = "user";
+		input.dispatchEvent(new Event("input"));
+		input.dispatchEvent(new Event("change"));
+		await Promise.resolve();
+
+		expect(handler).not.toHaveBeenCalled();
+		expect(element.classList.contains("resource-picker-open")).toBe(true);
+		expect(element.shadowRoot.querySelector(".resource-option").textContent).toContain("User Mode");
+	});
+
+	it("accepts unmatched picklist search text as a raw literal on blur", async () => {
+		const element = createComponent({
+			name: "accessLevelName",
+			label: "Access Level",
+			fieldDataType: "String",
+			inputType: "picklist",
+			value: "USER_MODE",
+			included: true,
+			options: [
+				{ label: "User Mode", value: "USER_MODE" },
+				{ label: "System Mode", value: "SYSTEM_MODE" }
+			]
+		});
+		const handler = jest.fn();
+		element.addEventListener("fieldchange", handler);
+
+		const input = getTextInput(element);
+		input.dispatchEvent(new CustomEvent("focus"));
+		input.value = "user";
+		input.dispatchEvent(new Event("input"));
+		input.dispatchEvent(new CustomEvent("blur"));
+		await Promise.resolve();
+
+		expect(handler).toHaveBeenCalledTimes(1);
+		expect(handler.mock.calls[0][0].detail).toEqual({
+			name: "accessLevelName",
+			value: "user",
+			valueDataType: "String"
+		});
+		expect(getTextInput(element).value).toBe("user");
+		expect(element.classList.contains("resource-picker-open")).toBe(false);
+	});
+
 	it("emits a reference value when a filtered resource is selected", async () => {
 		const element = createComponent({
 			name: "record",

@@ -453,6 +453,14 @@ export default class FlowDmlField extends LightningElement {
 		this.classList.toggle("resource-picker-open", isOpen);
 	}
 
+	_syncRenderedInputValue() {
+		const input = this.template.querySelector('[data-id="resource-input"]');
+
+		if (input) {
+			input.value = this.displayTextValue;
+		}
+	}
+
 	_emitFieldChange(value, valueDataType) {
 		this.dispatchEvent(
 			new CustomEvent("fieldchange", {
@@ -495,14 +503,16 @@ export default class FlowDmlField extends LightningElement {
 			return;
 		}
 
-		if (this.inputType === "boolean") {
-			this._draftTextValue = null;
-			this._setResourcePickerOpen(false);
-
+		if (this.allowsLiteralChoices) {
 			if (nextTextValue === "") {
+				this._draftTextValue = null;
+				this._setResourcePickerOpen(false);
 				this._emitFieldChange(null, this.fieldDataType);
+				return;
 			}
 
+			this._draftTextValue = nextTextValue;
+			this._setResourcePickerOpen(true);
 			return;
 		}
 
@@ -512,7 +522,22 @@ export default class FlowDmlField extends LightningElement {
 	}
 
 	handleBlur() {
+		if (this.allowsLiteralChoices && this._draftTextValue !== null) {
+			const matchingLiteralOption = this._findLiteralOptionByText(this._draftTextValue);
+
+			if (matchingLiteralOption) {
+				this._emitSelection(matchingLiteralOption);
+			} else if (this._draftTextValue !== "") {
+				if (this.inputType === "picklist") {
+					this._emitFieldChange(this._draftTextValue, this.fieldDataType);
+				} else {
+					this._draftTextValue = null;
+				}
+			}
+		}
+
 		this._setResourcePickerOpen(false);
+		this._syncRenderedInputValue();
 		this.dispatchEvent(
 			new CustomEvent("fieldblur", {
 				bubbles: true,
