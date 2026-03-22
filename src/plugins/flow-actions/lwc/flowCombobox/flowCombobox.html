@@ -1,0 +1,194 @@
+<template>
+	<div class="field-row slds-form-element">
+		<div class="field-type">
+			<lightning-icon
+				class="type-marker-icon"
+				icon-name={typeMarkerIconName}
+				size="xx-small"
+			></lightning-icon>
+		</div>
+
+		<div class="field-main">
+			<div class="field-label-row">
+				<template lwc:if={required}>
+					<span class="required-indicator">*</span>
+				</template>
+				<span class="field-label slds-form-element__label">{label}</span>
+				<template lwc:if={helpText}>
+					<lightning-helptext content={helpText}></lightning-helptext>
+				</template>
+			</div>
+
+			<template lwc:if={isIncluded}>
+				<div class="control-row slds-form-element__control">
+					<div class="control-cell">
+						<template lwc:if={showSelectedResourcePill}>
+							<div class="control-shell slds-pill_container">
+								<lightning-pill
+									class="selected-resource-pill"
+									label={activeReferenceSelection.displayLabel}
+									name={activeReferenceSelection.referenceName}
+									onremove={handleSelectedResourceRemove}
+								>
+									<lightning-icon
+										class="resource-option-icon"
+										icon-name={activeReferenceSelection.iconName}
+										size="xx-small"
+										slot="media"
+										alternative-text={activeReferenceSelection.displayLabel}
+									></lightning-icon>
+								</lightning-pill>
+							</div>
+						</template>
+
+						<template lwc:else>
+							<div class={controlInputWrapClass}>
+								<div
+									class={resourceComboboxClass}
+									role="combobox"
+									aria-expanded={showResourceDropdown}
+									aria-haspopup="listbox"
+								>
+									<div class="resource-combobox-input-wrap">
+										<lightning-input
+											data-id="resource-input"
+											class="field-control resource-combobox-input"
+											type="text"
+											name={name}
+											label={label}
+											variant="label-hidden"
+											value={displayTextValue}
+											placeholder={effectivePlaceholder}
+											onfocus={handleTextFocus}
+											oninput={handleTextInput}
+											onblur={handleBlur}
+											onchange={handleTextChange}
+										></lightning-input>
+
+										<div class="resource-trigger">
+											<lightning-button-icon
+												class="resource-trigger-button field-action"
+												alternative-text="Search resources"
+												icon-name={resourceTriggerIcon}
+												size="small"
+												variant="bare"
+												onclick={handleResourceTriggerClick}
+											></lightning-button-icon>
+										</div>
+									</div>
+
+									<template lwc:if={showResourceDropdown}>
+										<div class="resource-dropdown" role="listbox">
+											<div class="resource-dropdown-header">{dropdownHeaderLabel}</div>
+
+											<template lwc:if={hasVisibleOptions}>
+												<template for:each={dropdownSections} for:item="section">
+													<div key={section.key} class="resource-section">
+														<div class="resource-section-title">{section.label}</div>
+
+														<ul class="resource-section-options" role="presentation">
+															<template
+																for:each={section.options}
+																for:item="resourceOption"
+															>
+																<li key={resourceOption.key} role="presentation">
+																	<button
+																		class="resource-option"
+																		type="button"
+																		role="option"
+																		data-key={resourceOption.key}
+																		onmousedown={handleResourceOptionMouseDown}
+																		onclick={handleResourceOptionClick}
+																	>
+																		<span class="resource-option-figure">
+																			<lightning-icon
+																				class="resource-option-icon"
+																				icon-name={resourceOption.iconName}
+																				size="xx-small"
+																			></lightning-icon>
+																		</span>
+																		<span
+																			class="resource-option-label"
+																			title={resourceOption.displayLabel}
+																			>{resourceOption.displayLabel}</span
+																		>
+																		<template lwc:if={resourceOption.isDrillable}>
+																			<span class="resource-option-chevron">
+																				<lightning-icon icon-name="utility:chevronright" size="xx-small"></lightning-icon>
+																			</span>
+																		</template>
+																	</button>
+																</li>
+															</template>
+														</ul>
+													</div>
+												</template>
+											</template>
+
+											<template lwc:else>
+												<div class="resource-empty">No matching values or resources</div>
+											</template>
+
+											<div class="resource-footer">
+												<button
+													class="resource-footer-action"
+													type="button"
+													onmousedown={handleNewResourceClick}
+												>
+													<lightning-icon icon-name="utility:add" size="xx-small"></lightning-icon>
+													<span>New Resource</span>
+												</button>
+											</div>
+										</div>
+									</template>
+								</div>
+							</div>
+						</template>
+					</div>
+				</div>
+			</template>
+
+			<template lwc:if={showDefaultControl}>
+				<div class="control-row slds-form-element__control">
+					<div class="control-cell">
+						<div class="control-input-wrap">
+							<lightning-input
+								class="field-control"
+								type="text"
+								name={name}
+								label={label}
+								variant="label-hidden"
+								value={defaultDisplayValue}
+								disabled
+							></lightning-input>
+						</div>
+					</div>
+				</div>
+			</template>
+
+			<template lwc:if={showEmptyState}>
+				<div class="empty-state"></div>
+			</template>
+
+			<template lwc:if={errorMessage}>
+				<div class="field-error slds-form-element__help slds-text-color_error">{errorMessage}</div>
+			</template>
+		</div>
+
+		<template lwc:if={showIncludedToggle}>
+			<div class="field-toggle">
+				<lightning-input
+					class="field-toggle-input"
+					type="toggle"
+					label={includedStateLabel}
+					variant="label-hidden"
+					checked={isIncluded}
+					message-toggle-active=""
+					message-toggle-inactive=""
+					onchange={handleIncludedChange}
+				></lightning-input>
+				<span class="toggle-label">{includedStateLabel}</span>
+			</div>
+		</template>
+	</div>
+</template>
