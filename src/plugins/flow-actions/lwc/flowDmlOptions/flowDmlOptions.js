@@ -407,7 +407,7 @@ export default class FlowDmlOptions extends LightningElement {
 		const metadata = FIELD_METADATA[fieldName];
 		const key = sectionName ? `${sectionName}.${fieldName}` : fieldName;
 		const rawValue = this.safeValue[fieldName];
-		const value = this._unwrapElementReference(rawValue);
+		const value = this._unwrapFlowTypedValue(rawValue);
 
 		return {
 			key,
@@ -425,14 +425,25 @@ export default class FlowDmlOptions extends LightningElement {
 		};
 	}
 
-	_unwrapElementReference(rawValue) {
-		if (
-			rawValue !== null &&
-			typeof rawValue === "object" &&
-			!Array.isArray(rawValue) &&
-			typeof rawValue.elementReference === "string"
-		) {
+	_unwrapFlowTypedValue(rawValue) {
+		if (rawValue === null || typeof rawValue !== "object" || Array.isArray(rawValue)) {
+			return rawValue;
+		}
+
+		if (typeof rawValue.elementReference === "string") {
 			return `{!${rawValue.elementReference}}`;
+		}
+
+		if (typeof rawValue.stringValue === "string") {
+			return rawValue.stringValue;
+		}
+
+		if (typeof rawValue.booleanValue === "boolean") {
+			return rawValue.booleanValue;
+		}
+
+		if (typeof rawValue.numberValue === "number") {
+			return rawValue.numberValue;
 		}
 
 		return rawValue;

@@ -680,16 +680,16 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 	}
 
 	_hydrateState() {
-		const wasValidated = this._hasValidated;
 		this._vals = this._buildVals();
 		this._includedState = this._buildIncludedState();
 		this._pendingNormalizationChanges = this._collectLegacyNormalizationChanges();
 		this._touchedFields = {};
 		this._fieldErrors = {};
-		this._hasValidated = wasValidated;
-		if (wasValidated) {
-			this._refreshValidationErrors();
+		const hasMeaningfulInput = (this._inputVariables || []).some((v) => hasMeaningfulValue(v?.value));
+		if (hasMeaningfulInput) {
+			this._hasValidated = true;
 		}
+		this._refreshValidationErrors();
 	}
 
 	_get(name) {
