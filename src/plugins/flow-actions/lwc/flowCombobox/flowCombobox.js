@@ -121,18 +121,18 @@ function deriveIconName(resourceOption, categoryKey) {
 	}
 
 	if (categoryKey === "recordVariables") {
-		return "utility:sobject";
+		return "utility:record_alt";
 	}
 
 	if (categoryKey === "recordCollections") {
-		return "utility:table";
+		return "utility:multi_picklist";
 	}
 
 	if (categoryKey === "formulas") {
 		return "utility:formula";
 	}
 
-	return "utility:merge_field";
+	return "utility:text";
 }
 
 function normalizeLiteralOptionValue(inputType, optionValue) {
@@ -273,11 +273,11 @@ export default class FlowCombobox extends LightningElement {
 			case 'boolean':  return 'utility:toggle';
 			case 'date':     return 'utility:event';
 			case 'datetime': return 'utility:date_time';
-			case 'number':
-			case 'integer':
-			case 'double':
+			case 'number':	 return 'utility:number_input';
+			case 'integer':	 return 'utility:number_input';
+			case 'double':	 return 'utility:number_input';
 			case 'currency': return 'utility:number_input';
-			case 'sobject':  return 'utility:sobject';
+			case 'sobject':  return 'utility:record_alt';
 			default:         return 'utility:text';
 		}
 	}
