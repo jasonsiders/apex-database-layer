@@ -196,6 +196,8 @@ export default class FlowCombobox extends LightningElement {
 	_pendingSelection = null;
 	_forceLiteralInput = false;
 	_focusInputAfterRender = false;
+	_focusedOptionKey = null;
+	_pendingScrollFocusedOption = false;
 
 	@api
 	get value() {
@@ -337,19 +339,21 @@ export default class FlowCombobox extends LightningElement {
 			.filter((resourceOption) => matchesResourceOption(resourceOption, query))
 			.map((resourceOption, index) => {
 				const categoryKey = deriveCategoryKey(resourceOption);
+				const key =
+					resourceOption.key ??
+					`resource-${resourceOption.referenceName ?? resourceOption.value ?? index}`;
 
 				return {
 					...resourceOption,
-					key:
-						resourceOption.key ??
-						`resource-${resourceOption.referenceName ?? resourceOption.value ?? index}`,
+					key,
 					optionType: "resource",
 					categoryKey,
 					groupLabel: deriveGroupLabel(categoryKey),
 					displayLabel: deriveDisplayLabel(resourceOption),
 					iconName: deriveIconName(resourceOption, categoryKey),
 					valueDataType: "reference",
-					isDrillable: !!resourceOption.objectType
+					isDrillable: !!resourceOption.objectType,
+					isFocused: this._focusedOptionKey === key
 				};
 			});
 	}
@@ -361,7 +365,9 @@ export default class FlowCombobox extends LightningElement {
 
 		const query = this.displayTextValue;
 
-		return this.literalOptions.filter((option) => matchesResourceOption(option, query));
+		return this.literalOptions
+			.filter((option) => matchesResourceOption(option, query))
+			.map((option) => ({ ...option, isFocused: this._focusedOptionKey === option.key }));
 	}
 
 	get resourceSections() {
@@ -519,6 +525,9 @@ export default class FlowCombobox extends LightningElement {
 	_setResourcePickerOpen(isOpen) {
 		this._isResourcePickerOpen = isOpen;
 		this.classList.toggle("resource-picker-open", isOpen);
+		if (!isOpen) {
+			this._focusedOptionKey = null;
+		}
 	}
 
 	_syncRenderedInputValue() {
@@ -558,6 +567,48 @@ export default class FlowCombobox extends LightningElement {
 		return this.literalOptions.find((option) => matchesLiteralOptionByText(option, text)) ?? null;
 	}
 
+	handleInputKeyDown(event) {
+		if (!this.showResourceDropdown) {
+			return;
+		}
+
+		const options = this.dropdownOptions;
+
+		if (!options.length) {
+			return;
+		}
+
+		if (event.key === "ArrowDown") {
+			event.preventDefault();
+			const currentIndex = options.findIndex((o) => o.key === this._focusedOptionKey);
+			const nextIndex = currentIndex < options.length - 1 ? currentIndex + 1 : 0;
+			this._focusedOptionKey = options[nextIndex].key;
+			this._scrollFocusedOptionIntoView();
+		} else if (event.key === "ArrowUp") {
+			event.preventDefault();
+			const currentIndex = options.findIndex((o) => o.key === this._focusedOptionKey);
+			if (currentIndex <= 0) {
+				this._focusedOptionKey = null;
+			} else {
+				this._focusedOptionKey = options[currentIndex - 1].key;
+				this._scrollFocusedOptionIntoView();
+			}
+		} else if (event.key === "Enter" && this._focusedOptionKey) {
+			event.preventDefault();
+			const focusedOption = options.find((o) => o.key === this._focusedOptionKey);
+			if (focusedOption) {
+				this._emitSelection(focusedOption);
+			}
+		} else if (event.key === "Escape") {
+			this._setResourcePickerOpen(false);
+		}
+	}
+
+	_scrollFocusedOptionIntoView() {
+		// Runs after next render via renderedCallback
+		this._pendingScrollFocusedOption = true;
+	}
+
 	handleTextFocus() {
 		this._setResourcePickerOpen(true);
 	}
@@ -567,6 +618,7 @@ export default class FlowCombobox extends LightningElement {
 			this._pendingSelection = null;
 		}
 
+		this._focusedOptionKey = null;
 		this._forceLiteralInput = false;
 		this._suppressTextCommitAfterSelection = false;
 		this._draftTextValue = event.target.value;
@@ -686,6 +738,15 @@ export default class FlowCombobox extends LightningElement {
 		if (this._focusInputAfterRender) {
 			this._focusInputAfterRender = false;
 			this.template.querySelector('[data-id="resource-input"]')?.focus();
+		}
+
+		if (this._pendingScrollFocusedOption) {
+			this._pendingScrollFocusedOption = false;
+			if (this._focusedOptionKey) {
+				this.template
+					.querySelector(`[data-key="${this._focusedOptionKey}"]`)
+					?.scrollIntoView({ block: "nearest" });
+			}
 		}
 	}
 

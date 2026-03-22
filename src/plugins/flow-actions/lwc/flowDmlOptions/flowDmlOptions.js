@@ -321,6 +321,7 @@ export default class FlowDmlOptions extends LightningElement {
 
 	@track _includedState = {};
 	_value = {};
+	_skipNextIncludedStateInit = false;
 
 	@api
 	get value() {
@@ -329,7 +330,11 @@ export default class FlowDmlOptions extends LightningElement {
 
 	set value(nextValue) {
 		this._value = nextValue ?? {};
-		this._initializeIncludedState();
+		if (this._skipNextIncludedStateInit) {
+			this._skipNextIncludedStateInit = false;
+		} else {
+			this._initializeIncludedState();
+		}
 	}
 
 	get safeValue() {
@@ -465,6 +470,7 @@ export default class FlowDmlOptions extends LightningElement {
 		const { name, value } = event.detail;
 		const updated = setPath(cloneValue(this.safeValue), name, value);
 		this._includedState = { ...this._includedState, [name]: true };
+		this._skipNextIncludedStateInit = true;
 		this._emit(pruneEmptyObjects(updated));
 	}
 
@@ -476,6 +482,7 @@ export default class FlowDmlOptions extends LightningElement {
 		const metadata = FIELD_METADATA[name.split(".").pop()];
 		const updated = cloneValue(this.safeValue);
 
+		this._skipNextIncludedStateInit = true;
 		if (included) {
 			setPath(updated, name, metadata.defaultValue ?? null);
 			this._emit(pruneEmptyObjects(updated));

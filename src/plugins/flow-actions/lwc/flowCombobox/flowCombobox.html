@@ -62,6 +62,7 @@
 											oninput={handleTextInput}
 											onblur={handleBlur}
 											onchange={handleTextChange}
+										onkeydown={handleInputKeyDown}
 										></lightning-input>
 
 										<div class="resource-trigger">
@@ -96,6 +97,7 @@
 																		type="button"
 																		role="option"
 																		data-key={resourceOption.key}
+																		aria-selected={resourceOption.isFocused}
 																		onmousedown={handleResourceOptionMouseDown}
 																		onclick={handleResourceOptionClick}
 																	>

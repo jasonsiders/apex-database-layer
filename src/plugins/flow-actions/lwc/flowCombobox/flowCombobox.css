@@ -180,7 +180,8 @@
 }
 
 .resource-option:hover,
-.resource-option:focus {
+.resource-option:focus,
+.resource-option[aria-selected="true"] {
 	background: var(--lwc-colorBackgroundRowHover, #f3f3f3);
 	outline: none;
 }
