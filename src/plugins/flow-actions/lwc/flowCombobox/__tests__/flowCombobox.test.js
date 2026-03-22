@@ -455,13 +455,4 @@ describe("c-flow-combobox", () => {
 		await Promise.resolve();
 		expect(handler).not.toHaveBeenCalled();
 	});
-
-	it("shows a New Resource button in the open dropdown", async () => {
-		const element = createComponent({ name: "rec", label: "Rec", included: true });
-		getTextInput(element).dispatchEvent(new CustomEvent("focus"));
-		await Promise.resolve();
-		const btn = element.shadowRoot.querySelector(".resource-footer-action");
-		expect(btn).not.toBeNull();
-		expect(btn.textContent).toContain("New Resource");
-	});
 });

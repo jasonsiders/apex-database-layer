@@ -103,7 +103,7 @@
 .resource-trigger {
 	position: absolute;
 	top: 50%;
-	right: 0.45rem;
+	right: 0.125rem;
 	transform: translateY(-50%);
 	z-index: 1;
 }
@@ -216,8 +216,12 @@
 	--slds-c-pill-color-background: var(--lwc-colorBackgroundAlt, #ffffff);
 	--slds-c-pill-text-color: var(--lwc-brandAccessible, #0176d3);
 	--slds-c-pill-sizing-border: 1px;
-	--slds-c-pill-color-border: var(--lwc-brandAccessible, #0176d3);
+	--slds-c-pill-color-border: var(--lwc-colorBorderInput, #c9c9c9);
 	--slds-c-pill-radius-border: 0.25rem;
+}
+
+.selected-resource-pill lightning-icon {
+	--slds-c-icon-color-foreground-default: var(--lwc-brandAccessible, #0176d3);
 }
 
 
@@ -246,7 +250,6 @@
 }
 
 .resource-footer-action {
-	align-items: center;
 	column-gap: 0.375rem;
 	padding: 0.5rem 0.75rem;
 	border: 0;

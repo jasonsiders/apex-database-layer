@@ -33,7 +33,7 @@
 									<lightning-icon
 										class="resource-option-icon"
 										icon-name={activeReferenceSelection.iconName}
-										size="xx-small"
+										size="x-small"
 										slot="media"
 										alternative-text={activeReferenceSelection.displayLabel}
 									></lightning-icon>
@@ -70,7 +70,7 @@
 												class="resource-trigger-button field-action"
 												alternative-text="Search resources"
 												icon-name={resourceTriggerIcon}
-												size="small"
+												size="medium"
 												variant="bare"
 												onclick={handleResourceTriggerClick}
 											></lightning-button-icon>
@@ -104,7 +104,7 @@
 																			<lightning-icon
 																				class="resource-option-icon"
 																				icon-name={resourceOption.iconName}
-																				size="xx-small"
+																				size="x-small"
 																			></lightning-icon>
 																		</span>
 																		<span class="slds-media__body">
@@ -127,16 +127,6 @@
 												<div class="resource-empty slds-var-p-around_small">No matching values or resources</div>
 											</template>
 
-											<div class="resource-footer">
-												<button
-													class="resource-footer-action slds-size_full slds-grid slds-text-color_default slds-text-align_left"
-													type="button"
-													onmousedown={handleNewResourceClick}
-												>
-													<lightning-icon icon-name="utility:add" size="xx-small"></lightning-icon>
-													<span>New Resource</span>
-												</button>
-											</div>
 										</div>
 									</template>
 								</div>
