@@ -195,6 +195,7 @@ export default class FlowCombobox extends LightningElement {
 	_suppressTextCommitAfterSelection = false;
 	_pendingSelection = null;
 	_forceLiteralInput = false;
+	_focusInputAfterRender = false;
 
 	@api
 	get value() {
@@ -681,12 +682,20 @@ export default class FlowCombobox extends LightningElement {
 		this._emitSelection(selectedOption);
 	}
 
+	renderedCallback() {
+		if (this._focusInputAfterRender) {
+			this._focusInputAfterRender = false;
+			this.template.querySelector('[data-id="resource-input"]')?.focus();
+		}
+	}
+
 	handleSelectedResourceRemove() {
 		this._pendingSelection = null;
 		this._forceLiteralInput = true;
 		this._draftTextValue = "";
 		this._value = null;
 		this._suppressTextCommitAfterSelection = false;
+		this._focusInputAfterRender = true;
 		this._setResourcePickerOpen(false);
 		this._emitFieldChange(null, this.fieldDataType);
 	}
