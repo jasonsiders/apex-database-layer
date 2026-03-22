@@ -680,12 +680,16 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 	}
 
 	_hydrateState() {
+		const wasValidated = this._hasValidated;
 		this._vals = this._buildVals();
 		this._includedState = this._buildIncludedState();
 		this._pendingNormalizationChanges = this._collectLegacyNormalizationChanges();
 		this._touchedFields = {};
 		this._fieldErrors = {};
-		this._hasValidated = false;
+		this._hasValidated = wasValidated;
+		if (wasValidated) {
+			this._refreshValidationErrors();
+		}
 	}
 
 	_get(name) {
@@ -1062,10 +1066,10 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 			return [];
 		}
 
-		const activeFieldName =
-			fieldNames.find((fieldName) => hasMeaningfulValue(this._vals[fieldName])) ?? fieldNames[0] ?? "record";
+		const configuredFieldNames = fieldNames.filter((fieldName) => this.inputVariableMap.has(fieldName));
+		const activeFieldName = configuredFieldNames[0] ?? fieldNames[0] ?? "record";
 		const metadata = FIELD_METADATA[activeFieldName];
-		const hasMissingOrMismatchedMapping = fieldNames.some(
+		const hasMissingOrMismatchedMapping = configuredFieldNames.some(
 			(fieldName) => this.genericTypeMappingMap.get(buildGenericTypeName(fieldName)) !== expectedType
 		);
 

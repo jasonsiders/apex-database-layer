@@ -68,18 +68,16 @@ describe("c-flow-dml-options", () => {
 	it("removes nested values when an included toggle is turned off", () => {
 		const element = createComponent({
 			value: {
-				assignmentRuleHeader: {
-					assignmentRuleId: "01Qxx0000000001",
-					useDefaultRule: true
-				}
+				assignmentRuleId: "01Qxx0000000001",
+				useDefaultRule: true
 			}
 		});
 		const handler = captureEvent(element);
 
-		getField(element, "assignmentRuleHeader.useDefaultRule").dispatchEvent(
+		getField(element, "useDefaultRule").dispatchEvent(
 			new CustomEvent("fieldincludedchange", {
 				detail: {
-					name: "assignmentRuleHeader.useDefaultRule",
+					name: "useDefaultRule",
 					included: false
 				}
 			})
@@ -87,9 +85,7 @@ describe("c-flow-dml-options", () => {
 
 		expect(handler).toHaveBeenCalledTimes(1);
 		expect(handler.mock.calls[0][0].detail.value).toEqual({
-			assignmentRuleHeader: {
-				assignmentRuleId: "01Qxx0000000001"
-			}
+			assignmentRuleId: "01Qxx0000000001"
 		});
 	});
 

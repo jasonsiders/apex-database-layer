@@ -394,9 +394,9 @@ export default class FlowDmlOptions extends LightningElement {
 			nextState[fieldName] = hasOwnValue(this.safeValue, fieldName);
 		});
 
-		Object.entries(SECTION_FIELDS).forEach(([sectionName, fieldNames]) => {
+		Object.entries(SECTION_FIELDS).forEach(([_sectionName, fieldNames]) => {
 			fieldNames.forEach((fieldName) => {
-				nextState[`${sectionName}.${fieldName}`] = hasOwnValue(this.safeValue[sectionName], fieldName);
+				nextState[fieldName] = hasOwnValue(this.safeValue, fieldName);
 			});
 		});
 
@@ -405,24 +405,37 @@ export default class FlowDmlOptions extends LightningElement {
 
 	_buildFieldConfig(fieldName, sectionName) {
 		const metadata = FIELD_METADATA[fieldName];
-		const path = sectionName ? `${sectionName}.${fieldName}` : fieldName;
-		const container = sectionName ? (this.safeValue[sectionName] ?? {}) : this.safeValue;
-		const rawValue = container[fieldName];
+		const key = sectionName ? `${sectionName}.${fieldName}` : fieldName;
+		const rawValue = this.safeValue[fieldName];
+		const value = this._unwrapElementReference(rawValue);
 
 		return {
-			key: path,
-			name: path,
+			key,
+			name: fieldName,
 			label: metadata.label,
 			dataType: metadata.dataType,
 			inputType: metadata.inputType,
 			options: metadata.options ?? [],
 			defaultValue: metadata.defaultValue,
 			placeholder: metadata.placeholder,
-			included: this._includedState[path] ?? false,
-			value: rawValue,
-			valueDataType: isReferenceValue(rawValue) ? "reference" : metadata.dataType,
+			included: this._includedState[fieldName] ?? false,
+			value,
+			valueDataType: value !== rawValue ? "reference" : isReferenceValue(value) ? "reference" : metadata.dataType,
 			resourceOptions: this._buildResourceOptions(metadata)
 		};
+	}
+
+	_unwrapElementReference(rawValue) {
+		if (
+			rawValue !== null &&
+			typeof rawValue === "object" &&
+			!Array.isArray(rawValue) &&
+			typeof rawValue.elementReference === "string"
+		) {
+			return `{!${rawValue.elementReference}}`;
+		}
+
+		return rawValue;
 	}
 
 	_flattenBuilderResources() {
