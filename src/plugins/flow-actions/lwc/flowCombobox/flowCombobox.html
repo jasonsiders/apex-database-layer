@@ -23,7 +23,7 @@
 				<div class="control-row slds-form-element__control">
 					<div class="control-cell">
 						<template lwc:if={showSelectedResourcePill}>
-							<div class="control-shell slds-pill_container">
+							<div class="slds-pill_container">
 								<lightning-pill
 									class="selected-resource-pill"
 									label={activeReferenceSelection.displayLabel}
@@ -49,7 +49,7 @@
 									aria-expanded={showResourceDropdown}
 									aria-haspopup="listbox"
 								>
-									<div class="resource-combobox-input-wrap">
+									<div class="slds-combobox__form-element slds-input-has-icon slds-input-has-icon_right resource-combobox-input-wrap">
 										<lightning-input
 											data-id="resource-input"
 											class="field-control resource-combobox-input"
@@ -78,40 +78,38 @@
 									</div>
 
 									<template lwc:if={showResourceDropdown}>
-										<div class="resource-dropdown" role="listbox">
-											<div class="resource-dropdown-header">{dropdownHeaderLabel}</div>
+										<div class="resource-dropdown slds-dropdown slds-dropdown_fluid" role="listbox">
+											<div class="resource-dropdown-header slds-text-body_small">{dropdownHeaderLabel}</div>
 
 											<template lwc:if={hasVisibleOptions}>
 												<template for:each={dropdownSections} for:item="section">
 													<div key={section.key} class="resource-section">
-														<div class="resource-section-title">{section.label}</div>
+														<div class="resource-section-title slds-text-title_caps">{section.label}</div>
 
-														<ul class="resource-section-options" role="presentation">
+														<ul class="resource-section-options slds-listbox slds-listbox_vertical" role="presentation">
 															<template
 																for:each={section.options}
 																for:item="resourceOption"
 															>
 																<li key={resourceOption.key} role="presentation">
 																	<button
-																		class="resource-option"
+																		class="resource-option slds-media slds-listbox__option slds-listbox__option_plain slds-media_small"
 																		type="button"
 																		role="option"
 																		data-key={resourceOption.key}
 																		onmousedown={handleResourceOptionMouseDown}
 																		onclick={handleResourceOptionClick}
 																	>
-																		<span class="resource-option-figure">
+																		<span class="slds-media__figure slds-listbox__option-icon resource-option-figure">
 																			<lightning-icon
 																				class="resource-option-icon"
 																				icon-name={resourceOption.iconName}
 																				size="xx-small"
 																			></lightning-icon>
 																		</span>
-																		<span
-																			class="resource-option-label"
-																			title={resourceOption.displayLabel}
-																			>{resourceOption.displayLabel}</span
-																		>
+																		<span class="slds-media__body">
+																			<span class="slds-truncate" title={resourceOption.displayLabel}>{resourceOption.displayLabel}</span>
+																		</span>
 																		<template lwc:if={resourceOption.isDrillable}>
 																			<span class="resource-option-chevron">
 																				<lightning-icon icon-name="utility:chevronright" size="xx-small"></lightning-icon>
@@ -131,7 +129,7 @@
 
 											<div class="resource-footer">
 												<button
-													class="resource-footer-action"
+													class="resource-footer-action slds-grid slds-text-color_default slds-text-align_left"
 													type="button"
 													onmousedown={handleNewResourceClick}
 												>
@@ -167,7 +165,7 @@
 			</template>
 
 			<template lwc:if={showEmptyState}>
-				<div class="empty-state"></div>
+				<div class="empty-state slds-hide"></div>
 			</template>
 
 			<template lwc:if={errorMessage}>
@@ -176,7 +174,7 @@
 		</div>
 
 		<template lwc:if={showIncludedToggle}>
-			<div class="field-toggle">
+			<div class="field-toggle slds-grid slds-grid_vertical">
 				<lightning-input
 					class="field-toggle-input"
 					type="toggle"
@@ -187,7 +185,7 @@
 					message-toggle-inactive=""
 					onchange={handleIncludedChange}
 				></lightning-input>
-				<span class="toggle-label">{includedStateLabel}</span>
+				<span class="toggle-label slds-text-align_right">{includedStateLabel}</span>
 			</div>
 		</template>
 	</div>

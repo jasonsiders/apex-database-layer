@@ -3,7 +3,7 @@
 		<div class="editor">
 			<c-flow-dml-section label="Record Inputs" expanded="true" collapsible="false">
 				<template for:each={baseRecordFields} for:item="field">
-					<c-flow-dml-field
+					<c-flow-combobox
 						key={field.key}
 						name={field.name}
 						label={field.label}
@@ -21,13 +21,13 @@
 						onfieldchange={handleFieldChange}
 						onfieldblur={handleFieldBlur}
 						onfieldincludedchange={handleFieldIncludedChange}
-					></c-flow-dml-field>
+					></c-flow-combobox>
 				</template>
 			</c-flow-dml-section>
 
 			<div class="field-stack">
 				<template for:each={baseSettingFields} for:item="field">
-					<c-flow-dml-field
+					<c-flow-combobox
 						key={field.key}
 						name={field.name}
 						label={field.label}
@@ -45,7 +45,7 @@
 						onfieldchange={handleFieldChange}
 						onfieldblur={handleFieldBlur}
 						onfieldincludedchange={handleFieldIncludedChange}
-					></c-flow-dml-field>
+					></c-flow-combobox>
 				</template>
 			</div>
 
@@ -63,7 +63,7 @@
 		<div class="editor">
 			<c-flow-dml-section label="Record Inputs" expanded="true" collapsible="false">
 				<template for:each={deleteRecordFields} for:item="field">
-					<c-flow-dml-field
+					<c-flow-combobox
 						key={field.key}
 						name={field.name}
 						label={field.label}
@@ -81,13 +81,13 @@
 						onfieldchange={handleFieldChange}
 						onfieldblur={handleFieldBlur}
 						onfieldincludedchange={handleFieldIncludedChange}
-					></c-flow-dml-field>
+					></c-flow-combobox>
 				</template>
 			</c-flow-dml-section>
 
 			<c-flow-dml-section label="Base Input Settings" is-required="true">
 				<template for:each={baseInputSettingFields} for:item="field">
-					<c-flow-dml-field
+					<c-flow-combobox
 						key={field.key}
 						name={field.name}
 						label={field.label}
@@ -105,7 +105,7 @@
 						onfieldchange={handleFieldChange}
 						onfieldblur={handleFieldBlur}
 						onfieldincludedchange={handleFieldIncludedChange}
-					></c-flow-dml-field>
+					></c-flow-combobox>
 				</template>
 
 				<c-flow-dml-section label="DML Options">
@@ -123,7 +123,7 @@
 		<div class="editor">
 			<c-flow-dml-section label="Record Inputs" expanded="true" collapsible="false">
 				<template for:each={upsertRecordFields} for:item="field">
-					<c-flow-dml-field
+					<c-flow-combobox
 						key={field.key}
 						name={field.name}
 						label={field.label}
@@ -141,13 +141,13 @@
 						onfieldchange={handleFieldChange}
 						onfieldblur={handleFieldBlur}
 						onfieldincludedchange={handleFieldIncludedChange}
-					></c-flow-dml-field>
+					></c-flow-combobox>
 				</template>
 			</c-flow-dml-section>
 
 			<div class="field-stack">
 				<template for:each={upsertSettingFields} for:item="field">
-					<c-flow-dml-field
+					<c-flow-combobox
 						key={field.key}
 						name={field.name}
 						label={field.label}
@@ -165,13 +165,13 @@
 						onfieldchange={handleFieldChange}
 						onfieldblur={handleFieldBlur}
 						onfieldincludedchange={handleFieldIncludedChange}
-					></c-flow-dml-field>
+					></c-flow-combobox>
 				</template>
 			</div>
 
 			<c-flow-dml-section label="Base Input Settings" is-required="true">
 				<template for:each={baseInputSettingFields} for:item="field">
-					<c-flow-dml-field
+					<c-flow-combobox
 						key={field.key}
 						name={field.name}
 						label={field.label}
@@ -189,7 +189,7 @@
 						onfieldchange={handleFieldChange}
 						onfieldblur={handleFieldBlur}
 						onfieldincludedchange={handleFieldIncludedChange}
-					></c-flow-dml-field>
+					></c-flow-combobox>
 				</template>
 
 				<c-flow-dml-section label="DML Options">
@@ -207,7 +207,7 @@
 		<div class="editor">
 			<c-flow-dml-section label="Conversion Inputs" expanded="true" collapsible="false">
 				<template for:each={convertInputFields} for:item="field">
-					<c-flow-dml-field
+					<c-flow-combobox
 						key={field.key}
 						name={field.name}
 						label={field.label}
@@ -225,13 +225,13 @@
 						onfieldchange={handleFieldChange}
 						onfieldblur={handleFieldBlur}
 						onfieldincludedchange={handleFieldIncludedChange}
-					></c-flow-dml-field>
+					></c-flow-combobox>
 				</template>
 			</c-flow-dml-section>
 
 			<div class="field-stack">
 				<template for:each={convertSettingFields} for:item="field">
-					<c-flow-dml-field
+					<c-flow-combobox
 						key={field.key}
 						name={field.name}
 						label={field.label}
@@ -249,7 +249,7 @@
 						onfieldchange={handleFieldChange}
 						onfieldblur={handleFieldBlur}
 						onfieldincludedchange={handleFieldIncludedChange}
-					></c-flow-dml-field>
+					></c-flow-combobox>
 				</template>
 			</div>
 

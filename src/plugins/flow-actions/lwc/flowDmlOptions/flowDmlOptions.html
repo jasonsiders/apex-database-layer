@@ -1,7 +1,7 @@
 <template>
 	<div class="options-layout">
 		<template for:each={topLevelFields} for:item="field">
-			<c-flow-dml-field
+			<c-flow-combobox
 				key={field.key}
 				name={field.name}
 				label={field.label}
@@ -16,12 +16,12 @@
 				resource-options={field.resourceOptions}
 				onfieldchange={handleFieldChange}
 				onfieldincludedchange={handleFieldIncludedChange}
-			></c-flow-dml-field>
+			></c-flow-combobox>
 		</template>
 
 		<c-flow-dml-section label="Assignment Rule">
 			<template for:each={assignmentRuleFields} for:item="field">
-				<c-flow-dml-field
+				<c-flow-combobox
 					key={field.key}
 					name={field.name}
 					label={field.label}
@@ -36,13 +36,13 @@
 					resource-options={field.resourceOptions}
 					onfieldchange={handleFieldChange}
 					onfieldincludedchange={handleFieldIncludedChange}
-				></c-flow-dml-field>
+				></c-flow-combobox>
 			</template>
 		</c-flow-dml-section>
 
 		<c-flow-dml-section label="Duplicate Rule">
 			<template for:each={duplicateRuleFields} for:item="field">
-				<c-flow-dml-field
+				<c-flow-combobox
 					key={field.key}
 					name={field.name}
 					label={field.label}
@@ -57,13 +57,13 @@
 					resource-options={field.resourceOptions}
 					onfieldchange={handleFieldChange}
 					onfieldincludedchange={handleFieldIncludedChange}
-				></c-flow-dml-field>
+				></c-flow-combobox>
 			</template>
 		</c-flow-dml-section>
 
 		<c-flow-dml-section label="Email Header">
 			<template for:each={emailHeaderFields} for:item="field">
-				<c-flow-dml-field
+				<c-flow-combobox
 					key={field.key}
 					name={field.name}
 					label={field.label}
@@ -78,7 +78,7 @@
 					resource-options={field.resourceOptions}
 					onfieldchange={handleFieldChange}
 					onfieldincludedchange={handleFieldIncludedChange}
-				></c-flow-dml-field>
+				></c-flow-combobox>
 			</template>
 		</c-flow-dml-section>
 	</div>

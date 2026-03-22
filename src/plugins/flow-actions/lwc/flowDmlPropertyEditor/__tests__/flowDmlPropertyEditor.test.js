@@ -42,7 +42,7 @@ describe("c-flow-dml-property-editor", () => {
 
 	function getField(element, name) {
 		return (
-			[...element.shadowRoot.querySelectorAll("c-flow-dml-field")].find((field) => field.name === name) ?? null
+			[...element.shadowRoot.querySelectorAll("c-flow-combobox")].find((field) => field.name === name) ?? null
 		);
 	}
 
