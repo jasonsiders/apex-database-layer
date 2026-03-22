@@ -214,7 +214,7 @@
 .selected-resource-pill {
 	max-width: 100%;
 	--slds-c-pill-color-background: var(--lwc-colorBackgroundAlt, #ffffff);
-	--slds-c-pill-text-color: var(--lwc-brandAccessible, #0176d3);
+	color: var(--lwc-brandAccessible, #0176d3);
 	--slds-c-pill-sizing-border: 1px;
 	--slds-c-pill-color-border: var(--lwc-colorBorderInput, #c9c9c9);
 	--slds-c-pill-radius-border: 0.25rem;
