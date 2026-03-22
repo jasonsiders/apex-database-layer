@@ -11,10 +11,8 @@ module.exports = {
 		...jestConfig.moduleNameMapper
 	},
 	collectCoverageFrom: [
-		"src/plugins/flow-actions/lwc/**/*",
+		"src/plugins/flow-actions/lwc/**/*.js",
 		"!**/__tests__/**",
-		"!**/__stubs__/**",
-		"!**/*.html",
-		"!**/*.css"
+		"!**/__stubs__/**"
 	]
 };
