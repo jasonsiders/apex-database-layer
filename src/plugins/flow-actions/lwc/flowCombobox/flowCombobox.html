@@ -78,29 +78,29 @@
 									</div>
 
 									<template lwc:if={showResourceDropdown}>
-										<div class="resource-dropdown slds-dropdown slds-dropdown_fluid" role="listbox">
+										<div class="resource-dropdown slds-p-around_none" role="listbox">
 											<div class="resource-dropdown-header slds-text-body_small">{dropdownHeaderLabel}</div>
 
 											<template lwc:if={hasVisibleOptions}>
 												<template for:each={dropdownSections} for:item="section">
 													<div key={section.key} class="resource-section">
-														<div class="resource-section-title slds-text-title_caps">{section.label}</div>
+														<div class="resource-section-title slds-text-body_small">{section.label}</div>
 
-														<ul class="resource-section-options slds-listbox slds-listbox_vertical" role="presentation">
+														<ul class="resource-section-options slds-m-around_none" role="presentation">
 															<template
 																for:each={section.options}
 																for:item="resourceOption"
 															>
 																<li key={resourceOption.key} role="presentation">
 																	<button
-																		class="resource-option slds-media slds-listbox__option slds-listbox__option_plain slds-media_small"
+																		class="resource-option slds-size_full slds-text-color_default slds-text-align_left"
 																		type="button"
 																		role="option"
 																		data-key={resourceOption.key}
 																		onmousedown={handleResourceOptionMouseDown}
 																		onclick={handleResourceOptionClick}
 																	>
-																		<span class="slds-media__figure slds-listbox__option-icon resource-option-figure">
+																		<span class="resource-option-figure slds-grid_align-center">
 																			<lightning-icon
 																				class="resource-option-icon"
 																				icon-name={resourceOption.iconName}
@@ -124,12 +124,12 @@
 											</template>
 
 											<template lwc:else>
-												<div class="resource-empty">No matching values or resources</div>
+												<div class="resource-empty slds-var-p-around_small">No matching values or resources</div>
 											</template>
 
 											<div class="resource-footer">
 												<button
-													class="resource-footer-action slds-grid slds-text-color_default slds-text-align_left"
+													class="resource-footer-action slds-size_full slds-grid slds-text-color_default slds-text-align_left"
 													type="button"
 													onmousedown={handleNewResourceClick}
 												>
