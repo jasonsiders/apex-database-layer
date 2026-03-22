@@ -453,6 +453,7 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 	_pendingGenericTypeMappingValues = new Map();
 	_hasValidated = false;
 	_lastToastSignature = null;
+	_skipNextIncludedHydration = false;
 
 	@api outputVariables = [];
 	@api builderContext = {};
@@ -470,7 +471,13 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 
 	set inputVariables(nextValue) {
 		this._inputVariables = nextValue ?? [];
-		this._hydrateState();
+		if (this._skipNextIncludedHydration) {
+			this._skipNextIncludedHydration = false;
+			this._vals = this._buildVals();
+			this._pendingNormalizationChanges = this._collectLegacyNormalizationChanges();
+		} else {
+			this._hydrateState();
+		}
 	}
 
 	@api
@@ -1029,6 +1036,7 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 			const updated = { ...this.baseInputVal, [fieldName]: value };
 			this._vals = { ...this._vals, baseInput: updated };
 			this._includedState = { ...this._includedState, [name]: true };
+			this._skipNextIncludedHydration = true;
 			this._markFieldTouched(name);
 			this._emitChange("baseInput", updated, this._getApexDefinedValueDataType("baseInput", "FlowDmlBaseInput"));
 			this._refreshValidationErrors();
@@ -1037,6 +1045,7 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 
 		this._vals = { ...this._vals, [name]: value };
 		this._includedState = { ...this._includedState, [name]: true };
+		this._skipNextIncludedHydration = true;
 		this._markFieldTouched(name);
 		this._emitGenericTypeMappingChanges(
 			getSharedGenericInputGroup(name),
