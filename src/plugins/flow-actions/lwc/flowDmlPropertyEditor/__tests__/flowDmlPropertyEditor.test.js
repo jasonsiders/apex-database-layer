@@ -412,12 +412,14 @@ describe("c-flow-dml-property-editor", () => {
 			);
 		});
 
-		it("does not surface validation errors before blur or save", async () => {
+		it("surfaces validation errors immediately on render without requiring blur or save", async () => {
 			const element = createComponent({ inputVariables: BASE_VARS });
 
 			await flushPromises();
 
-			expect(getField(element, "record").errorMessage).toBeUndefined();
+			expect(getField(element, "record").errorMessage).toBe(
+				"Provide at least one record or a collection of records."
+			);
 			expect(Toast.show).not.toHaveBeenCalled();
 		});
 

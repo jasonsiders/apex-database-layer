@@ -512,6 +512,7 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 			this._syncInferredGenericTypeMappings();
 			if (!this._hasSyncedMappings) {
 				this._hasSyncedMappings = true;
+				this._hasValidated = true;
 				this._refreshValidationErrors();
 			}
 			return;
@@ -526,6 +527,7 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 		this._syncInferredGenericTypeMappings();
 		if (!this._hasSyncedMappings) {
 			this._hasSyncedMappings = true;
+			this._hasValidated = true;
 			this._refreshValidationErrors();
 		}
 	}
@@ -694,10 +696,6 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 		this._pendingNormalizationChanges = this._collectLegacyNormalizationChanges();
 		this._touchedFields = {};
 		this._fieldErrors = {};
-		const hasMeaningfulInput = (this._inputVariables || []).some((v) => hasMeaningfulValue(v?.value));
-		if (hasMeaningfulInput) {
-			this._hasValidated = true;
-		}
 		this._refreshValidationErrors();
 	}
 
