@@ -412,15 +412,31 @@ describe("c-flow-dml-property-editor", () => {
 			);
 		});
 
-		it("surfaces validation errors immediately on render without requiring blur or save", async () => {
+		it("pins the BASE required-field error to records when only the records toggle is on", async () => {
 			const element = createComponent({ inputVariables: BASE_VARS });
 
-			await flushPromises();
+			getField(element, "records").dispatchEvent(
+				new CustomEvent("fieldincludedchange", {
+					detail: { name: "records", included: true }
+				})
+			);
+			getField(element, "record").dispatchEvent(
+				new CustomEvent("fieldincludedchange", {
+					detail: { name: "record", included: false }
+				})
+			);
 
-			expect(getField(element, "record").errorMessage).toBe(
+			expect(element.validate()).toEqual([
+				{
+					key: "records",
+					errorString: "Provide at least one record or a collection of records."
+				}
+			]);
+			await flushPromises();
+			expect(getField(element, "records").errorMessage).toBe(
 				"Provide at least one record or a collection of records."
 			);
-			expect(Toast.show).not.toHaveBeenCalled();
+			expect(getField(element, "record").errorMessage).toBeUndefined();
 		});
 
 		it("surfaces a field error after the field is blurred", async () => {
@@ -473,7 +489,9 @@ describe("c-flow-dml-property-editor", () => {
 			expect(getField(element, "record").errorMessage).toBeUndefined();
 		});
 
-		it("shows a field error when a selected record resource is missing its generic type mapping", async () => {
+		it("does not report a type mapping error when a partial mapping is present and the correction is pending", async () => {
+			// T__record is confirmed correct; T__records is missing but the component self-heals
+			// by emitting the correction in renderedCallback — pending mapping counts as valid
 			const element = createComponent({
 				inputVariables: [
 					{ name: "record", value: "{!accountRecord}", valueDataType: "SObject" },
@@ -486,16 +504,47 @@ describe("c-flow-dml-property-editor", () => {
 			});
 
 			await flushPromises();
-			expect(element.validate()).toEqual([
-				{
-					key: "record",
-					errorString: "SObject Record must use an Account object type mapping."
-				}
-			]);
+			expect(element.validate()).toBeUndefined();
 			await flushPromises();
-			expect(getField(element, "record").errorMessage).toBe(
-				"SObject Record must use an Account object type mapping."
-			);
+			expect(getField(element, "record").errorMessage).toBeUndefined();
+		});
+
+		it("does not report a type mapping error when the mapping is pending (emitted but not yet confirmed)", async () => {
+			const element = createComponent({
+				inputVariables: [
+					{ name: "record", value: "{!accountRecord}", valueDataType: "SObject" },
+					{ name: "records", value: [] }
+				],
+				builderContext: {
+					variables: [{ name: "accountRecord", dataType: "SObject", objectType: "Account" }]
+				},
+				genericTypeMappings: []
+			});
+
+			await flushPromises();
+
+			expect(element.validate()).toBeUndefined();
+		});
+
+		it("does not report a type mapping error when confirmed mappings are wrong but the correction is pending", async () => {
+			// Both T__record and T__records are confirmed as Contact, but should be Account.
+			// renderedCallback emits corrections (Account) — pending values suppress the error.
+			const element = createComponent({
+				inputVariables: [
+					{ name: "record", value: "{!accountRecord}", valueDataType: "SObject" },
+					{ name: "records", value: [] }
+				],
+				builderContext: {
+					variables: [{ name: "accountRecord", dataType: "SObject", objectType: "Account" }]
+				},
+				genericTypeMappings: [
+					{ typeName: "T__record", typeValue: "Contact" },
+					{ typeName: "T__records", typeValue: "Contact" }
+				]
+			});
+
+			await flushPromises();
+			expect(element.validate()).toBeUndefined();
 		});
 
 		it("deduplicates identical toast messages across repeated validate calls", () => {
@@ -571,6 +620,33 @@ describe("c-flow-dml-property-editor", () => {
 			expect(getField(element, "baseInput.record").errorMessage).toBe(
 				"Provide at least one record or a collection of records in Base Input."
 			);
+		});
+
+		it("pins the UPSERT base input required-field error to baseInput.records when only the records toggle is on", async () => {
+			const element = createComponent({ inputVariables: UPSERT_VARS });
+
+			getField(element, "baseInput.records").dispatchEvent(
+				new CustomEvent("fieldincludedchange", {
+					detail: { name: "baseInput.records", included: true }
+				})
+			);
+			getField(element, "baseInput.record").dispatchEvent(
+				new CustomEvent("fieldincludedchange", {
+					detail: { name: "baseInput.record", included: false }
+				})
+			);
+
+			expect(element.validate()).toEqual([
+				{
+					key: "baseInput.records",
+					errorString: "Provide at least one record or a collection of records in Base Input."
+				}
+			]);
+			await flushPromises();
+			expect(getField(element, "baseInput.records").errorMessage).toBe(
+				"Provide at least one record or a collection of records in Base Input."
+			);
+			expect(getField(element, "baseInput.record").errorMessage).toBeUndefined();
 		});
 
 		it("rejects an invalid literal for record inputs", async () => {

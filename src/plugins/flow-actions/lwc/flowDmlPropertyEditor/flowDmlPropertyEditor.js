@@ -512,7 +512,6 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 			this._syncInferredGenericTypeMappings();
 			if (!this._hasSyncedMappings) {
 				this._hasSyncedMappings = true;
-				this._hasValidated = true;
 				this._refreshValidationErrors();
 			}
 			return;
@@ -527,7 +526,6 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 		this._syncInferredGenericTypeMappings();
 		if (!this._hasSyncedMappings) {
 			this._hasSyncedMappings = true;
-			this._hasValidated = true;
 			this._refreshValidationErrors();
 		}
 	}
@@ -1083,9 +1081,12 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 		const configuredFieldNames = fieldNames.filter((fieldName) => this.inputVariableMap.has(fieldName));
 		const activeFieldName = configuredFieldNames[0] ?? fieldNames[0] ?? "record";
 		const metadata = FIELD_METADATA[activeFieldName];
-		const hasMissingOrMismatchedMapping = configuredFieldNames.some(
-			(fieldName) => this.genericTypeMappingMap.get(buildGenericTypeName(fieldName)) !== expectedType
-		);
+		const hasMissingOrMismatchedMapping = configuredFieldNames.some((fieldName) => {
+			const typeName = buildGenericTypeName(fieldName);
+			const persistedType = this.genericTypeMappingMap.get(typeName);
+			const pendingType = this._pendingGenericTypeMappingValues.get(typeName);
+			return persistedType !== expectedType && pendingType !== expectedType;
+		});
 
 		if (!metadata || !hasMissingOrMismatchedMapping) {
 			return [];
@@ -1202,12 +1203,16 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 
 		if (type === "BASE") {
 			if (!this._vals.record && !this._vals.records?.length) {
-				errors.push({ key: "record", errorString: "Provide at least one record or a collection of records." });
+				const errorKey =
+					this._includedState.records && !this._includedState.record ? "records" : "record";
+				errors.push({ key: errorKey, errorString: "Provide at least one record or a collection of records." });
 			}
 		} else if (type === "DELETE") {
 			if (!this._vals.recordId && !this._vals.recordIds?.length) {
+				const errorKey =
+					this._includedState.recordIds && !this._includedState.recordId ? "recordIds" : "recordId";
 				errors.push({
-					key: "recordId",
+					key: errorKey,
 					errorString: "Provide at least one Record Id or a collection of Record Ids."
 				});
 			}
@@ -1215,8 +1220,12 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 			const base = this._vals.baseInput ?? {};
 
 			if (!base.record && !base.records?.length) {
+				const errorKey =
+					this._includedState["baseInput.records"] && !this._includedState["baseInput.record"]
+						? "baseInput.records"
+						: "baseInput.record";
 				errors.push({
-					key: "baseInput.record",
+					key: errorKey,
 					errorString: "Provide at least one record or a collection of records in Base Input."
 				});
 			}
