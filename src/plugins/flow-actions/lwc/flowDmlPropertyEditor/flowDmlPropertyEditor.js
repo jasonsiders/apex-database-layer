@@ -452,6 +452,7 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 	_pendingNormalizationChanges = [];
 	_pendingGenericTypeMappingValues = new Map();
 	_hasValidated = false;
+	_hasSyncedMappings = false;
 	_lastToastSignature = null;
 	_skipNextIncludedHydration = false;
 
@@ -509,6 +510,10 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 	renderedCallback() {
 		if (!this._pendingNormalizationChanges.length) {
 			this._syncInferredGenericTypeMappings();
+			if (!this._hasSyncedMappings) {
+				this._hasSyncedMappings = true;
+				this._refreshValidationErrors();
+			}
 			return;
 		}
 
@@ -519,6 +524,10 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 			this._emitChange(name, value, this._getApexDefinedValueDataType(name, className));
 		});
 		this._syncInferredGenericTypeMappings();
+		if (!this._hasSyncedMappings) {
+			this._hasSyncedMappings = true;
+			this._refreshValidationErrors();
+		}
 	}
 
 	get inputVariableMap() {
@@ -1060,6 +1069,13 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 	}
 
 	_collectGenericTypeMappingErrors(fieldNames) {
+		// Suppress mapping errors until renderedCallback has had a chance to sync
+		// genericTypeMappings — avoids a false-positive error/badge on first paint
+		// before the configuration_editor_generic_type_mapping_changed callback fires.
+		if (!this._hasSyncedMappings) {
+			return [];
+		}
+
 		const expectedType = this._resolveExpectedGenericTypeForGroup(fieldNames);
 
 		if (!expectedType) {

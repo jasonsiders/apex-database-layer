@@ -317,7 +317,7 @@ export default class FlowCombobox extends LightningElement {
 			return null;
 		}
 
-		return this._pendingSelection ?? this.decoratedSelectedResource;
+		return this._pendingSelection ?? this.decoratedSelectedResource ?? this.selectedLiteralOption ?? null;
 	}
 
 	get showSelectedResourcePill() {

@@ -174,7 +174,6 @@ describe("c-flow-combobox", () => {
 			label: "Access Level",
 			fieldDataType: "String",
 			inputType: "picklist",
-			value: "USER_MODE",
 			included: true,
 			options: [
 				{ label: "User Mode", value: "USER_MODE" },
