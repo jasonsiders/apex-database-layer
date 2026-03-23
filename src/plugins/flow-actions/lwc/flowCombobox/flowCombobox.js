@@ -198,6 +198,7 @@ export default class FlowCombobox extends LightningElement {
 	_focusInputAfterRender = false;
 	_focusedOptionKey = null;
 	_pendingScrollFocusedOption = false;
+	_validationError = null;
 
 	@api
 	get value() {
@@ -211,7 +212,23 @@ export default class FlowCombobox extends LightningElement {
 		this._suppressTextCommitAfterSelection = false;
 		this._pendingSelection = null;
 		this._forceLiteralInput = false;
+		this._validationError = null;
 		this._setResourcePickerOpen(false);
+	}
+
+	@api validate(error) {
+		this._validationError = error ?? null;
+		return !this._validationError;
+	}
+
+	get effectiveErrorMessage() {
+		return this._validationError ?? this.errorMessage ?? null;
+	}
+
+	get fieldRowClass() {
+		return this.effectiveErrorMessage
+			? "field-row slds-form-element slds-has-error"
+			: "field-row slds-form-element";
 	}
 
 	get isIncluded() {

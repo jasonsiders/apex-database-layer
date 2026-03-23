@@ -391,16 +391,28 @@ export default class FlowDmlOptions extends LightningElement {
 		const nextState = {};
 
 		["allowFieldTruncation", "localeOptions"].forEach((fieldName) => {
-			nextState[fieldName] = hasOwnValue(this.safeValue, fieldName);
+			nextState[fieldName] = this._isFieldIncluded(fieldName);
 		});
 
 		Object.entries(SECTION_FIELDS).forEach(([_sectionName, fieldNames]) => {
 			fieldNames.forEach((fieldName) => {
-				nextState[fieldName] = hasOwnValue(this.safeValue, fieldName);
+				nextState[fieldName] = this._isFieldIncluded(fieldName);
 			});
 		});
 
 		this._includedState = nextState;
+	}
+
+	_isFieldIncluded(fieldName) {
+		if (!hasOwnValue(this.safeValue, fieldName)) {
+			return false;
+		}
+		const unwrapped = this._unwrapFlowTypedValue(this.safeValue[fieldName]);
+		// Treat false and 0 as meaningful (explicitly set booleans/numbers)
+		if (unwrapped === false || unwrapped === 0) {
+			return true;
+		}
+		return unwrapped !== null && unwrapped !== undefined && unwrapped !== "";
 	}
 
 	_buildFieldConfig(fieldName, sectionName) {
@@ -408,6 +420,9 @@ export default class FlowDmlOptions extends LightningElement {
 		const key = sectionName ? `${sectionName}.${fieldName}` : fieldName;
 		const rawValue = this.safeValue[fieldName];
 		const value = this._unwrapFlowTypedValue(rawValue);
+		const isRef =
+			(rawValue && typeof rawValue === "object" && typeof rawValue.elementReference === "string") ||
+			isReferenceValue(value);
 
 		return {
 			key,
@@ -420,7 +435,7 @@ export default class FlowDmlOptions extends LightningElement {
 			placeholder: metadata.placeholder,
 			included: this._includedState[fieldName] ?? false,
 			value,
-			valueDataType: value !== rawValue ? "reference" : isReferenceValue(value) ? "reference" : metadata.dataType,
+			valueDataType: isRef ? "reference" : metadata.dataType,
 			resourceOptions: this._buildResourceOptions(metadata)
 		};
 	}
@@ -444,6 +459,11 @@ export default class FlowDmlOptions extends LightningElement {
 
 		if (typeof rawValue.numberValue === "number") {
 			return rawValue.numberValue;
+		}
+
+		// Salesforce apex-defined type CPE format: { value: <scalar>, error: <string|null> }
+		if (Object.prototype.hasOwnProperty.call(rawValue, "value")) {
+			return rawValue.value;
 		}
 
 		return rawValue;

@@ -1,5 +1,5 @@
 <template>
-	<div class="field-row slds-form-element">
+	<div class={fieldRowClass}>
 		<div class="field-type">
 			<lightning-icon
 				class="type-marker-icon"
@@ -159,8 +159,8 @@
 				<div class="empty-state slds-hide"></div>
 			</template>
 
-			<template lwc:if={errorMessage}>
-				<div class="field-error slds-form-element__help slds-text-color_error">{errorMessage}</div>
+			<template lwc:if={effectiveErrorMessage}>
+				<div class="field-error slds-form-element__help slds-text-color_error">{effectiveErrorMessage}</div>
 			</template>
 		</div>
 

@@ -454,4 +454,52 @@ describe("c-flow-combobox", () => {
 		await Promise.resolve();
 		expect(handler).not.toHaveBeenCalled();
 	});
+
+	it("shows an error message and slds-has-error class when validate() is called with an error", async () => {
+		const element = createComponent({ name: "record", label: "SObject Record", included: true });
+		element.validate("This field is required.");
+		await Promise.resolve();
+		expect(element.shadowRoot.querySelector(".field-error").textContent).toBe("This field is required.");
+		expect(element.shadowRoot.querySelector(".slds-has-error")).not.toBeNull();
+	});
+
+	it("clears the validation error when a new value is set", async () => {
+		const element = createComponent({
+			name: "record", label: "SObject Record", included: true,
+			resourceOptions: [{ label: "Variable: record", value: "{!record}", pillLabel: "record", referenceName: "record" }]
+		});
+		element.validate("This field is required.");
+		await Promise.resolve();
+		expect(element.shadowRoot.querySelector(".field-error")).not.toBeNull();
+
+		element.value = "{!record}";
+		await Promise.resolve();
+		expect(element.shadowRoot.querySelector(".field-error")).toBeNull();
+		expect(element.shadowRoot.querySelector(".slds-has-error")).toBeNull();
+	});
+
+	it("validate() returns false when an error is provided and true when cleared", () => {
+		const element = createComponent({ name: "record", label: "SObject Record", included: true });
+		expect(element.validate("Something is wrong")).toBe(false);
+		expect(element.validate(null)).toBe(true);
+	});
+
+	it("shows errorMessage prop as a fallback when validate() has not been called", async () => {
+		const element = createComponent({
+			name: "record", label: "SObject Record", included: true,
+			errorMessage: "Prop error"
+		});
+		await Promise.resolve();
+		expect(element.shadowRoot.querySelector(".field-error").textContent).toBe("Prop error");
+	});
+
+	it("validate() error takes precedence over the errorMessage prop", async () => {
+		const element = createComponent({
+			name: "record", label: "SObject Record", included: true,
+			errorMessage: "Prop error"
+		});
+		element.validate("Validate error");
+		await Promise.resolve();
+		expect(element.shadowRoot.querySelector(".field-error").textContent).toBe("Validate error");
+	});
 });
