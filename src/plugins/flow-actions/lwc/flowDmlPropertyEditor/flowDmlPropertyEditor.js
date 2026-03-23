@@ -1329,6 +1329,6 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 		});
 
 		this._showValidationToast(errors);
-		return errors;
+		return errors.length ? errors : undefined;
 	}
 }

@@ -193,7 +193,7 @@ describe("c-flow-dml-property-editor", () => {
 				newValueDataType: "SObject"
 			});
 			expect(getField(element, "record").value).toBe("{!record}");
-			expect(element.validate()).toEqual([]);
+			expect(element.validate()).toBeUndefined();
 		});
 
 		it("emits a delete event when an optional top-level field is excluded", () => {
@@ -468,7 +468,7 @@ describe("c-flow-dml-property-editor", () => {
 			);
 			await flushPromises();
 
-			expect(element.validate()).toEqual([]);
+			expect(element.validate()).toBeUndefined();
 			await flushPromises();
 			expect(getField(element, "record").errorMessage).toBeUndefined();
 		});
@@ -555,7 +555,7 @@ describe("c-flow-dml-property-editor", () => {
 				})
 			);
 
-			expect(element.validate()).toEqual([]);
+			expect(element.validate()).toBeUndefined();
 		});
 
 		it("shows the base input validation message on the record field", async () => {
