@@ -1316,7 +1316,13 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 		const errors = this._collectValidationErrors();
 		this._hasValidated = true;
 		this._setValidationErrors(errors);
+
+		const errorByKey = errors.reduce((map, e) => ({ ...map, [e.key]: e.errorString }), {});
+		this.template.querySelectorAll("c-flow-combobox").forEach((el) => {
+			el.validate(errorByKey[el.name] ?? null);
+		});
+
 		this._showValidationToast(errors);
-		return errors;
+		return errors.length === 0;
 	}
 }

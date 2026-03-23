@@ -193,7 +193,7 @@ describe("c-flow-dml-property-editor", () => {
 				newValueDataType: "SObject"
 			});
 			expect(getField(element, "record").value).toBe("{!record}");
-			expect(element.validate()).toEqual([]);
+			expect(element.validate()).toEqual(true);
 		});
 
 		it("emits a delete event when an optional top-level field is excluded", () => {
@@ -391,12 +391,7 @@ describe("c-flow-dml-property-editor", () => {
 					apiName: "Insert_Record_s"
 				}
 			});
-			expect(element.validate()).toEqual([
-				{
-					key: "record",
-					errorString: "Provide at least one record or a collection of records."
-				}
-			]);
+			expect(element.validate()).toEqual(false);
 			await flushPromises();
 			expect(Toast.show).toHaveBeenCalledTimes(1);
 			expect(Toast.show.mock.calls[0][0]).toEqual(
@@ -468,7 +463,7 @@ describe("c-flow-dml-property-editor", () => {
 			);
 			await flushPromises();
 
-			expect(element.validate()).toEqual([]);
+			expect(element.validate()).toEqual(true);
 			await flushPromises();
 			expect(getField(element, "record").errorMessage).toBeUndefined();
 		});
@@ -486,12 +481,7 @@ describe("c-flow-dml-property-editor", () => {
 			});
 
 			await flushPromises();
-			expect(element.validate()).toEqual([
-				{
-					key: "record",
-					errorString: "SObject Record must use an Account object type mapping."
-				}
-			]);
+			expect(element.validate()).toEqual(false);
 			await flushPromises();
 			expect(getField(element, "record").errorMessage).toBe(
 				"SObject Record must use an Account object type mapping."
@@ -506,8 +496,8 @@ describe("c-flow-dml-property-editor", () => {
 				}
 			});
 
-			expect(element.validate()).toHaveLength(1);
-			expect(element.validate()).toHaveLength(1);
+			expect(element.validate()).toEqual(false);
+			expect(element.validate()).toEqual(false);
 
 			expect(Toast.show).toHaveBeenCalledTimes(1);
 		});
@@ -529,7 +519,7 @@ describe("c-flow-dml-property-editor", () => {
 				}
 			});
 
-			expect(element.validate()).toHaveLength(1);
+			expect(element.validate()).toEqual(false);
 			expect(Toast.show.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
 					label: "Insert Record(s): Validation Error"
@@ -539,7 +529,7 @@ describe("c-flow-dml-property-editor", () => {
 
 		it("requires leadId for convert actions", () => {
 			const element = createComponent({ inputVariables: CONVERT_VARS });
-			expect(element.validate()).toEqual([{ key: "leadId", errorString: "Lead ID is required." }]);
+			expect(element.validate()).toEqual(false);
 		});
 
 		it("accepts baseInput record references for upsert actions", () => {
@@ -555,18 +545,13 @@ describe("c-flow-dml-property-editor", () => {
 				})
 			);
 
-			expect(element.validate()).toEqual([]);
+			expect(element.validate()).toEqual(true);
 		});
 
 		it("shows the base input validation message on the record field", async () => {
 			const element = createComponent({ inputVariables: UPSERT_VARS });
 
-			expect(element.validate()).toEqual([
-				{
-					key: "baseInput.record",
-					errorString: "Provide at least one record or a collection of records in Base Input."
-				}
-			]);
+			expect(element.validate()).toEqual(false);
 			await flushPromises();
 			expect(getField(element, "baseInput.record").errorMessage).toBe(
 				"Provide at least one record or a collection of records in Base Input."
@@ -586,12 +571,7 @@ describe("c-flow-dml-property-editor", () => {
 				})
 			);
 
-			expect(element.validate()).toEqual([
-				{
-					key: "record",
-					errorString: "SObject Record must be a record value or record resource."
-				}
-			]);
+			expect(element.validate()).toEqual(false);
 			await flushPromises();
 			expect(getField(element, "record").errorMessage).toBe(
 				"SObject Record must be a record value or record resource."
@@ -613,16 +593,7 @@ describe("c-flow-dml-property-editor", () => {
 				})
 			);
 
-			expect(element.validate()).toEqual([
-				{
-					key: "record",
-					errorString: "Provide at least one record or a collection of records."
-				},
-				{
-					key: "allOrNone",
-					errorString: "All Or None must be a Boolean value or Boolean resource."
-				}
-			]);
+			expect(element.validate()).toEqual(false);
 			await flushPromises();
 			expect(getField(element, "allOrNone").errorMessage).toBe(
 				"All Or None must be a Boolean value or Boolean resource."
