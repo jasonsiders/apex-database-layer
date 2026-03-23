@@ -1180,8 +1180,10 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 			const path = scope ? `${scope}.${fieldName}` : fieldName;
 			const isIncluded = this._includedState[path] ?? metadata.required ?? false;
 			const value = container?.[fieldName];
+			const isValid = isValidLiteralForMetadata(metadata, value);
+			console.log(`[typeValidation] path=${path} isIncluded=${isIncluded} value=${JSON.stringify(value)} isValid=${isValid}`);
 
-			if (!isIncluded || !metadata || isValidLiteralForMetadata(metadata, value)) {
+			if (!isIncluded || !metadata || isValid) {
 				return [];
 			}
 
@@ -1313,7 +1315,11 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 	}
 
 	@api validate() {
+		console.log("[validate] actionType:", this.actionType);
+		console.log("[validate] _vals:", JSON.stringify(this._vals));
+		console.log("[validate] _includedState:", JSON.stringify(this._includedState));
 		const errors = this._collectValidationErrors();
+		console.log("[validate] errors:", JSON.stringify(errors));
 		this._hasValidated = true;
 		this._setValidationErrors(errors);
 
@@ -1323,6 +1329,6 @@ export default class FlowDmlPropertyEditor extends LightningElement {
 		});
 
 		this._showValidationToast(errors);
-		return errors.length === 0;
+		return errors;
 	}
 }
