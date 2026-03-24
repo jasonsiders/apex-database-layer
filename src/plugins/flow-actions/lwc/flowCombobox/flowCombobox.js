@@ -177,7 +177,6 @@ export default class FlowCombobox extends LightningElement {
 	@api label;
 	@api helpText;
 	@api errorMessage;
-	_value;
 	@api valueDataType = "String";
 	@api fieldDataType = "String";
 	@api required = false;
@@ -189,16 +188,17 @@ export default class FlowCombobox extends LightningElement {
 	@api resourceOptions = [];
 
 	_draftTextValue = null;
-	_isResourcePickerOpen = false;
-	_ignoreNextTextChange = false;
-	_ignoreNextResourceClick = false;
-	_suppressTextCommitAfterSelection = false;
-	_pendingSelection = null;
-	_forceLiteralInput = false;
-	_focusInputAfterRender = false;
 	_focusedOptionKey = null;
+	_focusInputAfterRender = false;
+	_forceLiteralInput = false;
+	_ignoreNextResourceClick = false;
+	_ignoreNextTextChange = false;
+	_isResourcePickerOpen = false;
 	_pendingScrollFocusedOption = false;
+	_pendingSelection = null;
+	_suppressTextCommitAfterSelection = false;
 	_validationError = null;
+	_value;
 
 	@api
 	get value() {
@@ -207,7 +207,6 @@ export default class FlowCombobox extends LightningElement {
 
 	set value(nextValue) {
 		this._value = nextValue;
-
 		this._draftTextValue = null;
 		this._suppressTextCommitAfterSelection = false;
 		this._pendingSelection = null;
