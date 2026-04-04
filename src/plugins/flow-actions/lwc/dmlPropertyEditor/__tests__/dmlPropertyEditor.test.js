@@ -240,4 +240,68 @@ describe('c-dml-property-editor', () => {
 		expect(errors[0].key).toBe('record');
 		expect(errors[0].errorString).toContain('SObject Record');
 	});
+
+	// ── generic type mapping ──────────────────────────────────────────────────
+
+	it('dispatches type mapping for both T__record and T__records when record changes', async () => {
+		const element = createComponent({
+			inputVariables: [],
+			builderContext: {
+				variables: [{ name: 'myRecord', objectType: 'Account', isCollection: false, dataType: 'SObject' }]
+			}
+		});
+		await Promise.resolve();
+
+		const typeMappingEvents = [];
+		element.addEventListener('configuration_editor_generic_type_mapping_changed', (e) =>
+			typeMappingEvents.push(e)
+		);
+
+		dispatchFieldChange(element, 'record', '{!myRecord}', 'reference');
+
+		expect(typeMappingEvents).toHaveLength(2);
+		expect(typeMappingEvents[0].detail.typeName).toBe('T__record');
+		expect(typeMappingEvents[0].detail.typeValue).toBe('Account');
+		expect(typeMappingEvents[1].detail.typeName).toBe('T__records');
+		expect(typeMappingEvents[1].detail.typeValue).toBe('Account');
+	});
+
+	it('dispatches type mapping for both T__record and T__records when records changes', async () => {
+		const element = createComponent({
+			inputVariables: [],
+			builderContext: {
+				variables: [{ name: 'myRecords', objectType: 'Contact', isCollection: true, dataType: 'SObject' }]
+			}
+		});
+		await Promise.resolve();
+
+		const typeMappingEvents = [];
+		element.addEventListener('configuration_editor_generic_type_mapping_changed', (e) =>
+			typeMappingEvents.push(e)
+		);
+
+		dispatchFieldChange(element, 'records', '{!myRecords}', 'reference');
+
+		expect(typeMappingEvents).toHaveLength(2);
+		expect(typeMappingEvents[0].detail.typeName).toBe('T__record');
+		expect(typeMappingEvents[0].detail.typeValue).toBe('Contact');
+		expect(typeMappingEvents[1].detail.typeName).toBe('T__records');
+		expect(typeMappingEvents[1].detail.typeValue).toBe('Contact');
+	});
+
+	it('does not dispatch type mapping when record is cleared', async () => {
+		const element = createComponent({
+			inputVariables: [{ name: 'record', value: '{!myRecord}', valueDataType: 'reference' }]
+		});
+		await Promise.resolve();
+
+		const typeMappingEvents = [];
+		element.addEventListener('configuration_editor_generic_type_mapping_changed', (e) =>
+			typeMappingEvents.push(e)
+		);
+
+		dispatchFieldIncludedChange(element, 'record', false);
+
+		expect(typeMappingEvents).toHaveLength(0);
+	});
 });

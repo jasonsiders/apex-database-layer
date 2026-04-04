@@ -23,13 +23,23 @@ const DML_FIELD_NAMES = new Set([
 ]);
 
 export default class DmlPropertyEditor extends LightningElement {
-	@api builderContext;
 	@api genericTypeMappings;
 
+	_builderContext;
 	_inputVariables;
 	_values = {};
 	_included = {};
 	_dmlFields = {};
+
+	@api
+	get builderContext() {
+		return this._builderContext;
+	}
+
+	set builderContext(val) {
+		this._builderContext = val;
+		this._dispatchSeedTypeMappings();
+	}
 
 	@api
 	get inputVariables() {
@@ -39,14 +49,20 @@ export default class DmlPropertyEditor extends LightningElement {
 	set inputVariables(next) {
 		this._inputVariables = next;
 		this._seedValues(next ?? []);
+		this._dispatchSeedTypeMappings();
 	}
 
 	@api validate() {
 		const recordSet = this._included.record && this._values.record?.value != null;
 		const recordsSet = this._included.records && this._values.records?.value != null;
-		return recordSet || recordsSet
-			? []
-			: [{ key: 'record', errorString: 'Provide at least one of "SObject Record" or "SObject Records".' }];
+		const recordCombobox = this.template.querySelector('c-flow-combobox[name="record"]');
+		if (recordSet || recordsSet) {
+			recordCombobox?.validate(null);
+			return [];
+		}
+		const errorString = 'Provide at least one of "SObject Record" or "SObject Records".';
+		recordCombobox?.validate(errorString);
+		return [{ key: 'record', errorString }];
 	}
 
 	// ── Seeding ───────────────────────────────────────────────────────────────
@@ -91,6 +107,7 @@ export default class DmlPropertyEditor extends LightningElement {
 	_toResourceOption(v) {
 		return {
 			referenceName: v.name,
+			value: '{!' + v.name + '}',
 			label: v.label ?? v.name,
 			pillLabel: v.name,
 			objectType: v.objectType,
@@ -201,6 +218,13 @@ export default class DmlPropertyEditor extends LightningElement {
 	_handleTopLevelFieldChange(name, value, valueDataType) {
 		this._values = { ...this._values, [name]: { value, valueDataType } };
 		this._dispatchChange(name, value, valueDataType);
+		if ((name === 'record' || name === 'records') && value) {
+			const typeValue = this._getObjectType(value);
+			if (typeValue) {
+				this._dispatchTypeMapping('T__record', typeValue);
+				this._dispatchTypeMapping('T__records', typeValue);
+			}
+		}
 	}
 
 	_handleDmlFieldChange(name, value, valueDataType) {
@@ -249,6 +273,30 @@ export default class DmlPropertyEditor extends LightningElement {
 	}
 
 	// ── CPE Event Dispatch ────────────────────────────────────────────────────
+
+	_dispatchSeedTypeMappings() {
+		const value = this._values.record?.value || this._values.records?.value;
+		if (!value) return;
+		const typeValue = this._getObjectType(value);
+		if (!typeValue) return;
+		this._dispatchTypeMapping('T__record', typeValue);
+		this._dispatchTypeMapping('T__records', typeValue);
+	}
+
+	_getObjectType(referenceValue) {
+		const refName = referenceValue.startsWith('{!') ? referenceValue.slice(2, -1) : referenceValue;
+		return this._allVars.find((v) => v.name === refName)?.objectType ?? null;
+	}
+
+	_dispatchTypeMapping(typeName, typeValue) {
+		this.dispatchEvent(
+			new CustomEvent('configuration_editor_generic_type_mapping_changed', {
+				bubbles: true,
+				composed: true,
+				detail: { typeName, typeValue }
+			})
+		);
+	}
 
 	_dispatchChange(name, newValue, newValueDataType) {
 		this.dispatchEvent(
