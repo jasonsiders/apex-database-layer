@@ -19,7 +19,18 @@
 		</div>
 
 		<div class="field-main">
-			<template lwc:if={isIncluded}>
+			<template lwc:if={showTypePicker}>
+				<lightning-combobox
+					data-id="type-picker"
+					label="SObject Type"
+					required
+					value={typeValue}
+					options={sobjectTypeOptions}
+					onchange={handleTypeMappingChange}
+				></lightning-combobox>
+			</template>
+
+			<template lwc:if={showVariablePicker}>
 				<div class="control-row slds-form-element__control">
 					<div class="control-cell">
 						<template lwc:if={showSelectedResourcePill}>

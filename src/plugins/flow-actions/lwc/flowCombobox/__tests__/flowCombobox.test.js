@@ -502,4 +502,151 @@ describe("c-flow-combobox", () => {
 		await Promise.resolve();
 		expect(element.shadowRoot.querySelector(".field-error").textContent).toBe("Validate error");
 	});
+
+	// ── SObject type picker ────────────────────────────────────────────────────
+
+	it("renders the type picker when fieldDataType is SObject and typeName is set", async () => {
+		const element = createComponent({
+			name: "record",
+			label: "SObject Record",
+			fieldDataType: "SObject",
+			typeName: "T__record",
+			resourceOptions: [
+				{ label: "Account Var", value: "{!acc}", pillLabel: "acc", referenceName: "acc", objectType: "Account" }
+			]
+		});
+		await Promise.resolve();
+		expect(element.shadowRoot.querySelector('[data-id="type-picker"]')).not.toBeNull();
+	});
+
+	it("does not render the type picker when typeName is not set", async () => {
+		const element = createComponent({
+			name: "record",
+			label: "SObject Record",
+			fieldDataType: "SObject",
+			resourceOptions: []
+		});
+		await Promise.resolve();
+		expect(element.shadowRoot.querySelector('[data-id="type-picker"]')).toBeNull();
+	});
+
+	it("does not render the type picker when fieldDataType is not SObject", async () => {
+		const element = createComponent({
+			name: "myField",
+			label: "My Field",
+			fieldDataType: "String",
+			typeName: "T__record",
+			resourceOptions: []
+		});
+		await Promise.resolve();
+		expect(element.shadowRoot.querySelector('[data-id="type-picker"]')).toBeNull();
+	});
+
+	it("type picker options are unique objectType values from resourceOptions", async () => {
+		const element = createComponent({
+			name: "record",
+			label: "SObject Record",
+			fieldDataType: "SObject",
+			typeName: "T__record",
+			resourceOptions: [
+				{ label: "Acc1", value: "{!acc1}", pillLabel: "acc1", referenceName: "acc1", objectType: "Account" },
+				{ label: "Acc2", value: "{!acc2}", pillLabel: "acc2", referenceName: "acc2", objectType: "Account" },
+				{ label: "Con1", value: "{!con1}", pillLabel: "con1", referenceName: "con1", objectType: "Contact" }
+			]
+		});
+		await Promise.resolve();
+		const picker = element.shadowRoot.querySelector('[data-id="type-picker"]');
+		expect(picker.options).toEqual([
+			{ label: "Account", value: "Account" },
+			{ label: "Contact", value: "Contact" }
+		]);
+	});
+
+	it("type picker is seeded from the typeValue prop", async () => {
+		const element = createComponent({
+			name: "record",
+			label: "SObject Record",
+			fieldDataType: "SObject",
+			typeName: "T__record",
+			typeValue: "Account",
+			resourceOptions: [
+				{ label: "Acc", value: "{!acc}", pillLabel: "acc", referenceName: "acc", objectType: "Account" }
+			]
+		});
+		await Promise.resolve();
+		const picker = element.shadowRoot.querySelector('[data-id="type-picker"]');
+		expect(picker.value).toBe("Account");
+	});
+
+	it("dispatches configuration_editor_generic_type_mapping_changed when type is selected", async () => {
+		const element = createComponent({
+			name: "record",
+			label: "SObject Record",
+			fieldDataType: "SObject",
+			typeName: "T__record",
+			resourceOptions: [
+				{ label: "Acc", value: "{!acc}", pillLabel: "acc", referenceName: "acc", objectType: "Account" }
+			]
+		});
+		await Promise.resolve();
+
+		const typeMappingEvents = [];
+		element.addEventListener("configuration_editor_generic_type_mapping_changed", (e) =>
+			typeMappingEvents.push(e)
+		);
+
+		element.shadowRoot
+			.querySelector('[data-id="type-picker"]')
+			.dispatchEvent(new CustomEvent("change", { detail: { value: "Account" } }));
+
+		expect(typeMappingEvents).toHaveLength(1);
+		expect(typeMappingEvents[0].detail.typeName).toBe("T__record");
+		expect(typeMappingEvents[0].detail.typeValue).toBe("Account");
+	});
+
+	it("type picker renders and requires selection even when the field is not included", async () => {
+		const element = createComponent({
+			name: "record",
+			label: "SObject Record",
+			fieldDataType: "SObject",
+			typeName: "T__record",
+			included: false,
+			resourceOptions: [
+				{ label: "Acc", value: "{!acc}", pillLabel: "acc", referenceName: "acc", objectType: "Account" }
+			]
+		});
+		await Promise.resolve();
+		expect(element.shadowRoot.querySelector('[data-id="type-picker"]')).not.toBeNull();
+	});
+
+	it("hides the variable picker until typeValue is set for SObject fields", async () => {
+		const element = createComponent({
+			name: "record",
+			label: "SObject Record",
+			fieldDataType: "SObject",
+			typeName: "T__record",
+			included: true,
+			resourceOptions: [
+				{ label: "Acc", value: "{!acc}", pillLabel: "acc", referenceName: "acc", objectType: "Account" }
+			]
+		});
+		await Promise.resolve();
+		expect(element.shadowRoot.querySelector('[data-id="resource-input"]')).toBeNull();
+	});
+
+	it("shows the variable picker after typeValue is set for SObject fields", async () => {
+		const element = createComponent({
+			name: "record",
+			label: "SObject Record",
+			fieldDataType: "SObject",
+			typeName: "T__record",
+			typeValue: "Account",
+			included: true,
+			resourceOptions: [
+				{ label: "Acc", value: "{!acc}", pillLabel: "acc", referenceName: "acc", objectType: "Account" }
+			]
+		});
+		await Promise.resolve();
+		expect(element.shadowRoot.querySelector('[data-id="resource-input"]')).not.toBeNull();
+	});
 });

@@ -243,65 +243,30 @@ describe('c-dml-property-editor', () => {
 
 	// ── generic type mapping ──────────────────────────────────────────────────
 
-	it('dispatches type mapping for both T__record and T__records when record changes', async () => {
-		const element = createComponent({
-			inputVariables: [],
-			builderContext: {
-				variables: [{ name: 'myRecord', objectType: 'Account', isCollection: false, dataType: 'SObject' }]
-			}
-		});
+	it('passes type-name T__record to the record combobox', async () => {
+		const element = createComponent({ inputVariables: [] });
 		await Promise.resolve();
 
-		const typeMappingEvents = [];
-		element.addEventListener('configuration_editor_generic_type_mapping_changed', (e) =>
-			typeMappingEvents.push(e)
-		);
-
-		dispatchFieldChange(element, 'record', '{!myRecord}', 'reference');
-
-		expect(typeMappingEvents).toHaveLength(2);
-		expect(typeMappingEvents[0].detail.typeName).toBe('T__record');
-		expect(typeMappingEvents[0].detail.typeValue).toBe('Account');
-		expect(typeMappingEvents[1].detail.typeName).toBe('T__records');
-		expect(typeMappingEvents[1].detail.typeValue).toBe('Account');
+		const combobox = element.shadowRoot.querySelectorAll('c-flow-combobox')[0];
+		expect(combobox.typeName).toBe('T__record');
 	});
 
-	it('dispatches type mapping for both T__record and T__records when records changes', async () => {
-		const element = createComponent({
-			inputVariables: [],
-			builderContext: {
-				variables: [{ name: 'myRecords', objectType: 'Contact', isCollection: true, dataType: 'SObject' }]
-			}
-		});
+	it('passes type-name T__records to the records combobox', async () => {
+		const element = createComponent({ inputVariables: [] });
 		await Promise.resolve();
 
-		const typeMappingEvents = [];
-		element.addEventListener('configuration_editor_generic_type_mapping_changed', (e) =>
-			typeMappingEvents.push(e)
-		);
-
-		dispatchFieldChange(element, 'records', '{!myRecords}', 'reference');
-
-		expect(typeMappingEvents).toHaveLength(2);
-		expect(typeMappingEvents[0].detail.typeName).toBe('T__record');
-		expect(typeMappingEvents[0].detail.typeValue).toBe('Contact');
-		expect(typeMappingEvents[1].detail.typeName).toBe('T__records');
-		expect(typeMappingEvents[1].detail.typeValue).toBe('Contact');
+		const combobox = element.shadowRoot.querySelectorAll('c-flow-combobox')[1];
+		expect(combobox.typeName).toBe('T__records');
 	});
 
-	it('does not dispatch type mapping when record is cleared', async () => {
+	it('passes typeValue from genericTypeMappings to the record combobox', async () => {
 		const element = createComponent({
-			inputVariables: [{ name: 'record', value: '{!myRecord}', valueDataType: 'reference' }]
+			inputVariables: [],
+			genericTypeMappings: [{ typeName: 'T__record', typeValue: 'Account' }]
 		});
 		await Promise.resolve();
 
-		const typeMappingEvents = [];
-		element.addEventListener('configuration_editor_generic_type_mapping_changed', (e) =>
-			typeMappingEvents.push(e)
-		);
-
-		dispatchFieldIncludedChange(element, 'record', false);
-
-		expect(typeMappingEvents).toHaveLength(0);
+		const combobox = element.shadowRoot.querySelectorAll('c-flow-combobox')[0];
+		expect(combobox.typeValue).toBe('Account');
 	});
 });

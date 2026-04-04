@@ -24,22 +24,12 @@ const DML_FIELD_NAMES = new Set([
 
 export default class DmlPropertyEditor extends LightningElement {
 	@api genericTypeMappings;
+	@api builderContext;
 
-	_builderContext;
 	_inputVariables;
 	_values = {};
 	_included = {};
 	_dmlFields = {};
-
-	@api
-	get builderContext() {
-		return this._builderContext;
-	}
-
-	set builderContext(val) {
-		this._builderContext = val;
-		this._dispatchSeedTypeMappings();
-	}
 
 	@api
 	get inputVariables() {
@@ -49,7 +39,6 @@ export default class DmlPropertyEditor extends LightningElement {
 	set inputVariables(next) {
 		this._inputVariables = next;
 		this._seedValues(next ?? []);
-		this._dispatchSeedTypeMappings();
 	}
 
 	@api validate() {
@@ -218,13 +207,6 @@ export default class DmlPropertyEditor extends LightningElement {
 	_handleTopLevelFieldChange(name, value, valueDataType) {
 		this._values = { ...this._values, [name]: { value, valueDataType } };
 		this._dispatchChange(name, value, valueDataType);
-		if ((name === 'record' || name === 'records') && value) {
-			const typeValue = this._getObjectType(value);
-			if (typeValue) {
-				this._dispatchTypeMapping('T__record', typeValue);
-				this._dispatchTypeMapping('T__records', typeValue);
-			}
-		}
 	}
 
 	_handleDmlFieldChange(name, value, valueDataType) {
@@ -274,28 +256,12 @@ export default class DmlPropertyEditor extends LightningElement {
 
 	// ── CPE Event Dispatch ────────────────────────────────────────────────────
 
-	_dispatchSeedTypeMappings() {
-		const value = this._values.record?.value || this._values.records?.value;
-		if (!value) return;
-		const typeValue = this._getObjectType(value);
-		if (!typeValue) return;
-		this._dispatchTypeMapping('T__record', typeValue);
-		this._dispatchTypeMapping('T__records', typeValue);
+	get recordTypeValue() {
+		return (this.genericTypeMappings ?? []).find((m) => m.typeName === 'T__record')?.typeValue ?? null;
 	}
 
-	_getObjectType(referenceValue) {
-		const refName = referenceValue.startsWith('{!') ? referenceValue.slice(2, -1) : referenceValue;
-		return this._allVars.find((v) => v.name === refName)?.objectType ?? null;
-	}
-
-	_dispatchTypeMapping(typeName, typeValue) {
-		this.dispatchEvent(
-			new CustomEvent('configuration_editor_generic_type_mapping_changed', {
-				bubbles: true,
-				composed: true,
-				detail: { typeName, typeValue }
-			})
-		);
+	get recordsTypeValue() {
+		return (this.genericTypeMappings ?? []).find((m) => m.typeName === 'T__records')?.typeValue ?? null;
 	}
 
 	_dispatchChange(name, newValue, newValueDataType) {

@@ -186,6 +186,8 @@ export default class FlowCombobox extends LightningElement {
 	@api inputType = "text";
 	@api placeholder;
 	@api resourceOptions = [];
+	@api typeName = null;
+	@api typeValue = null;
 
 	_draftTextValue = null;
 	_focusedOptionKey = null;
@@ -793,5 +795,35 @@ export default class FlowCombobox extends LightningElement {
 	handleNewResourceClick() {
 		this._setResourcePickerOpen(false);
 		this.dispatchEvent(new CustomEvent('newresource', { bubbles: true, composed: true }));
+	}
+
+	// ── SObject type picker ────────────────────────────────────────────────────
+
+	get showTypePicker() {
+		return this.fieldDataType?.toLowerCase() === 'sobject' && !!this.typeName;
+	}
+
+	get showVariablePicker() {
+		return this.isIncluded && (!this.showTypePicker || !!this.typeValue);
+	}
+
+	get sobjectTypeOptions() {
+		const seen = new Set();
+		const result = [];
+		for (const opt of (this.resourceOptions || [])) {
+			if (opt.objectType && !seen.has(opt.objectType)) {
+				seen.add(opt.objectType);
+				result.push({ label: opt.objectType, value: opt.objectType });
+			}
+		}
+		return result;
+	}
+
+	handleTypeMappingChange(event) {
+		this.dispatchEvent(new CustomEvent('configuration_editor_generic_type_mapping_changed', {
+			bubbles: true,
+			composed: true,
+			detail: { typeName: this.typeName, typeValue: event.detail.value }
+		}));
 	}
 }
