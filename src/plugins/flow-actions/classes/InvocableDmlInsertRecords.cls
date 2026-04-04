@@ -3,7 +3,7 @@ public abstract class InvocableDmlInsertRecords {
 		category='Database Layer'
 		label='Insert Record(s)'
 		iconName='slds:standard:record_create'
-		configurationEditor='c-flow-dml-property-editor'
+		configurationEditor='c-dml-property
 	)
 	public static List<FlowDmlBaseOutput> invoke(List<FlowDmlBaseInput> inputs) {
 		return new List<FlowDmlBaseOutput>{};

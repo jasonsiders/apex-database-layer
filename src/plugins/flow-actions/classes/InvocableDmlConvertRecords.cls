@@ -3,7 +3,7 @@ public abstract class InvocableDmlConvertRecords {
 		category='Database Layer'
 		label='Convert Record(s)'
 		iconName='slds:standard:maintenance_work_rule'
-		configurationEditor='c-flow-dml-property-editor'
+		configurationEditor='c-dml-property
 	)
 	public static List<InvocableDmlConvertRecords.Output> invoke(List<InvocableDmlConvertRecords.Input> inputs) {
 		return new List<InvocableDmlConvertRecords.Output>{};

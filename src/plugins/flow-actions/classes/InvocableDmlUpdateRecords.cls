@@ -3,7 +3,7 @@ public abstract class InvocableDmlUpdateRecords {
 		category='Database Layer'
 		label='Update Record(s)'
 		iconName='slds:standard:record_update'
-		configurationEditor='c-flow-dml-property-editor'
+		configurationEditor='c-dml-property
 	)
 	public static List<FlowDmlBaseOutput> invoke(List<FlowDmlBaseInput> inputs) {
 		return new List<FlowDmlBaseOutput>{};
