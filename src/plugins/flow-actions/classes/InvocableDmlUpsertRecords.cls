@@ -3,7 +3,7 @@ public abstract class InvocableDmlUpsertRecords {
 		category='Database Layer'
 		label='Upsert Record(s)'
 		iconName='slds:standard:replace'
-		configurationEditor='c-dml-property
+		configurationEditor='c-dml-property-editor'
 	)
 	public static List<InvocableDmlUpsertRecords.Output> invoke(List<InvocableDmlUpsertRecords.Input> inputs) {
 		return new List<InvocableDmlUpsertRecords.Output>{};

@@ -3,7 +3,7 @@ public abstract class InvocableDmlDeleteRecords {
 		category='Database Layer'
 		label='Delete Record(s)'
 		iconName='slds:standard:record_delete'
-		configurationEditor='c-dml-property
+		configurationEditor='c-dml-property-editor'
 	)
 	public static List<FlowDmlBaseOutput> invoke(List<FlowDmlDeleteInput> inputs) {
 		return new List<FlowDmlBaseOutput>{};

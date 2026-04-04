@@ -1,3 +1,167 @@
 <template>
-    
+	<div class="editor" onfieldchange={handleFieldChange} onfieldincludedchange={handleFieldIncludedChange}>
+
+		<div class="section">
+			<h3 class="section-title">Records</h3>
+			<c-flow-combobox
+				name="record"
+				label="SObject Record"
+				help-text="A single SObject record to insert. Provide this or SObject Records."
+				field-data-type="SObject"
+				value={recordValue}
+				value-data-type={recordValueDataType}
+				included={recordIncluded}
+				resource-options={sobjectVars}
+			></c-flow-combobox>
+			<c-flow-combobox
+				name="records"
+				label="SObject Records"
+				help-text="A collection of SObject records to insert. Provide this or SObject Record."
+				field-data-type="SObject"
+				value={recordsValue}
+				value-data-type={recordsValueDataType}
+				included={recordsIncluded}
+				resource-options={sobjectCollectionVars}
+			></c-flow-combobox>
+		</div>
+
+		<div class="section">
+			<h3 class="section-title">Options</h3>
+			<c-flow-combobox
+				name="accessLevelName"
+				label="Access Level"
+				help-text="USER_MODE enforces object permissions, field-level security, and sharing rules. SYSTEM_MODE bypasses them."
+				field-data-type="String"
+				input-type="picklist"
+				options={accessLevelOptions}
+				default-value="USER_MODE"
+				value={accessLevelNameValue}
+				value-data-type={accessLevelNameValueDataType}
+				included={accessLevelNameIncluded}
+				resource-options={stringVars}
+			></c-flow-combobox>
+			<c-flow-combobox
+				name="allOrNone"
+				label="All Or None"
+				help-text="If true, any failure throws an exception. If false, partial success is allowed."
+				field-data-type="Boolean"
+				input-type="picklist"
+				options={boolOptions}
+				default-value="true"
+				value={allOrNoneValue}
+				value-data-type={allOrNoneValueDataType}
+				included={allOrNoneIncluded}
+				resource-options={booleanVars}
+			></c-flow-combobox>
+		</div>
+
+		<div class="section">
+			<h3 class="section-title">DML Options</h3>
+			<c-flow-combobox
+				name="allowFieldTruncation"
+				label="Allow Field Truncation"
+				help-text="If true, truncates string values that exceed field length instead of throwing an error."
+				field-data-type="Boolean"
+				input-type="picklist"
+				options={boolOptions}
+				value={allowFieldTruncationValue}
+				value-data-type={allowFieldTruncationValueDataType}
+				included={allowFieldTruncationIncluded}
+				resource-options={booleanVars}
+			></c-flow-combobox>
+			<c-flow-combobox
+				name="localeOptions"
+				label="Locale Options"
+				help-text="Locale used for this DML operation."
+				field-data-type="String"
+				value={localeOptionsValue}
+				value-data-type={localeOptionsValueDataType}
+				included={localeOptionsIncluded}
+				resource-options={stringVars}
+			></c-flow-combobox>
+			<c-flow-combobox
+				name="assignmentRuleId"
+				label="Assignment Rule ID"
+				help-text="The ID of the assignment rule to apply. Takes precedence over Use Default Assignment Rule."
+				field-data-type="String"
+				value={assignmentRuleIdValue}
+				value-data-type={assignmentRuleIdValueDataType}
+				included={assignmentRuleIdIncluded}
+				resource-options={stringVars}
+			></c-flow-combobox>
+			<c-flow-combobox
+				name="useDefaultRule"
+				label="Use Default Assignment Rule"
+				help-text="If true, applies the default assignment rule for the object."
+				field-data-type="Boolean"
+				input-type="picklist"
+				options={boolOptions}
+				value={useDefaultRuleValue}
+				value-data-type={useDefaultRuleValueDataType}
+				included={useDefaultRuleIncluded}
+				resource-options={booleanVars}
+			></c-flow-combobox>
+			<c-flow-combobox
+				name="allowSave"
+				label="Allow Save on Duplicate"
+				help-text="If true, allows records to be saved even when duplicates are detected."
+				field-data-type="Boolean"
+				input-type="picklist"
+				options={boolOptions}
+				value={allowSaveValue}
+				value-data-type={allowSaveValueDataType}
+				included={allowSaveIncluded}
+				resource-options={booleanVars}
+			></c-flow-combobox>
+			<c-flow-combobox
+				name="runAsCurrentUser"
+				label="Run Duplicate Check as Current User"
+				help-text="If true, the duplicate rule runs in the context of the current user."
+				field-data-type="Boolean"
+				input-type="picklist"
+				options={boolOptions}
+				value={runAsCurrentUserValue}
+				value-data-type={runAsCurrentUserValueDataType}
+				included={runAsCurrentUserIncluded}
+				resource-options={booleanVars}
+			></c-flow-combobox>
+			<c-flow-combobox
+				name="triggerAutoResponseEmail"
+				label="Trigger Auto-Response Email"
+				help-text="If true, triggers auto-response emails for the inserted records."
+				field-data-type="Boolean"
+				input-type="picklist"
+				options={boolOptions}
+				value={triggerAutoResponseEmailValue}
+				value-data-type={triggerAutoResponseEmailValueDataType}
+				included={triggerAutoResponseEmailIncluded}
+				resource-options={booleanVars}
+			></c-flow-combobox>
+			<c-flow-combobox
+				name="triggerOtherEmail"
+				label="Trigger Other Email"
+				help-text="If true, triggers other email notifications for the inserted records."
+				field-data-type="Boolean"
+				input-type="picklist"
+				options={boolOptions}
+				value={triggerOtherEmailValue}
+				value-data-type={triggerOtherEmailValueDataType}
+				included={triggerOtherEmailIncluded}
+				resource-options={booleanVars}
+			></c-flow-combobox>
+			<c-flow-combobox
+				name="triggerUserEmail"
+				label="Trigger User Email"
+				help-text="If true, triggers user-facing email notifications for the inserted records."
+				field-data-type="Boolean"
+				input-type="picklist"
+				options={boolOptions}
+				value={triggerUserEmailValue}
+				value-data-type={triggerUserEmailValueDataType}
+				included={triggerUserEmailIncluded}
+				resource-options={booleanVars}
+			></c-flow-combobox>
+		</div>
+
+	</div>
 </template>
