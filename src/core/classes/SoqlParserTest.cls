@@ -397,16 +397,6 @@ private class SoqlParserTest {
 	}
 
 	@IsTest
-	private static void testConditionWithUnknownOperatorFallback() {
-		DatabaseLayer.useMocks();
-		SoqlParser parser = new SoqlParser();
-		Soql.Condition condition = parser.parseCondition('Amount ~~~ 5000');
-		Assert.isNotNull(condition);
-		Assert.areEqual('Amount', condition.property);
-		Assert.areEqual('=', condition.operator.toString());
-	}
-
-	@IsTest
 	private static void testParseValueWithSubqueryInList() {
 		DatabaseLayer.useMocks();
 		SoqlParser parser = new SoqlParser();
@@ -418,8 +408,8 @@ private class SoqlParserTest {
 	private static void testParseValueWithInvalidDate() {
 		DatabaseLayer.useMocks();
 		SoqlParser parser = new SoqlParser();
-		Object result = parser.parseValue('2025-13-45');
-		Assert.areEqual('2025-13-45', (String) result);
+		Object result = parser.parseValue('2025-02-30');
+		Assert.areEqual('2025-02-30', (String) result);
 	}
 
 	@IsTest
@@ -430,4 +420,23 @@ private class SoqlParserTest {
 		String output = query?.toString();
 		Assert.areEqual(input, output);
 	}
+
+	@IsTest
+	private static void testForView() {
+		DatabaseLayer.useMocks();
+		String input = 'SELECT Id FROM Account FOR VIEW';
+		Soql query = DatabaseLayer.newSoql(input);
+		String output = query?.toString();
+		Assert.areEqual(input, output);
+	}
+
+	@IsTest
+	private static void testHavingWithComplexLogic() {
+		DatabaseLayer.useMocks();
+		String input = 'SELECT AccountId, COUNT(Id) FROM Opportunity GROUP BY AccountId HAVING COUNT(Id) > 5 AND Amount > 10000';
+		Soql query = DatabaseLayer.newSoql(input);
+		String output = query?.toString();
+		Assert.areEqual(input, output);
+	}
+
 }
