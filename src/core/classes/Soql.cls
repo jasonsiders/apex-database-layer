@@ -1382,8 +1382,30 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 					return value;
 				}
 			}
+			// Check for datetime literals (YYYY-MM-DD with T component)
+			if (value != null && value.length() >= 19 && value.contains('T') && this.isValidDateTimePrefix(value)) {
+				return value;
+			}
 			// Else, treat the value as a normal String:
 			return this.operator?.processStringValue(value);
+		}
+
+		private Boolean isValidDateTimePrefix(String value) {
+			if (value == null || value.length() < 10) {
+				return false;
+			}
+			String prefix = value.substring(0, 10);
+			if (prefix.substring(4, 5) != '-' || prefix.substring(7, 8) != '-') {
+				return false;
+			}
+			try {
+				Integer year = Integer.valueOf(prefix.substring(0, 4));
+				Integer month = Integer.valueOf(prefix.substring(5, 7));
+				Integer day = Integer.valueOf(prefix.substring(8, 10));
+				return month >= 1 && month <= 12 && day >= 1 && day <= 31 && year >= 1000 && year <= 9999;
+			} catch (Exception e) {
+				return false;
+			}
 		}
 	}
 

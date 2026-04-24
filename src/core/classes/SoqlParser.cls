@@ -108,7 +108,7 @@ public class SoqlParser {
 		}
 	}
 
-	private Map<String, Integer> findKeywordPositions(String queryString) {
+	public Map<String, Integer> findKeywordPositions(String queryString) {
 		Map<String, Integer> positions = new Map<String, Integer>();
 		List<String> keywords = new List<String>{
 			USING_SCOPE_KEYWORD, GROUP_BY_KEYWORD, ORDER_BY_KEYWORD,
@@ -154,7 +154,7 @@ public class SoqlParser {
 		return positions;
 	}
 
-	private String getNextKeyword(Map<String, Integer> positions, String currentKeyword) {
+	public String getNextKeyword(Map<String, Integer> positions, String currentKeyword) {
 		List<String> allKeywords = new List<String>{
 			SELECT_KEYWORD, FROM_KEYWORD, WHERE_KEYWORD, GROUP_BY_KEYWORD, HAVING_KEYWORD,
 			ORDER_BY_KEYWORD, LIMIT_KEYWORD, OFFSET_KEYWORD, USING_SCOPE_KEYWORD, WITH_KEYWORD,
@@ -180,7 +180,7 @@ public class SoqlParser {
 		return nextKeyword;
 	}
 
-	private String extractClause(String queryString, Map<String, Integer> positions, String keyword, String nextKeyword) {
+	public String extractClause(String queryString, Map<String, Integer> positions, String keyword, String nextKeyword) {
 		Integer startPos = positions.get(keyword);
 		if (startPos == null) {
 			return '';
@@ -227,7 +227,7 @@ public class SoqlParser {
 		return FUNCTION_MAP.containsKey(functionName);
 	}
 
-	private void parseSubquery(Soql.Builder builder, String subqueryStr) {
+	public void parseSubquery(Soql.Builder builder, String subqueryStr) {
 		String innerContent = subqueryStr.substring(1, subqueryStr.length() - 1).trim();
 		Integer fromPos = innerContent.toUpperCase().indexOf(' FROM ');
 
@@ -271,7 +271,7 @@ public class SoqlParser {
 		builder.addSelect(agg);
 	}
 
-	private Integer findMatchingParen(String str, Integer openIndex) {
+	public Integer findMatchingParen(String str, Integer openIndex) {
 		Integer depth = 0;
 		for (Integer i = openIndex; i < str.length(); i++) {
 			String c = str.substring(i, i + 1);
@@ -339,7 +339,7 @@ public class SoqlParser {
 		return this.parseCondition(trimmed);
 	}
 
-	private Soql.Condition parseCondition(String str) {
+	public Soql.Condition parseCondition(String str) {
 		List<String> operators = new List<String>{ 'NOT IN', 'NOT LIKE', '!=', '>=', '<=', '>', '<', '=', 'IN', 'LIKE' };
 
 		for (String op : operators) {
@@ -381,7 +381,7 @@ public class SoqlParser {
 		return -1;
 	}
 
-	private Object parseValue(String token) {
+	public Object parseValue(String token) {
 		String t = token.trim().toUpperCase();
 
 		if (t == 'NULL') {

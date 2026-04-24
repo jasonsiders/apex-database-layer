@@ -249,4 +249,185 @@ private class SoqlParserTest {
 		String output = query?.toString();
 		Assert.areEqual(input, output);
 	}
+
+	@IsTest
+	private static void testMalformedSubqueryNoFrom() {
+		DatabaseLayer.useMocks();
+		SoqlParser parser = new SoqlParser();
+		Soql.Builder builder = DatabaseLayer.newSoql('SELECT Id FROM Account');
+		parser.parseSubquery(builder, '(SELECT Id, Name)');
+		String output = builder?.toString();
+		Assert.isNotNull(output);
+	}
+
+	@IsTest
+	private static void testUnmatchedParenthesis() {
+		DatabaseLayer.useMocks();
+		SoqlParser parser = new SoqlParser();
+		Integer result = parser.findMatchingParen('(unclosed text here', 0);
+		Assert.areEqual(19, result);
+	}
+
+	@IsTest
+	private static void testConditionWithoutOperator() {
+		DatabaseLayer.useMocks();
+		SoqlParser parser = new SoqlParser();
+		Soql.Condition condition = parser.parseCondition('Name');
+		Assert.areEqual('Name', condition.property);
+		Assert.areEqual('=', condition.operator.toString());
+		Assert.isNull(condition.value);
+	}
+
+	@IsTest
+	private static void testParseValueWithNull() {
+		DatabaseLayer.useMocks();
+		SoqlParser parser = new SoqlParser();
+		Object result = parser.parseValue('null');
+		Assert.isNull(result);
+	}
+
+	@IsTest
+	private static void testParseValueWithTrue() {
+		DatabaseLayer.useMocks();
+		SoqlParser parser = new SoqlParser();
+		Object result = parser.parseValue('true');
+		Assert.areEqual(true, (Boolean) result);
+	}
+
+	@IsTest
+	private static void testParseValueWithFalse() {
+		DatabaseLayer.useMocks();
+		SoqlParser parser = new SoqlParser();
+		Object result = parser.parseValue('false');
+		Assert.areEqual(false, (Boolean) result);
+	}
+
+	@IsTest
+	private static void testParseValueWithInteger() {
+		DatabaseLayer.useMocks();
+		SoqlParser parser = new SoqlParser();
+		Object result = parser.parseValue('12345');
+		Assert.areEqual(12345, (Integer) result);
+	}
+
+	@IsTest
+	private static void testParseValueWithDecimal() {
+		DatabaseLayer.useMocks();
+		SoqlParser parser = new SoqlParser();
+		Object result = parser.parseValue('123.45');
+		Assert.areEqual(123.45, (Decimal) result);
+	}
+
+	@IsTest
+	private static void testParseValueWithString() {
+		DatabaseLayer.useMocks();
+		SoqlParser parser = new SoqlParser();
+		Object result = parser.parseValue('\'test value\'');
+		Assert.areEqual('test value', (String) result);
+	}
+
+	@IsTest
+	private static void testParseValueWithBindVariable() {
+		DatabaseLayer.useMocks();
+		SoqlParser parser = new SoqlParser();
+		Object result = parser.parseValue(':bindVar');
+		Assert.areEqual(':bindVar', (String) result);
+	}
+
+	@IsTest
+	private static void testParseValueWithList() {
+		DatabaseLayer.useMocks();
+		SoqlParser parser = new SoqlParser();
+		Object result = parser.parseValue('(\'A\', \'B\', \'C\')');
+		Assert.isNotNull(result);
+	}
+
+	@IsTest
+	private static void testParseValueWithDate() {
+		DatabaseLayer.useMocks();
+		SoqlParser parser = new SoqlParser();
+		Object result = parser.parseValue('2020-06-15');
+		Assert.isNotNull(result);
+	}
+
+	@IsTest
+	private static void testParseValueWithDateTime() {
+		DatabaseLayer.useMocks();
+		SoqlParser parser = new SoqlParser();
+		Object result = parser.parseValue('2020-06-15T10:30:00Z');
+		Assert.isNotNull(result);
+	}
+
+	@IsTest
+	private static void testParseValueWithDateLiteral() {
+		DatabaseLayer.useMocks();
+		SoqlParser parser = new SoqlParser();
+		Object result = parser.parseValue('TODAY');
+		Assert.areEqual('TODAY', (String) result);
+	}
+
+	@IsTest
+	private static void testConditionWithUnknownOperator() {
+		DatabaseLayer.useMocks();
+		SoqlParser parser = new SoqlParser();
+		Soql.Condition condition = parser.parseCondition('Amount = 5000');
+		Assert.isNotNull(condition);
+		Assert.areEqual('Amount', condition.property);
+	}
+
+	@IsTest
+	private static void testFindKeywordPositions() {
+		DatabaseLayer.useMocks();
+		SoqlParser parser = new SoqlParser();
+		Map<String, Integer> positions = parser.findKeywordPositions('SELECT Id FROM Account WHERE Name = \'Test\'');
+		Assert.isTrue(positions.containsKey('SELECT'));
+		Assert.isTrue(positions.containsKey('FROM'));
+		Assert.isTrue(positions.containsKey('WHERE'));
+	}
+
+	@IsTest
+	private static void testExtractClause() {
+		DatabaseLayer.useMocks();
+		SoqlParser parser = new SoqlParser();
+		String query = 'SELECT Id, Name FROM Account WHERE Active = true';
+		Map<String, Integer> positions = parser.findKeywordPositions(query);
+		String selectClause = parser.extractClause(query, positions, 'SELECT', 'FROM');
+		Assert.isTrue(selectClause.containsIgnoreCase('Id'));
+		Assert.isTrue(selectClause.containsIgnoreCase('Name'));
+	}
+
+	@IsTest
+	private static void testConditionWithUnknownOperatorFallback() {
+		DatabaseLayer.useMocks();
+		SoqlParser parser = new SoqlParser();
+		Soql.Condition condition = parser.parseCondition('Amount ~~~ 5000');
+		Assert.isNotNull(condition);
+		Assert.areEqual('Amount', condition.property);
+		Assert.areEqual('=', condition.operator.toString());
+	}
+
+	@IsTest
+	private static void testParseValueWithSubqueryInList() {
+		DatabaseLayer.useMocks();
+		SoqlParser parser = new SoqlParser();
+		Object result = parser.parseValue('(SELECT Id FROM Account)');
+		Assert.areEqual('(SELECT Id FROM Account)', (String) result);
+	}
+
+	@IsTest
+	private static void testParseValueWithInvalidDate() {
+		DatabaseLayer.useMocks();
+		SoqlParser parser = new SoqlParser();
+		Object result = parser.parseValue('2025-13-45');
+		Assert.areEqual('2025-13-45', (String) result);
+	}
+
+	@IsTest
+	private static void testForReference() {
+		DatabaseLayer.useMocks();
+		String input = 'SELECT Id FROM Account FOR REFERENCE';
+		Soql query = DatabaseLayer.newSoql(input);
+		String output = query?.toString();
+		Assert.areEqual(input, output);
+	}
 }
