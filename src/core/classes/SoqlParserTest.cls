@@ -141,4 +141,112 @@ private class SoqlParserTest {
 		String output = query?.toString();
 		Assert.areEqual(input, output);
 	}
+
+	@IsTest
+	private static void testAllRows() {
+		DatabaseLayer.useMocks();
+		String input = 'SELECT Id FROM Account ALL ROWS';
+		Soql query = DatabaseLayer.newSoql(input);
+		String output = query?.toString();
+		Assert.areEqual(input, output);
+	}
+
+	@IsTest
+	private static void testDateFiltering() {
+		DatabaseLayer.useMocks();
+		String input = 'SELECT Id FROM Account WHERE CreatedDate > 2020-01-01';
+		Soql query = DatabaseLayer.newSoql(input);
+		String output = query?.toString();
+		Assert.areEqual(input, output);
+	}
+
+	@IsTest
+	private static void testBindVariables() {
+		DatabaseLayer.useMocks();
+		String input = 'SELECT Id FROM Account WHERE Name = :accountName';
+		Soql query = DatabaseLayer.newSoql(input);
+		String output = query?.toString();
+		Assert.areEqual(input, output);
+	}
+
+	@IsTest
+	private static void testMultipleGroupByFields() {
+		DatabaseLayer.useMocks();
+		String input = 'SELECT AccountId, StageName, COUNT(Id) FROM Opportunity GROUP BY AccountId, StageName';
+		Soql query = DatabaseLayer.newSoql(input);
+		String output = query?.toString();
+		Assert.areEqual(input, output);
+	}
+
+	@IsTest
+	private static void testComplexWhereWithNesting() {
+		DatabaseLayer.useMocks();
+		String input = 'SELECT Id FROM Account WHERE (Name = \'test\' AND Industry = \'Tech\') OR (BillingCity = \'SF\' AND BillingState = \'CA\')';
+		Soql query = DatabaseLayer.newSoql(input);
+		String output = query?.toString();
+		Assert.areEqual(input, output);
+	}
+
+	@IsTest
+	private static void testNotInOperator() {
+		DatabaseLayer.useMocks();
+		String input = 'SELECT Id FROM Account WHERE Name NOT IN (\'A\', \'B\')';
+		Soql query = DatabaseLayer.newSoql(input);
+		String output = query?.toString();
+		Assert.areEqual(input, output);
+	}
+
+	@IsTest
+	private static void testMultipleAggregations() {
+		DatabaseLayer.useMocks();
+		String input = 'SELECT COUNT(Id) count, AVG(Amount) avgAmount, MAX(Amount) maxAmount FROM Opportunity';
+		Soql query = DatabaseLayer.newSoql(input);
+		String output = query?.toString();
+		Assert.areEqual(input, output);
+	}
+
+	@IsTest
+	private static void testDateTimeValue() {
+		DatabaseLayer.useMocks();
+		String input = 'SELECT Id FROM Account WHERE CreatedDate > 2020-01-01T10:00:00Z';
+		Soql query = DatabaseLayer.newSoql(input);
+		String output = query?.toString();
+		Assert.areEqual(input, output);
+	}
+
+	@IsTest
+	private static void testNullInWhere() {
+		DatabaseLayer.useMocks();
+		String input = 'SELECT Id FROM Account WHERE BillingCity = null';
+		Soql query = DatabaseLayer.newSoql(input);
+		String output = query?.toString();
+		Assert.areEqual(input, output);
+	}
+
+	@IsTest
+	private static void testBooleanInWhere() {
+		DatabaseLayer.useMocks();
+		String input = 'SELECT Id FROM Opportunity WHERE IsClosed = true';
+		Soql query = DatabaseLayer.newSoql(input);
+		String output = query?.toString();
+		Assert.areEqual(input, output);
+	}
+
+	@IsTest
+	private static void testGreaterThanOperator() {
+		DatabaseLayer.useMocks();
+		String input = 'SELECT Id FROM Opportunity WHERE Amount >= 10000';
+		Soql query = DatabaseLayer.newSoql(input);
+		String output = query?.toString();
+		Assert.areEqual(input, output);
+	}
+
+	@IsTest
+	private static void testLessThanOperator() {
+		DatabaseLayer.useMocks();
+		String input = 'SELECT Id FROM Account WHERE NumberOfEmployees <= 100';
+		Soql query = DatabaseLayer.newSoql(input);
+		String output = query?.toString();
+		Assert.areEqual(input, output);
+	}
 }

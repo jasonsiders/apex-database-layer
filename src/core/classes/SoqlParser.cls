@@ -103,7 +103,7 @@ public class SoqlParser {
 		if (String.isNotBlank(forStr)) {
 			this.parseFor(builder, forStr);
 		}
-		if (String.isNotBlank(allRowsStr)) {
+		if (keywordPositions.containsKey(ALL_ROWS_KEYWORD)) {
 			this.parseAllRows(builder);
 		}
 	}
