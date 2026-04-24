@@ -45,6 +45,15 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	}
 
 	/**
+	 * @description String-based constructor: parse raw SOQL into builder state
+	 * @param queryString The raw SOQL query string to parse
+	 */
+	public Soql(String queryString) {
+		super();
+		new SoqlParser().parse(this, queryString);
+	}
+
+	/**
 	 * @description Executes an aggregate query and returns mockable AggregateResult wrappers.
 	 * @return List of Soql.AggregateResult objects wrapping Schema.AggregateResult
 	 */
@@ -877,6 +886,56 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			return this;
 		}
 
+		/**
+		 * @description Sets the FROM clause from a string (used by parser and InnerQuery(String))
+		 * @param entityName The entity name to query from
+		 * @return This Builder instance for method chaining
+		 */
+		global Soql.Builder setFrom(String entityName) {
+			this.entity = entityName;
+			return this;
+		}
+
+		/**
+		 * @description Replace the entire WHERE criteria tree (used by parser)
+		 * @param criteria The ConditionalLogic criteria to use
+		 * @return This Builder instance for method chaining
+		 */
+		global Soql.Builder setWhereCriteria(Soql.ConditionalLogic criteria) {
+			this.whereCriteria = criteria;
+			return this;
+		}
+
+		/**
+		 * @description Replace the entire HAVING criteria tree (used by parser)
+		 * @param criteria The ConditionalLogic criteria to use
+		 * @return This Builder instance for method chaining
+		 */
+		global Soql.Builder setHavingCriteria(Soql.ConditionalLogic criteria) {
+			this.havingCriteria = criteria;
+			return this;
+		}
+
+		/**
+		 * @description Add a pre-formatted ORDER BY token verbatim (preserves round-trip fidelity)
+		 * @param rawClause The raw ORDER BY clause to add
+		 * @return This Builder instance for method chaining
+		 */
+		global Soql.Builder addRawOrderBy(String rawClause) {
+			this.orderByClauses?.add(rawClause);
+			return this;
+		}
+
+		/**
+		 * @description Set WITH clause to any value (generalizes withSecurityEnforced)
+		 * @param value The WITH clause value
+		 * @return This Builder instance for method chaining
+		 */
+		global Soql.Builder setWithClause(String value) {
+			this.withClause = value;
+			return this;
+		}
+
 		// * USING SCOPE *
 		/**
 		 * @description Sets the USING SCOPE clause.
@@ -1538,6 +1597,15 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		global InnerQuery(SObjectType objectType) {
 			this();
 			this.setFrom(objectType);
+		}
+
+		/**
+		 * @description Constructor that sets the FROM clause to the specified entity name string.
+		 * @param entityName The entity name to query from
+		 */
+		global InnerQuery(String entityName) {
+			this();
+			this.setFrom(entityName);
 		}
 
 		global override String toString() {
