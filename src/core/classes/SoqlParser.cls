@@ -11,6 +11,7 @@ public class SoqlParser {
 	private static final String WITH_KEYWORD = 'WITH';
 	private static final String FOR_KEYWORD = 'FOR';
 	private static final String ALL_ROWS_KEYWORD = 'ALL ROWS';
+	private static final Integer MAX_INT = 2147483647;
 
 	private static final Map<String, Soql.Function> FUNCTION_MAP = new Map<String, Soql.Function>{
 		'AVG' => Soql.Function.AVG,
@@ -137,8 +138,8 @@ public class SoqlParser {
 
 			if (parenDepth == 0 && !inStringLiteral) {
 				for (String keyword : keywords) {
-					if (upper.substring(i).startsWithIgnoreCase(keyword)) {
-						Integer endIndex = i + keyword.length();
+					Integer endIndex = i + keyword.length();
+					if (endIndex <= upper.length() && upper.substring(i, endIndex) == keyword) {
 						Boolean beforeOk = (i == 0 || upper.substring(i - 1, i) == ' ');
 						Boolean afterOk = (endIndex >= upper.length() || upper.substring(endIndex, endIndex + 1) == ' ');
 
@@ -167,7 +168,7 @@ public class SoqlParser {
 		}
 
 		String nextKeyword = null;
-		Integer nextPos = 999999;
+		Integer nextPos = MAX_INT;
 
 		for (String keyword : allKeywords) {
 			Integer pos = positions.get(keyword);
@@ -202,7 +203,7 @@ public class SoqlParser {
 
 	private void parseSelect(Soql.Builder builder, String selectStr) {
 		builder.deselectAll();
-		List<String> selectItems = this.splitTopLevel(selectStr, ',');
+		List<String> selectItems = this.splitTopLevelKeyword(selectStr, ',');
 
 		for (String item : selectItems) {
 			String trimmed = item.trim();
@@ -291,15 +292,18 @@ public class SoqlParser {
 		builder.setFrom(fromStr.trim());
 	}
 
-	private void parseWhere(Soql.Builder builder, String whereStr) {
-		Soql.Criteria criteria = this.parseExpr(whereStr);
+	private Soql.ConditionalLogic parseCriteriaLogic(String str) {
+		Soql.Criteria criteria = this.parseExpr(str);
 		if (criteria instanceof Soql.Condition) {
 			Soql.ConditionalLogic logic = new Soql.ConditionalLogic();
 			logic.addCondition((Soql.Condition) criteria);
-			builder.setWhereCriteria(logic);
-		} else {
-			builder.setWhereCriteria((Soql.ConditionalLogic) criteria);
+			return logic;
 		}
+		return (Soql.ConditionalLogic) criteria;
+	}
+
+	private void parseWhere(Soql.Builder builder, String whereStr) {
+		builder.setWhereCriteria(this.parseCriteriaLogic(whereStr));
 	}
 
 	private Soql.Criteria parseExpr(String str) {
@@ -358,6 +362,7 @@ public class SoqlParser {
 	private Integer findOperatorPosition(String str, String operator) {
 		Integer parenDepth = 0;
 		Boolean inString = false;
+		String strUpper = str.toUpperCase();
 
 		for (Integer i = 0; i <= str.length() - operator.length(); i++) {
 			String c = str.substring(i, i + 1);
@@ -369,10 +374,11 @@ public class SoqlParser {
 					parenDepth++;
 				} else if (c == ')') {
 					parenDepth--;
-				} else if (parenDepth == 0 && str.substring(i).toUpperCase().startsWith(operator)) {
+				} else if (parenDepth == 0 && strUpper.substring(i, i + operator.length()) == operator) {
 					Integer afterPos = i + operator.length();
 					Boolean beforeOk = (i == 0 || str.substring(i - 1, i) == ' ');
-					Boolean afterOk = (afterPos >= str.length() || str.substring(afterPos, afterPos + 1) == ' ' || str.substring(afterPos, afterPos + 1) == '(');
+					String afterChar = afterPos < str.length() ? str.substring(afterPos, afterPos + 1) : '';
+					Boolean afterOk = (afterPos >= str.length() || afterChar == ' ' || afterChar == '(');
 					if (beforeOk && afterOk) {
 						return i;
 					}
@@ -384,7 +390,8 @@ public class SoqlParser {
 	}
 
 	public Object parseValue(String token) {
-		String t = token.trim().toUpperCase();
+		String trimmed = token.trim();
+		String t = trimmed.toUpperCase();
 
 		if (t == 'NULL') {
 			return null;
@@ -395,19 +402,19 @@ public class SoqlParser {
 		if (t == 'FALSE') {
 			return false;
 		}
-		if (token.trim().startsWith(':')) {
-			return token.trim();
+		if (trimmed.startsWith(':')) {
+			return trimmed;
 		}
-		if (token.trim().startsWith('\'')) {
-			String unquoted = token.trim().substring(1, token.trim().length() - 1);
+		if (trimmed.startsWith('\'')) {
+			String unquoted = trimmed.substring(1, trimmed.length() - 1);
 			return unquoted.replace('\\\'', '\'');
 		}
-		if (token.trim().startsWith('(')) {
-			String parenthetical = token.trim().substring(1, token.trim().length() - 1);
+		if (trimmed.startsWith('(')) {
+			String parenthetical = trimmed.substring(1, trimmed.length() - 1);
 			if (parenthetical.toUpperCase().contains('SELECT')) {
-				return token.trim();
+				return trimmed;
 			}
-			List<String> items = this.splitTopLevel(parenthetical, ',');
+			List<String> items = this.splitTopLevelKeyword(parenthetical, ',');
 			List<String> result = new List<String>();
 			for (String item : items) {
 				String cleaned = item.trim();
@@ -421,41 +428,41 @@ public class SoqlParser {
 
 		if (this.isDateTime(t)) {
 			try {
-				return DateTime.valueOfGmt(token.trim());
+				return DateTime.valueOfGmt(trimmed);
 			} catch (Exception e) {
-				return token.trim();
+				return trimmed;
 			}
 		}
 		if (this.isDate(t)) {
 			try {
-				return Date.valueOf(token.trim());
+				return Date.valueOf(trimmed);
 			} catch (Exception e) {
-				return token.trim();
+				return trimmed;
 			}
 		}
 
 		try {
-			return Integer.valueOf(token.trim());
+			return Integer.valueOf(trimmed);
 		} catch (Exception e) {
 		}
 
 		try {
-			return Decimal.valueOf(token.trim());
+			return Decimal.valueOf(trimmed);
 		} catch (Exception e) {
 		}
 
-		return token.trim();
+		return trimmed;
 	}
 
 	private void parseOrderBy(Soql.Builder builder, String orderByStr) {
-		List<String> items = this.splitTopLevel(orderByStr, ',');
+		List<String> items = this.splitTopLevelKeyword(orderByStr, ',');
 		for (String item : items) {
 			builder.addRawOrderBy(item.trim());
 		}
 	}
 
 	private void parseGroupBy(Soql.Builder builder, String groupByStr) {
-		List<String> items = this.splitTopLevel(groupByStr, ',');
+		List<String> items = this.splitTopLevelKeyword(groupByStr, ',');
 		for (String item : items) {
 			builder.addGroupBy(item.trim());
 		}
@@ -489,14 +496,7 @@ public class SoqlParser {
 	}
 
 	private void parseHaving(Soql.Builder builder, String havingStr) {
-		Soql.Criteria criteria = this.parseExpr(havingStr);
-		if (criteria instanceof Soql.Condition) {
-			Soql.ConditionalLogic logic = new Soql.ConditionalLogic();
-			logic.addCondition((Soql.Condition) criteria);
-			builder.setHavingCriteria(logic);
-		} else {
-			builder.setHavingCriteria((Soql.ConditionalLogic) criteria);
-		}
+		builder.setHavingCriteria(this.parseCriteriaLogic(havingStr));
 	}
 
 	private void parseLimit(Soql.Builder builder, String limitStr) {
@@ -509,42 +509,12 @@ public class SoqlParser {
 		builder.setRowOffset(rowOffset);
 	}
 
-	private List<String> splitTopLevel(String str, String delimiter) {
-		List<String> parts = new List<String>();
-		Integer parenDepth = 0;
-		Boolean inString = false;
-		Integer lastPos = 0;
-
-		for (Integer i = 0; i < str.length(); i++) {
-			String c = str.substring(i, i + 1);
-
-			if (c == '\'' && (i == 0 || str.substring(i - 1, i) != '\\')) {
-				inString = !inString;
-			} else if (!inString) {
-				if (c == '(') {
-					parenDepth++;
-				} else if (c == ')') {
-					parenDepth--;
-				} else if (parenDepth == 0 && str.substring(i).startsWith(delimiter)) {
-					parts.add(str.substring(lastPos, i));
-					lastPos = i + delimiter.length();
-					i = lastPos - 1;
-				}
-			}
-		}
-
-		if (lastPos < str.length()) {
-			parts.add(str.substring(lastPos));
-		}
-
-		return parts;
-	}
-
 	private List<String> splitTopLevelKeyword(String str, String keyword) {
 		List<String> parts = new List<String>();
 		Integer parenDepth = 0;
 		Boolean inString = false;
 		Integer lastPos = 0;
+		String strUpper = str.toUpperCase();
 
 		for (Integer i = 0; i <= str.length() - keyword.length(); i++) {
 			String c = str.substring(i, i + 1);
@@ -556,7 +526,7 @@ public class SoqlParser {
 					parenDepth++;
 				} else if (c == ')') {
 					parenDepth--;
-				} else if (parenDepth == 0 && str.substring(i).toUpperCase().startsWith(keyword)) {
+				} else if (parenDepth == 0 && strUpper.substring(i, i + keyword.length()) == keyword) {
 					parts.add(str.substring(lastPos, i));
 					lastPos = i + keyword.length();
 					i = lastPos - 1;

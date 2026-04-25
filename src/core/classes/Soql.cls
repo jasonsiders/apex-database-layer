@@ -889,7 +889,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		/**
-		 * @description Sets the FROM clause from a string (used by parser and InnerQuery(String))
+		 * @description Sets the FROM clause to the specified entity name string.
 		 * @param entityName The entity name to query from
 		 * @return This Builder instance for method chaining
 		 */
@@ -899,7 +899,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		/**
-		 * @description Replace the entire WHERE criteria tree (used by parser)
+		 * @description Replaces the entire WHERE criteria tree.
 		 * @param criteria The ConditionalLogic criteria to use
 		 * @return This Builder instance for method chaining
 		 */
@@ -909,7 +909,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		/**
-		 * @description Replace the entire HAVING criteria tree (used by parser)
+		 * @description Replaces the entire HAVING criteria tree.
 		 * @param criteria The ConditionalLogic criteria to use
 		 * @return This Builder instance for method chaining
 		 */
