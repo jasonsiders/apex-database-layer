@@ -84,9 +84,17 @@ public class SoqlParser {
 	public Map<String, Integer> findKeywordPositions(String queryString) {
 		Map<String, Integer> positions = new Map<String, Integer>();
 		List<String> keywords = new List<String>{
-			USING_SCOPE_KEYWORD, GROUP_BY_KEYWORD, ORDER_BY_KEYWORD,
-			FROM_KEYWORD, WHERE_KEYWORD, WITH_KEYWORD, HAVING_KEYWORD,
-			LIMIT_KEYWORD, OFFSET_KEYWORD, FOR_KEYWORD, ALL_ROWS_KEYWORD
+			USING_SCOPE_KEYWORD,
+			GROUP_BY_KEYWORD,
+			ORDER_BY_KEYWORD,
+			FROM_KEYWORD,
+			WHERE_KEYWORD,
+			WITH_KEYWORD,
+			HAVING_KEYWORD,
+			LIMIT_KEYWORD,
+			OFFSET_KEYWORD,
+			FOR_KEYWORD,
+			ALL_ROWS_KEYWORD
 		};
 		String upper = queryString.toUpperCase();
 		Integer parenDepth = 0;
@@ -118,9 +126,18 @@ public class SoqlParser {
 	 */
 	public String getNextKeyword(Map<String, Integer> positions, String currentKeyword) {
 		List<String> allKeywords = new List<String>{
-			SELECT_KEYWORD, FROM_KEYWORD, WHERE_KEYWORD, GROUP_BY_KEYWORD, HAVING_KEYWORD,
-			ORDER_BY_KEYWORD, LIMIT_KEYWORD, OFFSET_KEYWORD, USING_SCOPE_KEYWORD, WITH_KEYWORD,
-			FOR_KEYWORD, ALL_ROWS_KEYWORD
+			SELECT_KEYWORD,
+			FROM_KEYWORD,
+			WHERE_KEYWORD,
+			GROUP_BY_KEYWORD,
+			HAVING_KEYWORD,
+			ORDER_BY_KEYWORD,
+			LIMIT_KEYWORD,
+			OFFSET_KEYWORD,
+			USING_SCOPE_KEYWORD,
+			WITH_KEYWORD,
+			FOR_KEYWORD,
+			ALL_ROWS_KEYWORD
 		};
 		Integer currentPos = positions.get(currentKeyword);
 		if (currentPos == null) {
@@ -148,7 +165,12 @@ public class SoqlParser {
 	 * @return The trimmed clause text, or an empty string if the keyword is not present
 	 */
 	@SuppressWarnings('PMD.ExcessiveParameterList')
-	public String extractClause(String queryString, Map<String, Integer> positions, String keyword, String nextKeyword) {
+	public String extractClause(
+		String queryString,
+		Map<String, Integer> positions,
+		String keyword,
+		String nextKeyword
+	) {
 		Integer startPos = positions.get(keyword);
 		if (startPos == null) {
 			return '';
@@ -164,7 +186,18 @@ public class SoqlParser {
 	 * @return A {@link Soql.Condition} representing the parsed condition
 	 */
 	public Soql.Condition parseCondition(String str) {
-		List<String> operators = new List<String>{ 'NOT IN', 'NOT LIKE', '!=', '>=', '<=', '>', '<', '=', 'IN', 'LIKE' };
+		List<String> operators = new List<String>{
+			'NOT IN',
+			'NOT LIKE',
+			'!=',
+			'>=',
+			'<=',
+			'>',
+			'<',
+			'=',
+			'IN',
+			'LIKE'
+		};
 		for (String op : operators) {
 			Integer opPos = this.findOperatorPosition(str, op);
 			if (opPos >= 0) {
@@ -230,53 +263,117 @@ public class SoqlParser {
 	public Object parseValue(String token) {
 		String trimmed = token.trim();
 		String upper = trimmed.toUpperCase();
-		if (upper == 'NULL') { return null; }
-		if (upper == 'TRUE') { return true; }
-		if (upper == 'FALSE') { return false; }
-		if (trimmed.startsWith(':')) { return trimmed; }
-		if (trimmed.startsWith('\'')) { return this.parseStringLiteral(trimmed); }
-		if (trimmed.startsWith('(')) { return this.parseList(trimmed); }
-		if (this.isDateTime(upper)) { return this.parseDateTime(trimmed); }
-		if (this.isDate(upper)) { return this.parseDate(trimmed); }
+		if (upper == 'NULL') {
+			return null;
+		}
+		if (upper == 'TRUE') {
+			return true;
+		}
+		if (upper == 'FALSE') {
+			return false;
+		}
+		if (trimmed.startsWith(':')) {
+			return trimmed;
+		}
+		if (trimmed.startsWith('\'')) {
+			return this.parseStringLiteral(trimmed);
+		}
+		if (trimmed.startsWith('(')) {
+			return this.parseList(trimmed);
+		}
+		if (this.isDateTime(upper)) {
+			return this.parseDateTime(trimmed);
+		}
+		if (this.isDate(upper)) {
+			return this.parseDate(trimmed);
+		}
 		return this.parseNumeric(trimmed);
 	}
 
 	private void applyParsers(Soql.Builder builder, String queryString, Map<String, Integer> positions) {
 		this.parseSelect(builder, this.extractClause(queryString, positions, SELECT_KEYWORD, FROM_KEYWORD));
-		this.parseFrom(builder, this.extractClause(queryString, positions, FROM_KEYWORD, this.getNextKeyword(positions, FROM_KEYWORD)));
-		String whereClause = this.extractClause(queryString, positions, WHERE_KEYWORD, this.getNextKeyword(positions, WHERE_KEYWORD));
+		this.parseFrom(
+			builder,
+			this.extractClause(queryString, positions, FROM_KEYWORD, this.getNextKeyword(positions, FROM_KEYWORD))
+		);
+		String whereClause = this.extractClause(
+			queryString,
+			positions,
+			WHERE_KEYWORD,
+			this.getNextKeyword(positions, WHERE_KEYWORD)
+		);
 		if (String.isNotBlank(whereClause)) {
 			this.parseWhere(builder, whereClause);
 		}
-		String groupBy = this.extractClause(queryString, positions, GROUP_BY_KEYWORD, this.getNextKeyword(positions, GROUP_BY_KEYWORD));
+		String groupBy = this.extractClause(
+			queryString,
+			positions,
+			GROUP_BY_KEYWORD,
+			this.getNextKeyword(positions, GROUP_BY_KEYWORD)
+		);
 		if (String.isNotBlank(groupBy)) {
 			this.parseGroupBy(builder, groupBy);
 		}
-		String havingClause = this.extractClause(queryString, positions, HAVING_KEYWORD, this.getNextKeyword(positions, HAVING_KEYWORD));
+		String havingClause = this.extractClause(
+			queryString,
+			positions,
+			HAVING_KEYWORD,
+			this.getNextKeyword(positions, HAVING_KEYWORD)
+		);
 		if (String.isNotBlank(havingClause)) {
 			this.parseHaving(builder, havingClause);
 		}
-		String orderBy = this.extractClause(queryString, positions, ORDER_BY_KEYWORD, this.getNextKeyword(positions, ORDER_BY_KEYWORD));
+		String orderBy = this.extractClause(
+			queryString,
+			positions,
+			ORDER_BY_KEYWORD,
+			this.getNextKeyword(positions, ORDER_BY_KEYWORD)
+		);
 		if (String.isNotBlank(orderBy)) {
 			this.parseOrderBy(builder, orderBy);
 		}
-		String lim = this.extractClause(queryString, positions, LIMIT_KEYWORD, this.getNextKeyword(positions, LIMIT_KEYWORD));
+		String lim = this.extractClause(
+			queryString,
+			positions,
+			LIMIT_KEYWORD,
+			this.getNextKeyword(positions, LIMIT_KEYWORD)
+		);
 		if (String.isNotBlank(lim)) {
 			this.parseLimit(builder, lim);
 		}
-		String off = this.extractClause(queryString, positions, OFFSET_KEYWORD, this.getNextKeyword(positions, OFFSET_KEYWORD));
+		String off = this.extractClause(
+			queryString,
+			positions,
+			OFFSET_KEYWORD,
+			this.getNextKeyword(positions, OFFSET_KEYWORD)
+		);
 		if (String.isNotBlank(off)) {
 			this.parseOffset(builder, off);
 		}
-		String usingScope = this.extractClause(queryString, positions, USING_SCOPE_KEYWORD, this.getNextKeyword(positions, USING_SCOPE_KEYWORD));
+		String usingScope = this.extractClause(
+			queryString,
+			positions,
+			USING_SCOPE_KEYWORD,
+			this.getNextKeyword(positions, USING_SCOPE_KEYWORD)
+		);
 		if (String.isNotBlank(usingScope)) {
 			this.parseUsingScope(builder, usingScope);
 		}
-		String withClause = this.extractClause(queryString, positions, WITH_KEYWORD, this.getNextKeyword(positions, WITH_KEYWORD));
+		String withClause = this.extractClause(
+			queryString,
+			positions,
+			WITH_KEYWORD,
+			this.getNextKeyword(positions, WITH_KEYWORD)
+		);
 		if (String.isNotBlank(withClause)) {
 			this.parseWith(builder, withClause);
 		}
-		String forClause = this.extractClause(queryString, positions, FOR_KEYWORD, this.getNextKeyword(positions, FOR_KEYWORD));
+		String forClause = this.extractClause(
+			queryString,
+			positions,
+			FOR_KEYWORD,
+			this.getNextKeyword(positions, FOR_KEYWORD)
+		);
 		if (String.isNotBlank(forClause)) {
 			this.parseFor(builder, forClause);
 		}
@@ -419,7 +516,11 @@ public class SoqlParser {
 					parenDepth++;
 				} else if (c == ')') {
 					parenDepth--;
-				} else if (parenDepth == 0 && strUpper.substring(i, i + operator.length()) == operator && this.isAtWordBoundary(str, i, operator)) {
+				} else if (
+					parenDepth == 0 &&
+					strUpper.substring(i, i + operator.length()) == operator &&
+					this.isAtWordBoundary(str, i, operator)
+				) {
 					return i;
 				}
 			}

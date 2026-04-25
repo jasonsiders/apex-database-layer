@@ -695,5 +695,4 @@ private class SoqlParserTest {
 
 		Assert.areEqual('2020-06', (String) result, 'Expected raw string for partial date');
 	}
-
 }
