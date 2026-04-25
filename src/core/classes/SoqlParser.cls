@@ -3,7 +3,9 @@
  * Handles all standard SOQL clauses including SELECT, FROM, WHERE, GROUP BY, HAVING, ORDER BY,
  * LIMIT, OFFSET, USING SCOPE, WITH, FOR, and ALL ROWS.
  */
-@SuppressWarnings('PMD.CognitiveComplexity,PMD.CyclomaticComplexity,PMD.ExcessiveClassLength,PMD.PropertyNamingConventions')
+@SuppressWarnings(
+	'PMD.CognitiveComplexity,PMD.CyclomaticComplexity,PMD.ExcessiveClassLength,PMD.PropertyNamingConventions'
+)
 public class SoqlParser {
 	/** @description Shared OperatorLexer instance for resolving SOQL operator tokens */
 	private static final SoqlParser.OperatorLexer OPERATORS = new SoqlParser.OperatorLexer();
@@ -70,7 +72,6 @@ public class SoqlParser {
 		}
 		private set;
 	}
-
 	/**
 	 * @description Parses a SOQL query string and applies the parsed clauses to the given builder
 	 * @param builder The {@link Soql.Builder} to populate with parsed clauses
@@ -691,8 +692,8 @@ public class SoqlParser {
 		 * @return True if the operator matches at this position with valid word boundaries
 		 */
 		private Boolean isOperatorAt(String str, Integer i, String operator) {
-			return str.substring(i, i + operator.length()).toUpperCase() == operator
-				&& this.isAtWordBoundary(str, i, operator);
+			return str.substring(i, i + operator.length()).toUpperCase() == operator &&
+				this.isAtWordBoundary(str, i, operator);
 		}
 
 		/**
