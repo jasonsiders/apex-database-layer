@@ -1384,11 +1384,9 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 					return value;
 				}
 			}
-			// Check for datetime literals (YYYY-MM-DD with T component)
 			if (value != null && value.length() >= 19 && value.contains('T') && this.isValidDateTimePrefix(value)) {
 				return value;
 			}
-			// Else, treat the value as a normal String:
 			return this.operator?.processStringValue(value);
 		}
 

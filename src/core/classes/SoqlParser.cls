@@ -60,53 +60,8 @@ public class SoqlParser {
 	};
 
 	public void parse(Soql.Builder builder, String queryString) {
-		Map<String, Integer> keywordPositions = this.findKeywordPositions(queryString);
-
-		String selectStr = this.extractClause(queryString, keywordPositions, SELECT_KEYWORD, FROM_KEYWORD);
-		String fromStr = this.extractClause(queryString, keywordPositions, FROM_KEYWORD, this.getNextKeyword(keywordPositions, FROM_KEYWORD));
-		String whereStr = this.extractClause(queryString, keywordPositions, WHERE_KEYWORD, this.getNextKeyword(keywordPositions, WHERE_KEYWORD));
-		String groupByStr = this.extractClause(queryString, keywordPositions, GROUP_BY_KEYWORD, this.getNextKeyword(keywordPositions, GROUP_BY_KEYWORD));
-		String havingStr = this.extractClause(queryString, keywordPositions, HAVING_KEYWORD, this.getNextKeyword(keywordPositions, HAVING_KEYWORD));
-		String orderByStr = this.extractClause(queryString, keywordPositions, ORDER_BY_KEYWORD, this.getNextKeyword(keywordPositions, ORDER_BY_KEYWORD));
-		String limitStr = this.extractClause(queryString, keywordPositions, LIMIT_KEYWORD, this.getNextKeyword(keywordPositions, LIMIT_KEYWORD));
-		String offsetStr = this.extractClause(queryString, keywordPositions, OFFSET_KEYWORD, this.getNextKeyword(keywordPositions, OFFSET_KEYWORD));
-		String usingScopeStr = this.extractClause(queryString, keywordPositions, USING_SCOPE_KEYWORD, this.getNextKeyword(keywordPositions, USING_SCOPE_KEYWORD));
-		String withStr = this.extractClause(queryString, keywordPositions, WITH_KEYWORD, this.getNextKeyword(keywordPositions, WITH_KEYWORD));
-		String forStr = this.extractClause(queryString, keywordPositions, FOR_KEYWORD, this.getNextKeyword(keywordPositions, FOR_KEYWORD));
-		String allRowsStr = this.extractClause(queryString, keywordPositions, ALL_ROWS_KEYWORD, this.getNextKeyword(keywordPositions, ALL_ROWS_KEYWORD));
-
-		this.parseSelect(builder, selectStr);
-		this.parseFrom(builder, fromStr);
-		if (String.isNotBlank(whereStr)) {
-			this.parseWhere(builder, whereStr);
-		}
-		if (String.isNotBlank(groupByStr)) {
-			this.parseGroupBy(builder, groupByStr);
-		}
-		if (String.isNotBlank(havingStr)) {
-			this.parseHaving(builder, havingStr);
-		}
-		if (String.isNotBlank(orderByStr)) {
-			this.parseOrderBy(builder, orderByStr);
-		}
-		if (String.isNotBlank(limitStr)) {
-			this.parseLimit(builder, limitStr);
-		}
-		if (String.isNotBlank(offsetStr)) {
-			this.parseOffset(builder, offsetStr);
-		}
-		if (String.isNotBlank(usingScopeStr)) {
-			this.parseUsingScope(builder, usingScopeStr);
-		}
-		if (String.isNotBlank(withStr)) {
-			this.parseWith(builder, withStr);
-		}
-		if (String.isNotBlank(forStr)) {
-			this.parseFor(builder, forStr);
-		}
-		if (keywordPositions.containsKey(ALL_ROWS_KEYWORD)) {
-			this.parseAllRows(builder);
-		}
+		Map<String, Integer> positions = this.findKeywordPositions(queryString);
+		this.applyParsers(builder, queryString, positions);
 	}
 
 	public Map<String, Integer> findKeywordPositions(String queryString) {
@@ -116,33 +71,23 @@ public class SoqlParser {
 			FROM_KEYWORD, WHERE_KEYWORD, WITH_KEYWORD, HAVING_KEYWORD,
 			LIMIT_KEYWORD, OFFSET_KEYWORD, FOR_KEYWORD, ALL_ROWS_KEYWORD
 		};
-
 		String upper = queryString.toUpperCase();
 		Integer parenDepth = 0;
-		Boolean inStringLiteral = false;
-
+		Boolean inString = false;
 		for (Integer i = 0; i < upper.length(); i++) {
 			String c = queryString.substring(i, i + 1);
-
 			if (c == '\'' && (i == 0 || queryString.substring(i - 1, i) != '\\')) {
-				inStringLiteral = !inStringLiteral;
-			}
-
-			if (!inStringLiteral) {
-				if (c == '(') {
-					parenDepth++;
-				} else if (c == ')') {
-					parenDepth--;
-				}
-			}
-
-			if (parenDepth == 0 && !inStringLiteral) {
+				inString = !inString;
+			} else if (c == '(' && !inString) {
+				parenDepth++;
+			} else if (c == ')' && !inString) {
+				parenDepth--;
+			} else if (parenDepth == 0 && !inString) {
 				for (String keyword : keywords) {
 					Integer endIndex = i + keyword.length();
 					if (endIndex <= upper.length() && upper.substring(i, endIndex) == keyword) {
 						Boolean beforeOk = (i == 0 || upper.substring(i - 1, i) == ' ');
 						Boolean afterOk = (endIndex >= upper.length() || upper.substring(endIndex, endIndex + 1) == ' ');
-
 						if (beforeOk && afterOk && !positions.containsKey(keyword)) {
 							positions.put(keyword, i);
 						}
@@ -150,7 +95,6 @@ public class SoqlParser {
 				}
 			}
 		}
-
 		positions.put(SELECT_KEYWORD, 0);
 		return positions;
 	}
@@ -161,15 +105,12 @@ public class SoqlParser {
 			ORDER_BY_KEYWORD, LIMIT_KEYWORD, OFFSET_KEYWORD, USING_SCOPE_KEYWORD, WITH_KEYWORD,
 			FOR_KEYWORD, ALL_ROWS_KEYWORD
 		};
-
 		Integer currentPos = positions.get(currentKeyword);
 		if (currentPos == null) {
 			return null;
 		}
-
 		String nextKeyword = null;
 		Integer nextPos = MAX_INT;
-
 		for (String keyword : allKeywords) {
 			Integer pos = positions.get(keyword);
 			if (pos != null && pos > currentPos && pos < nextPos) {
@@ -177,7 +118,6 @@ public class SoqlParser {
 				nextKeyword = keyword;
 			}
 		}
-
 		return nextKeyword;
 	}
 
@@ -186,90 +126,21 @@ public class SoqlParser {
 		if (startPos == null) {
 			return '';
 		}
-
-		startPos = startPos + keyword.length();
-
-		Integer endPos;
-		if (nextKeyword == null) {
-			endPos = queryString.length();
-		} else {
-			Integer nextPos = positions.get(nextKeyword);
-			endPos = nextPos != null ? nextPos : queryString.length();
-		}
-
-		String clause = queryString.substring(startPos, endPos).trim();
-		return clause;
+		Integer endPos = this.calculateEndPos(queryString, positions, nextKeyword);
+		return queryString.substring(startPos + keyword.length(), endPos).trim();
 	}
 
-	private void parseSelect(Soql.Builder builder, String selectStr) {
-		builder.deselectAll();
-		List<String> selectItems = this.splitTopLevelKeyword(selectStr, ',');
-
-		for (String item : selectItems) {
-			String trimmed = item.trim();
-			if (trimmed.startsWith('(')) {
-				this.parseSubquery(builder, trimmed);
-			} else if (this.isAggregation(trimmed)) {
-				this.parseAggregation(builder, trimmed);
-			} else {
-				builder.addSelect(trimmed);
+	public Soql.Condition parseCondition(String str) {
+		List<String> operators = new List<String>{ 'NOT IN', 'NOT LIKE', '!=', '>=', '<=', '>', '<', '=', 'IN', 'LIKE' };
+		for (String op : operators) {
+			Integer opPos = this.findOperatorPosition(str, op);
+			if (opPos >= 0) {
+				String fieldName = str.substring(0, opPos).trim();
+				String value = str.substring(opPos + op.length()).trim();
+				return new Soql.Condition(fieldName, OPERATOR_MAP.get(op), this.parseValue(value));
 			}
 		}
-	}
-
-	private Boolean isAggregation(String token) {
-		String upper = token.toUpperCase();
-		Integer parenPos = upper.indexOf('(');
-		if (parenPos <= 0) {
-			return false;
-		}
-
-		String functionName = upper.substring(0, parenPos).trim();
-		return FUNCTION_MAP.containsKey(functionName);
-	}
-
-	public void parseSubquery(Soql.Builder builder, String subqueryStr) {
-		String innerContent = subqueryStr.substring(1, subqueryStr.length() - 1).trim();
-		Integer fromPos = innerContent.toUpperCase().indexOf(' FROM ');
-
-		if (fromPos < 0) {
-			return;
-		}
-
-		String selectPart = innerContent.substring(0, fromPos).trim();
-		String fromPart = innerContent.substring(fromPos + 6).trim();
-		String[] fromTokens = fromPart.split(' ');
-		String fromEntity = fromTokens[0];
-
-		if (selectPart.toUpperCase().startsWith('SELECT ')) {
-			selectPart = selectPart.substring(7).trim();
-		}
-
-		Soql.InnerQuery innerQuery = new Soql.InnerQuery(fromEntity);
-		new SoqlParser().parse(innerQuery, 'SELECT ' + selectPart + ' FROM ' + fromPart);
-		builder.addSelect((Soql.Selectable) innerQuery);
-	}
-
-	private void parseAggregation(Soql.Builder builder, String token) {
-		String upper = token.toUpperCase();
-		Integer openParen = upper.indexOf('(');
-		Integer closeParen = this.findMatchingParen(token, openParen);
-
-		String functionName = upper.substring(0, openParen).trim();
-		String innerField = token.substring(openParen + 1, closeParen).trim();
-		Soql.Function fn = FUNCTION_MAP.get(functionName);
-
-		Soql.Aggregation agg = new Soql.Aggregation(fn, innerField);
-
-		if (closeParen < token.length() - 1) {
-			String afterParen = token.substring(closeParen + 1).trim();
-			String alias = afterParen.trim();
-			if (String.isNotBlank(alias)) {
-				agg.withAlias(alias);
-			}
-		}
-
-		builder.addSelect(agg);
+		return new Soql.Condition(str, Soql.EQUALS, null);
 	}
 
 	public Integer findMatchingParen(String str, Integer openIndex) {
@@ -288,8 +159,142 @@ public class SoqlParser {
 		return str.length();
 	}
 
+	public void parseSubquery(Soql.Builder builder, String subqueryStr) {
+		String inner = subqueryStr.substring(1, subqueryStr.length() - 1).trim();
+		Integer fromPos = inner.toUpperCase().indexOf(' FROM ');
+		if (fromPos < 0) {
+			return;
+		}
+		String selectPart = inner.substring(0, fromPos).trim();
+		String fromPart = inner.substring(fromPos + 6).trim();
+		if (selectPart.toUpperCase().startsWith('SELECT ')) {
+			selectPart = selectPart.substring(7).trim();
+		}
+		Soql.InnerQuery innerQuery = new Soql.InnerQuery(fromPart.split(' ')[0]);
+		new SoqlParser().parse(innerQuery, 'SELECT ' + selectPart + ' FROM ' + fromPart);
+		builder.addSelect((Soql.Selectable) innerQuery);
+	}
+
+	public Object parseValue(String token) {
+		String trimmed = token.trim();
+		String upper = trimmed.toUpperCase();
+		if (upper == 'NULL') return null;
+		if (upper == 'TRUE') return true;
+		if (upper == 'FALSE') return false;
+		if (trimmed.startsWith(':')) return trimmed;
+		if (trimmed.startsWith('\'')) return this.parseStringLiteral(trimmed);
+		if (trimmed.startsWith('(')) return this.parseList(trimmed);
+		if (this.isDateTime(upper)) return this.parseDateTime(trimmed);
+		if (this.isDate(upper)) return this.parseDate(trimmed);
+		return this.parseNumeric(trimmed);
+	}
+
+	private void applyParsers(Soql.Builder builder, String queryString, Map<String, Integer> positions) {
+		this.parseSelect(builder, this.extractClause(queryString, positions, SELECT_KEYWORD, FROM_KEYWORD));
+		this.parseFrom(builder, this.extractClause(queryString, positions, FROM_KEYWORD, this.getNextKeyword(positions, FROM_KEYWORD)));
+		String where = this.extractClause(queryString, positions, WHERE_KEYWORD, this.getNextKeyword(positions, WHERE_KEYWORD));
+		if (String.isNotBlank(where)) {
+			this.parseWhere(builder, where);
+		}
+		String groupBy = this.extractClause(queryString, positions, GROUP_BY_KEYWORD, this.getNextKeyword(positions, GROUP_BY_KEYWORD));
+		if (String.isNotBlank(groupBy)) {
+			this.parseGroupBy(builder, groupBy);
+		}
+		String having = this.extractClause(queryString, positions, HAVING_KEYWORD, this.getNextKeyword(positions, HAVING_KEYWORD));
+		if (String.isNotBlank(having)) {
+			this.parseHaving(builder, having);
+		}
+		String orderBy = this.extractClause(queryString, positions, ORDER_BY_KEYWORD, this.getNextKeyword(positions, ORDER_BY_KEYWORD));
+		if (String.isNotBlank(orderBy)) {
+			this.parseOrderBy(builder, orderBy);
+		}
+		String lim = this.extractClause(queryString, positions, LIMIT_KEYWORD, this.getNextKeyword(positions, LIMIT_KEYWORD));
+		if (String.isNotBlank(lim)) {
+			this.parseLimit(builder, lim);
+		}
+		String off = this.extractClause(queryString, positions, OFFSET_KEYWORD, this.getNextKeyword(positions, OFFSET_KEYWORD));
+		if (String.isNotBlank(off)) {
+			this.parseOffset(builder, off);
+		}
+		String usingScope = this.extractClause(queryString, positions, USING_SCOPE_KEYWORD, this.getNextKeyword(positions, USING_SCOPE_KEYWORD));
+		if (String.isNotBlank(usingScope)) {
+			this.parseUsingScope(builder, usingScope);
+		}
+		String withClause = this.extractClause(queryString, positions, WITH_KEYWORD, this.getNextKeyword(positions, WITH_KEYWORD));
+		if (String.isNotBlank(withClause)) {
+			this.parseWith(builder, withClause);
+		}
+		String forClause = this.extractClause(queryString, positions, FOR_KEYWORD, this.getNextKeyword(positions, FOR_KEYWORD));
+		if (String.isNotBlank(forClause)) {
+			this.parseFor(builder, forClause);
+		}
+		if (positions.containsKey(ALL_ROWS_KEYWORD)) {
+			this.parseAllRows(builder);
+		}
+	}
+
+	private Integer calculateEndPos(String queryString, Map<String, Integer> positions, String nextKeyword) {
+		if (nextKeyword == null) {
+			return queryString.length();
+		}
+		Integer nextPos = positions.get(nextKeyword);
+		return nextPos != null ? nextPos : queryString.length();
+	}
+
+	private void parseSelect(Soql.Builder builder, String selectStr) {
+		builder.deselectAll();
+		for (String item : this.splitTopLevelKeyword(selectStr, ',')) {
+			String token = item.trim();
+			if (token.startsWith('(')) {
+				this.parseSubquery(builder, token);
+			} else if (this.isAggregation(token)) {
+				this.parseAggregation(builder, token);
+			} else {
+				builder.addSelect(token);
+			}
+		}
+	}
+
+	private Boolean isAggregation(String token) {
+		String upper = token.toUpperCase();
+		Integer parenPos = upper.indexOf('(');
+		if (parenPos <= 0) {
+			return false;
+		}
+		return FUNCTION_MAP.containsKey(upper.substring(0, parenPos).trim());
+	}
+
+	private void parseAggregation(Soql.Builder builder, String token) {
+		builder.addSelect(this.buildAggregation(token));
+	}
+
+	private Soql.Aggregation buildAggregation(String token) {
+		String upper = token.toUpperCase();
+		Integer openParen = upper.indexOf('(');
+		Integer closeParen = this.findMatchingParen(token, openParen);
+		Soql.Aggregation agg = new Soql.Aggregation(
+			FUNCTION_MAP.get(upper.substring(0, openParen).trim()),
+			token.substring(openParen + 1, closeParen).trim()
+		);
+		if (closeParen < token.length() - 1) {
+			String alias = token.substring(closeParen + 1).trim();
+			if (String.isNotBlank(alias)) {
+				agg.withAlias(alias);
+			}
+		}
+		return agg;
+	}
+
 	private void parseFrom(Soql.Builder builder, String fromStr) {
-		builder.setFrom(fromStr.trim());
+		builder.setFrom(fromStr);
+	}
+
+	private void parseWhere(Soql.Builder builder, String whereStr) {
+		builder.setWhereCriteria(this.parseCriteriaLogic(whereStr));
+	}
+
+	private void parseHaving(Soql.Builder builder, String havingStr) {
+		builder.setHavingCriteria(this.parseCriteriaLogic(havingStr));
 	}
 
 	private Soql.ConditionalLogic parseCriteriaLogic(String str) {
@@ -302,16 +307,11 @@ public class SoqlParser {
 		return (Soql.ConditionalLogic) criteria;
 	}
 
-	private void parseWhere(Soql.Builder builder, String whereStr) {
-		builder.setWhereCriteria(this.parseCriteriaLogic(whereStr));
-	}
-
 	private Soql.Criteria parseExpr(String str) {
 		List<String> orParts = this.splitTopLevelKeyword(str, ' OR ');
 		if (orParts.size() == 1) {
 			return this.parseAndExpr(orParts[0]);
 		}
-
 		Soql.ConditionalLogic logic = new Soql.ConditionalLogic();
 		logic.setLogicType(Soql.LogicType.ANY_CONDITIONS);
 		for (String part : orParts) {
@@ -325,7 +325,6 @@ public class SoqlParser {
 		if (andParts.size() == 1) {
 			return this.parseFactor(andParts[0]);
 		}
-
 		Soql.ConditionalLogic logic = new Soql.ConditionalLogic();
 		logic.setLogicType(Soql.LogicType.ALL_CONDITIONS);
 		for (String part : andParts) {
@@ -337,36 +336,17 @@ public class SoqlParser {
 	private Soql.Criteria parseFactor(String str) {
 		String trimmed = str.trim();
 		if (trimmed.startsWith('(') && this.findMatchingParen(trimmed, 0) == trimmed.length() - 1) {
-			String innerStr = trimmed.substring(1, trimmed.length() - 1).trim();
-			return this.parseExpr(innerStr);
+			return this.parseExpr(trimmed.substring(1, trimmed.length() - 1).trim());
 		}
 		return this.parseCondition(trimmed);
-	}
-
-	public Soql.Condition parseCondition(String str) {
-		List<String> operators = new List<String>{ 'NOT IN', 'NOT LIKE', '!=', '>=', '<=', '>', '<', '=', 'IN', 'LIKE' };
-
-		for (String op : operators) {
-			Integer opPos = this.findOperatorPosition(str, op);
-			if (opPos >= 0) {
-				String fieldName = str.substring(0, opPos).trim();
-				String value = str.substring(opPos + op.length()).trim();
-				Soql.Operator operator = OPERATOR_MAP.get(op.toUpperCase());
-				return new Soql.Condition(fieldName, operator, this.parseValue(value));
-			}
-		}
-
-		return new Soql.Condition(str, Soql.EQUALS, null);
 	}
 
 	private Integer findOperatorPosition(String str, String operator) {
 		Integer parenDepth = 0;
 		Boolean inString = false;
 		String strUpper = str.toUpperCase();
-
 		for (Integer i = 0; i <= str.length() - operator.length(); i++) {
 			String c = str.substring(i, i + 1);
-
 			if (c == '\'' && (i == 0 || str.substring(i - 1, i) != '\\')) {
 				inString = !inString;
 			} else if (!inString) {
@@ -385,108 +365,84 @@ public class SoqlParser {
 				}
 			}
 		}
-
 		return -1;
 	}
 
-	public Object parseValue(String token) {
-		String trimmed = token.trim();
-		String t = trimmed.toUpperCase();
+	private Object parseStringLiteral(String trimmed) {
+		return trimmed.substring(1, trimmed.length() - 1).replace('\\\'', '\'');
+	}
 
-		if (t == 'NULL') {
-			return null;
-		}
-		if (t == 'TRUE') {
-			return true;
-		}
-		if (t == 'FALSE') {
-			return false;
-		}
-		if (trimmed.startsWith(':')) {
+	private Object parseList(String trimmed) {
+		String inner = trimmed.substring(1, trimmed.length() - 1);
+		if (inner.toUpperCase().contains('SELECT')) {
 			return trimmed;
 		}
-		if (trimmed.startsWith('\'')) {
-			String unquoted = trimmed.substring(1, trimmed.length() - 1);
-			return unquoted.replace('\\\'', '\'');
+		List<String> result = new List<String>();
+		for (String item : this.splitTopLevelKeyword(inner, ',')) {
+			String val = item.trim();
+			result.add((val.startsWith('\'') && val.endsWith('\'')) ? val.substring(1, val.length() - 1) : val);
 		}
-		if (trimmed.startsWith('(')) {
-			String parenthetical = trimmed.substring(1, trimmed.length() - 1);
-			if (parenthetical.toUpperCase().contains('SELECT')) {
-				return trimmed;
-			}
-			List<String> items = this.splitTopLevelKeyword(parenthetical, ',');
-			List<String> result = new List<String>();
-			for (String item : items) {
-				String cleaned = item.trim();
-				if (cleaned.startsWith('\'') && cleaned.endsWith('\'')) {
-					cleaned = cleaned.substring(1, cleaned.length() - 1);
-				}
-				result.add(cleaned);
-			}
-			return result;
-		}
+		return result;
+	}
 
-		if (this.isDateTime(t)) {
-			try {
-				return DateTime.valueOfGmt(trimmed);
-			} catch (Exception e) {
-				return trimmed;
-			}
+	private Object parseDateTime(String trimmed) {
+		try {
+			return DateTime.valueOfGmt(trimmed);
+		} catch (Exception e) {
+			return trimmed;
 		}
-		if (this.isDate(t)) {
-			try {
-				return Date.valueOf(trimmed);
-			} catch (Exception e) {
-				return trimmed;
-			}
-		}
+	}
 
+	private Object parseDate(String trimmed) {
+		try {
+			return Date.valueOf(trimmed);
+		} catch (Exception e) {
+			return trimmed;
+		}
+	}
+
+	private Object parseNumeric(String trimmed) {
 		try {
 			return Integer.valueOf(trimmed);
 		} catch (Exception e) {
 		}
-
 		try {
 			return Decimal.valueOf(trimmed);
 		} catch (Exception e) {
 		}
-
 		return trimmed;
 	}
 
 	private void parseOrderBy(Soql.Builder builder, String orderByStr) {
-		List<String> items = this.splitTopLevelKeyword(orderByStr, ',');
-		for (String item : items) {
+		for (String item : this.splitTopLevelKeyword(orderByStr, ',')) {
 			builder.addRawOrderBy(item.trim());
 		}
 	}
 
 	private void parseGroupBy(Soql.Builder builder, String groupByStr) {
-		List<String> items = this.splitTopLevelKeyword(groupByStr, ',');
-		for (String item : items) {
+		for (String item : this.splitTopLevelKeyword(groupByStr, ',')) {
 			builder.addGroupBy(item.trim());
 		}
 	}
 
 	private void parseUsingScope(Soql.Builder builder, String usingScopeStr) {
-		String scopeName = usingScopeStr.trim().toUpperCase();
-		Soql.Scope scope = SCOPE_MAP.get(scopeName);
+		Soql.Scope scope = SCOPE_MAP.get(usingScopeStr.toUpperCase());
 		if (scope != null) {
 			builder.setScope(scope);
 		}
 	}
 
 	private void parseWith(Soql.Builder builder, String withStr) {
-		builder.setWithClause(withStr.trim());
+		builder.setWithClause(withStr);
 	}
 
 	private void parseFor(Soql.Builder builder, String forStr) {
-		String trimmed = forStr.trim().toUpperCase();
-		if (trimmed.startsWith('UPDATE')) {
+		String upper = forStr.toUpperCase();
+		if (upper.startsWith('UPDATE')) {
 			builder.setUsage(Soql.Usage.FOR_UPDATE);
-		} else if (trimmed.startsWith('VIEW')) {
+		} else if (upper.startsWith('VIEW')) {
 			builder.setUsage(Soql.Usage.FOR_VIEW);
-		} else if (trimmed.startsWith('REFERENCE')) {
+		} else if (upper.startsWith('REFERENCE')) {
 			builder.setUsage(Soql.Usage.FOR_REFERENCE);
 		}
 	}
@@ -495,18 +451,12 @@ public class SoqlParser {
 		builder.setUsage(Soql.Usage.ALL_ROWS);
 	}
 
-	private void parseHaving(Soql.Builder builder, String havingStr) {
-		builder.setHavingCriteria(this.parseCriteriaLogic(havingStr));
-	}
-
 	private void parseLimit(Soql.Builder builder, String limitStr) {
-		Integer rowLimit = Integer.valueOf(limitStr.trim());
-		builder.setRowLimit(rowLimit);
+		builder.setRowLimit(Integer.valueOf(limitStr));
 	}
 
 	private void parseOffset(Soql.Builder builder, String offsetStr) {
-		Integer rowOffset = Integer.valueOf(offsetStr.trim());
-		builder.setRowOffset(rowOffset);
+		builder.setRowOffset(Integer.valueOf(offsetStr));
 	}
 
 	private List<String> splitTopLevelKeyword(String str, String keyword) {
@@ -515,10 +465,8 @@ public class SoqlParser {
 		Boolean inString = false;
 		Integer lastPos = 0;
 		String strUpper = str.toUpperCase();
-
 		for (Integer i = 0; i <= str.length() - keyword.length(); i++) {
 			String c = str.substring(i, i + 1);
-
 			if (c == '\'' && (i == 0 || str.substring(i - 1, i) != '\\')) {
 				inString = !inString;
 			} else if (!inString) {
@@ -533,29 +481,23 @@ public class SoqlParser {
 				}
 			}
 		}
-
 		if (lastPos < str.length()) {
 			parts.add(str.substring(lastPos));
 		} else if (lastPos == str.length() && parts.isEmpty()) {
 			parts.add(str);
 		}
-
 		return parts;
 	}
 
 	private Boolean isDateTime(String str) {
-		if (str == null || str.length() < 10) {
+		if (str == null || str.length() < 10 || !str.contains('T')) {
 			return false;
 		}
-		String prefix = str.substring(0, 10);
-		return this.isValidDatePrefix(prefix) && str.contains('T');
+		return this.isValidDatePrefix(str.substring(0, 10));
 	}
 
 	private Boolean isDate(String str) {
-		if (str == null || str.length() != 10) {
-			return false;
-		}
-		return this.isValidDatePrefix(str);
+		return str != null && str.length() == 10 && this.isValidDatePrefix(str);
 	}
 
 	private Boolean isValidDatePrefix(String datePrefix) {
@@ -565,14 +507,10 @@ public class SoqlParser {
 		if (datePrefix.substring(4, 5) != '-' || datePrefix.substring(7, 8) != '-') {
 			return false;
 		}
-		String yearPart = datePrefix.substring(0, 4);
-		String monthPart = datePrefix.substring(5, 7);
-		String dayPart = datePrefix.substring(8, 10);
-
 		try {
-			Integer year = Integer.valueOf(yearPart);
-			Integer month = Integer.valueOf(monthPart);
-			Integer day = Integer.valueOf(dayPart);
+			Integer year = Integer.valueOf(datePrefix.substring(0, 4));
+			Integer month = Integer.valueOf(datePrefix.substring(5, 7));
+			Integer day = Integer.valueOf(datePrefix.substring(8, 10));
 			return year >= 1900 && year <= 2100 && month >= 1 && month <= 12 && day >= 1 && day <= 31;
 		} catch (Exception e) {
 			return false;
