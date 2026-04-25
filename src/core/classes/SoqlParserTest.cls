@@ -586,6 +586,64 @@ private class SoqlParserTest {
 		Assert.areEqual('XXXX-06-15', (String) result, 'Expected raw string for non-numeric year');
 	}
 
+	@IsTest
+	private static void shouldFallbackForUnrecognizedOperator() {
+		// Unrecognized operators are not matched; the full string becomes the field name with EQUALS null
+		DatabaseLayer.useMocks();
+		SoqlParser parser = new SoqlParser();
+
+		Test.startTest();
+		Soql.Condition condition = parser.parseCondition('Name INVALIDOP value');
+		Test.stopTest();
+
+		Assert.areEqual('Name INVALIDOP value', condition.property, 'Expected full string preserved as field');
+		Assert.areEqual('=', condition.operator.toString(), 'Expected default = operator');
+		Assert.isNull(condition.value, 'Expected null value');
+	}
+
+	@IsTest
+	private static void shouldRoundTripUnicodeStringLiteral() {
+		DatabaseLayer.useMocks();
+		String queryStr = 'SELECT Id FROM Account WHERE Name = \'Ünïcödé\'';
+		Soql soql = DatabaseLayer.newSoql(queryStr);
+
+		Test.startTest();
+		String result = soql?.toString();
+		Test.stopTest();
+
+		Assert.areEqual(queryStr, result, 'Expected unicode string literal to round-trip');
+	}
+
+	@IsTest
+	private static void shouldParseEscapedQuoteInStringLiteral() {
+		DatabaseLayer.useMocks();
+		SoqlParser parser = new SoqlParser();
+
+		Test.startTest();
+		Object result = parser.parseValue('\'O\\\'Brien\'');
+		Test.stopTest();
+
+		Assert.areEqual('O\'Brien', (String) result, 'Expected escaped quote to be unescaped');
+	}
+
+	@IsTest
+	private static void shouldHandleDeeplyNestedParentheses() {
+		// Triple-wrapped single condition — recursion should resolve without error and simplify
+		DatabaseLayer.useMocks();
+		String queryStr = 'SELECT Id FROM Account WHERE (((Name = \'test\')))';
+		Soql soql = DatabaseLayer.newSoql(queryStr);
+
+		Test.startTest();
+		String result = soql?.toString();
+		Test.stopTest();
+
+		Assert.areEqual(
+			'SELECT Id FROM Account WHERE Name = \'test\'',
+			result,
+			'Expected redundant parens to simplify'
+		);
+	}
+
 	@SuppressWarnings('PMD.EmptyCatchBlock')
 	@IsTest
 	private static void shouldThrowQueryExceptionOnParseFailure() {
