@@ -3,8 +3,12 @@
  * Handles all standard SOQL clauses including SELECT, FROM, WHERE, GROUP BY, HAVING, ORDER BY,
  * LIMIT, OFFSET, USING SCOPE, WITH, FOR, and ALL ROWS.
  */
-@SuppressWarnings('PMD.CognitiveComplexity,PMD.CyclomaticComplexity,PMD.PropertyNamingConventions')
+@SuppressWarnings('PMD.CognitiveComplexity,PMD.CyclomaticComplexity,PMD.ExcessiveClassLength,PMD.PropertyNamingConventions')
 public class SoqlParser {
+	/** @description Shared OperatorLexer instance for resolving SOQL operator tokens */
+	private static final SoqlParser.OperatorLexer OPERATORS = new SoqlParser.OperatorLexer();
+	/** @description Shared ValueParser instance for converting raw SOQL value tokens to Apex types */
+	private static final SoqlParser.ValueParser VALUE_PARSER = new SoqlParser.ValueParser();
 	/** @description SOQL keyword string for the ALL ROWS clause */
 	// prettier-ignore
 	private static final String ALL_ROWS_KEYWORD { get { return 'ALL ROWS'; } }
@@ -66,10 +70,6 @@ public class SoqlParser {
 		}
 		private set;
 	}
-	/** @description Shared OperatorLexer instance for resolving SOQL operator tokens */
-	private static final SoqlParser.OperatorLexer OPERATORS = new SoqlParser.OperatorLexer();
-	/** @description Shared ValueParser instance for converting raw SOQL value tokens to Apex types */
-	private static final SoqlParser.ValueParser VALUE_PARSER = new SoqlParser.ValueParser();
 
 	/**
 	 * @description Parses a SOQL query string and applies the parsed clauses to the given builder
