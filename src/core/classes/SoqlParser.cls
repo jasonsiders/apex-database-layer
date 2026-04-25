@@ -1,3 +1,9 @@
+/**
+ * @description Parses SOQL query strings into structured {@link Soql.Builder} representations.
+ * Handles all standard SOQL clauses including SELECT, FROM, WHERE, GROUP BY, HAVING, ORDER BY,
+ * LIMIT, OFFSET, USING SCOPE, WITH, FOR, and ALL ROWS.
+ */
+@SuppressWarnings('PMD.CognitiveComplexity,PMD.CyclomaticComplexity')
 public class SoqlParser {
 	private static final String SELECT_KEYWORD = 'SELECT';
 	private static final String FROM_KEYWORD = 'FROM';
@@ -59,11 +65,22 @@ public class SoqlParser {
 		'NOT LIKE' => Soql.NOT_LIKE_RAW
 	};
 
+	/**
+	 * @description Parses a SOQL query string and applies the parsed clauses to the given builder.
+	 * @param builder The {@link Soql.Builder} to populate with parsed clauses
+	 * @param queryString The SOQL query string to parse
+	 */
 	public void parse(Soql.Builder builder, String queryString) {
 		Map<String, Integer> positions = this.findKeywordPositions(queryString);
 		this.applyParsers(builder, queryString, positions);
 	}
 
+	/**
+	 * @description Scans a query string and returns the character position of each SOQL keyword found
+	 * at the top level (not inside parentheses or string literals).
+	 * @param queryString The SOQL query string to scan
+	 * @return A map of keyword to its starting character position
+	 */
 	public Map<String, Integer> findKeywordPositions(String queryString) {
 		Map<String, Integer> positions = new Map<String, Integer>();
 		List<String> keywords = new List<String>{
@@ -84,14 +101,7 @@ public class SoqlParser {
 				parenDepth--;
 			} else if (parenDepth == 0 && !inString) {
 				for (String keyword : keywords) {
-					Integer endIndex = i + keyword.length();
-					if (endIndex <= upper.length() && upper.substring(i, endIndex) == keyword) {
-						Boolean beforeOk = (i == 0 || upper.substring(i - 1, i) == ' ');
-						Boolean afterOk = (endIndex >= upper.length() || upper.substring(endIndex, endIndex + 1) == ' ');
-						if (beforeOk && afterOk && !positions.containsKey(keyword)) {
-							positions.put(keyword, i);
-						}
-					}
+					this.tryRecordKeyword(positions, upper, keyword, i);
 				}
 			}
 		}
@@ -99,6 +109,13 @@ public class SoqlParser {
 		return positions;
 	}
 
+	/**
+	 * @description Returns the keyword that immediately follows the given keyword in the query,
+	 * based on character positions.
+	 * @param positions The keyword position map from {@link #findKeywordPositions}
+	 * @param currentKeyword The keyword to find the successor of
+	 * @return The next keyword name, or null if there is none
+	 */
 	public String getNextKeyword(Map<String, Integer> positions, String currentKeyword) {
 		List<String> allKeywords = new List<String>{
 			SELECT_KEYWORD, FROM_KEYWORD, WHERE_KEYWORD, GROUP_BY_KEYWORD, HAVING_KEYWORD,
@@ -121,6 +138,16 @@ public class SoqlParser {
 		return nextKeyword;
 	}
 
+	/**
+	 * @description Extracts the text of a clause by slicing between the start of one keyword and
+	 * the start of the next, trimming the keyword itself and surrounding whitespace.
+	 * @param queryString The full SOQL query string
+	 * @param positions The keyword position map from {@link #findKeywordPositions}
+	 * @param keyword The keyword whose clause content to extract
+	 * @param nextKeyword The keyword that terminates the clause, or null if none follows
+	 * @return The trimmed clause text, or an empty string if the keyword is not present
+	 */
+	@SuppressWarnings('PMD.ExcessiveParameterList')
 	public String extractClause(String queryString, Map<String, Integer> positions, String keyword, String nextKeyword) {
 		Integer startPos = positions.get(keyword);
 		if (startPos == null) {
@@ -130,6 +157,12 @@ public class SoqlParser {
 		return queryString.substring(startPos + keyword.length(), endPos).trim();
 	}
 
+	/**
+	 * @description Parses a single WHERE/HAVING condition expression of the form
+	 * {@code field operator value}.
+	 * @param str The condition string to parse
+	 * @return A {@link Soql.Condition} representing the parsed condition
+	 */
 	public Soql.Condition parseCondition(String str) {
 		List<String> operators = new List<String>{ 'NOT IN', 'NOT LIKE', '!=', '>=', '<=', '>', '<', '=', 'IN', 'LIKE' };
 		for (String op : operators) {
@@ -143,6 +176,13 @@ public class SoqlParser {
 		return new Soql.Condition(str, Soql.EQUALS, null);
 	}
 
+	/**
+	 * @description Finds the index of the closing parenthesis that matches the opening parenthesis
+	 * at {@code openIndex}, accounting for nested parentheses.
+	 * @param str The string to search
+	 * @param openIndex The index of the opening parenthesis
+	 * @return The index of the matching closing parenthesis, or the string length if not found
+	 */
 	public Integer findMatchingParen(String str, Integer openIndex) {
 		Integer depth = 0;
 		for (Integer i = openIndex; i < str.length(); i++) {
@@ -159,6 +199,12 @@ public class SoqlParser {
 		return str.length();
 	}
 
+	/**
+	 * @description Parses a parenthesized subquery token and registers it as a SELECT item on the
+	 * builder.
+	 * @param builder The {@link Soql.Builder} to add the subquery to
+	 * @param subqueryStr The parenthesized subquery string, e.g. {@code (SELECT Id FROM Contacts)}
+	 */
 	public void parseSubquery(Soql.Builder builder, String subqueryStr) {
 		String inner = subqueryStr.substring(1, subqueryStr.length() - 1).trim();
 		Integer fromPos = inner.toUpperCase().indexOf(' FROM ');
@@ -175,17 +221,23 @@ public class SoqlParser {
 		builder.addSelect((Soql.Selectable) innerQuery);
 	}
 
+	/**
+	 * @description Parses a raw SOQL value token into an appropriate Apex type (Boolean, Date,
+	 * DateTime, Integer, Decimal, List, or String).
+	 * @param token The raw value token from the query
+	 * @return The parsed value, or the original token string if no conversion applies
+	 */
 	public Object parseValue(String token) {
 		String trimmed = token.trim();
 		String upper = trimmed.toUpperCase();
-		if (upper == 'NULL') return null;
-		if (upper == 'TRUE') return true;
-		if (upper == 'FALSE') return false;
-		if (trimmed.startsWith(':')) return trimmed;
-		if (trimmed.startsWith('\'')) return this.parseStringLiteral(trimmed);
-		if (trimmed.startsWith('(')) return this.parseList(trimmed);
-		if (this.isDateTime(upper)) return this.parseDateTime(trimmed);
-		if (this.isDate(upper)) return this.parseDate(trimmed);
+		if (upper == 'NULL') { return null; }
+		if (upper == 'TRUE') { return true; }
+		if (upper == 'FALSE') { return false; }
+		if (trimmed.startsWith(':')) { return trimmed; }
+		if (trimmed.startsWith('\'')) { return this.parseStringLiteral(trimmed); }
+		if (trimmed.startsWith('(')) { return this.parseList(trimmed); }
+		if (this.isDateTime(upper)) { return this.parseDateTime(trimmed); }
+		if (this.isDate(upper)) { return this.parseDate(trimmed); }
 		return this.parseNumeric(trimmed);
 	}
 
@@ -239,6 +291,19 @@ public class SoqlParser {
 		}
 		Integer nextPos = positions.get(nextKeyword);
 		return nextPos != null ? nextPos : queryString.length();
+	}
+
+	@SuppressWarnings('PMD.ExcessiveParameterList')
+	private void tryRecordKeyword(Map<String, Integer> positions, String upper, String keyword, Integer i) {
+		Integer endIndex = i + keyword.length();
+		if (endIndex > upper.length() || upper.substring(i, endIndex) != keyword) {
+			return;
+		}
+		Boolean beforeOk = (i == 0 || upper.substring(i - 1, i) == ' ');
+		Boolean afterOk = (endIndex >= upper.length() || upper.substring(endIndex, endIndex + 1) == ' ');
+		if (beforeOk && afterOk && !positions.containsKey(keyword)) {
+			positions.put(keyword, i);
+		}
 	}
 
 	private void parseSelect(Soql.Builder builder, String selectStr) {
@@ -354,18 +419,19 @@ public class SoqlParser {
 					parenDepth++;
 				} else if (c == ')') {
 					parenDepth--;
-				} else if (parenDepth == 0 && strUpper.substring(i, i + operator.length()) == operator) {
-					Integer afterPos = i + operator.length();
-					Boolean beforeOk = (i == 0 || str.substring(i - 1, i) == ' ');
-					String afterChar = afterPos < str.length() ? str.substring(afterPos, afterPos + 1) : '';
-					Boolean afterOk = (afterPos >= str.length() || afterChar == ' ' || afterChar == '(');
-					if (beforeOk && afterOk) {
-						return i;
-					}
+				} else if (parenDepth == 0 && strUpper.substring(i, i + operator.length()) == operator && this.isAtWordBoundary(str, i, operator)) {
+					return i;
 				}
 			}
 		}
 		return -1;
+	}
+
+	private Boolean isAtWordBoundary(String str, Integer i, String operator) {
+		Integer afterPos = i + operator.length();
+		Boolean beforeOk = (i == 0 || str.substring(i - 1, i) == ' ');
+		String afterChar = afterPos < str.length() ? str.substring(afterPos, afterPos + 1) : '';
+		return beforeOk && (afterPos >= str.length() || afterChar == ' ' || afterChar == '(');
 	}
 
 	private Object parseStringLiteral(String trimmed) {
@@ -404,13 +470,13 @@ public class SoqlParser {
 	private Object parseNumeric(String trimmed) {
 		try {
 			return Integer.valueOf(trimmed);
-		} catch (Exception e) {
+		} catch (Exception intErr) {
+			try {
+				return Decimal.valueOf(trimmed);
+			} catch (Exception decErr) {
+				return trimmed;
+			}
 		}
-		try {
-			return Decimal.valueOf(trimmed);
-		} catch (Exception e) {
-		}
-		return trimmed;
 	}
 
 	private void parseOrderBy(Soql.Builder builder, String orderByStr) {

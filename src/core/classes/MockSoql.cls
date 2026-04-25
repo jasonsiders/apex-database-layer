@@ -18,6 +18,7 @@ global class MockSoql extends Soql {
 
 	/**
 	 * @description Constructor for MockSoql instance with raw SOQL query string.
+	 * @param factory The DatabaseLayer factory instance
 	 * @param queryString The raw SOQL query string to parse
 	 */
 	public MockSoql(DatabaseLayer factory, String queryString) {
