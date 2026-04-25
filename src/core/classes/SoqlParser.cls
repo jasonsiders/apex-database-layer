@@ -89,42 +89,15 @@ public class SoqlParser {
 	private void applyParsers(Soql.Builder builder, ParseContext ctx) {
 		this.parseSelect(builder, this.extractClause(ctx, SELECT_KEYWORD));
 		this.parseFrom(builder, this.extractClause(ctx, FROM_KEYWORD));
-		String whereClause = this.extractClause(ctx, WHERE_KEYWORD);
-		if (String.isNotBlank(whereClause)) {
-			this.parseWhere(builder, whereClause);
-		}
-		String groupBy = this.extractClause(ctx, GROUP_BY_KEYWORD);
-		if (String.isNotBlank(groupBy)) {
-			this.parseGroupBy(builder, groupBy);
-		}
-		String havingClause = this.extractClause(ctx, HAVING_KEYWORD);
-		if (String.isNotBlank(havingClause)) {
-			this.parseHaving(builder, havingClause);
-		}
-		String orderBy = this.extractClause(ctx, ORDER_BY_KEYWORD);
-		if (String.isNotBlank(orderBy)) {
-			this.parseOrderBy(builder, orderBy);
-		}
-		String lim = this.extractClause(ctx, LIMIT_KEYWORD);
-		if (String.isNotBlank(lim)) {
-			this.parseLimit(builder, lim);
-		}
-		String off = this.extractClause(ctx, OFFSET_KEYWORD);
-		if (String.isNotBlank(off)) {
-			this.parseOffset(builder, off);
-		}
-		String usingScope = this.extractClause(ctx, USING_SCOPE_KEYWORD);
-		if (String.isNotBlank(usingScope)) {
-			this.parseUsingScope(builder, usingScope);
-		}
-		String withClause = this.extractClause(ctx, WITH_KEYWORD);
-		if (String.isNotBlank(withClause)) {
-			this.parseWith(builder, withClause);
-		}
-		String forClause = this.extractClause(ctx, FOR_KEYWORD);
-		if (String.isNotBlank(forClause)) {
-			this.parseFor(builder, forClause);
-		}
+		this.parseWhere(builder, this.extractClause(ctx, WHERE_KEYWORD));
+		this.parseGroupBy(builder, this.extractClause(ctx, GROUP_BY_KEYWORD));
+		this.parseHaving(builder, this.extractClause(ctx, HAVING_KEYWORD));
+		this.parseOrderBy(builder, this.extractClause(ctx, ORDER_BY_KEYWORD));
+		this.parseLimit(builder, this.extractClause(ctx, LIMIT_KEYWORD));
+		this.parseOffset(builder, this.extractClause(ctx, OFFSET_KEYWORD));
+		this.parseUsingScope(builder, this.extractClause(ctx, USING_SCOPE_KEYWORD));
+		this.parseWith(builder, this.extractClause(ctx, WITH_KEYWORD));
+		this.parseFor(builder, this.extractClause(ctx, FOR_KEYWORD));
 		if (ctx.positions?.containsKey(ALL_ROWS_KEYWORD) == true) {
 			this.parseAllRows(builder);
 		}
@@ -472,6 +445,9 @@ public class SoqlParser {
 	 * @param forStr The FOR clause value (e.g. UPDATE, VIEW, REFERENCE)
 	 */
 	private void parseFor(Soql.Builder builder, String forStr) {
+		if (String.isBlank(forStr)) {
+			return;
+		}
 		String upper = forStr.toUpperCase();
 		if (upper.startsWith('UPDATE')) {
 			builder.setUsage(Soql.Usage.FOR_UPDATE);
@@ -497,6 +473,9 @@ public class SoqlParser {
 	 * @param groupByStr The GROUP BY clause content
 	 */
 	private void parseGroupBy(Soql.Builder builder, String groupByStr) {
+		if (String.isBlank(groupByStr)) {
+			return;
+		}
 		for (String item : this.splitTopLevelKeyword(groupByStr, ',')) {
 			builder.addGroupBy(item.trim());
 		}
@@ -508,6 +487,9 @@ public class SoqlParser {
 	 * @param havingStr The HAVING clause content
 	 */
 	private void parseHaving(Soql.Builder builder, String havingStr) {
+		if (String.isBlank(havingStr)) {
+			return;
+		}
 		builder.setHavingCriteria(this.parseCriteriaLogic(havingStr));
 	}
 
@@ -517,6 +499,9 @@ public class SoqlParser {
 	 * @param limitStr The LIMIT value string
 	 */
 	private void parseLimit(Soql.Builder builder, String limitStr) {
+		if (String.isBlank(limitStr)) {
+			return;
+		}
 		builder.setRowLimit(Integer.valueOf(limitStr));
 	}
 
@@ -563,6 +548,9 @@ public class SoqlParser {
 	 * @param offsetStr The OFFSET value string
 	 */
 	private void parseOffset(Soql.Builder builder, String offsetStr) {
+		if (String.isBlank(offsetStr)) {
+			return;
+		}
 		builder.setRowOffset(Integer.valueOf(offsetStr));
 	}
 
@@ -572,6 +560,9 @@ public class SoqlParser {
 	 * @param orderByStr The ORDER BY clause content
 	 */
 	private void parseOrderBy(Soql.Builder builder, String orderByStr) {
+		if (String.isBlank(orderByStr)) {
+			return;
+		}
 		for (String item : this.splitTopLevelKeyword(orderByStr, ',')) {
 			builder.addRawOrderBy(item.trim());
 		}
@@ -634,6 +625,9 @@ public class SoqlParser {
 	 * @param usingScopeStr The scope name string
 	 */
 	private void parseUsingScope(Soql.Builder builder, String usingScopeStr) {
+		if (String.isBlank(usingScopeStr)) {
+			return;
+		}
 		try {
 			builder.setScope(Soql.Scope.valueOf(usingScopeStr?.toUpperCase()));
 		} catch (Exception e) {
@@ -678,6 +672,9 @@ public class SoqlParser {
 	 * @param whereStr The WHERE clause content
 	 */
 	private void parseWhere(Soql.Builder builder, String whereStr) {
+		if (String.isBlank(whereStr)) {
+			return;
+		}
 		builder.setWhereCriteria(this.parseCriteriaLogic(whereStr));
 	}
 
@@ -687,6 +684,9 @@ public class SoqlParser {
 	 * @param withStr The WITH clause value
 	 */
 	private void parseWith(Soql.Builder builder, String withStr) {
+		if (String.isBlank(withStr)) {
+			return;
+		}
 		builder.setWithClause(withStr);
 	}
 
