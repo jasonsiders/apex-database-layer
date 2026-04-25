@@ -328,7 +328,7 @@ public class SoqlParser {
 	 */
 	private Soql.Criteria parseFactor(String str) {
 		String trimmed = str?.trim();
-		Integer lastIndex = (trimmed?.length ?? 0) - 1;
+		Integer lastIndex = (trimmed?.length() ?? 0) - 1;
 		Integer closeParen = this.findMatchingParen(trimmed, 0);
 		Boolean isWrapped = trimmed?.startsWith('(') == true && closeParen == lastIndex;
 		if (isWrapped) {
@@ -619,10 +619,9 @@ public class SoqlParser {
 				return false;
 			}
 			try {
-				Integer year = Integer.valueOf(datePrefix?.substring(0, 4));
 				Integer month = Integer.valueOf(datePrefix?.substring(5, 7));
 				Integer day = Integer.valueOf(datePrefix?.substring(8, 10));
-				return year >= 1900 && year <= 2100 && month >= 1 && month <= 12 && day >= 1 && day <= 31;
+				return month >= 1 && month <= 12 && day >= 1 && day <= 31;
 			} catch (Exception error) {
 				return false;
 			}
