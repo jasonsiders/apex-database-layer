@@ -115,8 +115,22 @@ jobs:
             VERSION_NUMBER="${INPUT_VERSION}.NEXT"
             echo "Using specified version number: $VERSION_NUMBER"
           else
-            LATEST=$(sf package version list --package "$PACKAGE" --json | \
-              jq -r '[.result[] | select(.CreatedStatus == "Success")] | sort_by(.MajorVersion, .MinorVersion, .PatchVersion, .BuildNumber) | last')
+            # Resolve the 0Ho package ID from packageAliases (required by sf package version list).
+            # packageDirectories.package may not match the alias key directly (e.g. "Apex Database
+            # Layer" vs "apex-database-layer"), so try exact match first, then normalize.
+            PACKAGE_ID=$(jq -r --arg pkg "$PACKAGE" '.packageAliases[$pkg] // empty' sfdx-project.json)
+            if [[ -z "$PACKAGE_ID" ]]; then
+              NORM=$(echo "$PACKAGE" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
+              PACKAGE_ID=$(jq -r --arg key "$NORM" '.packageAliases[$key] // empty' sfdx-project.json)
+            fi
+
+            LATEST="null"
+            if [[ -n "$PACKAGE_ID" ]]; then
+              SF_RESULT=$(sf package version list --packages "$PACKAGE_ID" --json 2>&1 || true)
+              LATEST=$(echo "$SF_RESULT" | \
+                jq -r '[(.result // [])[] | .] | sort_by(.MajorVersion, .MinorVersion, .PatchVersion, .BuildNumber) | last')
+            fi
+
             if [[ -z "$LATEST" || "$LATEST" == "null" ]]; then
               VERSION_NUMBER=$(jq -r --arg pkg "$PACKAGE" \
                 '.packageDirectories[] | select(.package == $pkg) | .versionNumber' \
