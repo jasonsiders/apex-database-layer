@@ -370,7 +370,12 @@ public class SoqlParser {
 				} else if (c == ')') {
 					parenDepth--;
 				} else if (parenDepth == 0 && str.substring(i).toUpperCase().startsWith(operator)) {
-					return i;
+					Integer afterPos = i + operator.length();
+					Boolean beforeOk = (i == 0 || str.substring(i - 1, i) == ' ');
+					Boolean afterOk = (afterPos >= str.length() || str.substring(afterPos, afterPos + 1) == ' ' || str.substring(afterPos, afterPos + 1) == '(');
+					if (beforeOk && afterOk) {
+						return i;
+					}
 				}
 			}
 		}

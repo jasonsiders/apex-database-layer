@@ -134,6 +134,14 @@ private class SoqlParserTest {
 	}
 
 	@IsTest
+	private static void testInOperatorOnFieldStartingWithIn() {
+		DatabaseLayer.useMocks();
+		String input = 'SELECT Id FROM Account WHERE Industry IN (\'Technology\', \'Finance\')';
+		Soql query = DatabaseLayer.newSoql(input);
+		Assert.areEqual(input, query?.toString());
+	}
+
+	@IsTest
 	private static void testNestedAndInsideOr() {
 		DatabaseLayer.useMocks();
 		String input = 'SELECT Id FROM Opportunity WHERE (Amount > 1000 AND IsClosed = false) OR (Amount > 5000 AND IsClosed = true)';
