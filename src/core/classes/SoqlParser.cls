@@ -141,7 +141,7 @@ public class SoqlParser {
 		if (startPos != null) {
 			String nextKeyword = this.getNextKeyword(ctx.positions, keyword);
 			Integer endPos = this.getClauseEndPos(ctx, nextKeyword);
-			return ctx?.queryString.substring(startPos + keyword?.length(), endPos)?.trim();
+			return ctx?.queryString?.substring(startPos + keyword?.length(), endPos)?.trim();
 		} else {
 			return '';
 		}
@@ -249,7 +249,7 @@ public class SoqlParser {
 			return false;
 		}
 		try {
-			String functionName = upper?.substring(0, parenPos).trim();
+			String functionName = upper?.substring(0, parenPos)?.trim();
 			return this.getFunctionByName(functionName) != null;
 		} catch (System.NoSuchElementException error) {
 			return false;
@@ -304,8 +304,8 @@ public class SoqlParser {
 		for (String op : OPERATORS?.precedence()) {
 			Integer opPos = OPERATORS?.findPosition(str, op);
 			if (opPos >= 0) {
-				String fieldName = str?.substring(0, opPos).trim();
-				String rawValue = str?.substring(opPos + op.length()).trim();
+				String fieldName = str?.substring(0, opPos)?.trim();
+				String rawValue = str?.substring(opPos + op.length())?.trim();
 				if (op == 'LIKE' || op == 'NOT LIKE') {
 					return this.parseLikeCondition(fieldName, op, rawValue);
 				}
@@ -500,7 +500,7 @@ public class SoqlParser {
 		List<String> tokens = this.splitTopLevelKeyword(selectStr, ',');
 		for (String item : tokens) {
 			String token = item.trim();
-			if (token?.startsWith('(')) {
+			if (token?.startsWith('(') == true) {
 				this.parseSubquery(builder, token);
 			} else if (this.isAggregation(token)) {
 				this.parseAggregation(builder, token);
@@ -517,7 +517,7 @@ public class SoqlParser {
 	 * @param subqueryStr The parenthesized subquery string, e.g. {@code (SELECT Id FROM Contacts)}
 	 */
 	private void parseSubquery(Soql.Builder builder, String subqueryStr) {
-		String body = subqueryStr?.substring(1, subqueryStr?.length() - 1).trim();
+		String body = subqueryStr?.substring(1, subqueryStr?.length() - 1)?.trim();
 		String bodyUpper = body?.toUpperCase();
 		Integer fromPos = bodyUpper?.indexOf(' FROM ');
 		if (fromPos < 0) {
