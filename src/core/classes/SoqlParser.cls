@@ -348,9 +348,6 @@ public class SoqlParser {
 				String fieldName = str.substring(0, opPos).trim();
 				String value = str.substring(opPos + op.length()).trim();
 				Soql.Operator operator = OPERATOR_MAP.get(op.toUpperCase());
-				if (operator == null) {
-					operator = Soql.EQUALS;
-				}
 				return new Soql.Condition(fieldName, operator, this.parseValue(value));
 			}
 		}

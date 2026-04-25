@@ -439,4 +439,28 @@ private class SoqlParserTest {
 		Assert.areEqual(input, output);
 	}
 
+	@IsTest
+	private static void testParseValueWithInvalidDateFormat() {
+		DatabaseLayer.useMocks();
+		SoqlParser parser = new SoqlParser();
+		Object result = parser.parseValue('20200615XX');
+		Assert.areEqual('20200615XX', (String) result);
+	}
+
+	@IsTest
+	private static void testParseValueWithNonNumericDateParts() {
+		DatabaseLayer.useMocks();
+		SoqlParser parser = new SoqlParser();
+		Object result = parser.parseValue('XXXX-06-15');
+		Assert.areEqual('XXXX-06-15', (String) result);
+	}
+
+	@IsTest
+	private static void testParseValueWithTooShortDateLiteral() {
+		DatabaseLayer.useMocks();
+		SoqlParser parser = new SoqlParser();
+		Object result = parser.parseValue('2020-06');
+		Assert.areEqual('2020-06', (String) result);
+	}
+
 }
