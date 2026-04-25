@@ -438,8 +438,8 @@ public class SoqlParser {
 		Integer closeParen = this.findMatchingParen(trimmed, 0);
 		Boolean isWrapped = trimmed.startsWith('(') && closeParen == trimmed.length() - 1;
 		if (isWrapped) {
-			String inner = trimmed.substring(1, trimmed.length() - 1).trim();
-			return this.parseExpr(inner);
+			String body = trimmed.substring(1, trimmed.length() - 1).trim();
+			return this.parseExpr(body);
 		}
 		return this.parseCondition(trimmed);
 	}
