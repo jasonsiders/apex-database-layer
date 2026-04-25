@@ -137,3 +137,22 @@ This is the default state of the application; there is no need to call it unless
 This static method is only visible in the `@IsTest` context.
 
 - `static Duplicates useRealDuplicates()`
+
+### `newSoql`
+
+Convenience method to create a new SOQL query from a raw query string. This method delegates to the current SOQL provider's `newQuery(String)` method, ensuring that the returned instance will be mock-aware when `DatabaseLayer.useMocks()` has been called.
+
+- `static Soql newSoql(String queryString)`
+
+**Parameters:**
+- `queryString` (String): The raw SOQL query string to parse
+
+**Return Value:**
+- Soql: A configured SOQL instance with parsed query state
+
+**Example Usage:**
+```apex
+// Parse an existing query string into a Soql object
+Soql query = DatabaseLayer.newSoql('SELECT Id, Name FROM Account WHERE Type != \'Internal\' LIMIT 200');
+List<Account> accounts = (List<Account>) query.query();
+```
