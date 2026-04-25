@@ -252,7 +252,11 @@ public class SoqlParser {
 					parenDepth++;
 				} else if (c == ')') {
 					parenDepth--;
-				} else if (parenDepth == 0 && strUpper.substring(i, i + operator.length()) == operator && this.isAtWordBoundary(str, i, operator)) {
+				} else if (
+					parenDepth == 0 &&
+					strUpper.substring(i, i + operator.length()) == operator &&
+					this.isAtWordBoundary(str, i, operator)
+				) {
 					return i;
 				}
 			}
@@ -855,7 +859,8 @@ public class SoqlParser {
 				return;
 			}
 			Boolean beforeOk = (i == 0 || this.upperQuery.substring(i - 1, i) == ' ');
-			Boolean afterOk = (endIndex >= this.upperQuery.length() || this.upperQuery.substring(endIndex, endIndex + 1) == ' ');
+			Boolean afterOk = (endIndex >= this.upperQuery.length() ||
+			this.upperQuery.substring(endIndex, endIndex + 1) == ' ');
 			if (beforeOk && afterOk && this.positions?.containsKey(keyword) == false) {
 				this.positions.put(keyword, i);
 			}
