@@ -31,17 +31,86 @@ public class SoqlParser {
 	private static final String WITH_KEYWORD { get { return 'WITH'; } }
 	// prettier-ignore
 	private static final Integer MAX_INT { get { return 2147483647; } }
-	// prettier-ignore
-	private static final List<String> ALL_KEYWORDS { get { return new List<String>{ SELECT_KEYWORD, FROM_KEYWORD, WHERE_KEYWORD, GROUP_BY_KEYWORD, HAVING_KEYWORD, ORDER_BY_KEYWORD, LIMIT_KEYWORD, OFFSET_KEYWORD, USING_SCOPE_KEYWORD, WITH_KEYWORD, FOR_KEYWORD, ALL_ROWS_KEYWORD }; } }
-	// prettier-ignore
-	private static final Map<String, Soql.Function> FUNCTION_MAP { get { return new Map<String, Soql.Function>{ 'AVG' => Soql.Function.AVG, 'CALENDAR_MONTH' => Soql.Function.CALENDAR_MONTH, 'CALENDAR_QUARTER' => Soql.Function.CALENDAR_QUARTER, 'CALENDAR_YEAR' => Soql.Function.CALENDAR_YEAR, 'COUNT' => Soql.Function.COUNT, 'COUNT_DISTINCT' => Soql.Function.COUNT_DISTINCT, 'DAY_IN_MONTH' => Soql.Function.DAY_IN_MONTH, 'DAY_IN_WEEK' => Soql.Function.DAY_IN_WEEK, 'DAY_IN_YEAR' => Soql.Function.DAY_IN_YEAR, 'DAY_ONLY' => Soql.Function.DAY_ONLY, 'FISCAL_MONTH' => Soql.Function.FISCAL_MONTH, 'FISCAL_QUARTER' => Soql.Function.FISCAL_QUARTER, 'FISCAL_YEAR' => Soql.Function.FISCAL_YEAR, 'FORMAT' => Soql.Function.FORMAT, 'HOUR_IN_DAY' => Soql.Function.HOUR_IN_DAY, 'MAX' => Soql.Function.MAX, 'MIN' => Soql.Function.MIN, 'SUM' => Soql.Function.SUM, 'WEEK_IN_MONTH' => Soql.Function.WEEK_IN_MONTH, 'WEEK_IN_YEAR' => Soql.Function.WEEK_IN_YEAR }; } }
+	private static final List<String> ALL_KEYWORDS {
+		get {
+			return new List<String>{
+				SELECT_KEYWORD,
+				FROM_KEYWORD,
+				WHERE_KEYWORD,
+				GROUP_BY_KEYWORD,
+				HAVING_KEYWORD,
+				ORDER_BY_KEYWORD,
+				LIMIT_KEYWORD,
+				OFFSET_KEYWORD,
+				USING_SCOPE_KEYWORD,
+				WITH_KEYWORD,
+				FOR_KEYWORD,
+				ALL_ROWS_KEYWORD
+			};
+		}
+	}
+	private static final Map<String, Soql.Function> FUNCTION_MAP {
+		get {
+			return new Map<String, Soql.Function>{
+				'AVG' => Soql.Function.AVG,
+				'CALENDAR_MONTH' => Soql.Function.CALENDAR_MONTH,
+				'CALENDAR_QUARTER' => Soql.Function.CALENDAR_QUARTER,
+				'CALENDAR_YEAR' => Soql.Function.CALENDAR_YEAR,
+				'COUNT' => Soql.Function.COUNT,
+				'COUNT_DISTINCT' => Soql.Function.COUNT_DISTINCT,
+				'DAY_IN_MONTH' => Soql.Function.DAY_IN_MONTH,
+				'DAY_IN_WEEK' => Soql.Function.DAY_IN_WEEK,
+				'DAY_IN_YEAR' => Soql.Function.DAY_IN_YEAR,
+				'DAY_ONLY' => Soql.Function.DAY_ONLY,
+				'FISCAL_MONTH' => Soql.Function.FISCAL_MONTH,
+				'FISCAL_QUARTER' => Soql.Function.FISCAL_QUARTER,
+				'FISCAL_YEAR' => Soql.Function.FISCAL_YEAR,
+				'FORMAT' => Soql.Function.FORMAT,
+				'HOUR_IN_DAY' => Soql.Function.HOUR_IN_DAY,
+				'MAX' => Soql.Function.MAX,
+				'MIN' => Soql.Function.MIN,
+				'SUM' => Soql.Function.SUM,
+				'WEEK_IN_MONTH' => Soql.Function.WEEK_IN_MONTH,
+				'WEEK_IN_YEAR' => Soql.Function.WEEK_IN_YEAR
+			};
+		}
+	}
 	// Operators ordered by precedence: multi-word and longer tokens first to prevent partial matches
-	// prettier-ignore
-	private static final Map<String, Soql.Operator> OPERATOR_MAP { get { return new Map<String, Soql.Operator>{ '!=' => Soql.NOT_EQUALS, '<' => Soql.LESS_THAN, '<=' => Soql.LESS_OR_EQUAL, '=' => Soql.EQUALS, '>' => Soql.GREATER_THAN, '>=' => Soql.GREATER_OR_EQUAL, 'IN' => Soql.IN_COLLECTION, 'LIKE' => Soql.LIKE_RAW, 'NOT IN' => Soql.NOT_IN_COLLECTION, 'NOT LIKE' => Soql.NOT_LIKE_RAW }; } }
-	// prettier-ignore
-	private static final List<String> OPERATOR_PRECEDENCE { get { return new List<String>{ 'NOT IN', 'NOT LIKE', '!=', '>=', '<=', '>', '<', '=', 'IN', 'LIKE' }; } }
-	// prettier-ignore
-	private static final Map<String, Soql.Scope> SCOPE_MAP { get { return new Map<String, Soql.Scope>{ 'DELEGATED' => Soql.Scope.DELEGATED, 'EVERYTHING' => Soql.Scope.EVERYTHING, 'MINE' => Soql.Scope.MINE, 'MINE_AND_MY_GROUPS' => Soql.Scope.MINE_AND_MY_GROUPS, 'MY_TEAM_TERRITORY' => Soql.Scope.MY_TEAM_TERRITORY, 'MY_TERRITORY' => Soql.Scope.MY_TERRITORY, 'TEAM' => Soql.Scope.TEAM }; } }
+	private static final Map<String, Soql.Operator> OPERATOR_MAP {
+		get {
+			return new Map<String, Soql.Operator>{
+				'!=' => Soql.NOT_EQUALS,
+				'<' => Soql.LESS_THAN,
+				'<=' => Soql.LESS_OR_EQUAL,
+				'=' => Soql.EQUALS,
+				'>' => Soql.GREATER_THAN,
+				'>=' => Soql.GREATER_OR_EQUAL,
+				'IN' => Soql.IN_COLLECTION,
+				'LIKE' => Soql.LIKE_RAW,
+				'NOT IN' => Soql.NOT_IN_COLLECTION,
+				'NOT LIKE' => Soql.NOT_LIKE_RAW
+			};
+		}
+	}
+	private static final List<String> OPERATOR_PRECEDENCE {
+		get {
+			return new List<String>{ 'NOT IN', 'NOT LIKE', '!=', '>=', '<=', '>', '<', '=', 'IN', 'LIKE' };
+		}
+	}
+	private static final Map<String, Soql.Scope> SCOPE_MAP {
+		get {
+			return new Map<String, Soql.Scope>{
+				'DELEGATED' => Soql.Scope.DELEGATED,
+				'EVERYTHING' => Soql.Scope.EVERYTHING,
+				'MINE' => Soql.Scope.MINE,
+				'MINE_AND_MY_GROUPS' => Soql.Scope.MINE_AND_MY_GROUPS,
+				'MY_TEAM_TERRITORY' => Soql.Scope.MY_TEAM_TERRITORY,
+				'MY_TERRITORY' => Soql.Scope.MY_TERRITORY,
+				'TEAM' => Soql.Scope.TEAM
+			};
+		}
+	}
+
 	/**
 	 * @description Parses a SOQL query string and applies the parsed clauses to the given builder.
 	 * @param builder The {@link Soql.Builder} to populate with parsed clauses
@@ -51,8 +120,6 @@ public class SoqlParser {
 		ParseContext ctx = new ParseContext(queryString, new Scanner(queryString).scan());
 		this.applyParsers(builder, ctx);
 	}
-
-	// ── PRIVATE ───────────────────────────────────────────────────────────
 
 	/**
 	 * @description Dispatches each SOQL clause to its corresponding parse method.
