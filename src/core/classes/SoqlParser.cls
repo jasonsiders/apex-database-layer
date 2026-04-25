@@ -5,32 +5,46 @@
  */
 @SuppressWarnings('PMD.CognitiveComplexity,PMD.CyclomaticComplexity,PMD.PropertyNamingConventions')
 public class SoqlParser {
+	/** @description SOQL keyword string for the ALL ROWS clause */
 	// prettier-ignore
 	private static final String ALL_ROWS_KEYWORD { get { return 'ALL ROWS'; } }
+	/** @description SOQL keyword string for the FOR clause */
 	// prettier-ignore
 	private static final String FOR_KEYWORD { get { return 'FOR'; } }
+	/** @description SOQL keyword string for the FROM clause */
 	// prettier-ignore
 	private static final String FROM_KEYWORD { get { return 'FROM'; } }
+	/** @description SOQL keyword string for the GROUP BY clause */
 	// prettier-ignore
 	private static final String GROUP_BY_KEYWORD { get { return 'GROUP BY'; } }
+	/** @description SOQL keyword string for the HAVING clause */
 	// prettier-ignore
 	private static final String HAVING_KEYWORD { get { return 'HAVING'; } }
+	/** @description SOQL keyword string for the LIMIT clause */
 	// prettier-ignore
 	private static final String LIMIT_KEYWORD { get { return 'LIMIT'; } }
+	/** @description SOQL keyword string for the OFFSET clause */
 	// prettier-ignore
 	private static final String OFFSET_KEYWORD { get { return 'OFFSET'; } }
+	/** @description SOQL keyword string for the ORDER BY clause */
 	// prettier-ignore
 	private static final String ORDER_BY_KEYWORD { get { return 'ORDER BY'; } }
+	/** @description SOQL keyword string for the SELECT clause */
 	// prettier-ignore
 	private static final String SELECT_KEYWORD { get { return 'SELECT'; } }
+	/** @description SOQL keyword string for the USING SCOPE clause */
 	// prettier-ignore
 	private static final String USING_SCOPE_KEYWORD { get { return 'USING SCOPE'; } }
+	/** @description SOQL keyword string for the WHERE clause */
 	// prettier-ignore
 	private static final String WHERE_KEYWORD { get { return 'WHERE'; } }
+	/** @description SOQL keyword string for the WITH clause */
 	// prettier-ignore
 	private static final String WITH_KEYWORD { get { return 'WITH'; } }
+	/** @description Maximum integer value, used as a sentinel for keyword position comparisons */
 	// prettier-ignore
 	private static final Integer MAX_INT { get { return 2147483647; } }
+	/** @description Ordered list of all recognized SOQL keywords used for clause position detection */
 	// prettier-ignore
 	private static final List<String> ALL_KEYWORDS {
 		get {
@@ -52,7 +66,9 @@ public class SoqlParser {
 		}
 		private set;
 	}
+	/** @description Shared OperatorLexer instance for resolving SOQL operator tokens */
 	private static final SoqlParser.OperatorLexer OPERATORS = new SoqlParser.OperatorLexer();
+	/** @description Shared ValueParser instance for converting raw SOQL value tokens to Apex types */
 	private static final SoqlParser.ValueParser VALUE_PARSER = new SoqlParser.ValueParser();
 
 	/**
@@ -63,7 +79,7 @@ public class SoqlParser {
 	public void parse(Soql.Builder builder, String str) {
 		try {
 			Map<String, Integer> positions = new Scanner(str)?.scan();
-			ParseContext ctx = new ParseContext(str, positions);
+			SoqlParser.ParseContext ctx = new SoqlParser.ParseContext(str, positions);
 			this.applyParsers(builder, ctx);
 		} catch (Exception error) {
 			String msg = 'Invalid query: ' + str + '\n' + error + '\n' + error?.getStackTraceString();
@@ -74,9 +90,9 @@ public class SoqlParser {
 	/**
 	 * @description Dispatches each SOQL clause to its corresponding parse method.
 	 * @param builder The {@link Soql.Builder} to populate
-	 * @param ctx The {@link ParseContext} containing the query string and keyword positions
+	 * @param ctx The {@link SoqlParser.ParseContext} containing the query string and keyword positions
 	 */
-	private void applyParsers(Soql.Builder builder, ParseContext ctx) {
+	private void applyParsers(Soql.Builder builder, SoqlParser.ParseContext ctx) {
 		this.parseSelect(builder, this.extractClause(ctx, SELECT_KEYWORD));
 		this.parseFrom(builder, this.extractClause(ctx, FROM_KEYWORD));
 		this.parseWhere(builder, this.extractClause(ctx, WHERE_KEYWORD));
@@ -115,21 +131,34 @@ public class SoqlParser {
 	/**
 	 * @description Extracts the text of a clause by slicing between the start of {@code keyword}
 	 * and the start of the next keyword, trimming the keyword name and surrounding whitespace.
-	 * @param ctx The {@link ParseContext} holding the query and positions
+	 * @param ctx The {@link SoqlParser.ParseContext} holding the query and positions
 	 * @param keyword The keyword whose clause content to extract
 	 * @return The trimmed clause text, or an empty string if the keyword is absent
 	 */
-	private String extractClause(ParseContext ctx, String keyword) {
+	private String extractClause(SoqlParser.ParseContext ctx, String keyword) {
 		Integer startPos = ctx.positions?.get(keyword);
 		if (startPos != null) {
 			String nextKeyword = this.getNextKeyword(ctx.positions, keyword);
-			Integer endPos = nextKeyword == null
-				? ctx.queryString.length()
-				: (ctx.positions.get(nextKeyword) ?? ctx.queryString.length());
-			return ctx.queryString.substring(startPos + keyword.length(), endPos).trim();
+			Integer endPos = this.getClauseEndPos(ctx, nextKeyword);
+			return ctx?.queryString.substring(startPos + keyword?.length(), endPos)?.trim();
 		} else {
 			return '';
 		}
+	}
+
+	/**
+	 * @description Returns the end position of a clause: the start of {@code nextKeyword} if present,
+	 * or the end of the query string if there is no following keyword.
+	 * @param ctx The {@link SoqlParser.ParseContext} containing query and positions
+	 * @param nextKeyword The keyword immediately following the current clause, or null if none
+	 * @return The character index at which the current clause ends
+	 */
+	private Integer getClauseEndPos(SoqlParser.ParseContext ctx, String nextKeyword) {
+		if (nextKeyword == null) {
+			return ctx?.queryString?.length();
+		}
+		Integer nextPos = ctx?.positions?.get(nextKeyword);
+		return nextPos != null ? nextPos : ctx?.queryString?.length();
 	}
 
 	/**
@@ -258,7 +287,7 @@ public class SoqlParser {
 		Soql.ConditionalLogic logic = new Soql.ConditionalLogic()?.setLogicType(Soql.LogicType.ALL_CONDITIONS);
 		for (String part : andParts) {
 			Soql.Criteria factor = this.parseFactor(part);
-			logic.addCondition(factor);
+			logic?.addCondition(factor);
 		}
 		return logic;
 	}
@@ -582,6 +611,11 @@ public class SoqlParser {
 	 * @description Converts raw SOQL value tokens into their corresponding Apex types.
 	 */
 	private class ValueParser {
+		/**
+		 * @description Converts a raw SOQL token into its corresponding Apex type
+		 * @param token The raw token string from the query
+		 * @return The parsed Apex value
+		 */
 		private Object parse(String token) {
 			String trimmed = token?.trim();
 			String upper = trimmed?.toUpperCase();
@@ -606,16 +640,35 @@ public class SoqlParser {
 			}
 		}
 
+		/**
+		 * @description Returns true if {@code str} matches the YYYY-MM-DD date format
+		 * @param str The uppercase string to test
+		 * @return True if the string represents a date
+		 */
 		private Boolean isDate(String str) {
 			return str?.length() == 10 && this.isValidDatePrefix(str);
 		}
 
+		/**
+		 * @description Returns true if {@code str} matches the YYYY-MM-DDTHH:mm:ssZ datetime format
+		 * @param str The uppercase string to test
+		 * @return True if the string represents a datetime
+		 */
 		private Boolean isDateTime(String str) {
 			return str?.length() >= 10 && str?.contains('T') == true && this.isValidDatePrefix(str?.substring(0, 10));
 		}
 
+		/**
+		 * @description Validates that the first ten characters of a string form a plausible YYYY-MM-DD date
+		 * @param datePrefix The ten-character substring to validate
+		 * @return True if the prefix has valid separators and numeric month/day values
+		 */
 		private Boolean isValidDatePrefix(String datePrefix) {
-			if (datePrefix?.length() != 10 || datePrefix?.substring(4, 5) != '-' || datePrefix?.substring(7, 8) != '-') {
+			if (
+				datePrefix?.length() != 10 ||
+				datePrefix?.substring(4, 5) != '-' ||
+				datePrefix?.substring(7, 8) != '-'
+			) {
 				return false;
 			}
 			try {
@@ -627,6 +680,11 @@ public class SoqlParser {
 			}
 		}
 
+		/**
+		 * @description Parses a date string into an Apex {@link Date}, returning the raw string if parsing fails
+		 * @param trimmed The date string to parse
+		 * @return A {@link Date} or the original string on failure
+		 */
 		private Object parseDate(String trimmed) {
 			try {
 				return Date.valueOf(trimmed);
@@ -635,6 +693,11 @@ public class SoqlParser {
 			}
 		}
 
+		/**
+		 * @description Parses a datetime string into an Apex {@link DateTime}, returning the raw string if parsing fails
+		 * @param trimmed The datetime string to parse
+		 * @return A {@link DateTime} or the original string on failure
+		 */
 		private Object parseDateTime(String trimmed) {
 			try {
 				return DateTime.valueOfGmt(trimmed);
@@ -643,6 +706,12 @@ public class SoqlParser {
 			}
 		}
 
+		/**
+		 * @description Parses a parenthesized list token into a {@link List} of string values,
+		 * or returns the raw token if the list body contains a subquery
+		 * @param trimmed The parenthesized list string, e.g. {@code ('a', 'b')}
+		 * @return A {@link List<String>} of values, or the original token for subqueries
+		 */
 		private Object parseList(String trimmed) {
 			String body = trimmed.substring(1, trimmed.length() - 1);
 			if (body.toUpperCase().contains('SELECT')) {
@@ -657,7 +726,11 @@ public class SoqlParser {
 			return result;
 		}
 
-		// String-aware comma split for list bodies (no paren tracking needed for IN list items)
+		/**
+		 * @description Splits a comma-delimited list body on top-level commas, respecting string literals
+		 * @param str The list body string to split (without surrounding parentheses)
+		 * @return A list of raw item strings
+		 */
 		private List<String> splitList(String str) {
 			List<String> parts = new List<String>();
 			Boolean inString = false;
@@ -675,6 +748,11 @@ public class SoqlParser {
 			return parts;
 		}
 
+		/**
+		 * @description Parses a numeric string as an Integer, then as a Decimal, falling back to the raw string
+		 * @param trimmed The numeric string to parse
+		 * @return An {@link Integer}, {@link Decimal}, or the original string
+		 */
 		private Object parseNumeric(String trimmed) {
 			try {
 				return Integer.valueOf(trimmed);
@@ -687,6 +765,11 @@ public class SoqlParser {
 			}
 		}
 
+		/**
+		 * @description Unquotes and unescapes a single-quoted SOQL string literal
+		 * @param trimmed The quoted string literal, including surrounding single quotes
+		 * @return The unquoted string value with escaped single quotes resolved
+		 */
 		private Object parseStringLiteral(String trimmed) {
 			return trimmed.substring(1, trimmed.length() - 1).replace('\\\'', '\'');
 		}
@@ -697,11 +780,20 @@ public class SoqlParser {
 	 * ordered by precedence (multi-word and longer tokens first to prevent partial matches).
 	 */
 	private class OperatorLexer {
+		/**
+		 * @description Returns SOQL operator symbols ordered by matching precedence, longest first
+		 * @return An ordered list of operator symbol strings
+		 */
 		private List<String> precedence() {
 			// prettier-ignore
 			return new List<String>{ 'NOT IN', 'NOT LIKE', '!=', '>=', '<=', '>', '<', '=', 'IN', 'LIKE' };
 		}
 
+		/**
+		 * @description Resolves an operator symbol string to its {@link Soql.Operator} enum value
+		 * @param symbol The operator symbol (e.g. {@code !=}, {@code IN}, {@code LIKE})
+		 * @return The corresponding {@link Soql.Operator}, or null if unrecognized
+		 */
 		private Soql.Operator resolve(String symbol) {
 			// prettier-ignore
 			return new Map<String, Soql.Operator>{
@@ -718,6 +810,13 @@ public class SoqlParser {
 			}.get(symbol);
 		}
 
+		/**
+		 * @description Finds the character index of the first top-level occurrence of {@code operator}
+		 * in {@code str}, skipping occurrences inside parentheses or string literals
+		 * @param str The expression string to search
+		 * @param operator The operator symbol to find
+		 * @return The index of the operator, or -1 if not found
+		 */
 		private Integer findPosition(String str, String operator) {
 			String strUpper = str.toUpperCase();
 			Integer parenDepth = 0;
@@ -727,15 +826,8 @@ public class SoqlParser {
 				if (character == '\'' && (i == 0 || str.substring(i - 1, i) != '\\')) {
 					inString = (inString == false);
 				} else if (inString == false) {
-					if (character == '(') {
-						parenDepth++;
-					} else if (character == ')') {
-						parenDepth--;
-					} else if (
-						parenDepth == 0 &&
-						strUpper.substring(i, i + operator.length()) == operator &&
-						this.isAtWordBoundary(str, i, operator)
-					) {
+					parenDepth += character == '(' ? 1 : character == ')' ? -1 : 0;
+					if (parenDepth == 0 && this.isOperatorAt(strUpper, str, i, operator)) {
 						return i;
 					}
 				}
@@ -743,6 +835,28 @@ public class SoqlParser {
 			return -1;
 		}
 
+		/**
+		 * @description Returns true if {@code operator} appears at position {@code i} in {@code strUpper}
+		 * and is at a valid word boundary
+		 * @param strUpper The uppercase version of the expression string
+		 * @param str The original expression string (used for boundary check)
+		 * @param i The position to test
+		 * @param operator The operator symbol to match
+		 * @return True if the operator matches at this position with valid word boundaries
+		 */
+		private Boolean isOperatorAt(String strUpper, String str, Integer i, String operator) {
+			return strUpper.substring(i, i + operator.length()) == operator
+				&& this.isAtWordBoundary(str, i, operator);
+		}
+
+		/**
+		 * @description Returns true if the substring at position {@code i} is surrounded by spaces
+		 * or string boundaries, ensuring it is a standalone operator token
+		 * @param str The expression string
+		 * @param i The start index of the potential operator match
+		 * @param operator The operator symbol being tested
+		 * @return True if the match is at a word boundary
+		 */
 		private Boolean isAtWordBoundary(String str, Integer i, String operator) {
 			Integer afterPos = i + operator.length();
 			Boolean beforeOk = (i == 0 || str.substring(i - 1, i) == ' ');
@@ -762,7 +876,7 @@ public class SoqlParser {
 		private final Map<String, Integer> positions;
 
 		/**
-		 * @description Constructs a ParseContext with the given query and positions.
+		 * @description Constructs a SoqlParser.ParseContext with the given query and positions.
 		 * @param queryString The raw SOQL query string
 		 * @param positions The keyword position map produced by {@link Scanner#scan}
 		 */
@@ -777,10 +891,15 @@ public class SoqlParser {
 	 * and records the starting position of each top-level keyword.
 	 */
 	private class Scanner {
+		/** @description Map of recognized SOQL keyword to its starting character index in the query */
 		private final Map<String, Integer> positions;
+		/** @description The raw query string being scanned */
 		private final String rawQuery;
+		/** @description Uppercase version of the query string, used for case-insensitive keyword matching */
 		private final String upperQuery;
+		/** @description Tracks whether the scanner is currently inside a string literal */
 		private Boolean inString;
+		/** @description Tracks the current parenthesis nesting depth */
 		private Integer parenDepth;
 
 		/**

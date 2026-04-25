@@ -534,6 +534,7 @@ private class SoqlParserTest {
 		Assert.areEqual('XXXX-06-15', (String) result, 'Expected raw string for non-numeric year');
 	}
 
+	@SuppressWarnings('PMD.EmptyCatchBlock')
 	@IsTest
 	private static void shouldThrowQueryExceptionOnParseFailure() {
 		DatabaseLayer.useMocks();
@@ -543,9 +544,9 @@ private class SoqlParserTest {
 		Test.startTest();
 		try {
 			parser.parse(soql, null);
-			Assert.fail('Expected a QueryException');
-		} catch (System.QueryException e) {
-			// expected
+			Assert.fail('Expected a System.QueryException');
+		} catch (System.QueryException error) {
+			// As expected...
 		}
 		Test.stopTest();
 	}
