@@ -3,7 +3,7 @@
 		{
 			"path": "src/core",
 			"default": true,
-			"package": "Apex Database Layer",
+			"package": "apex-database-layer",
 			"versionName": "v4.0.0",
 			"versionNumber": "4.0.0.NEXT"
 		},
