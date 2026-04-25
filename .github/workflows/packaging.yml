@@ -111,14 +111,28 @@ jobs:
           INPUT_VERSION: ${{ inputs.version }}
         shell: bash
         run: |
-          if [[ -z "$INPUT_VERSION" ]]; then
-            VERSION_NUMBER=$(jq -r --arg pkg "$PACKAGE" \
-              '.packageDirectories[] | select(.package == $pkg) | .versionNumber' \
-              sfdx-project.json)
-            echo "Using the version number defined in sfdx-project.json: $VERSION_NUMBER"
-          else
+          if [[ -n "$INPUT_VERSION" ]]; then
             VERSION_NUMBER="${INPUT_VERSION}.NEXT"
             echo "Using specified version number: $VERSION_NUMBER"
+          else
+            LATEST=$(sf package version list --package "$PACKAGE" --json | \
+              jq -r '[.result[] | select(.CreatedStatus == "Success")] | sort_by(.MajorVersion, .MinorVersion, .PatchVersion, .BuildNumber) | last')
+            if [[ -z "$LATEST" || "$LATEST" == "null" ]]; then
+              VERSION_NUMBER=$(jq -r --arg pkg "$PACKAGE" \
+                '.packageDirectories[] | select(.package == $pkg) | .versionNumber' \
+                sfdx-project.json)
+              echo "No existing versions found; using sfdx-project.json: $VERSION_NUMBER"
+            else
+              MAJOR=$(echo "$LATEST" | jq -r '.MajorVersion')
+              MINOR=$(echo "$LATEST" | jq -r '.MinorVersion')
+              PATCH=$(echo "$LATEST" | jq -r '.PatchVersion')
+              IS_RELEASED=$(echo "$LATEST" | jq -r '.IsReleased')
+              if [[ "$IS_RELEASED" == "true" ]]; then
+                PATCH=$((PATCH + 1))
+              fi
+              VERSION_NUMBER="${MAJOR}.${MINOR}.${PATCH}.NEXT"
+              echo "Computed version from Salesforce: $VERSION_NUMBER (IsReleased=${IS_RELEASED})"
+            fi
           fi
           VERSION_NAME="v${VERSION_NUMBER%.NEXT}"
           echo "version-number=$VERSION_NUMBER" >> "$GITHUB_OUTPUT"
