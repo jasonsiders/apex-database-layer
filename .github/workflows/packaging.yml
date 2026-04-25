@@ -115,8 +115,9 @@ jobs:
             VERSION_NUMBER="${INPUT_VERSION}.NEXT"
             echo "Using specified version number: $VERSION_NUMBER"
           else
-            LATEST=$(sf package version list --package "$PACKAGE" --json | \
-              jq -r '[.result[] | select(.CreatedStatus == "Success")] | sort_by(.MajorVersion, .MinorVersion, .PatchVersion, .BuildNumber) | last')
+            SF_RESULT=$(sf package version list --packages "$PACKAGE" --json 2>&1 || true)
+            LATEST=$(echo "$SF_RESULT" | \
+              jq -r '[(.result // [])[] | select(.CreatedStatus == "Success")] | sort_by(.MajorVersion, .MinorVersion, .PatchVersion, .BuildNumber) | last')
             if [[ -z "$LATEST" || "$LATEST" == "null" ]]; then
               VERSION_NUMBER=$(jq -r --arg pkg "$PACKAGE" \
                 '.packageDirectories[] | select(.package == $pkg) | .versionNumber' \
