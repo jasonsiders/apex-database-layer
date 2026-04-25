@@ -18,12 +18,12 @@ private class SoqlParserTest {
 	private static void shouldPreserveStateAfterMutation() {
 		DatabaseLayer.useMocks();
 		String queryStr = 'SELECT Id, AccountId FROM Opportunity WHERE IsClosed = true ORDER BY CloseDate DESC LIMIT 1';
-		Soql soql = DatabaseLayer.newSoql(queryStr);
-		soql.addSelect('CloseDate');
-		soql.addWhere('Amount', Soql.GREATER_THAN, 100000);
+		Soql query = DatabaseLayer.newSoql(queryStr);
+		query.addSelect('CloseDate');
+		query.addWhere('Amount', Soql.GREATER_THAN, 100000);
 
 		Test.startTest();
-		String result = soql?.toString();
+		String result = query?.toString();
 		Test.stopTest();
 
 		String expected = 'SELECT Id, AccountId, CloseDate FROM Opportunity WHERE IsClosed = true AND Amount > 100000 ORDER BY CloseDate DESC LIMIT 1';

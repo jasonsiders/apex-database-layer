@@ -206,13 +206,13 @@ public class SoqlParser {
 	 * @param subqueryStr The parenthesized subquery string, e.g. {@code (SELECT Id FROM Contacts)}
 	 */
 	public void parseSubquery(Soql.Builder builder, String subqueryStr) {
-		String inner = subqueryStr.substring(1, subqueryStr.length() - 1).trim();
-		Integer fromPos = inner.toUpperCase().indexOf(' FROM ');
+		String body = subqueryStr.substring(1, subqueryStr.length() - 1).trim();
+		Integer fromPos = body.toUpperCase().indexOf(' FROM ');
 		if (fromPos < 0) {
 			return;
 		}
-		String selectPart = inner.substring(0, fromPos).trim();
-		String fromPart = inner.substring(fromPos + 6).trim();
+		String selectPart = body.substring(0, fromPos).trim();
+		String fromPart = body.substring(fromPos + 6).trim();
 		if (selectPart.toUpperCase().startsWith('SELECT ')) {
 			selectPart = selectPart.substring(7).trim();
 		}
@@ -244,17 +244,17 @@ public class SoqlParser {
 	private void applyParsers(Soql.Builder builder, String queryString, Map<String, Integer> positions) {
 		this.parseSelect(builder, this.extractClause(queryString, positions, SELECT_KEYWORD, FROM_KEYWORD));
 		this.parseFrom(builder, this.extractClause(queryString, positions, FROM_KEYWORD, this.getNextKeyword(positions, FROM_KEYWORD)));
-		String where = this.extractClause(queryString, positions, WHERE_KEYWORD, this.getNextKeyword(positions, WHERE_KEYWORD));
-		if (String.isNotBlank(where)) {
-			this.parseWhere(builder, where);
+		String whereClause = this.extractClause(queryString, positions, WHERE_KEYWORD, this.getNextKeyword(positions, WHERE_KEYWORD));
+		if (String.isNotBlank(whereClause)) {
+			this.parseWhere(builder, whereClause);
 		}
 		String groupBy = this.extractClause(queryString, positions, GROUP_BY_KEYWORD, this.getNextKeyword(positions, GROUP_BY_KEYWORD));
 		if (String.isNotBlank(groupBy)) {
 			this.parseGroupBy(builder, groupBy);
 		}
-		String having = this.extractClause(queryString, positions, HAVING_KEYWORD, this.getNextKeyword(positions, HAVING_KEYWORD));
-		if (String.isNotBlank(having)) {
-			this.parseHaving(builder, having);
+		String havingClause = this.extractClause(queryString, positions, HAVING_KEYWORD, this.getNextKeyword(positions, HAVING_KEYWORD));
+		if (String.isNotBlank(havingClause)) {
+			this.parseHaving(builder, havingClause);
 		}
 		String orderBy = this.extractClause(queryString, positions, ORDER_BY_KEYWORD, this.getNextKeyword(positions, ORDER_BY_KEYWORD));
 		if (String.isNotBlank(orderBy)) {
@@ -439,12 +439,12 @@ public class SoqlParser {
 	}
 
 	private Object parseList(String trimmed) {
-		String inner = trimmed.substring(1, trimmed.length() - 1);
-		if (inner.toUpperCase().contains('SELECT')) {
+		String body = trimmed.substring(1, trimmed.length() - 1);
+		if (body.toUpperCase().contains('SELECT')) {
 			return trimmed;
 		}
 		List<String> result = new List<String>();
-		for (String item : this.splitTopLevelKeyword(inner, ',')) {
+		for (String item : this.splitTopLevelKeyword(body, ',')) {
 			String val = item.trim();
 			result.add((val.startsWith('\'') && val.endsWith('\'')) ? val.substring(1, val.length() - 1) : val);
 		}
