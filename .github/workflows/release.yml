@@ -51,28 +51,15 @@ jobs:
           while IFS= read -r entry; do
             PKG_ALIAS=$(echo "$entry" | jq -r '.package')
             PKG_PATH=$(echo "$entry" | jq -r '.path')
-            CURR_VERSION=$(echo "$entry" | jq -r '.versionNumber' | sed 's/\.NEXT$//')
 
             # Include package if: workflow_dispatch (run all), or files changed under its path
             if [[ "${{ github.event_name }}" == "workflow_dispatch" ]] || \
                git diff --name-only HEAD~1 HEAD | grep -q "^${PKG_PATH}/"; then
 
-              # On push: auto-increment patch if version is unchanged from previous commit
-              if [[ "${{ github.event_name }}" == "push" ]]; then
-                PREV_VERSION=$(git show HEAD~1:sfdx-project.json | \
-                  jq -r --arg path "$PKG_PATH" \
-                  '.packageDirectories[] | select(.path == $path) | .versionNumber' | \
-                  sed 's/\.NEXT$//')
-                if [[ "$CURR_VERSION" == "$PREV_VERSION" ]]; then
-                  IFS='.' read -ra P <<< "$CURR_VERSION"
-                  CURR_VERSION="${P[0]}.${P[1]}.$((P[2] + 1))"
-                  echo "Auto-incremented $PKG_ALIAS version to $CURR_VERSION"
-                fi
-              fi
-
               PACKAGES=$(echo "$PACKAGES" | jq \
-                --arg pkg "$PKG_ALIAS" --arg ver "$CURR_VERSION" \
-                '. + [{"package": $pkg, "version": $ver}]')
+                --arg pkg "$PKG_ALIAS" \
+                '. + [{"package": $pkg}]')
+              echo "Detected changes in $PKG_ALIAS"
             fi
           done < <(jq -c '.packageDirectories[] | select(.package != null)' sfdx-project.json)
 
@@ -97,7 +84,6 @@ jobs:
     secrets: inherit
     with:
       package: ${{ matrix.pkg.package }}
-      version: ${{ matrix.pkg.version }}
       promote: ${{ inputs.promote || false }}
       create-release: ${{ inputs.create-release == true || github.event_name == 'push' }}
       skip-validation: ${{ inputs.skip-validation || false }}
