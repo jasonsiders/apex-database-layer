@@ -77,7 +77,8 @@ public class SoqlParser {
 	 * @param queryString The SOQL query string to parse
 	 */
 	public void parse(Soql.Builder builder, String queryString) {
-		ParseContext ctx = new ParseContext(queryString, new Scanner(queryString).scan());
+		Map<String, Integer> positions = new Scanner(queryString).scan();
+		ParseContext ctx = new ParseContext(queryString, positions);
 		this.applyParsers(builder, ctx);
 	}
 
@@ -113,14 +114,11 @@ public class SoqlParser {
 		String upper = token.toUpperCase();
 		Integer openParen = upper.indexOf('(');
 		Integer closeParen = this.findMatchingParen(token, openParen);
-		Soql.Aggregation agg = new Soql.Aggregation(
-			Soql.Function.valueOf(upper.substring(0, openParen).trim()),
-			token.substring(openParen + 1, closeParen).trim()
-		);
-		String alias = token.substring(closeParen + 1).trim();
-		if (String.isNotBlank(alias)) {
-			agg.withAlias(alias);
-		}
+		Soql.Function func = Soql.Function.valueOf(upper.substring(0, openParen)?.trim());
+		String field = token?.substring(openParen + 1, closeParen)?.trim();
+		Soql.Aggregation agg = new Soql.Aggregation(func, field);
+		String alias = token?.substring(closeParen + 1)?.trim();
+		agg?.withAlias(alias);
 		return agg;
 	}
 
@@ -340,7 +338,8 @@ public class SoqlParser {
 		Soql.ConditionalLogic logic = new Soql.ConditionalLogic();
 		logic.setLogicType(Soql.LogicType.ALL_CONDITIONS);
 		for (String part : andParts) {
-			logic.addCondition(this.parseFactor(part));
+			Soql.Criteria factor = this.parseFactor(part);
+			logic.addCondition(factor);
 		}
 		return logic;
 	}
@@ -357,8 +356,10 @@ public class SoqlParser {
 			Integer opPos = this.findOperatorPosition(str, op);
 			if (opPos >= 0) {
 				String fieldName = str.substring(0, opPos).trim();
-				String value = str.substring(opPos + op.length()).trim();
-				return new Soql.Condition(fieldName, OPERATOR_MAP.get(op), this.parseValue(value));
+				String rawValue = str.substring(opPos + op.length()).trim();
+				Soql.Operator operator = OPERATOR_MAP.get(op);
+				Object value = this.parseValue(rawValue);
+				return new Soql.Condition(fieldName, operator, value);
 			}
 		}
 		return new Soql.Condition(str, Soql.EQUALS, null);
@@ -420,7 +421,8 @@ public class SoqlParser {
 		Soql.ConditionalLogic logic = new Soql.ConditionalLogic();
 		logic.setLogicType(Soql.LogicType.ANY_CONDITIONS);
 		for (String part : orParts) {
-			logic.addCondition(this.parseAndExpr(part));
+			Soql.Criteria andExpr = this.parseAndExpr(part);
+			logic.addCondition(andExpr);
 		}
 		return logic;
 	}
@@ -433,8 +435,11 @@ public class SoqlParser {
 	 */
 	private Soql.Criteria parseFactor(String str) {
 		String trimmed = str.trim();
-		if (trimmed.startsWith('(') && this.findMatchingParen(trimmed, 0) == trimmed.length() - 1) {
-			return this.parseExpr(trimmed.substring(1, trimmed.length() - 1).trim());
+		Integer closeParen = this.findMatchingParen(trimmed, 0);
+		Boolean isWrapped = trimmed.startsWith('(') && closeParen == trimmed.length() - 1;
+		if (isWrapped) {
+			String inner = trimmed.substring(1, trimmed.length() - 1).trim();
+			return this.parseExpr(inner);
 		}
 		return this.parseCondition(trimmed);
 	}
@@ -513,13 +518,16 @@ public class SoqlParser {
 	 */
 	private Object parseList(String trimmed) {
 		String body = trimmed.substring(1, trimmed.length() - 1);
-		if (body.toUpperCase().contains('SELECT')) {
+		String bodyUpper = body.toUpperCase();
+		if (bodyUpper.contains('SELECT')) {
 			return trimmed;
 		}
 		List<String> result = new List<String>();
-		for (String item : this.splitTopLevelKeyword(body, ',')) {
+		List<String> items = this.splitTopLevelKeyword(body, ',');
+		for (String item : items) {
 			String val = item.trim();
-			result.add((val.startsWith('\'') && val.endsWith('\'')) ? val.substring(1, val.length() - 1) : val);
+			String unquoted = val.substring(1, val.length() - 1);
+			result.add((val.startsWith('\'') && val.endsWith('\'')) ? unquoted : val);
 		}
 		return result;
 	}
@@ -576,7 +584,8 @@ public class SoqlParser {
 	 */
 	private void parseSelect(Soql.Builder builder, String selectStr) {
 		builder.deselectAll();
-		for (String item : this.splitTopLevelKeyword(selectStr, ',')) {
+		List<String> tokens = this.splitTopLevelKeyword(selectStr, ',');
+		for (String item : tokens) {
 			String token = item.trim();
 			if (token.startsWith('(')) {
 				this.parseSubquery(builder, token);
@@ -605,7 +614,8 @@ public class SoqlParser {
 	 */
 	private void parseSubquery(Soql.Builder builder, String subqueryStr) {
 		String body = subqueryStr.substring(1, subqueryStr.length() - 1).trim();
-		Integer fromPos = body.toUpperCase().indexOf(' FROM ');
+		String bodyUpper = body.toUpperCase();
+		Integer fromPos = bodyUpper.indexOf(' FROM ');
 		if (fromPos < 0) {
 			return;
 		}
@@ -614,9 +624,12 @@ public class SoqlParser {
 		if (selectPart.toUpperCase().startsWith('SELECT ')) {
 			selectPart = selectPart.substring(7).trim();
 		}
-		Soql.InnerQuery innerQuery = new Soql.InnerQuery(fromPart.split(' ')[0]);
-		new SoqlParser().parse(innerQuery, 'SELECT ' + selectPart + ' FROM ' + fromPart);
-		builder.addSelect((Soql.Selectable) innerQuery);
+		String objectName = fromPart.split(' ')[0];
+		Soql.InnerQuery innerQuery = new Soql.InnerQuery(objectName);
+		SoqlParser subParser = new SoqlParser();
+		subParser.parse(innerQuery, 'SELECT ' + selectPart + ' FROM ' + fromPart);
+		Soql.Selectable selectable = (Soql.Selectable) innerQuery;
+		builder.addSelect(selectable);
 	}
 
 	/**
@@ -625,14 +638,9 @@ public class SoqlParser {
 	 * @param usingScopeStr The scope name string
 	 */
 	private void parseUsingScope(Soql.Builder builder, String usingScopeStr) {
-		if (String.isBlank(usingScopeStr)) {
-			return;
-		}
-		try {
-			builder.setScope(Soql.Scope.valueOf(usingScopeStr?.toUpperCase()));
-		} catch (Exception e) {
-			// Unrecognized scope — ignore
-		}
+		String value = usingScopeStr?.toUpperCase();
+		Soql.Scope scope = Soql.Scope.valueOf(value);
+		builder?.setScope(scope);
 	}
 
 	/**
@@ -672,10 +680,10 @@ public class SoqlParser {
 	 * @param whereStr The WHERE clause content
 	 */
 	private void parseWhere(Soql.Builder builder, String whereStr) {
-		if (String.isBlank(whereStr)) {
-			return;
+		if (String.isBlank(whereStr) == false) {
+			Soql.ConditionalLogic logic = this.parseCriteriaLogic(whereStr);
+			builder?.setWhereCriteria(logic);
 		}
-		builder.setWhereCriteria(this.parseCriteriaLogic(whereStr));
 	}
 
 	/**
@@ -684,10 +692,7 @@ public class SoqlParser {
 	 * @param withStr The WITH clause value
 	 */
 	private void parseWith(Soql.Builder builder, String withStr) {
-		if (String.isBlank(withStr)) {
-			return;
-		}
-		builder.setWithClause(withStr);
+		builder?.setWithClause(withStr);
 	}
 
 	/**
@@ -727,24 +732,23 @@ public class SoqlParser {
 		return parts;
 	}
 
-	// ── INNER CLASSES ─────────────────────────────────────────────────────
-
+	// **** INNER **** //
 	/**
 	 * @description Holds a parsed query's raw string and keyword position map, used to pass
 	 * context through the parse pipeline without excessive parameter lists.
 	 */
 	private class ParseContext {
 		/** @description The raw query string being parsed. */
-		final String queryString;
+		private final String queryString;
 		/** @description Map of keyword name to its starting character position in the query. */
-		final Map<String, Integer> positions;
+		private final Map<String, Integer> positions;
 
 		/**
 		 * @description Constructs a ParseContext with the given query and positions.
 		 * @param queryString The raw SOQL query string
 		 * @param positions The keyword position map produced by {@link Scanner#scan}
 		 */
-		ParseContext(String queryString, Map<String, Integer> positions) {
+		private ParseContext(String queryString, Map<String, Integer> positions) {
 			this.queryString = queryString;
 			this.positions = positions;
 		}
@@ -755,17 +759,20 @@ public class SoqlParser {
 	 * and records the starting position of each top-level keyword.
 	 */
 	private class Scanner {
+		private final Map<String, Integer> positions;
 		private final String rawQuery;
 		private final String upperQuery;
-		private Integer parenDepth = 0;
-		private Boolean inString = false;
-		private final Map<String, Integer> positions = new Map<String, Integer>();
+		private Boolean inString;
+		private Integer parenDepth;
 
 		/**
 		 * @description Constructs a Scanner for the given query string.
 		 * @param queryString The SOQL query string to scan
 		 */
 		private Scanner(String queryString) {
+			this.inString = false;
+			this.parenDepth = 0;
+			this.positions = new Map<String, Integer>();
 			this.rawQuery = queryString;
 			this.upperQuery = queryString?.toUpperCase() ?? '';
 		}
@@ -779,7 +786,7 @@ public class SoqlParser {
 			for (Integer i = 0; i < this.upperQuery.length(); i++) {
 				this.processChar(i);
 			}
-			this.positions.put(SELECT_KEYWORD, 0);
+			this.positions?.put(SELECT_KEYWORD, 0);
 			return this.positions;
 		}
 
@@ -816,10 +823,9 @@ public class SoqlParser {
 		 */
 		private void tryRecordAllKeywords(Integer i) {
 			for (String keyword : ALL_KEYWORDS) {
-				if (keyword == SELECT_KEYWORD) {
-					continue;
+				if (keyword != SELECT_KEYWORD) {
+					this.tryRecordKeyword(keyword, i);
 				}
-				this.tryRecordKeyword(keyword, i);
 			}
 		}
 
