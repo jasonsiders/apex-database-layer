@@ -78,7 +78,7 @@ public class SoqlParser {
 	 */
 	public void parse(Soql.Builder builder, String str) {
 		try {
-			Map<String, Integer> positions = new Scanner(str)?.scan();
+			Map<String, Integer> positions = new SoqlParser.Scanner(str)?.scan();
 			SoqlParser.ParseContext ctx = new SoqlParser.ParseContext(str, positions);
 			this.applyParsers(builder, ctx);
 		} catch (Exception error) {
@@ -495,10 +495,8 @@ public class SoqlParser {
 		}
 		String objectName = fromPart?.split(' ')?.get(0);
 		Soql.InnerQuery innerQuery = new Soql.InnerQuery(objectName);
-		SoqlParser subParser = new SoqlParser();
-		subParser.parse(innerQuery, 'SELECT ' + selectPart + ' FROM ' + fromPart);
-		Soql.Selectable selectable = (Soql.Selectable) innerQuery;
-		builder.addSelect(selectable);
+		this.parse(innerQuery, 'SELECT ' + selectPart + ' FROM ' + fromPart);
+		builder?.addSelect(innerQuery);
 	}
 
 	/**
@@ -568,20 +566,16 @@ public class SoqlParser {
 	 * @return The position immediately after the last delimiter found, or 0 if none
 	 */
 	private Integer findParts(String str, String delimiter, List<String> parts) {
-		String strUpper = str?.toUpperCase() ?? '';
 		Integer parenDepth = 0;
 		Boolean inString = false;
 		Integer lastPos = 0;
 		for (Integer i = 0; i <= str.length() - delimiter.length(); i++) {
 			String character = str.substring(i, i + 1);
-			if (character == '\'' && (i == 0 || str.substring(i - 1, i) != '\\')) {
+			if (SoqlParser.isUnescapedQuote(str, i)) {
 				inString = (inString == false);
 			} else if (inString == false) {
-				if (character == '(') {
-					parenDepth++;
-				} else if (character == ')') {
-					parenDepth--;
-				} else if (parenDepth == 0 && strUpper.substring(i, i + delimiter.length()) == delimiter) {
+				parenDepth += character == '(' ? 1 : character == ')' ? -1 : 0;
+				if (parenDepth == 0 && isDelimiterAt(str, i, delimiter)) {
 					parts.add(str.substring(lastPos, i));
 					lastPos = i + delimiter.length();
 					i = lastPos - 1;
@@ -592,6 +586,17 @@ public class SoqlParser {
 	}
 
 	/**
+	 * @description Returns true if {@code delimiter} appears at position {@code i} in {@code str}
+	 * @param str The string to inspect
+	 * @param i The position to test
+	 * @param delimiter The delimiter to match (case-insensitive)
+	 * @return True if the delimiter matches at this position
+	 */
+	private static Boolean isDelimiterAt(String str, Integer i, String delimiter) {
+		return str?.substring(i, i + delimiter?.length())?.toUpperCase() == delimiter;
+	}
+
+	/**
 	 * @description Appends any remaining segment of {@code str} after the last delimiter to
 	 * {@code parts}. If no delimiter was found, appends the entire string.
 	 * @param str The original string
@@ -599,14 +604,234 @@ public class SoqlParser {
 	 * @param parts The list to append the trailing segment to
 	 */
 	private void addTrailingPart(String str, Integer lastPos, List<String> parts) {
-		if (lastPos < str.length()) {
-			parts.add(str.substring(lastPos));
-		} else if (parts.isEmpty()) {
+		if (lastPos < str?.length()) {
+			parts.add(str?.substring(lastPos));
+		} else if (parts?.isEmpty() == true) {
 			parts.add(str);
 		}
 	}
 
+	/**
+	 * @description Returns true if the character at position {@code i} in {@code str} is an
+	 * unescaped single quote
+	 * @param str The string to inspect
+	 * @param i The character index to test
+	 * @return True if the character is {@code '} and not preceded by a backslash
+	 */
+	private static Boolean isUnescapedQuote(String str, Integer i) {
+		return str.substring(i, i + 1) == '\'' && (i == 0 || str.substring(i - 1, i) != '\\');
+	}
+
 	// **** INNER **** //
+	/**
+	 * @description Maps SOQL operator symbols to their {@link Soql.Operator} enum values,
+	 * ordered by precedence (multi-word and longer tokens first to prevent partial matches).
+	 */
+	private class OperatorLexer {
+		/**
+		 * @description Returns SOQL operator symbols ordered by matching precedence, longest first
+		 * @return An ordered list of operator symbol strings
+		 */
+		private List<String> precedence() {
+			// prettier-ignore
+			return new List<String>{ 'NOT IN', 'NOT LIKE', '!=', '>=', '<=', '>', '<', '=', 'IN', 'LIKE' };
+		}
+
+		/**
+		 * @description Resolves an operator symbol string to its {@link Soql.Operator} enum value
+		 * @param symbol The operator symbol (e.g. {@code !=}, {@code IN}, {@code LIKE})
+		 * @return The corresponding {@link Soql.Operator}, or null if unrecognized
+		 */
+		private Soql.Operator resolve(String symbol) {
+			// prettier-ignore
+			return new Map<String, Soql.Operator>{
+				'!=' => Soql.NOT_EQUALS,
+				'<' => Soql.LESS_THAN,
+				'<=' => Soql.LESS_OR_EQUAL,
+				'=' => Soql.EQUALS,
+				'>' => Soql.GREATER_THAN,
+				'>=' => Soql.GREATER_OR_EQUAL,
+				'IN' => Soql.IN_COLLECTION,
+				'LIKE' => Soql.LIKE_RAW,
+				'NOT IN' => Soql.NOT_IN_COLLECTION,
+				'NOT LIKE' => Soql.NOT_LIKE_RAW
+			}.get(symbol);
+		}
+
+		/**
+		 * @description Finds the character index of the first top-level occurrence of {@code operator}
+		 * in {@code str}, skipping occurrences inside parentheses or string literals
+		 * @param str The expression string to search
+		 * @param operator The operator symbol to find
+		 * @return The index of the operator, or -1 if not found
+		 */
+		private Integer findPosition(String str, String operator) {
+			Integer parenDepth = 0;
+			Boolean inString = false;
+			for (Integer i = 0; i <= str.length() - operator.length(); i++) {
+				String character = str.substring(i, i + 1);
+				if (SoqlParser.isUnescapedQuote(str, i)) {
+					inString = (inString == false);
+				} else if (inString == false) {
+					parenDepth += character == '(' ? 1 : character == ')' ? -1 : 0;
+					if (parenDepth == 0 && this.isOperatorAt(str, i, operator)) {
+						return i;
+					}
+				}
+			}
+			return -1;
+		}
+
+		/**
+		 * @description Returns true if {@code operator} appears at position {@code i} in {@code str}
+		 * and is at a valid word boundary
+		 * @param str The expression string
+		 * @param i The position to test
+		 * @param operator The operator symbol to match
+		 * @return True if the operator matches at this position with valid word boundaries
+		 */
+		private Boolean isOperatorAt(String str, Integer i, String operator) {
+			return str.substring(i, i + operator.length()).toUpperCase() == operator
+				&& this.isAtWordBoundary(str, i, operator);
+		}
+
+		/**
+		 * @description Returns true if the substring at position {@code i} is surrounded by spaces
+		 * or string boundaries, ensuring it is a standalone operator token
+		 * @param str The expression string
+		 * @param i The start index of the potential operator match
+		 * @param operator The operator symbol being tested
+		 * @return True if the match is at a word boundary
+		 */
+		private Boolean isAtWordBoundary(String str, Integer i, String operator) {
+			Integer afterPos = i + operator.length();
+			Boolean beforeOk = (i == 0 || str.substring(i - 1, i) == ' ');
+			String afterChar = afterPos < str.length() ? str.substring(afterPos, afterPos + 1) : '';
+			return beforeOk && (afterPos >= str.length() || afterChar == ' ' || afterChar == '(');
+		}
+	}
+
+	/**
+	 * @description Holds a parsed query's raw string and keyword position map, used to pass
+	 * context through the parse pipeline without excessive parameter lists.
+	 */
+	private class ParseContext {
+		/** @description The raw query string being parsed. */
+		private final String queryString;
+		/** @description Map of keyword name to its starting character position in the query. */
+		private final Map<String, Integer> positions;
+
+		/**
+		 * @description Constructs a SoqlParser.ParseContext with the given query and positions.
+		 * @param queryString The raw SOQL query string
+		 * @param positions The keyword position map produced by {@link SoqlParser.Scanner#scan}
+		 */
+		private ParseContext(String queryString, Map<String, Integer> positions) {
+			this.queryString = queryString;
+			this.positions = positions;
+		}
+	}
+
+	/**
+	 * @description Stateful scanner that walks a SOQL query string character-by-character
+	 * and records the starting position of each top-level keyword.
+	 */
+	private class Scanner {
+		/** @description Map of recognized SOQL keyword to its starting character index in the query */
+		private final Map<String, Integer> positions;
+		/** @description The raw query string being scanned */
+		private final String rawQuery;
+		/** @description Uppercase version of the query string, used for case-insensitive keyword matching */
+		private final String upperQuery;
+		/** @description Tracks whether the scanner is currently inside a string literal */
+		private Boolean inString;
+		/** @description Tracks the current parenthesis nesting depth */
+		private Integer parenDepth;
+
+		/**
+		 * @description Constructs a SoqlParser.Scanner for the given query string.
+		 * @param queryString The SOQL query string to scan
+		 */
+		private Scanner(String queryString) {
+			this.inString = false;
+			this.parenDepth = 0;
+			this.positions = new Map<String, Integer>();
+			this.rawQuery = queryString;
+			this.upperQuery = queryString?.toUpperCase() ?? '';
+		}
+
+		/**
+		 * @description Walks the query and returns a map of keyword to character position.
+		 * SELECT is always recorded at position 0; all other keywords are detected at top level only.
+		 * @return The keyword position map
+		 */
+		private Map<String, Integer> scan() {
+			for (Integer i = 0; i < this.upperQuery.length(); i++) {
+				this.processChar(i);
+			}
+			this.positions?.put(SELECT_KEYWORD, 0);
+			return this.positions;
+		}
+
+		/**
+		 * @description Processes a single character: toggles string mode on unescaped quotes,
+		 * tracks paren depth, and attempts to record keyword positions at top level.
+		 * @param i The character index to process
+		 */
+		private void processChar(Integer i) {
+			String character = this.rawQuery.substring(i, i + 1);
+			if (character == '\'' && this.isNotEscaped(i)) {
+				this.inString = (this.inString == false);
+			} else if (character == '(' && this.inString == false) {
+				this.parenDepth++;
+			} else if (character == ')' && this.inString == false) {
+				this.parenDepth--;
+			} else if (this.parenDepth == 0 && this.inString == false) {
+				this.tryRecordAllKeywords(i);
+			}
+		}
+
+		/**
+		 * @description Returns true if the character at {@code i} is not preceded by a backslash.
+		 * @param i The character index to test
+		 * @return True if the character is unescaped
+		 */
+		private Boolean isNotEscaped(Integer i) {
+			return i == 0 || this.rawQuery.substring(i - 1, i) != '\\';
+		}
+
+		/**
+		 * @description Attempts to match and record every non-SELECT keyword at position {@code i}.
+		 * @param i The character index to test
+		 */
+		private void tryRecordAllKeywords(Integer i) {
+			for (String keyword : ALL_KEYWORDS) {
+				if (keyword != SELECT_KEYWORD) {
+					this.tryRecordKeyword(keyword, i);
+				}
+			}
+		}
+
+		/**
+		 * @description Records {@code keyword} at position {@code i} if the query text matches it
+		 * there with valid surrounding word boundaries, and it has not already been recorded.
+		 * @param keyword The keyword to attempt to match
+		 * @param i The character index to test
+		 */
+		private void tryRecordKeyword(String keyword, Integer i) {
+			Integer endIndex = i + keyword.length();
+			if (endIndex > this.upperQuery.length() || this.upperQuery.substring(i, endIndex) != keyword) {
+				return;
+			}
+			Boolean beforeOk = (i == 0 || this.upperQuery.substring(i - 1, i) == ' ');
+			Boolean afterOk = (endIndex >= this.upperQuery.length() ||
+			this.upperQuery.substring(endIndex, endIndex + 1) == ' ');
+			if (beforeOk && afterOk && this.positions?.containsKey(keyword) == false) {
+				this.positions?.put(keyword, i);
+			}
+		}
+	}
+
 	/**
 	 * @description Converts raw SOQL value tokens into their corresponding Apex types.
 	 */
@@ -737,7 +962,7 @@ public class SoqlParser {
 			Integer lastPos = 0;
 			for (Integer i = 0; i < str.length(); i++) {
 				String character = str.substring(i, i + 1);
-				if (character == '\'' && (i == 0 || str.substring(i - 1, i) != '\\')) {
+				if (SoqlParser.isUnescapedQuote(str, i)) {
 					inString = (inString == false);
 				} else if (!inString && character == ',') {
 					parts.add(str.substring(lastPos, i));
@@ -772,217 +997,6 @@ public class SoqlParser {
 		 */
 		private Object parseStringLiteral(String trimmed) {
 			return trimmed.substring(1, trimmed.length() - 1).replace('\\\'', '\'');
-		}
-	}
-
-	/**
-	 * @description Maps SOQL operator symbols to their {@link Soql.Operator} enum values,
-	 * ordered by precedence (multi-word and longer tokens first to prevent partial matches).
-	 */
-	private class OperatorLexer {
-		/**
-		 * @description Returns SOQL operator symbols ordered by matching precedence, longest first
-		 * @return An ordered list of operator symbol strings
-		 */
-		private List<String> precedence() {
-			// prettier-ignore
-			return new List<String>{ 'NOT IN', 'NOT LIKE', '!=', '>=', '<=', '>', '<', '=', 'IN', 'LIKE' };
-		}
-
-		/**
-		 * @description Resolves an operator symbol string to its {@link Soql.Operator} enum value
-		 * @param symbol The operator symbol (e.g. {@code !=}, {@code IN}, {@code LIKE})
-		 * @return The corresponding {@link Soql.Operator}, or null if unrecognized
-		 */
-		private Soql.Operator resolve(String symbol) {
-			// prettier-ignore
-			return new Map<String, Soql.Operator>{
-				'!=' => Soql.NOT_EQUALS,
-				'<' => Soql.LESS_THAN,
-				'<=' => Soql.LESS_OR_EQUAL,
-				'=' => Soql.EQUALS,
-				'>' => Soql.GREATER_THAN,
-				'>=' => Soql.GREATER_OR_EQUAL,
-				'IN' => Soql.IN_COLLECTION,
-				'LIKE' => Soql.LIKE_RAW,
-				'NOT IN' => Soql.NOT_IN_COLLECTION,
-				'NOT LIKE' => Soql.NOT_LIKE_RAW
-			}.get(symbol);
-		}
-
-		/**
-		 * @description Finds the character index of the first top-level occurrence of {@code operator}
-		 * in {@code str}, skipping occurrences inside parentheses or string literals
-		 * @param str The expression string to search
-		 * @param operator The operator symbol to find
-		 * @return The index of the operator, or -1 if not found
-		 */
-		private Integer findPosition(String str, String operator) {
-			String strUpper = str.toUpperCase();
-			Integer parenDepth = 0;
-			Boolean inString = false;
-			for (Integer i = 0; i <= str.length() - operator.length(); i++) {
-				String character = str.substring(i, i + 1);
-				if (character == '\'' && (i == 0 || str.substring(i - 1, i) != '\\')) {
-					inString = (inString == false);
-				} else if (inString == false) {
-					parenDepth += character == '(' ? 1 : character == ')' ? -1 : 0;
-					if (parenDepth == 0 && this.isOperatorAt(strUpper, str, i, operator)) {
-						return i;
-					}
-				}
-			}
-			return -1;
-		}
-
-		/**
-		 * @description Returns true if {@code operator} appears at position {@code i} in {@code strUpper}
-		 * and is at a valid word boundary
-		 * @param strUpper The uppercase version of the expression string
-		 * @param str The original expression string (used for boundary check)
-		 * @param i The position to test
-		 * @param operator The operator symbol to match
-		 * @return True if the operator matches at this position with valid word boundaries
-		 */
-		private Boolean isOperatorAt(String strUpper, String str, Integer i, String operator) {
-			return strUpper.substring(i, i + operator.length()) == operator
-				&& this.isAtWordBoundary(str, i, operator);
-		}
-
-		/**
-		 * @description Returns true if the substring at position {@code i} is surrounded by spaces
-		 * or string boundaries, ensuring it is a standalone operator token
-		 * @param str The expression string
-		 * @param i The start index of the potential operator match
-		 * @param operator The operator symbol being tested
-		 * @return True if the match is at a word boundary
-		 */
-		private Boolean isAtWordBoundary(String str, Integer i, String operator) {
-			Integer afterPos = i + operator.length();
-			Boolean beforeOk = (i == 0 || str.substring(i - 1, i) == ' ');
-			String afterChar = afterPos < str.length() ? str.substring(afterPos, afterPos + 1) : '';
-			return beforeOk && (afterPos >= str.length() || afterChar == ' ' || afterChar == '(');
-		}
-	}
-
-	/**
-	 * @description Holds a parsed query's raw string and keyword position map, used to pass
-	 * context through the parse pipeline without excessive parameter lists.
-	 */
-	private class ParseContext {
-		/** @description The raw query string being parsed. */
-		private final String queryString;
-		/** @description Map of keyword name to its starting character position in the query. */
-		private final Map<String, Integer> positions;
-
-		/**
-		 * @description Constructs a SoqlParser.ParseContext with the given query and positions.
-		 * @param queryString The raw SOQL query string
-		 * @param positions The keyword position map produced by {@link Scanner#scan}
-		 */
-		private ParseContext(String queryString, Map<String, Integer> positions) {
-			this.queryString = queryString;
-			this.positions = positions;
-		}
-	}
-
-	/**
-	 * @description Stateful scanner that walks a SOQL query string character-by-character
-	 * and records the starting position of each top-level keyword.
-	 */
-	private class Scanner {
-		/** @description Map of recognized SOQL keyword to its starting character index in the query */
-		private final Map<String, Integer> positions;
-		/** @description The raw query string being scanned */
-		private final String rawQuery;
-		/** @description Uppercase version of the query string, used for case-insensitive keyword matching */
-		private final String upperQuery;
-		/** @description Tracks whether the scanner is currently inside a string literal */
-		private Boolean inString;
-		/** @description Tracks the current parenthesis nesting depth */
-		private Integer parenDepth;
-
-		/**
-		 * @description Constructs a Scanner for the given query string.
-		 * @param queryString The SOQL query string to scan
-		 */
-		private Scanner(String queryString) {
-			this.inString = false;
-			this.parenDepth = 0;
-			this.positions = new Map<String, Integer>();
-			this.rawQuery = queryString;
-			this.upperQuery = queryString?.toUpperCase() ?? '';
-		}
-
-		/**
-		 * @description Walks the query and returns a map of keyword to character position.
-		 * SELECT is always recorded at position 0; all other keywords are detected at top level only.
-		 * @return The keyword position map
-		 */
-		private Map<String, Integer> scan() {
-			for (Integer i = 0; i < this.upperQuery.length(); i++) {
-				this.processChar(i);
-			}
-			this.positions?.put(SELECT_KEYWORD, 0);
-			return this.positions;
-		}
-
-		/**
-		 * @description Processes a single character: toggles string mode on unescaped quotes,
-		 * tracks paren depth, and attempts to record keyword positions at top level.
-		 * @param i The character index to process
-		 */
-		private void processChar(Integer i) {
-			String character = this.rawQuery.substring(i, i + 1);
-			if (character == '\'' && this.isNotEscaped(i)) {
-				this.inString = (this.inString == false);
-			} else if (character == '(' && this.inString == false) {
-				this.parenDepth++;
-			} else if (character == ')' && this.inString == false) {
-				this.parenDepth--;
-			} else if (this.parenDepth == 0 && this.inString == false) {
-				this.tryRecordAllKeywords(i);
-			}
-		}
-
-		/**
-		 * @description Returns true if the character at {@code i} is not preceded by a backslash.
-		 * @param i The character index to test
-		 * @return True if the character is unescaped
-		 */
-		private Boolean isNotEscaped(Integer i) {
-			return i == 0 || this.rawQuery.substring(i - 1, i) != '\\';
-		}
-
-		/**
-		 * @description Attempts to match and record every non-SELECT keyword at position {@code i}.
-		 * @param i The character index to test
-		 */
-		private void tryRecordAllKeywords(Integer i) {
-			for (String keyword : ALL_KEYWORDS) {
-				if (keyword != SELECT_KEYWORD) {
-					this.tryRecordKeyword(keyword, i);
-				}
-			}
-		}
-
-		/**
-		 * @description Records {@code keyword} at position {@code i} if the query text matches it
-		 * there with valid surrounding word boundaries, and it has not already been recorded.
-		 * @param keyword The keyword to attempt to match
-		 * @param i The character index to test
-		 */
-		private void tryRecordKeyword(String keyword, Integer i) {
-			Integer endIndex = i + keyword.length();
-			if (endIndex > this.upperQuery.length() || this.upperQuery.substring(i, endIndex) != keyword) {
-				return;
-			}
-			Boolean beforeOk = (i == 0 || this.upperQuery.substring(i - 1, i) == ' ');
-			Boolean afterOk = (endIndex >= this.upperQuery.length() ||
-			this.upperQuery.substring(endIndex, endIndex + 1) == ' ');
-			if (beforeOk && afterOk && this.positions?.containsKey(keyword) == false) {
-				this.positions.put(keyword, i);
-			}
 		}
 	}
 }
