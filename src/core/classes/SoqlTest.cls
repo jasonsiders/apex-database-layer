@@ -1543,7 +1543,7 @@ private class SoqlTest {
 		Exception caughtError;
 		try {
 			// Can't query w/a null FROM object:
-			DatabaseLayer.Soql.newQuery(null)?.toSoql()?.query();
+			DatabaseLayer.Soql.newQuery((SObjectType) null)?.toSoql()?.query();
 			Assert.fail('Did not throw an Exception');
 		} catch (Exception error) {
 			// As expected...

@@ -54,8 +54,8 @@ public class SoqlParser {
 		'<=' => Soql.LESS_OR_EQUAL,
 		'IN' => Soql.IN_COLLECTION,
 		'NOT IN' => Soql.NOT_IN_COLLECTION,
-		'LIKE' => Soql.CONTAINS,
-		'NOT LIKE' => Soql.NOT_CONTAINS
+		'LIKE' => Soql.LIKE_RAW,
+		'NOT LIKE' => Soql.NOT_LIKE_RAW
 	};
 
 	public void parse(Soql.Builder builder, String queryString) {
