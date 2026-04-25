@@ -535,14 +535,18 @@ private class SoqlParserTest {
 	}
 
 	@IsTest
-	private static void shouldReturnStringForPartialDateString() {
+	private static void shouldThrowQueryExceptionOnParseFailure() {
 		DatabaseLayer.useMocks();
 		SoqlParser parser = new SoqlParser();
+		Soql soql = DatabaseLayer.newSoql('SELECT Id FROM Account');
 
 		Test.startTest();
-		Object result = parser.parseValue('2020-06');
+		try {
+			parser.parse(soql, null);
+			Assert.fail('Expected a QueryException');
+		} catch (System.QueryException e) {
+			// expected
+		}
 		Test.stopTest();
-
-		Assert.areEqual('2020-06', (String) result, 'Expected raw string for partial date');
 	}
 }

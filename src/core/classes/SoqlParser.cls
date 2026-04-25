@@ -57,10 +57,15 @@ public class SoqlParser {
 	 * @param builder The {@link Soql.Builder} to populate with parsed clauses
 	 * @param queryString The SOQL query string to parse
 	 */
-	public void parse(Soql.Builder builder, String queryString) {
-		Map<String, Integer> positions = new Scanner(queryString).scan();
-		ParseContext ctx = new ParseContext(queryString, positions);
-		this.applyParsers(builder, ctx);
+	public void parse(Soql.Builder builder, String str) {
+		try {
+			Map<String, Integer> positions = new Scanner(str)?.scan();
+			ParseContext ctx = new ParseContext(str, positions);
+			this.applyParsers(builder, ctx);
+		} catch (Exception error) {
+			String msg = 'Invalid query: ' + str + '\n' + error + '\n' + error?.getStackTraceString();
+			throw new System.QueryException(msg);
+		}
 	}
 
 	/**
@@ -96,7 +101,7 @@ public class SoqlParser {
 		Integer openParen = upper.indexOf('(');
 		Integer closeParen = this.findMatchingParen(token, openParen);
 		String functionName = upper.substring(0, openParen)?.trim();
-		Soql.Function func = Soql.Function.valueOf(functionName);
+		Soql.Function func = this.getFunctionByName(functionName);
 		String field = token?.substring(openParen + 1, closeParen)?.trim();
 		Soql.Aggregation agg = new Soql.Aggregation(func, field);
 		String alias = token?.substring(closeParen + 1)?.trim();
@@ -147,6 +152,14 @@ public class SoqlParser {
 		return str.length();
 	}
 
+	private Soql.Function getFunctionByName(String name) {
+		try {
+			return Soql.Function.valueOf(name);
+		} catch (Exception error) {
+			throw new System.NoSuchElementException('Invalid SOQL Function: ' + name);
+		}
+	}
+
 	/**
 	 * @description Returns the keyword that immediately follows {@code currentKeyword} in the
 	 * query, based on character positions.
@@ -162,13 +175,21 @@ public class SoqlParser {
 		String nextKeyword = null;
 		Integer nextPos = MAX_INT;
 		for (String keyword : ALL_KEYWORDS) {
-			Integer pos = positions.get(keyword);
+			Integer pos = positions?.get(keyword);
 			if (pos != null && pos > currentPos && pos < nextPos) {
 				nextPos = pos;
 				nextKeyword = keyword;
 			}
 		}
 		return nextKeyword;
+	}
+
+	private Soql.Scope getScopeByName(String name) {
+		try {
+			return Soql.Scope.valueOf(name);
+		} catch (Exception error) {
+			throw new System.NoSuchElementException('Invalid SOQL Scope: ' + name);
+		}
 	}
 
 	/**
@@ -185,9 +206,10 @@ public class SoqlParser {
 		}
 		try {
 			String functionName = upper?.substring(0, parenPos).trim();
-			Soql.Function.valueOf(functionName);
+			this.getFunctionByName(functionName);
+			// No error; is a Soql.Function value:
 			return true;
-		} catch (System.NoSuchElementException errorrror) {
+		} catch (System.NoSuchElementException error) {
 			return false;
 		}
 	}
@@ -221,8 +243,7 @@ public class SoqlParser {
 			String andPart = andParts?.get(0);
 			return this.parseFactor(andPart);
 		}
-		Soql.ConditionalLogic logic = new Soql.ConditionalLogic();
-		logic.setLogicType(Soql.LogicType.ALL_CONDITIONS);
+		Soql.ConditionalLogic logic = new Soql.ConditionalLogic()?.setLogicType(Soql.LogicType.ALL_CONDITIONS);
 		for (String part : andParts) {
 			Soql.Criteria factor = this.parseFactor(part);
 			logic.addCondition(factor);
@@ -238,12 +259,12 @@ public class SoqlParser {
 	 */
 	@TestVisible
 	private Soql.Condition parseCondition(String str) {
-		for (String op : OPERATORS.precedence()) {
-			Integer opPos = OPERATORS.findPosition(str, op);
+		for (String op : OPERATORS?.precedence()) {
+			Integer opPos = OPERATORS?.findPosition(str, op);
 			if (opPos >= 0) {
 				String fieldName = str.substring(0, opPos).trim();
 				String rawValue = str.substring(opPos + op.length()).trim();
-				Soql.Operator operator = OPERATORS.resolve(op);
+				Soql.Operator operator = OPERATORS?.resolve(op);
 				Object value = this.parseValue(rawValue);
 				return new Soql.Condition(fieldName, operator, value);
 			}
@@ -292,11 +313,11 @@ public class SoqlParser {
 	 * @return A {@link Soql.Criteria}
 	 */
 	private Soql.Criteria parseFactor(String str) {
-		String trimmed = str.trim();
+		String trimmed = str?.trim();
 		Integer closeParen = this.findMatchingParen(trimmed, 0);
-		Boolean isWrapped = trimmed.startsWith('(') && closeParen == trimmed.length() - 1;
+		Boolean isWrapped = trimmed?.startsWith('(') && closeParen == trimmed?.length() - 1;
 		if (isWrapped) {
-			String body = trimmed.substring(1, trimmed.length() - 1).trim();
+			String body = trimmed?.substring(1, trimmed?.length() - 1)?.trim();
 			return this.parseExpr(body);
 		}
 		return this.parseCondition(trimmed);
@@ -362,10 +383,10 @@ public class SoqlParser {
 	 * @param limitStr The LIMIT value string
 	 */
 	private void parseLimit(Soql.Builder builder, String limitStr) {
-		if (String.isBlank(limitStr)) {
-			return;
+		if (String.isNotBlank(limitStr)) {
+			Integer rowLimit = Integer.valueOf(limitStr);
+			builder?.setRowLimit(rowLimit);
 		}
-		builder.setRowLimit(Integer.valueOf(limitStr));
 	}
 
 	/**
@@ -374,10 +395,10 @@ public class SoqlParser {
 	 * @param offsetStr The OFFSET value string
 	 */
 	private void parseOffset(Soql.Builder builder, String offsetStr) {
-		if (String.isBlank(offsetStr)) {
-			return;
+		if (String.isNotBlank(offsetStr)) {
+			Integer offset = Integer.valueOf(offsetStr);
+			builder?.setRowOffset(offset);
 		}
-		builder.setRowOffset(Integer.valueOf(offsetStr));
 	}
 
 	/**
@@ -386,11 +407,9 @@ public class SoqlParser {
 	 * @param orderByStr The ORDER BY clause content
 	 */
 	private void parseOrderBy(Soql.Builder builder, String orderByStr) {
-		if (String.isBlank(orderByStr)) {
-			return;
-		}
 		for (String item : this.splitTopLevelKeyword(orderByStr, ',')) {
-			builder.addRawOrderBy(item.trim());
+			String trimmed = item?.trim();
+			builder?.addRawOrderBy(trimmed);
 		}
 	}
 
@@ -401,16 +420,16 @@ public class SoqlParser {
 	 * @param selectStr The SELECT clause content (after the SELECT keyword)
 	 */
 	private void parseSelect(Soql.Builder builder, String selectStr) {
-		builder.deselectAll();
+		builder?.deselectAll();
 		List<String> tokens = this.splitTopLevelKeyword(selectStr, ',');
 		for (String item : tokens) {
 			String token = item.trim();
-			if (token.startsWith('(')) {
+			if (token?.startsWith('(')) {
 				this.parseSubquery(builder, token);
 			} else if (this.isAggregation(token)) {
 				this.parseAggregation(builder, token);
 			} else {
-				builder.addSelect(token);
+				builder?.addSelect(token);
 			}
 		}
 	}
@@ -422,7 +441,7 @@ public class SoqlParser {
 	 * @param subqueryStr The parenthesized subquery string, e.g. {@code (SELECT Id FROM Contacts)}
 	 */
 	private void parseSubquery(Soql.Builder builder, String subqueryStr) {
-		String body = subqueryStr.substring(1, subqueryStr.length() - 1).trim();
+		String body = subqueryStr?.substring(1, subqueryStr?.length() - 1).trim();
 		String bodyUpper = body.toUpperCase();
 		Integer fromPos = bodyUpper.indexOf(' FROM ');
 		if (fromPos < 0) {
@@ -447,9 +466,10 @@ public class SoqlParser {
 	 * @param usingScopeStr The scope name string
 	 */
 	private void parseUsingScope(Soql.Builder builder, String usingScopeStr) {
-		String value = usingScopeStr?.toUpperCase();
-		Soql.Scope scope = Soql.Scope.valueOf(value);
-		builder?.setScope(scope);
+		if (String.isNotBlank(usingScopeStr)) {
+			Soql.Scope scope = this.getScopeByName(usingScopeStr);
+			builder?.setScope(scope);
+		}
 	}
 
 	/**
