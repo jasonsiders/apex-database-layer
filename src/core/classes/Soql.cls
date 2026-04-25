@@ -19,8 +19,6 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	global static final Operator NOT_ENDS_WITH = new Soql.EndsWithOperator('NOT LIKE');
 	global static final Operator CONTAINS = new Soql.ContainsOperator('LIKE');
 	global static final Operator NOT_CONTAINS = new Soql.ContainsOperator('NOT LIKE');
-	global static final Operator LIKE_RAW = new Soql.Operator('LIKE');
-	global static final Operator NOT_LIKE_RAW = new Soql.Operator('NOT LIKE');
 	// Other constants
 	private static final Soql.LogicType DEFAULT_LOGIC_TYPE = Soql.LogicType.ALL_CONDITIONS;
 	private static final String ID_REFERENCE = 'Id';

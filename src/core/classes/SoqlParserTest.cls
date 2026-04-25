@@ -422,6 +422,58 @@ private class SoqlParserTest {
 	}
 
 	@IsTest
+	private static void shouldRoundTripLikeStartsWith() {
+		DatabaseLayer.useMocks();
+		String queryStr = 'SELECT Id FROM Account WHERE Name LIKE \'Test%\'';
+		Soql soql = DatabaseLayer.newSoql(queryStr);
+
+		Test.startTest();
+		String result = soql?.toString();
+		Test.stopTest();
+
+		Assert.areEqual(queryStr, result, 'Expected STARTS_WITH round-trip');
+	}
+
+	@IsTest
+	private static void shouldRoundTripLikeEndsWith() {
+		DatabaseLayer.useMocks();
+		String queryStr = 'SELECT Id FROM Account WHERE Name LIKE \'%Test\'';
+		Soql soql = DatabaseLayer.newSoql(queryStr);
+
+		Test.startTest();
+		String result = soql?.toString();
+		Test.stopTest();
+
+		Assert.areEqual(queryStr, result, 'Expected ENDS_WITH round-trip');
+	}
+
+	@IsTest
+	private static void shouldRoundTripLikeRawNoWildcards() {
+		DatabaseLayer.useMocks();
+		String queryStr = 'SELECT Id FROM Account WHERE Name LIKE \'Test\'';
+		Soql soql = DatabaseLayer.newSoql(queryStr);
+
+		Test.startTest();
+		String result = soql?.toString();
+		Test.stopTest();
+
+		Assert.areEqual(queryStr, result, 'Expected raw LIKE (no wildcards) round-trip');
+	}
+
+	@IsTest
+	private static void shouldRoundTripNotLikeOperator() {
+		DatabaseLayer.useMocks();
+		String queryStr = 'SELECT Id FROM Account WHERE Name NOT LIKE \'%Test%\'';
+		Soql soql = DatabaseLayer.newSoql(queryStr);
+
+		Test.startTest();
+		String result = soql?.toString();
+		Test.stopTest();
+
+		Assert.areEqual(queryStr, result, 'Expected NOT LIKE round-trip');
+	}
+
+	@IsTest
 	private static void shouldGracefullyIgnoreMalformedSubquery() {
 		// A subquery without a FROM clause should be silently skipped, leaving other fields intact
 		DatabaseLayer.useMocks();

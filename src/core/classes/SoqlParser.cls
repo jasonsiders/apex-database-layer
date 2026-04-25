@@ -306,12 +306,46 @@ public class SoqlParser {
 			if (opPos >= 0) {
 				String fieldName = str?.substring(0, opPos).trim();
 				String rawValue = str?.substring(opPos + op.length()).trim();
+				if (op == 'LIKE' || op == 'NOT LIKE') {
+					return this.parseLikeCondition(fieldName, op, rawValue);
+				}
 				Soql.Operator operator = OPERATORS?.resolve(op);
 				Object value = this.parseValue(rawValue);
 				return new Soql.Condition(fieldName, operator, value);
 			}
 		}
 		return new Soql.Condition(str, Soql.EQUALS, null);
+	}
+
+	/**
+	 * @description Parses a LIKE or NOT LIKE condition, routing to the appropriate semantic operator
+	 * based on the wildcard pattern in the value. Simple patterns map to existing operators
+	 * ({@link Soql.CONTAINS}, {@link Soql.STARTS_WITH}, {@link Soql.ENDS_WITH}); complex patterns
+	 * fall back to {@link SoqlParser.RawLikeOperator}.
+	 * @param fieldName The field name being compared
+	 * @param op The operator symbol ('LIKE' or 'NOT LIKE')
+	 * @param rawValue The raw value token from the query string
+	 * @return A {@link Soql.Condition} with the appropriate operator and stripped value
+	 */
+	private Soql.Condition parseLikeCondition(String fieldName, String op, String rawValue) {
+		Boolean negated = op == 'NOT LIKE';
+		Object parsed = this.parseValue(rawValue);
+		if (parsed instanceof String) {
+			String value = (String) parsed;
+			Boolean leadingWild = value?.startsWith('%') == true;
+			Boolean trailingWild = value?.endsWith('%') == true;
+			if (leadingWild && trailingWild) {
+				Soql.Operator operator = negated ? Soql.NOT_CONTAINS : Soql.CONTAINS;
+				return new Soql.Condition(fieldName, operator, value.substring(1, value.length() - 1));
+			} else if (trailingWild) {
+				Soql.Operator operator = negated ? Soql.NOT_STARTS_WITH : Soql.STARTS_WITH;
+				return new Soql.Condition(fieldName, operator, value.substring(0, value.length() - 1));
+			} else if (leadingWild) {
+				Soql.Operator operator = negated ? Soql.NOT_ENDS_WITH : Soql.ENDS_WITH;
+				return new Soql.Condition(fieldName, operator, value.substring(1));
+			}
+		}
+		return new Soql.Condition(fieldName, new SoqlParser.RawLikeOperator(op), parsed);
 	}
 
 	/**
@@ -653,9 +687,7 @@ public class SoqlParser {
 				'>' => Soql.GREATER_THAN,
 				'>=' => Soql.GREATER_OR_EQUAL,
 				'IN' => Soql.IN_COLLECTION,
-				'LIKE' => Soql.LIKE_RAW,
-				'NOT IN' => Soql.NOT_IN_COLLECTION,
-				'NOT LIKE' => Soql.NOT_LIKE_RAW
+				'NOT IN' => Soql.NOT_IN_COLLECTION
 			}.get(symbol);
 		}
 
@@ -998,6 +1030,17 @@ public class SoqlParser {
 		 */
 		private Object parseStringLiteral(String trimmed) {
 			return trimmed.substring(1, trimmed.length() - 1).replace('\\\'', '\'');
+		}
+	}
+
+	/**
+	 * @description Operator for raw LIKE/NOT LIKE expressions where the value already contains
+	 * wildcard characters (e.g., {@code '%foo%bar%'}). Unlike {@link Soql.ContainsOperator},
+	 * this operator does not add additional wildcard characters around the value.
+	 */
+	private class RawLikeOperator extends Soql.Operator {
+		private RawLikeOperator(String token) {
+			super(token);
 		}
 	}
 }
