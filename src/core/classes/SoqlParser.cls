@@ -3,7 +3,7 @@
  * Handles all standard SOQL clauses including SELECT, FROM, WHERE, GROUP BY, HAVING, ORDER BY,
  * LIMIT, OFFSET, USING SCOPE, WITH, FOR, and ALL ROWS.
  */
-@SuppressWarnings('PMD.CognitiveComplexity,PMD.CyclomaticComplexity,PMD.PropertyNamingConventions')
+@SuppressWarnings('PMD.CognitiveComplexity,PMD.CyclomaticComplexity,PMD.EmptyCatchBlock,PMD.PropertyNamingConventions')
 public class SoqlParser {
 	// prettier-ignore
 	private static final String ALL_ROWS_KEYWORD { get { return 'ALL ROWS'; } }
@@ -49,32 +49,6 @@ public class SoqlParser {
 			};
 		}
 	}
-	private static final Map<String, Soql.Function> FUNCTION_MAP {
-		get {
-			return new Map<String, Soql.Function>{
-				'AVG' => Soql.Function.AVG,
-				'CALENDAR_MONTH' => Soql.Function.CALENDAR_MONTH,
-				'CALENDAR_QUARTER' => Soql.Function.CALENDAR_QUARTER,
-				'CALENDAR_YEAR' => Soql.Function.CALENDAR_YEAR,
-				'COUNT' => Soql.Function.COUNT,
-				'COUNT_DISTINCT' => Soql.Function.COUNT_DISTINCT,
-				'DAY_IN_MONTH' => Soql.Function.DAY_IN_MONTH,
-				'DAY_IN_WEEK' => Soql.Function.DAY_IN_WEEK,
-				'DAY_IN_YEAR' => Soql.Function.DAY_IN_YEAR,
-				'DAY_ONLY' => Soql.Function.DAY_ONLY,
-				'FISCAL_MONTH' => Soql.Function.FISCAL_MONTH,
-				'FISCAL_QUARTER' => Soql.Function.FISCAL_QUARTER,
-				'FISCAL_YEAR' => Soql.Function.FISCAL_YEAR,
-				'FORMAT' => Soql.Function.FORMAT,
-				'HOUR_IN_DAY' => Soql.Function.HOUR_IN_DAY,
-				'MAX' => Soql.Function.MAX,
-				'MIN' => Soql.Function.MIN,
-				'SUM' => Soql.Function.SUM,
-				'WEEK_IN_MONTH' => Soql.Function.WEEK_IN_MONTH,
-				'WEEK_IN_YEAR' => Soql.Function.WEEK_IN_YEAR
-			};
-		}
-	}
 	// Operators ordered by precedence: multi-word and longer tokens first to prevent partial matches
 	private static final Map<String, Soql.Operator> OPERATOR_MAP {
 		get {
@@ -97,20 +71,6 @@ public class SoqlParser {
 			return new List<String>{ 'NOT IN', 'NOT LIKE', '!=', '>=', '<=', '>', '<', '=', 'IN', 'LIKE' };
 		}
 	}
-	private static final Map<String, Soql.Scope> SCOPE_MAP {
-		get {
-			return new Map<String, Soql.Scope>{
-				'DELEGATED' => Soql.Scope.DELEGATED,
-				'EVERYTHING' => Soql.Scope.EVERYTHING,
-				'MINE' => Soql.Scope.MINE,
-				'MINE_AND_MY_GROUPS' => Soql.Scope.MINE_AND_MY_GROUPS,
-				'MY_TEAM_TERRITORY' => Soql.Scope.MY_TEAM_TERRITORY,
-				'MY_TERRITORY' => Soql.Scope.MY_TERRITORY,
-				'TEAM' => Soql.Scope.TEAM
-			};
-		}
-	}
-
 	/**
 	 * @description Parses a SOQL query string and applies the parsed clauses to the given builder.
 	 * @param builder The {@link Soql.Builder} to populate with parsed clauses
@@ -181,7 +141,7 @@ public class SoqlParser {
 		Integer openParen = upper.indexOf('(');
 		Integer closeParen = this.findMatchingParen(token, openParen);
 		Soql.Aggregation agg = new Soql.Aggregation(
-			FUNCTION_MAP.get(upper.substring(0, openParen).trim()),
+			Soql.Function.valueOf(upper.substring(0, openParen).trim()),
 			token.substring(openParen + 1, closeParen).trim()
 		);
 		String alias = token.substring(closeParen + 1).trim();
@@ -310,7 +270,15 @@ public class SoqlParser {
 	private Boolean isAggregation(String token) {
 		String upper = token.toUpperCase();
 		Integer parenPos = upper.indexOf('(');
-		return parenPos > 0 && FUNCTION_MAP.containsKey(upper.substring(0, parenPos).trim());
+		if (parenPos <= 0) {
+			return false;
+		}
+		try {
+			Soql.Function.valueOf(upper.substring(0, parenPos).trim());
+			return true;
+		} catch (Exception e) {
+			return false;
+		}
 	}
 
 	/**
@@ -666,9 +634,10 @@ public class SoqlParser {
 	 * @param usingScopeStr The scope name string
 	 */
 	private void parseUsingScope(Soql.Builder builder, String usingScopeStr) {
-		Soql.Scope scope = SCOPE_MAP.get(usingScopeStr?.toUpperCase());
-		if (scope != null) {
-			builder.setScope(scope);
+		try {
+			builder.setScope(Soql.Scope.valueOf(usingScopeStr?.toUpperCase()));
+		} catch (Exception e) {
+			// Unrecognized scope — ignore
 		}
 	}
 
@@ -684,29 +653,23 @@ public class SoqlParser {
 		String upper = trimmed?.toUpperCase();
 		if (upper == 'NULL') {
 			return null;
-		}
-		if (upper == 'TRUE') {
+		} else if (upper == 'TRUE') {
 			return true;
-		}
-		if (upper == 'FALSE') {
+		} else if (upper == 'FALSE') {
 			return false;
-		}
-		if (trimmed?.startsWith(':') == true) {
+		} else if (trimmed?.startsWith(':') == true) {
 			return trimmed;
-		}
-		if (trimmed?.startsWith('\'') == true) {
+		} else if (trimmed?.startsWith('\'') == true) {
 			return this.parseStringLiteral(trimmed);
-		}
-		if (trimmed?.startsWith('(') == true) {
+		} else if (trimmed?.startsWith('(') == true) {
 			return this.parseList(trimmed);
-		}
-		if (this.isDateTime(upper)) {
+		} else if (this.isDateTime(upper)) {
 			return this.parseDateTime(trimmed);
-		}
-		if (this.isDate(upper)) {
+		} else if (this.isDate(upper)) {
 			return this.parseDate(trimmed);
+		} else {
+			return this.parseNumeric(trimmed);
 		}
-		return this.parseNumeric(trimmed);
 	}
 
 	/**
