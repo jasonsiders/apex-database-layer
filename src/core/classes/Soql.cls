@@ -50,7 +50,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	 * @description String-based constructor: parse raw SOQL into builder state
 	 * @param queryString The raw SOQL query string to parse
 	 */
-	protected Soql(String queryString) {
+	public Soql(String queryString) {
 		super();
 		new SoqlParser().parse(this, queryString);
 	}
