@@ -69,10 +69,16 @@ Removes all fields from the SELECT clause of the query, essentially clearing any
 
 Adds fields to the ORDER BY clause of the query.
 
-- `Soql.Builder addOderBy(Soql.SortOrder sortOrder)`
-- `Soql.Builder addOderBy(String fieldName, Soql.SortDirection direction)`
-- `Soql.Builder addOderBy(SObjectField field, Soql.SortDirection direction)`
-- `Soql.Builder addOderBy(Soql.ParentField field, Soql.SortDirection direction)`
+- `Soql.Builder addOrderBy(Soql.SortOrder sortOrder)`
+- `Soql.Builder addOrderBy(String fieldName, Soql.SortDirection direction)`
+- `Soql.Builder addOrderBy(SObjectField field, Soql.SortDirection direction)`
+- `Soql.Builder addOrderBy(Soql.ParentField field, Soql.SortDirection direction)`
+
+### `addRawOrderBy`
+
+Adds a raw ORDER BY clause to the query. This method allows specifying ORDER BY clauses that may include complex expressions or syntax not directly supported by the typed methods.
+
+- `Soql.Builder addRawOrderBy(String rawClause)`
 
 ### `reset`
 
@@ -97,6 +103,7 @@ Sets the access level for the query.
 Sets the entity from which to query data. Only call this method if you need to override the SObjectType set when constructing the query, via the `DatabaseLayer.Soql.newQuery(SObjectType objectType)` method.
 
 - `Soql.Builder setFrom(SObjectType objectType)`
+- `Soql.Builder setFrom(String entityName)`
 
 ### `setOuterHavingLogic`
 
@@ -109,6 +116,18 @@ Sets the logical operator (AND/OR) for combining HAVING conditions.
 Sets the logical operator (AND/OR) for combining WHERE conditions.
 
 - `Soql.Builder setOuterWhereLogic(Soql.LogicType newLogicType)`
+
+### `setWhereCriteria`
+
+Sets the WHERE clause criteria for the query using a ConditionalLogic object. This method allows setting complex criteria structures built from multiple conditions.
+
+- `Soql.Builder setWhereCriteria(Soql.ConditionalLogic criteria)`
+
+### `setHavingCriteria`
+
+Sets the HAVING clause criteria for the query using a ConditionalLogic object. This method allows setting complex criteria structures built from multiple conditions for aggregate queries.
+
+- `Soql.Builder setHavingCriteria(Soql.ConditionalLogic criteria)`
 
 ### `setQueryIdentifier`
 
