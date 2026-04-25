@@ -6,9 +6,11 @@ Use this class in place of inline SOQL to pave the way for faster, more scalable
 
 ## Constructing `Soql` Objects
 
-`Soql` objects cannot be directly constructed via the `new` keyword. Instead, use the `DatabaseLayer.Soql.newQuery(SObjectType fromSObject)` method.
+There are two ways to construct `Soql` objects:
 
-The object uses the [Soql.Builder](./The-Soql.Builder-Class) class to allow for flexible query construction. Once your query is built, call [`toSoql()`](./The-Soql.Builder-Class#toSoql) to build the query as a `Soql` object:
+### 1. Using the Factory Method (Recommended)
+
+Use the `DatabaseLayer.Soql.newQuery(SObjectType fromSObject)` method for new queries:
 
 ```apex
 Soql query = DatabaseLayer.Soql
@@ -18,7 +20,17 @@ Soql query = DatabaseLayer.Soql
   ?.toSoql();
 ```
 
-In `@IsTest` context, the `DatabaseLayer.useMocks()` method ensures that an instance of the `MockSoql` class will be returned for each subsuquent `newQuery` call:
+### 2. Using String Constructor
+
+Parse existing SOQL query strings using the `DatabaseLayer.Soql.newQuery(String queryString)` factory method:
+
+```apex
+Soql query = DatabaseLayer.Soql.newQuery('SELECT Id, Name FROM Account WHERE Type != \'Internal\' LIMIT 200');
+```
+
+The object uses the [Soql.Builder](./The-Soql.Builder-Class) class to allow for flexible query construction. Once your query is built, call [`toSoql()`](./The-Soql.Builder-Class#toSoql) to build the query as a `Soql` object.
+
+In `@IsTest` context, the `DatabaseLayer.useMocks()` method ensures that an instance of the `MockSoql` class will be returned for each subsequent `newQuery` call:
 
 ```apex
 DatabaseLayer.useMocks();

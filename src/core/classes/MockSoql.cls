@@ -16,6 +16,15 @@ global class MockSoql extends Soql {
 		super(factory);
 	}
 
+	/**
+	 * @description Constructor for MockSoql instance with raw SOQL query string.
+	 * @param factory The DatabaseLayer factory instance
+	 * @param queryString The raw SOQL query string to parse
+	 */
+	public MockSoql(DatabaseLayer factory, String queryString) {
+		super(queryString);
+	}
+
 	// **** STATIC **** //
 	/**
 	 * @description Sets a global mock simulator to be used for all SOQL queries unless overridden.
