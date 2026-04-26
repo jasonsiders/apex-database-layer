@@ -52,6 +52,7 @@
     - [Duplicates.FindDuplicatesResult](./The-Duplicates.FindDuplicatesResult-Class)
     - [Duplicates.MatchRecord](./The-Duplicates.MatchRecord-Class)
     - [Duplicates.MatchResult](./The-Duplicates.MatchResult-Class)
+- [**FlowUntypedVariable**](./The-FlowUntypedVariable-Class)
 - [**MockDuplicates**](./The-MockDuplicates-Class)
     - [MockDuplicates.AdditionalInformationMap](./The-MockDuplicates.AdditionalInformationMap-Class)
     - [MockDuplicates.BaseSimulator](./The-MockDuplicates.BaseSimulator-Class)
