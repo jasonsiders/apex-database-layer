@@ -1,6 +1,7 @@
 @SuppressWarnings('PMD.AvoidGlobalModifier')
 /**
- * @description Represents a loosely-typed variable passed from a Flow, carrying a value as serialized text along with metadata needed to deserialize it into the correct Apex type
+ * @description Represents a loosely-typed variable passed from a Flow
+ * Provides Flows a way to flexibly pass untyped objects to Apex actions
  */
 global class FlowUntypedVariable {
 	/** @description The variable's identifier within the Flow */
