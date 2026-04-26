@@ -76,15 +76,12 @@ public abstract class InvocableSoqlQueryRecords {
 	private static List<Object> collectBindValues(List<Output> outputs, List<Integer> indexes, String bindVarName) {
 		List<Object> values = new List<Object>();
 		for (Integer idx : indexes) {
-			values.add(outputs[idx].soql.binds.get(bindVarName));
+			values.add(outputs[idx].soql.binds.get(bindVarName).getValue());
 		}
 		return values;
 	}
 
 	private static Boolean valuesAreIdentical(List<Object> values) {
-		if (values.isEmpty()) {
-			return true;
-		}
 		Object firstValue = values[0];
 		for (Object val : values) {
 			Boolean isEqual = (val == null && firstValue == null) || (val != null && val.equals(firstValue));
@@ -101,10 +98,6 @@ public abstract class InvocableSoqlQueryRecords {
 	 * @return The pivot condition if exactly one matches rules, null otherwise
 	 */
 	private static Soql.Condition findPivotCondition(List<Soql.Criteria> criterion) {
-		if (criterion == null || criterion.isEmpty()) {
-			return null;
-		}
-
 		List<Soql.Condition> candidates = new List<Soql.Condition>();
 		for (Soql.Criteria c : criterion) {
 			if (!(c instanceof Soql.Condition)) {
