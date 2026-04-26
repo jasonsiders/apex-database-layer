@@ -59,6 +59,15 @@ global class DatabaseLayer {
 	}
 
 	/**
+	 * @description Convenience method to create a new SOQL query from a raw query string.
+	 * @param queryString The raw SOQL query string to parse
+	 * @return A configured SOQL builder instance
+	 */
+	global static Soql newSoql(String queryString) {
+		return INSTANCE?.currentSoql?.newQuery(queryString);
+	}
+
+	/**
 	 * @description Primary access point for Duplicates operations. Returns the currently configured Duplicates instance.
 	 * @return The current Duplicates instance (real or mock based on configuration)
 	 */
@@ -171,6 +180,16 @@ global class DatabaseLayer {
 		global Soql newQuery(SObjectType objectType) {
 			Soql query = (this.useMocks == true) ? new MockSoql(INSTANCE) : new Soql(INSTANCE);
 			return query?.setFrom(objectType)?.toSoql();
+		}
+
+		/**
+		 * @description Creates a new SOQL query builder by parsing a raw SOQL string.
+		 * @param queryString The raw SOQL query string to parse
+		 * @return A configured SOQL builder instance (real or mock based on current configuration)
+		 */
+		global Soql newQuery(String queryString) {
+			Soql query = (this.useMocks == true) ? new MockSoql(INSTANCE, queryString) : new Soql(queryString);
+			return query?.toSoql();
 		}
 
 		private DatabaseLayer.SoqlProvider useMocks(Boolean value) {

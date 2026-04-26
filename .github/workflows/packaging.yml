@@ -111,14 +111,42 @@ jobs:
           INPUT_VERSION: ${{ inputs.version }}
         shell: bash
         run: |
-          if [[ -z "$INPUT_VERSION" ]]; then
-            VERSION_NUMBER=$(jq -r --arg pkg "$PACKAGE" \
-              '.packageDirectories[] | select(.package == $pkg) | .versionNumber' \
-              sfdx-project.json)
-            echo "Using the version number defined in sfdx-project.json: $VERSION_NUMBER"
-          else
+          if [[ -n "$INPUT_VERSION" ]]; then
             VERSION_NUMBER="${INPUT_VERSION}.NEXT"
             echo "Using specified version number: $VERSION_NUMBER"
+          else
+            # Resolve the 0Ho package ID from packageAliases (required by sf package version list).
+            # packageDirectories.package may not match the alias key directly (e.g. "Apex Database
+            # Layer" vs "apex-database-layer"), so try exact match first, then normalize.
+            PACKAGE_ID=$(jq -r --arg pkg "$PACKAGE" '.packageAliases[$pkg] // empty' sfdx-project.json)
+            if [[ -z "$PACKAGE_ID" ]]; then
+              NORM=$(echo "$PACKAGE" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
+              PACKAGE_ID=$(jq -r --arg key "$NORM" '.packageAliases[$key] // empty' sfdx-project.json)
+            fi
+
+            LATEST="null"
+            if [[ -n "$PACKAGE_ID" ]]; then
+              SF_RESULT=$(sf package version list --packages "$PACKAGE_ID" --json 2>&1 || true)
+              LATEST=$(echo "$SF_RESULT" | \
+                jq -r '[(.result // [])[] | .] | sort_by(.MajorVersion, .MinorVersion, .PatchVersion, .BuildNumber) | last')
+            fi
+
+            if [[ -z "$LATEST" || "$LATEST" == "null" ]]; then
+              VERSION_NUMBER=$(jq -r --arg pkg "$PACKAGE" \
+                '.packageDirectories[] | select(.package == $pkg) | .versionNumber' \
+                sfdx-project.json)
+              echo "No existing versions found; using sfdx-project.json: $VERSION_NUMBER"
+            else
+              MAJOR=$(echo "$LATEST" | jq -r '.MajorVersion')
+              MINOR=$(echo "$LATEST" | jq -r '.MinorVersion')
+              PATCH=$(echo "$LATEST" | jq -r '.PatchVersion')
+              IS_RELEASED=$(echo "$LATEST" | jq -r '.IsReleased')
+              if [[ "$IS_RELEASED" == "true" ]]; then
+                PATCH=$((PATCH + 1))
+              fi
+              VERSION_NUMBER="${MAJOR}.${MINOR}.${PATCH}.NEXT"
+              echo "Computed version from Salesforce: $VERSION_NUMBER (IsReleased=${IS_RELEASED})"
+            fi
           fi
           VERSION_NAME="v${VERSION_NUMBER%.NEXT}"
           echo "version-number=$VERSION_NUMBER" >> "$GITHUB_OUTPUT"
@@ -177,10 +205,12 @@ jobs:
         shell: bash
         run: |
           git fetch origin main
-          git rebase origin/main || {
+          git rebase --autostash origin/main || {
             echo "Rebase failed, trying merge strategy"
             git rebase --abort 2>/dev/null || true
+            git stash
             git pull --no-rebase origin main
+            git stash pop || true
           }
 
       - name: Tag & Commit Changes
