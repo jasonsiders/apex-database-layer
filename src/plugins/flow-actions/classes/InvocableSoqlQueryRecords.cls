@@ -204,7 +204,9 @@ public abstract class InvocableSoqlQueryRecords {
 				return;
 			}
 			Soql.ConditionalLogic whereCriteria = this.outputs?.get(indexes?.get(0)).soql?.whereCriteria;
-			Soql.Condition pivotCondition = (whereCriteria != null) ? this.findPivotCondition(whereCriteria.getCriterion()) : null;
+			Soql.Condition pivotCondition = (whereCriteria != null)
+				? this.findPivotCondition(whereCriteria.getCriterion())
+				: null;
 			if (pivotCondition == null) {
 				this.executePerInput(indexes);
 				return;
@@ -214,7 +216,7 @@ public abstract class InvocableSoqlQueryRecords {
 			if (this.valuesAreIdentical(origValues)) {
 				this.executeOnceAndCopy(indexes);
 			} else {
-				this.executeWithInList(indexes, pivotCondition, bindVarName, origValues);
+				this.executeWithInList(indexes, pivotCondition, origValues);
 			}
 		}
 
@@ -253,15 +255,14 @@ public abstract class InvocableSoqlQueryRecords {
 		 * @description Merges a group of queries into a single IN-list query, then distributes results back.
 		 * @param indexes Indexes of the outputs in this group
 		 * @param pivotCondition The condition to transform into an IN-list
-		 * @param bindVarName The bind variable name used by the pivot condition
 		 * @param origValues Original bind values in index order
 		 */
 		private void executeWithInList(
 			List<Integer> indexes,
 			Soql.Condition pivotCondition,
-			String bindVarName,
 			List<Object> origValues
 		) {
+			String bindVarName = pivotCondition.value.toString().removeStart(':');
 			Soql.ConditionalLogic newCriteria = this.buildInListCriteria(indexes, pivotCondition, bindVarName);
 			Output executor = this.outputs?.get(indexes?.get(0));
 			executor.soql.setWhereCriteria(newCriteria);
