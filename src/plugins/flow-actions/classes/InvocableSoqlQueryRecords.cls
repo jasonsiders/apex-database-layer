@@ -76,7 +76,7 @@ public abstract class InvocableSoqlQueryRecords {
 	private static List<Object> collectBindValues(List<Output> outputs, List<Integer> indexes, String bindVarName) {
 		List<Object> values = new List<Object>();
 		for (Integer idx : indexes) {
-			values.add(outputs[idx].soql.binds.get(bindVarName).getValue());
+			values.add(((Soql.Binder) outputs[idx].soql.binds.get(bindVarName)).getValue());
 		}
 		return values;
 	}
