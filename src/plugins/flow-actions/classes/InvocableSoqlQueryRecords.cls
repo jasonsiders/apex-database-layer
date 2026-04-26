@@ -257,11 +257,7 @@ public abstract class InvocableSoqlQueryRecords {
 		 * @param pivotCondition The condition to transform into an IN-list
 		 * @param origValues Original bind values in index order
 		 */
-		private void executeWithInList(
-			List<Integer> indexes,
-			Soql.Condition pivotCondition,
-			List<Object> origValues
-		) {
+		private void executeWithInList(List<Integer> indexes, Soql.Condition pivotCondition, List<Object> origValues) {
 			String bindVarName = pivotCondition.value.toString().removeStart(':');
 			Soql.ConditionalLogic newCriteria = this.buildInListCriteria(indexes, pivotCondition, bindVarName);
 			Output executor = this.outputs?.get(indexes?.get(0));
