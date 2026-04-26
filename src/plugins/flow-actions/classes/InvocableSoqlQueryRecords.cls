@@ -11,7 +11,8 @@ public abstract class InvocableSoqlQueryRecords {
 	public static List<Output> invoke(List<Input> inputs) {
 		List<Output> outputs = new List<Output>{};
 		for (Input input : inputs) {
-			outputs.add(new Output(input));
+			Output output = new Output(input);
+			outputs?.add(output);
 		}
 
 		Map<String, List<Integer>> groupsByQuery = groupOutputsByQuery(outputs);
@@ -237,11 +238,12 @@ public abstract class InvocableSoqlQueryRecords {
 		}
 
 		private Map<String, Soql.Binder> getBindsByName() {
-			Map<String, Soql.Binder> results = new Map<String, Soql.Binder>();
+			Map<String, Soql.Binder> results = new Map<String, Soql.Binder>{};
 			for (FlowUntypedVariable var : this.binds) {
 				String key = var?.key;
 				Object value = var?.getValue();
-				results.put(key, new Soql.Binder(key, value));
+				Soql.Binder binder = new Soql.Binder(key, value);
+				results?.put(key, binder);
 			}
 			return results;
 		}
@@ -287,15 +289,15 @@ public abstract class InvocableSoqlQueryRecords {
 		 */
 		private Output(Input input) {
 			this();
-			this.binds = input.binds;
-			Map<String, Soql.Binder> bindMap = input.getBindsByName();
-			this.soql = DatabaseLayer.Soql.newQuery(input.query).addBind(bindMap).toSoql();
-			this.query = this.soql.toString();
+			this.binds = input?.binds;
+			Map<String, Soql.Binder> bindMap = input?.getBindsByName();
+			this.soql = DatabaseLayer.Soql.newQuery(input?.query)?.addBind(bindMap)?.toSoql();
+			this.query = this.soql?.toString();
 		}
 
 		private Output doQuery() {
-			this.allResults = this.soql.query();
-			this.firstResult = !allResults.isEmpty() ? allResults.get(0) : null;
+			this.allResults = this.soql?.query();
+			this.firstResult = (allResults?.isEmpty() == false) ? allResults?.get(0) : null;
 			return this;
 		}
 	}
