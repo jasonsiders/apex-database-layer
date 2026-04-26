@@ -28,10 +28,7 @@ private class InvocableSoqlQueryRecordsTest {
 		return var;
 	}
 
-	private static InvocableSoqlQueryRecords.Input createInput(
-		String query,
-		List<FlowUntypedVariable> binds
-	) {
+	private static InvocableSoqlQueryRecords.Input createInput(String query, List<FlowUntypedVariable> binds) {
 		InvocableSoqlQueryRecords.Input input = new InvocableSoqlQueryRecords.Input();
 		input.query = query;
 		input.binds = binds ?? new List<FlowUntypedVariable>{};
@@ -251,21 +248,14 @@ private class InvocableSoqlQueryRecordsTest {
 		Account acmeAccount = new Account(Name = 'Acme');
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ acmeAccount });
 
-		InvocableSoqlQueryRecords.Input input1 = new InvocableSoqlQueryRecords.Input();
-		input1.query = 'SELECT Id, Name FROM Account WHERE Parent.Name = :name';
-		FlowUntypedVariable nameVar1 = new FlowUntypedVariable();
-		nameVar1.key = 'name';
-		nameVar1.typeName = 'String';
-		nameVar1.textValue = '"Acme"';
-		input1.binds = new List<FlowUntypedVariable>{ nameVar1 };
-
-		InvocableSoqlQueryRecords.Input input2 = new InvocableSoqlQueryRecords.Input();
-		input2.query = 'SELECT Id, Name FROM Account WHERE Parent.Name = :name';
-		FlowUntypedVariable nameVar2 = new FlowUntypedVariable();
-		nameVar2.key = 'name';
-		nameVar2.typeName = 'String';
-		nameVar2.textValue = '"Beta"';
-		input2.binds = new List<FlowUntypedVariable>{ nameVar2 };
+		InvocableSoqlQueryRecords.Input input1 = InvocableSoqlQueryRecordsTest.createInput(
+			QUERY_PARENT_FIELD,
+			new List<FlowUntypedVariable>{ InvocableSoqlQueryRecordsTest.createStringVariable('name', '"Acme"') }
+		);
+		InvocableSoqlQueryRecords.Input input2 = InvocableSoqlQueryRecordsTest.createInput(
+			QUERY_PARENT_FIELD,
+			new List<FlowUntypedVariable>{ InvocableSoqlQueryRecordsTest.createStringVariable('name', '"Beta"') }
+		);
 
 		Test.startTest();
 		List<InvocableSoqlQueryRecords.Output> outputs = InvocableSoqlQueryRecords.invoke(
@@ -282,11 +272,8 @@ private class InvocableSoqlQueryRecordsTest {
 		Account account2 = new Account(Name = 'Account2');
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ account1, account2 });
 
-		InvocableSoqlQueryRecords.Input input1 = new InvocableSoqlQueryRecords.Input();
-		input1.query = 'SELECT Id, Name FROM Account';
-
-		InvocableSoqlQueryRecords.Input input2 = new InvocableSoqlQueryRecords.Input();
-		input2.query = 'SELECT Id, Name FROM Account';
+		InvocableSoqlQueryRecords.Input input1 = InvocableSoqlQueryRecordsTest.createInput(QUERY_NO_WHERE, null);
+		InvocableSoqlQueryRecords.Input input2 = InvocableSoqlQueryRecordsTest.createInput(QUERY_NO_WHERE, null);
 
 		Test.startTest();
 		List<InvocableSoqlQueryRecords.Output> outputs = InvocableSoqlQueryRecords.invoke(
@@ -305,21 +292,14 @@ private class InvocableSoqlQueryRecordsTest {
 		Account betaAccount = new Account(Name = 'Beta', Phone = '555-1234');
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ acmeAccount, betaAccount });
 
-		InvocableSoqlQueryRecords.Input input1 = new InvocableSoqlQueryRecords.Input();
-		input1.query = 'SELECT Id, Name FROM Account WHERE Name = :name AND Phone = \'555-1234\'';
-		FlowUntypedVariable nameVar1 = new FlowUntypedVariable();
-		nameVar1.key = 'name';
-		nameVar1.typeName = 'String';
-		nameVar1.textValue = '"Acme"';
-		input1.binds = new List<FlowUntypedVariable>{ nameVar1 };
-
-		InvocableSoqlQueryRecords.Input input2 = new InvocableSoqlQueryRecords.Input();
-		input2.query = 'SELECT Id, Name FROM Account WHERE Name = :name AND Phone = \'555-1234\'';
-		FlowUntypedVariable nameVar2 = new FlowUntypedVariable();
-		nameVar2.key = 'name';
-		nameVar2.typeName = 'String';
-		nameVar2.textValue = '"Beta"';
-		input2.binds = new List<FlowUntypedVariable>{ nameVar2 };
+		InvocableSoqlQueryRecords.Input input1 = InvocableSoqlQueryRecordsTest.createInput(
+			QUERY_WITH_LITERAL,
+			new List<FlowUntypedVariable>{ InvocableSoqlQueryRecordsTest.createStringVariable('name', '"Acme"') }
+		);
+		InvocableSoqlQueryRecords.Input input2 = InvocableSoqlQueryRecordsTest.createInput(
+			QUERY_WITH_LITERAL,
+			new List<FlowUntypedVariable>{ InvocableSoqlQueryRecordsTest.createStringVariable('name', '"Beta"') }
+		);
 
 		Test.startTest();
 		List<InvocableSoqlQueryRecords.Output> outputs = InvocableSoqlQueryRecords.invoke(
