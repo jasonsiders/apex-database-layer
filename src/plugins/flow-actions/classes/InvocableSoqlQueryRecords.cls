@@ -11,18 +11,10 @@ public abstract class InvocableSoqlQueryRecords {
 	public static List<Output> invoke(List<Input> inputs) {
 		List<Output> outputs = new List<Output>{};
 		for (Input input : inputs) {
-			Output output = new Output(input);
-			outputs?.add(output);
+			outputs.add(new Output(input));
 		}
 
-		Map<String, List<Integer>> groupsByQuery = new Map<String, List<Integer>>();
-		for (Integer i = 0; i < outputs.size(); i++) {
-			String queryTemplate = outputs[i].query;
-			if (!groupsByQuery.containsKey(queryTemplate)) {
-				groupsByQuery.put(queryTemplate, new List<Integer>());
-			}
-			groupsByQuery.get(queryTemplate).add(i);
-		}
+		Map<String, List<Integer>> groupsByQuery = groupOutputsByQuery(outputs);
 
 		for (List<Integer> indexes : groupsByQuery.values()) {
 			executeGroup(outputs, indexes);
@@ -67,6 +59,18 @@ public abstract class InvocableSoqlQueryRecords {
 		}
 	}
 
+	private static Map<String, List<Integer>> groupOutputsByQuery(List<Output> outputs) {
+		Map<String, List<Integer>> grouped = new Map<String, List<Integer>>();
+		for (Integer i = 0; i < outputs.size(); i++) {
+			String template = outputs[i].query;
+			if (!grouped.containsKey(template)) {
+				grouped.put(template, new List<Integer>());
+			}
+			grouped.get(template).add(i);
+		}
+		return grouped;
+	}
+
 	private static void executePerInput(List<Output> outputs, List<Integer> indexes) {
 		for (Integer idx : indexes) {
 			outputs[idx].doQuery();
@@ -98,7 +102,7 @@ public abstract class InvocableSoqlQueryRecords {
 	 * @return The pivot condition if exactly one matches rules, null otherwise
 	 */
 	private static Soql.Condition findPivotCondition(List<Soql.Criteria> criterion) {
-		List<Soql.Condition> candidates = new List<Soql.Condition>();
+		Soql.Condition candidate = null;
 		for (Soql.Criteria c : criterion) {
 			if (!(c instanceof Soql.Condition)) {
 				return null;
@@ -111,16 +115,14 @@ public abstract class InvocableSoqlQueryRecords {
 			if (opStr == '=' && val instanceof String) {
 				String strVal = (String) val;
 				if (strVal.startsWith(':') && !cond.property.contains('.')) {
-					candidates.add(cond);
+					if (candidate != null) {
+						return null;
+					}
+					candidate = cond;
 				}
 			}
 		}
-
-		if (candidates.size() == 1) {
-			return candidates[0];
-		}
-
-		return null;
+		return candidate;
 	}
 
 	/**
@@ -235,12 +237,11 @@ public abstract class InvocableSoqlQueryRecords {
 		}
 
 		private Map<String, Soql.Binder> getBindsByName() {
-			Map<String, Soql.Binder> results = new Map<String, Soql.Binder>{};
+			Map<String, Soql.Binder> results = new Map<String, Soql.Binder>();
 			for (FlowUntypedVariable var : this.binds) {
 				String key = var?.key;
 				Object value = var?.getValue();
-				Soql.Binder binder = new Soql.Binder(key, value);
-				results?.put(key, binder);
+				results.put(key, new Soql.Binder(key, value));
 			}
 			return results;
 		}
@@ -286,15 +287,15 @@ public abstract class InvocableSoqlQueryRecords {
 		 */
 		private Output(Input input) {
 			this();
-			this.binds = input?.binds;
-			Map<String, Soql.Binder> bindMap = input?.getBindsByName();
-			this.soql = DatabaseLayer.Soql.newQuery(input?.query)?.addBind(bindMap)?.toSoql();
-			this.query = this.soql?.toString();
+			this.binds = input.binds;
+			Map<String, Soql.Binder> bindMap = input.getBindsByName();
+			this.soql = DatabaseLayer.Soql.newQuery(input.query).addBind(bindMap).toSoql();
+			this.query = this.soql.toString();
 		}
 
 		private Output doQuery() {
-			this.allResults = this.soql?.query();
-			this.firstResult = (allResults?.isEmpty() == false) ? allResults?.get(0) : null;
+			this.allResults = this.soql.query();
+			this.firstResult = !allResults.isEmpty() ? allResults.get(0) : null;
 			return this;
 		}
 	}
