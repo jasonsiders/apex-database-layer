@@ -15,10 +15,10 @@ public abstract class InvocableSoqlQueryRecords {
 			outputs?.add(output);
 		}
 
-		Map<String, List<Integer>> groupsByQuery = groupOutputsByQuery(outputs);
+		Map<String, List<Integer>> groupsByQuery = InvocableSoqlQueryRecords.groupOutputsByQuery(outputs);
 
 		for (List<Integer> indexes : groupsByQuery.values()) {
-			executeGroup(outputs, indexes);
+			InvocableSoqlQueryRecords.executeGroup(outputs, indexes);
 		}
 
 		return outputs;
@@ -37,12 +37,12 @@ public abstract class InvocableSoqlQueryRecords {
 
 		Soql.ConditionalLogic whereCriteria = outputs[indexes[0]].soql?.whereCriteria;
 		if (whereCriteria == null) {
-			executePerInput(outputs, indexes);
+			InvocableSoqlQueryRecords.executePerInput(outputs, indexes);
 			return;
 		}
 
 		List<Soql.Criteria> criterion = whereCriteria.getCriterion();
-		Soql.Condition pivotCondition = findPivotCondition(criterion);
+		Soql.Condition pivotCondition = InvocableSoqlQueryRecords.findPivotCondition(criterion);
 
 		if (pivotCondition == null) {
 			executePerInput(outputs, indexes);
@@ -50,13 +50,13 @@ public abstract class InvocableSoqlQueryRecords {
 		}
 
 		String bindVarName = pivotCondition.value.toString().removeStart(':');
-		List<Object> origValues = collectBindValues(outputs, indexes, bindVarName);
+		List<Object> origValues = InvocableSoqlQueryRecords.collectBindValues(outputs, indexes, bindVarName);
 
-		if (valuesAreIdentical(origValues)) {
-			executeOnceAndCopy(outputs, indexes);
+		if (InvocableSoqlQueryRecords.valuesAreIdentical(origValues)) {
+			InvocableSoqlQueryRecords.executeOnceAndCopy(outputs, indexes);
 		} else {
 			ExecutionContext ctx = new ExecutionContext(outputs, indexes, pivotCondition, bindVarName, origValues);
-			executeWithInList(ctx);
+			InvocableSoqlQueryRecords.executeWithInList(ctx);
 		}
 	}
 
@@ -169,7 +169,7 @@ public abstract class InvocableSoqlQueryRecords {
 		executor.soql.addBind(ctx.bindVarName, ctx.origValues);
 		executor.doQuery();
 
-		Map<Object, List<SObject>> resultsByValue = groupResultsByPivotField(
+		Map<Object, List<SObject>> resultsByValue = InvocableSoqlQueryRecords.groupResultsByPivotField(
 			executor.allResults,
 			ctx.pivotCondition.property
 		);

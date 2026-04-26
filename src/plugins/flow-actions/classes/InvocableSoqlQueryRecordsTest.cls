@@ -1,8 +1,41 @@
 @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveRunAs')
 @IsTest
 private class InvocableSoqlQueryRecordsTest {
+	private static final String QUERY_BY_NAME = 'SELECT Id, Name FROM Account WHERE Name = :name';
+	private static final String QUERY_BY_NAME_AND_PHONE = 'SELECT Id, Name FROM Account WHERE Name = :name AND Phone = :phone';
+	private static final String QUERY_NESTED_WHERE = 'SELECT Id, Name FROM Account WHERE (Name = :name OR Status__c = :status) AND IsActive = :active';
+	private static final String QUERY_PARENT_FIELD = 'SELECT Id, Name FROM Account WHERE Parent.Name = :name';
+	private static final String QUERY_WITH_LITERAL = 'SELECT Id, Name FROM Account WHERE Name = :name AND Phone = \'555-1234\'';
+	private static final String QUERY_NO_WHERE = 'SELECT Id, Name FROM Account';
+
 	static {
 		DatabaseLayer.useMocks();
+	}
+
+	private static FlowUntypedVariable createStringVariable(String key, String value) {
+		FlowUntypedVariable var = new FlowUntypedVariable();
+		var.key = key;
+		var.typeName = 'String';
+		var.textValue = value;
+		return var;
+	}
+
+	private static FlowUntypedVariable createBooleanVariable(String key, Boolean value) {
+		FlowUntypedVariable var = new FlowUntypedVariable();
+		var.key = key;
+		var.typeName = 'Boolean';
+		var.textValue = String.valueOf(value);
+		return var;
+	}
+
+	private static InvocableSoqlQueryRecords.Input createInput(
+		String query,
+		List<FlowUntypedVariable> binds
+	) {
+		InvocableSoqlQueryRecords.Input input = new InvocableSoqlQueryRecords.Input();
+		input.query = query;
+		input.binds = binds ?? new List<FlowUntypedVariable>{};
+		return input;
 	}
 
 	@IsTest
@@ -10,13 +43,10 @@ private class InvocableSoqlQueryRecordsTest {
 		Account mockAccount = new Account(Name = 'Acme');
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ mockAccount });
 
-		InvocableSoqlQueryRecords.Input input = new InvocableSoqlQueryRecords.Input();
-		input.query = 'SELECT Id, Name FROM Account WHERE Name = :name';
-		FlowUntypedVariable nameVar = new FlowUntypedVariable();
-		nameVar.key = 'name';
-		nameVar.typeName = 'String';
-		nameVar.textValue = '"Acme"';
-		input.binds = new List<FlowUntypedVariable>{ nameVar };
+		InvocableSoqlQueryRecords.Input input = InvocableSoqlQueryRecordsTest.createInput(
+			QUERY_BY_NAME,
+			new List<FlowUntypedVariable>{ InvocableSoqlQueryRecordsTest.createStringVariable('name', '"Acme"') }
+		);
 
 		Test.startTest();
 		List<InvocableSoqlQueryRecords.Output> outputs = InvocableSoqlQueryRecords.invoke(
@@ -26,8 +56,8 @@ private class InvocableSoqlQueryRecordsTest {
 
 		Assert.areEqual(1, outputs.size(), 'Should return 1 output');
 		Assert.areEqual(1, outputs[0].allResults.size(), 'Should have 1 result');
-		Assert.isNotNull(outputs[0].firstResult, 'firstResult should not be null');
-		Assert.areEqual('Acme', outputs[0].firstResult.get('Name'), 'Should match expected Name');
+		Assert.isNotNull(outputs[0].firstResult, 'firstResult should be populated');
+		Assert.areEqual('Acme', outputs[0].firstResult.get('Name'), 'Result name should match');
 	}
 
 	@IsTest
@@ -45,13 +75,10 @@ private class InvocableSoqlQueryRecordsTest {
 	private static void shouldReturnEmptyResultsWhenQueryReturnsNothing() {
 		MockSoql.setGlobalMock().withResults(new List<SObject>{});
 
-		InvocableSoqlQueryRecords.Input input = new InvocableSoqlQueryRecords.Input();
-		input.query = 'SELECT Id, Name FROM Account WHERE Name = :name';
-		FlowUntypedVariable nameVar = new FlowUntypedVariable();
-		nameVar.key = 'name';
-		nameVar.typeName = 'String';
-		nameVar.textValue = '"NoMatch"';
-		input.binds = new List<FlowUntypedVariable>{ nameVar };
+		InvocableSoqlQueryRecords.Input input = InvocableSoqlQueryRecordsTest.createInput(
+			QUERY_BY_NAME,
+			new List<FlowUntypedVariable>{ InvocableSoqlQueryRecordsTest.createStringVariable('name', '"NoMatch"') }
+		);
 
 		Test.startTest();
 		List<InvocableSoqlQueryRecords.Output> outputs = InvocableSoqlQueryRecords.invoke(
@@ -69,8 +96,7 @@ private class InvocableSoqlQueryRecordsTest {
 		Account account2 = new Account(Name = 'Account2');
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ account1, account2 });
 
-		InvocableSoqlQueryRecords.Input input = new InvocableSoqlQueryRecords.Input();
-		input.query = 'SELECT Id, Name FROM Account';
+		InvocableSoqlQueryRecords.Input input = InvocableSoqlQueryRecordsTest.createInput(QUERY_NO_WHERE, null);
 
 		Test.startTest();
 		List<InvocableSoqlQueryRecords.Output> outputs = InvocableSoqlQueryRecords.invoke(
@@ -82,7 +108,7 @@ private class InvocableSoqlQueryRecordsTest {
 		Assert.areEqual(
 			outputs[0].firstResult.get('Id'),
 			outputs[0].allResults[0].get('Id'),
-			'firstResult should be first element of allResults'
+			'firstResult should be first element'
 		);
 	}
 
@@ -91,17 +117,13 @@ private class InvocableSoqlQueryRecordsTest {
 		Account mockAccount = new Account(Name = 'TestAccount', Phone = '555-1234');
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ mockAccount });
 
-		InvocableSoqlQueryRecords.Input input = new InvocableSoqlQueryRecords.Input();
-		input.query = 'SELECT Id, Name FROM Account WHERE Name = :name AND Phone = :phone';
-		FlowUntypedVariable nameVar = new FlowUntypedVariable();
-		nameVar.key = 'name';
-		nameVar.typeName = 'String';
-		nameVar.textValue = '"TestAccount"';
-		FlowUntypedVariable phoneVar = new FlowUntypedVariable();
-		phoneVar.key = 'phone';
-		phoneVar.typeName = 'String';
-		phoneVar.textValue = '"555-1234"';
-		input.binds = new List<FlowUntypedVariable>{ nameVar, phoneVar };
+		InvocableSoqlQueryRecords.Input input = InvocableSoqlQueryRecordsTest.createInput(
+			QUERY_BY_NAME_AND_PHONE,
+			new List<FlowUntypedVariable>{
+				InvocableSoqlQueryRecordsTest.createStringVariable('name', '"TestAccount"'),
+				InvocableSoqlQueryRecordsTest.createStringVariable('phone', '"555-1234"')
+			}
+		);
 
 		Test.startTest();
 		List<InvocableSoqlQueryRecords.Output> outputs = InvocableSoqlQueryRecords.invoke(
@@ -109,8 +131,8 @@ private class InvocableSoqlQueryRecordsTest {
 		);
 		Test.stopTest();
 
-		Assert.isTrue(outputs[0].query.contains(':name'), 'Query should contain :name bind variable');
-		Assert.isTrue(outputs[0].query.contains(':phone'), 'Query should contain :phone bind variable');
+		Assert.isTrue(outputs[0].query.contains(':name'), 'Query should contain :name');
+		Assert.isTrue(outputs[0].query.contains(':phone'), 'Query should contain :phone');
 	}
 
 	@IsTest
@@ -118,21 +140,11 @@ private class InvocableSoqlQueryRecordsTest {
 		Account acmeAccount = new Account(Name = 'Acme');
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ acmeAccount });
 
-		InvocableSoqlQueryRecords.Input input1 = new InvocableSoqlQueryRecords.Input();
-		input1.query = 'SELECT Id, Name FROM Account WHERE Name = :name';
-		FlowUntypedVariable nameVar1 = new FlowUntypedVariable();
-		nameVar1.key = 'name';
-		nameVar1.typeName = 'String';
-		nameVar1.textValue = '"Acme"';
-		input1.binds = new List<FlowUntypedVariable>{ nameVar1 };
-
-		InvocableSoqlQueryRecords.Input input2 = new InvocableSoqlQueryRecords.Input();
-		input2.query = 'SELECT Id, Name FROM Account WHERE Name = :name';
-		FlowUntypedVariable nameVar2 = new FlowUntypedVariable();
-		nameVar2.key = 'name';
-		nameVar2.typeName = 'String';
-		nameVar2.textValue = '"Acme"';
-		input2.binds = new List<FlowUntypedVariable>{ nameVar2 };
+		List<FlowUntypedVariable> binds = new List<FlowUntypedVariable>{
+			InvocableSoqlQueryRecordsTest.createStringVariable('name', '"Acme"')
+		};
+		InvocableSoqlQueryRecords.Input input1 = InvocableSoqlQueryRecordsTest.createInput(QUERY_BY_NAME, binds);
+		InvocableSoqlQueryRecords.Input input2 = InvocableSoqlQueryRecordsTest.createInput(QUERY_BY_NAME, binds);
 
 		Test.startTest();
 		List<InvocableSoqlQueryRecords.Output> outputs = InvocableSoqlQueryRecords.invoke(
@@ -143,11 +155,7 @@ private class InvocableSoqlQueryRecordsTest {
 		Assert.areEqual(2, outputs.size(), 'Should return 2 outputs');
 		Assert.areEqual(1, outputs[0].allResults.size(), 'First output should have 1 result');
 		Assert.areEqual(1, outputs[1].allResults.size(), 'Second output should have 1 result');
-		Assert.areEqual(
-			outputs[0].allResults,
-			outputs[1].allResults,
-			'Both outputs should share the same results list'
-		);
+		Assert.areEqual(outputs[0].allResults, outputs[1].allResults, 'Outputs should share results');
 	}
 
 	@IsTest
@@ -156,21 +164,14 @@ private class InvocableSoqlQueryRecordsTest {
 		Account betaAccount = new Account(Name = 'Beta');
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ acmeAccount, betaAccount });
 
-		InvocableSoqlQueryRecords.Input input1 = new InvocableSoqlQueryRecords.Input();
-		input1.query = 'SELECT Id, Name FROM Account WHERE Name = :name';
-		FlowUntypedVariable nameVar1 = new FlowUntypedVariable();
-		nameVar1.key = 'name';
-		nameVar1.typeName = 'String';
-		nameVar1.textValue = '"Acme"';
-		input1.binds = new List<FlowUntypedVariable>{ nameVar1 };
-
-		InvocableSoqlQueryRecords.Input input2 = new InvocableSoqlQueryRecords.Input();
-		input2.query = 'SELECT Id, Name FROM Account WHERE Name = :name';
-		FlowUntypedVariable nameVar2 = new FlowUntypedVariable();
-		nameVar2.key = 'name';
-		nameVar2.typeName = 'String';
-		nameVar2.textValue = '"Beta"';
-		input2.binds = new List<FlowUntypedVariable>{ nameVar2 };
+		InvocableSoqlQueryRecords.Input input1 = InvocableSoqlQueryRecordsTest.createInput(
+			QUERY_BY_NAME,
+			new List<FlowUntypedVariable>{ InvocableSoqlQueryRecordsTest.createStringVariable('name', '"Acme"') }
+		);
+		InvocableSoqlQueryRecords.Input input2 = InvocableSoqlQueryRecordsTest.createInput(
+			QUERY_BY_NAME,
+			new List<FlowUntypedVariable>{ InvocableSoqlQueryRecordsTest.createStringVariable('name', '"Beta"') }
+		);
 
 		Test.startTest();
 		List<InvocableSoqlQueryRecords.Output> outputs = InvocableSoqlQueryRecords.invoke(
@@ -190,21 +191,14 @@ private class InvocableSoqlQueryRecordsTest {
 		Account acmeAccount = new Account(Name = 'Acme');
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ acmeAccount });
 
-		InvocableSoqlQueryRecords.Input input1 = new InvocableSoqlQueryRecords.Input();
-		input1.query = 'SELECT Id, Name FROM Account WHERE Name = :name';
-		FlowUntypedVariable nameVar1 = new FlowUntypedVariable();
-		nameVar1.key = 'name';
-		nameVar1.typeName = 'String';
-		nameVar1.textValue = '"Acme"';
-		input1.binds = new List<FlowUntypedVariable>{ nameVar1 };
-
-		InvocableSoqlQueryRecords.Input input2 = new InvocableSoqlQueryRecords.Input();
-		input2.query = 'SELECT Id, Name FROM Account WHERE Name = :name';
-		FlowUntypedVariable nameVar2 = new FlowUntypedVariable();
-		nameVar2.key = 'name';
-		nameVar2.typeName = 'String';
-		nameVar2.textValue = '"NoMatch"';
-		input2.binds = new List<FlowUntypedVariable>{ nameVar2 };
+		InvocableSoqlQueryRecords.Input input1 = InvocableSoqlQueryRecordsTest.createInput(
+			QUERY_BY_NAME,
+			new List<FlowUntypedVariable>{ InvocableSoqlQueryRecordsTest.createStringVariable('name', '"Acme"') }
+		);
+		InvocableSoqlQueryRecords.Input input2 = InvocableSoqlQueryRecordsTest.createInput(
+			QUERY_BY_NAME,
+			new List<FlowUntypedVariable>{ InvocableSoqlQueryRecordsTest.createStringVariable('name', '"NoMatch"') }
+		);
 
 		Test.startTest();
 		List<InvocableSoqlQueryRecords.Output> outputs = InvocableSoqlQueryRecords.invoke(
@@ -214,7 +208,7 @@ private class InvocableSoqlQueryRecordsTest {
 
 		Assert.areEqual(1, outputs[0].allResults.size(), 'Matched input should have 1 result');
 		Assert.areEqual(0, outputs[1].allResults.size(), 'Unmatched input should have 0 results');
-		Assert.isNull(outputs[1].firstResult, 'firstResult should be null for unmatched input');
+		Assert.isNull(outputs[1].firstResult, 'firstResult should be null for unmatched');
 	}
 
 	@IsTest
@@ -223,37 +217,22 @@ private class InvocableSoqlQueryRecordsTest {
 		Account account2 = new Account(Name = 'Beta');
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ account1, account2 });
 
-		InvocableSoqlQueryRecords.Input input1 = new InvocableSoqlQueryRecords.Input();
-		input1.query = 'SELECT Id, Name FROM Account WHERE (Name = :name OR Status__c = :status) AND IsActive = :active';
-		FlowUntypedVariable nameVar1 = new FlowUntypedVariable();
-		nameVar1.key = 'name';
-		nameVar1.typeName = 'String';
-		nameVar1.textValue = '"Acme"';
-		FlowUntypedVariable statusVar1 = new FlowUntypedVariable();
-		statusVar1.key = 'status';
-		statusVar1.typeName = 'String';
-		statusVar1.textValue = '"Active"';
-		FlowUntypedVariable activeVar1 = new FlowUntypedVariable();
-		activeVar1.key = 'active';
-		activeVar1.typeName = 'Boolean';
-		activeVar1.textValue = 'true';
-		input1.binds = new List<FlowUntypedVariable>{ nameVar1, statusVar1, activeVar1 };
-
-		InvocableSoqlQueryRecords.Input input2 = new InvocableSoqlQueryRecords.Input();
-		input2.query = 'SELECT Id, Name FROM Account WHERE (Name = :name OR Status__c = :status) AND IsActive = :active';
-		FlowUntypedVariable nameVar2 = new FlowUntypedVariable();
-		nameVar2.key = 'name';
-		nameVar2.typeName = 'String';
-		nameVar2.textValue = '"Beta"';
-		FlowUntypedVariable statusVar2 = new FlowUntypedVariable();
-		statusVar2.key = 'status';
-		statusVar2.typeName = 'String';
-		statusVar2.textValue = '"Active"';
-		FlowUntypedVariable activeVar2 = new FlowUntypedVariable();
-		activeVar2.key = 'active';
-		activeVar2.typeName = 'Boolean';
-		activeVar2.textValue = 'true';
-		input2.binds = new List<FlowUntypedVariable>{ nameVar2, statusVar2, activeVar2 };
+		InvocableSoqlQueryRecords.Input input1 = InvocableSoqlQueryRecordsTest.createInput(
+			QUERY_NESTED_WHERE,
+			new List<FlowUntypedVariable>{
+				InvocableSoqlQueryRecordsTest.createStringVariable('name', '"Acme"'),
+				InvocableSoqlQueryRecordsTest.createStringVariable('status', '"Active"'),
+				InvocableSoqlQueryRecordsTest.createBooleanVariable('active', true)
+			}
+		);
+		InvocableSoqlQueryRecords.Input input2 = InvocableSoqlQueryRecordsTest.createInput(
+			QUERY_NESTED_WHERE,
+			new List<FlowUntypedVariable>{
+				InvocableSoqlQueryRecordsTest.createStringVariable('name', '"Beta"'),
+				InvocableSoqlQueryRecordsTest.createStringVariable('status', '"Active"'),
+				InvocableSoqlQueryRecordsTest.createBooleanVariable('active', true)
+			}
+		);
 
 		Test.startTest();
 		List<InvocableSoqlQueryRecords.Output> outputs = InvocableSoqlQueryRecords.invoke(
