@@ -5,36 +5,36 @@
  * To stay within SOQL governor limits when Flow processes a record collection, identical query templates
  * are grouped and their bind values are merged into a single IN-list query where possible.
  */
-public abstract class InvocableSoqlQueryRecords {
+global abstract inherited sharing class InvocableSoqlQueryRecords {
 	/**
 	 * @description Invokes the SOQL query action with automatic bulkification for identical queries.
 	 * @param inputs List of query inputs containing query strings and bind variables
 	 * @return List of query outputs with results populated
 	 */
 	@InvocableMethod(category='Database Layer' label='SOQL Query' iconName='slds:standard:record_lookup')
-	public static List<Output> invoke(List<Input> inputs) {
+	global static List<Output> invoke(List<Input> inputs) {
 		return new Container(inputs).run();
 	}
 
 	/**
 	 * @description Input structure for SOQL queries with bind variables.
 	 */
-	public class Input {
+	global class Input {
 		/**
 		 * @description List of bind variables for the query.
 		 */
 		@InvocableVariable(label='Bind Variables')
-		public List<FlowUntypedVariable> binds;
+		global List<FlowUntypedVariable> binds;
 		/**
 		 * @description The SOQL query string to execute.
 		 */
 		@InvocableVariable(label='Query' required=true)
-		public String query;
+		global String query;
 
 		/**
 		 * @description Initializes a new Input with an empty binds list.
 		 */
-		public Input() {
+		global Input() {
 			this.binds = new List<FlowUntypedVariable>{};
 		}
 
@@ -57,27 +57,27 @@ public abstract class InvocableSoqlQueryRecords {
 	/**
 	 * @description Output structure for SOQL query results.
 	 */
-	public class Output {
+	global class Output {
 		/**
 		 * @description All records returned by the query.
 		 */
 		@InvocableVariable(label='All Results')
-		public List<SObject> allResults;
+		global List<SObject> allResults;
 		/**
 		 * @description The bind variables used in the query.
 		 */
 		@InvocableVariable(label='Bind Variables')
-		public List<FlowUntypedVariable> binds;
+		global List<FlowUntypedVariable> binds;
 		/**
 		 * @description The first record from the query results, or null if no results.
 		 */
 		@InvocableVariable(label='First Result')
-		public SObject firstResult;
+		global SObject firstResult;
 		/**
 		 * @description The rendered SOQL query string with bind variable placeholders.
 		 */
 		@InvocableVariable(label='Query')
-		public String query;
+		global String query;
 		/**
 		 * @description The internal SOQL query object used to execute the query.
 		 */
@@ -86,7 +86,7 @@ public abstract class InvocableSoqlQueryRecords {
 		/**
 		 * @description Initializes a new Output with empty results and binds.
 		 */
-		public Output() {
+		global Output() {
 			this.allResults = new List<SObject>{};
 			this.binds = new List<FlowUntypedVariable>{};
 		}
