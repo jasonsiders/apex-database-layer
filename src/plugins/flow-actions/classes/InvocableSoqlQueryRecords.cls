@@ -113,15 +113,19 @@ public abstract class InvocableSoqlQueryRecords {
 			String opStr = cond.operator?.toString();
 			Object val = cond.value;
 
-			if (opStr == '=' && val instanceof String) {
-				String strVal = (String) val;
-				if (strVal.startsWith(':') && !cond.property.contains('.')) {
-					if (candidate != null) {
-						return null;
-					}
-					candidate = cond;
-				}
+			if (opStr != '=' || !(val instanceof String)) {
+				continue;
 			}
+
+			String strVal = (String) val;
+			if (!strVal.startsWith(':') || cond.property.contains('.')) {
+				continue;
+			}
+
+			if (candidate != null) {
+				return null;
+			}
+			candidate = cond;
 		}
 		return candidate;
 	}
