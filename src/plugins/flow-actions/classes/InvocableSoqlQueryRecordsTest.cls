@@ -7,6 +7,8 @@ private class InvocableSoqlQueryRecordsTest {
 	private static final String QUERY_PARENT_FIELD = 'SELECT Id, Name FROM Account WHERE Parent.Name = :name';
 	private static final String QUERY_WITH_LITERAL = 'SELECT Id, Name FROM Account WHERE Name = :name AND Phone = \'555-1234\'';
 	private static final String QUERY_NO_WHERE = 'SELECT Id, Name FROM Account';
+	private static final String QUERY_MULTIPLE_PIVOTS = 'SELECT Id, Name FROM Account WHERE Name = :name AND Phone = :phone';
+	private static final String QUERY_WITH_COMPARISON = 'SELECT Id, Name FROM Account WHERE NumberOfEmployees > :count';
 
 	static {
 		DatabaseLayer.useMocks();
@@ -310,5 +312,62 @@ private class InvocableSoqlQueryRecordsTest {
 		Assert.areEqual(2, outputs.size(), 'Should return 2 outputs');
 		Assert.isNotNull(outputs[0].allResults, 'First output allResults should not be null');
 		Assert.isNotNull(outputs[1].allResults, 'Second output allResults should not be null');
+	}
+
+	@IsTest
+	private static void shouldFallbackToPerInputForMultiplePivotConditions() {
+		Account acmeAccount = new Account(Name = 'Acme', Phone = '555-1234');
+		Account betaAccount = new Account(Name = 'Beta', Phone = '555-5678');
+		MockSoql.setGlobalMock().withResults(new List<SObject>{ acmeAccount, betaAccount });
+
+		InvocableSoqlQueryRecords.Input input1 = InvocableSoqlQueryRecordsTest.createInput(
+			QUERY_MULTIPLE_PIVOTS,
+			new List<FlowUntypedVariable>{
+				InvocableSoqlQueryRecordsTest.createStringVariable('name', '"Acme"'),
+				InvocableSoqlQueryRecordsTest.createStringVariable('phone', '"555-1234"')
+			}
+		);
+		InvocableSoqlQueryRecords.Input input2 = InvocableSoqlQueryRecordsTest.createInput(
+			QUERY_MULTIPLE_PIVOTS,
+			new List<FlowUntypedVariable>{
+				InvocableSoqlQueryRecordsTest.createStringVariable('name', '"Beta"'),
+				InvocableSoqlQueryRecordsTest.createStringVariable('phone', '"555-5678"')
+			}
+		);
+
+		Test.startTest();
+		List<InvocableSoqlQueryRecords.Output> outputs = InvocableSoqlQueryRecords.invoke(
+			new List<InvocableSoqlQueryRecords.Input>{ input1, input2 }
+		);
+		Test.stopTest();
+
+		Assert.areEqual(2, outputs.size(), 'Should return 2 outputs');
+		Assert.isNotNull(outputs[0].allResults, 'First output should have results');
+		Assert.isNotNull(outputs[1].allResults, 'Second output should have results');
+	}
+
+	@IsTest
+	private static void shouldFallbackToPerInputForComparisonOperator() {
+		Account account = new Account(Name = 'Test', NumberOfEmployees = 100);
+		MockSoql.setGlobalMock().withResults(new List<SObject>{ account });
+
+		InvocableSoqlQueryRecords.Input input1 = InvocableSoqlQueryRecordsTest.createInput(
+			QUERY_WITH_COMPARISON,
+			new List<FlowUntypedVariable>{ InvocableSoqlQueryRecordsTest.createStringVariable('count', '50') }
+		);
+		InvocableSoqlQueryRecords.Input input2 = InvocableSoqlQueryRecordsTest.createInput(
+			QUERY_WITH_COMPARISON,
+			new List<FlowUntypedVariable>{ InvocableSoqlQueryRecordsTest.createStringVariable('count', '150') }
+		);
+
+		Test.startTest();
+		List<InvocableSoqlQueryRecords.Output> outputs = InvocableSoqlQueryRecords.invoke(
+			new List<InvocableSoqlQueryRecords.Input>{ input1, input2 }
+		);
+		Test.stopTest();
+
+		Assert.areEqual(2, outputs.size(), 'Should return 2 outputs');
+		Assert.isNotNull(outputs[0].allResults, 'First output should have results');
+		Assert.isNotNull(outputs[1].allResults, 'Second output should have results');
 	}
 }
