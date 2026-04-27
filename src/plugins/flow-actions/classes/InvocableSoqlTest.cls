@@ -370,4 +370,78 @@ private class InvocableSoqlTest {
 		Assert.isNotNull(outputs[0].allResults, 'First output should have results');
 		Assert.isNotNull(outputs[1].allResults, 'Second output should have results');
 	}
+
+	@IsTest
+	private static void shouldFireOneQueryForSingleInput() {
+		MockSoql.setGlobalMock().withResults(new List<SObject>{ new Account(Name = 'Acme') });
+		InvocableSoql.Input input = InvocableSoqlTest.createInput(
+			QUERY_BY_NAME,
+			new List<FlowUntypedVariable>{ InvocableSoqlTest.createStringVariable('name', '"Acme"') }
+		);
+		Test.startTest();
+		InvocableSoql.invoke(new List<InvocableSoql.Input>{ input });
+		Test.stopTest();
+		Assert.areEqual(1, MockSoql.MockDatabase?.getNumQueries(), 'Single input should fire exactly 1 query');
+	}
+
+	@IsTest
+	private static void shouldFireOneQueryForIdenticalBindValues() {
+		MockSoql.setGlobalMock().withResults(new List<SObject>{ new Account(Name = 'Acme') });
+		List<FlowUntypedVariable> binds = new List<FlowUntypedVariable>{
+			InvocableSoqlTest.createStringVariable('name', '"Acme"')
+		};
+		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(QUERY_BY_NAME, binds);
+		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(QUERY_BY_NAME, binds);
+		Test.startTest();
+		InvocableSoql.invoke(new List<InvocableSoql.Input>{ input1, input2 });
+		Test.stopTest();
+		// executeOnceAndCopy: query fires once, results are copied to the second output
+		Assert.areEqual(1, MockSoql.MockDatabase?.getNumQueries(), 'Identical bind values should fire only 1 query');
+	}
+
+	@IsTest
+	private static void shouldFireOneQueryForDifferentBindValuesViaInList() {
+		MockSoql.setGlobalMock()
+			.withResults(new List<SObject>{ new Account(Name = 'Acme'), new Account(Name = 'Beta') });
+		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(
+			QUERY_BY_NAME,
+			new List<FlowUntypedVariable>{ InvocableSoqlTest.createStringVariable('name', '"Acme"') }
+		);
+		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(
+			QUERY_BY_NAME,
+			new List<FlowUntypedVariable>{ InvocableSoqlTest.createStringVariable('name', '"Beta"') }
+		);
+		Test.startTest();
+		InvocableSoql.invoke(new List<InvocableSoql.Input>{ input1, input2 });
+		Test.stopTest();
+		// executeWithInList: bind values are merged into one IN-list query
+		Assert.areEqual(1, MockSoql.MockDatabase?.getNumQueries(), 'Different bind values should merge into 1 IN-list query');
+	}
+
+	@IsTest
+	private static void shouldFireOneQueryPerInputForFallbackGroup() {
+		MockSoql.setGlobalMock()
+			.withResults(new List<SObject>{ new Account(Name = 'Acme'), new Account(Name = 'Beta') });
+		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(
+			QUERY_NESTED_WHERE,
+			new List<FlowUntypedVariable>{
+				InvocableSoqlTest.createStringVariable('name', '"Acme"'),
+				InvocableSoqlTest.createStringVariable('status', '"Active"'),
+				InvocableSoqlTest.createBooleanVariable('active', true)
+			}
+		);
+		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(
+			QUERY_NESTED_WHERE,
+			new List<FlowUntypedVariable>{
+				InvocableSoqlTest.createStringVariable('name', '"Beta"'),
+				InvocableSoqlTest.createStringVariable('status', '"Active"'),
+				InvocableSoqlTest.createBooleanVariable('active', true)
+			}
+		);
+		Test.startTest();
+		InvocableSoql.invoke(new List<InvocableSoql.Input>{ input1, input2 });
+		Test.stopTest();
+		// executePerInput: nested WHERE blocks IN-list optimization, each input fires its own query
+		Assert.areEqual(2, MockSoql.MockDatabase?.getNumQueries(), 'Nested WHERE fallback should fire 1 query per input');
+	}
 }
