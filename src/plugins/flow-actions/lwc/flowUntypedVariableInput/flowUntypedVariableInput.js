@@ -21,6 +21,10 @@ export default class FlowUntypedVariableInput extends LightningElement {
         return this.variable?.isCollection ?? false;
     }
 
+    get listModeLabel() {
+        return this.isCollection ? 'List' : 'Single';
+    }
+
     handleKeyChange(event) {
         this._emitChange({ key: event.target.value });
     }
@@ -33,8 +37,8 @@ export default class FlowUntypedVariableInput extends LightningElement {
         this._emitChange({ typeName: event.target.value });
     }
 
-    handleIsCollectionChange(event) {
-        this._emitChange({ isCollection: event.target.checked });
+    handleIsCollectionToggle() {
+        this._emitChange({ isCollection: !this.isCollection });
     }
 
     handleRemove() {

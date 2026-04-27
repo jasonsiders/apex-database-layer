@@ -2,23 +2,33 @@
     display: block;
 }
 
-.bind-row {
+.bind-card {
     display: grid;
-    grid-template-columns: minmax(0, 3fr) minmax(0, 4fr) minmax(0, 3fr) 5.5rem 2.5rem;
-    align-items: start;
-    column-gap: 1rem;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: stretch;
+    column-gap: 1.25rem;
+    padding: 1rem 1.125rem 1rem 1.125rem;
+    border: 1px solid var(--lwc-colorBorderInput, #c9c9c9);
+    border-radius: 0.5rem;
+    background: var(--lwc-colorBackgroundAlt, #ffffff);
 }
 
-.bind-field,
-.bind-list-field,
-.bind-remove-field {
+.bind-fields-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+    column-gap: 1.25rem;
+    row-gap: 0.875rem;
     min-width: 0;
 }
 
-.bind-list-field,
-.bind-remove-field {
-    display: flex;
-    flex-direction: column;
+.bind-field,
+.bind-list-field {
+    min-width: 0;
+}
+
+.bind-list-field {
+    max-width: 11rem;
 }
 
 .bind-field-label {
@@ -26,48 +36,62 @@
     line-height: 1.5;
 }
 
-.bind-field-label_placeholder {
-    visibility: hidden;
-}
-
-.bind-list-control,
-.bind-remove-control {
+.bind-list-control {
     min-height: 2.5rem;
     display: flex;
     align-items: center;
 }
 
-.bind-list-control {
-    padding-left: 0.125rem;
+.list-mode-button {
+    display: block;
+}
+
+.list-mode-button {
+    --slds-c-button-radius-border: 0.25rem;
+    --slds-c-button-spacing-inline-start: 0.875rem;
+    --slds-c-button-spacing-inline-end: 0.875rem;
+}
+
+.bind-remove-rail {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 4.5rem;
+    padding-left: 0.75rem;
+    padding-right: 0.125rem;
+    border-left: 1px solid var(--lwc-colorBorder, #ecebea);
 }
 
 .bind-remove-control {
+    display: flex;
+    align-items: center;
     justify-content: center;
 }
 
-@media (max-width: 63.99rem) {
-    .bind-row {
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-        row-gap: 0.75rem;
-    }
-
-    .bind-list-field,
-    .bind-remove-field {
-        grid-column: auto;
-    }
+.delete-button {
+    --slds-c-button-radius-border: 0.375rem;
 }
 
 @media (max-width: 47.99rem) {
-    .bind-row {
+    .bind-card {
+        grid-template-columns: minmax(0, 1fr);
+        row-gap: 0.875rem;
+    }
+
+    .bind-fields-grid {
         grid-template-columns: minmax(0, 1fr);
     }
 
-    .bind-list-control,
-    .bind-remove-control {
-        min-height: auto;
+    .bind-list-field {
+        max-width: none;
     }
 
-    .bind-remove-control {
-        justify-content: flex-start;
+    .bind-remove-rail {
+        justify-content: flex-end;
+        min-width: 0;
+        padding-left: 0;
+        padding-top: 0.125rem;
+        border-left: 0;
+        border-top: 1px solid var(--lwc-colorBorder, #ecebea);
     }
 }

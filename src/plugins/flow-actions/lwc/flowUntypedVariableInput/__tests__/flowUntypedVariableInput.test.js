@@ -32,7 +32,7 @@ describe('c-flow-untyped-variable-input', () => {
         await Promise.resolve();
         expect(element.shadowRoot.querySelector('[data-id="key"]').value).toBe('recordId');
         expect(element.shadowRoot.querySelector('[data-id="type-name"]').value).toBe('Id');
-        expect(element.shadowRoot.querySelector('[data-id="is-collection"]').checked).toBe(false);
+        expect(element.shadowRoot.querySelector('[data-id="is-collection"]').selected).toBe(false);
     });
 
     it('emits change with updated key when key input changes', () => {
@@ -61,14 +61,12 @@ describe('c-flow-untyped-variable-input', () => {
         expect(events[0].detail).toEqual({ index: 1, variable: { ...defaultVariable, typeName: 'String' } });
     });
 
-    it('emits change with updated isCollection when toggle changes', () => {
+    it('emits change with updated isCollection when the list mode button is clicked', () => {
         const element = createComponent({ index: 0, variable: defaultVariable });
         const events = [];
         element.addEventListener('change', (e) => events.push(e));
 
-        const toggle = element.shadowRoot.querySelector('[data-id="is-collection"]');
-        toggle.checked = true;
-        toggle.dispatchEvent(new Event('change'));
+        element.shadowRoot.querySelector('[data-id="is-collection"]').click();
 
         expect(events).toHaveLength(1);
         expect(events[0].detail).toEqual({ index: 0, variable: { ...defaultVariable, isCollection: true } });

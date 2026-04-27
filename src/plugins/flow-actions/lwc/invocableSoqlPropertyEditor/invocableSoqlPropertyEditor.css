@@ -42,11 +42,11 @@
 
 .binds-list {
     display: grid;
-    row-gap: 1rem;
+    row-gap: 0.875rem;
 }
 
 .bind-actions {
-    padding-top: 1rem;
+    padding-top: 0.875rem;
 }
 
 .hl-kw { color: #0070d2; font-weight: bold; }

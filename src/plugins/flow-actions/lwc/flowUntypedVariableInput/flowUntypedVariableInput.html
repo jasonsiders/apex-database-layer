@@ -1,59 +1,65 @@
 <template>
-    <div class="bind-row">
-        <div class="bind-field">
-            <lightning-input
-                data-id="key"
-                label="Bind Name"
-                value={key}
-                placeholder="e.g. recordId"
-                onchange={handleKeyChange}
-                required
-            ></lightning-input>
-        </div>
-        <div class="bind-field">
-            <c-flow-combobox
-                data-id="value"
-                included
-                label="Value"
-                name="textValue"
-                onfieldchange={handleValueChange}
-                required
-                resource-options={resourceOptions}
-                value={textValue}
-            ></c-flow-combobox>
-        </div>
-        <div class="bind-field">
-            <lightning-input
-                data-id="type-name"
-                label="Type"
-                onchange={handleTypeNameChange}
-                placeholder="e.g. String"
-                required
-                value={typeName}
-            ></lightning-input>
-        </div>
-        <div class="bind-list-field">
-            <span class="slds-form-element__label bind-field-label">List</span>
-            <div class="bind-list-control">
+    <div class="bind-card">
+        <div class="bind-fields-grid">
+            <div class="bind-field">
                 <lightning-input
-                    checked={isCollection}
-                    data-id="is-collection"
-                    label="List"
-                    onchange={handleIsCollectionChange}
-                    type="checkbox"
-                    variant="label-hidden"
+                    data-id="key"
+                    label="Bind Name"
+                    value={key}
+                    placeholder="e.g. recordId"
+                    onchange={handleKeyChange}
+                    required
                 ></lightning-input>
             </div>
+            <div class="bind-field">
+                <c-flow-combobox
+                    data-id="value"
+                    included
+                    label="Value"
+                    name="textValue"
+                    onfieldchange={handleValueChange}
+                    required
+                    resource-options={resourceOptions}
+                    value={textValue}
+                ></c-flow-combobox>
+            </div>
+            <div class="bind-field">
+                <lightning-input
+                    data-id="type-name"
+                    label="Type"
+                    onchange={handleTypeNameChange}
+                    placeholder="e.g. String"
+                    required
+                    value={typeName}
+                ></lightning-input>
+            </div>
+            <div class="bind-list-field">
+                <span class="slds-form-element__label bind-field-label">Return Shape</span>
+                <div class="bind-list-control">
+                    <lightning-button-stateful
+                        class="list-mode-button"
+                        data-id="is-collection"
+                        icon-name-when-off="utility:record"
+                        icon-name-when-on="utility:collection"
+                        label-when-hover={listModeLabel}
+                        label-when-off={listModeLabel}
+                        label-when-on={listModeLabel}
+                        onclick={handleIsCollectionToggle}
+                        selected={isCollection}
+                    ></lightning-button-stateful>
+                </div>
+            </div>
         </div>
-        <div class="bind-remove-field">
-            <span class="slds-form-element__label bind-field-label bind-field-label_placeholder" aria-hidden="true">&nbsp;</span>
+        <div class="bind-remove-rail">
             <div class="bind-remove-control">
                 <lightning-button-icon
                     alternative-text="Remove"
+                    class="delete-button"
                     icon-name="utility:delete"
                     onclick={handleRemove}
+                    size="medium"
                     title="Remove"
-                    variant="bare"
+                    variant="border-filled"
                 ></lightning-button-icon>
             </div>
         </div>
