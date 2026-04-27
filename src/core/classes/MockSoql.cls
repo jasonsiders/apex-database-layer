@@ -7,6 +7,8 @@ global class MockSoql extends Soql {
 	private static final String AGGREGATE_KEY_PREFIX = 'expr';
 	private static MockSoql.Simulator globalMock;
 	private transient MockSoql.Simulator currentMock;
+	private static Integer numQueries = 0; 
+	private static Integer numQueryRows = 0;
 
 	/**
 	 * @description Constructor for MockSoql instance.
@@ -341,7 +343,10 @@ global class MockSoql extends Soql {
 		 */
 		private Object simulate() {
 			// Run the Simulator logic
-			return this.simulator?.simulateQuery(this.query);
+			List<Object> results = this.simulator?.simulateQuery(this.query);
+			MockSoql.numQueries++;
+			MockSoql.numQueryRows += results?.size() ?? 0; 
+			return results;
 		}
 	}
 
