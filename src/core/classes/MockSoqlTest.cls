@@ -419,7 +419,6 @@ private class MockSoqlTest {
 
 	@IsTest
 	private static void shouldTrackNumQueriesInMockDatabase() {
-		MockSoql.MockDatabase?.reset();
 		MockSoql soql = (MockSoql) DatabaseLayer.Soql.newQuery(Account.SObjectType)?.addSelect(Account.Name);
 		soql?.setMock()?.withResults(MockSoqlTest.initAccounts(NUM_ACCS));
 
@@ -433,7 +432,6 @@ private class MockSoqlTest {
 
 	@IsTest
 	private static void shouldTrackQueryRowsInMockDatabase() {
-		MockSoql.MockDatabase?.reset();
 		MockSoql soql = (MockSoql) DatabaseLayer.Soql.newQuery(Account.SObjectType)?.addSelect(Account.Name);
 		soql?.setMock()?.withResults(MockSoqlTest.initAccounts(NUM_ACCS));
 
@@ -446,7 +444,6 @@ private class MockSoqlTest {
 
 	@IsTest
 	private static void shouldTrackQueriesListInMockDatabase() {
-		MockSoql.MockDatabase?.reset();
 		MockSoql soql = (MockSoql) DatabaseLayer.Soql.newQuery(Account.SObjectType)?.addSelect(Account.Name);
 		soql?.setMock()?.withResults(MockSoqlTest.initAccounts(NUM_ACCS));
 
