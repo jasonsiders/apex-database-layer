@@ -1421,6 +1421,14 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		private Soql.LogicType logicType = Soql.LogicType.ALL_CONDITIONS;
 
 		/**
+		 * @description Gets the list of criteria conditions.
+		 * @return The list of criteria in this conditional logic
+		 */
+		global List<Soql.Criteria> getCriterion() {
+			return this.criterion;
+		}
+
+		/**
 		 * @description Adds multiple criteria conditions to this conditional logic.
 		 * @param criterion List of criteria to add
 		 * @return This ConditionalLogic instance for method chaining
