@@ -40,6 +40,15 @@
     width: 100%;
 }
 
+.binds-list {
+    display: grid;
+    row-gap: 1rem;
+}
+
+.bind-actions {
+    padding-top: 1rem;
+}
+
 .hl-kw { color: #0070d2; font-weight: bold; }
 .hl-fn { color: #7b5ea7; }
 .hl-dt { color: #2e7d32; }

@@ -81,17 +81,19 @@ describe('c-invocable-soql-property-editor', () => {
         expect(element.shadowRoot.querySelector('lightning-button')).not.toBeNull();
     });
 
-    it('dispatches configuration_editor_input_value_changed with a new bind when Add is clicked', () => {
+    it('dispatches configuration_editor_input_value_changed with a new bind when Add is clicked', async () => {
         const element = createComponent({ inputVariables: [] });
         const events = [];
         element.addEventListener('configuration_editor_input_value_changed', (e) => events.push(e));
 
         element.shadowRoot.querySelector('lightning-button').click();
+        await Promise.resolve();
 
         expect(events).toHaveLength(1);
         expect(events[0].detail.name).toBe('binds');
         expect(events[0].detail.newValue).toHaveLength(1);
         expect(events[0].detail.newValue[0]).toEqual({ key: '', textValue: '', typeName: 'String', isCollection: false });
+        expect(element.shadowRoot.querySelectorAll('c-flow-untyped-variable-input')).toHaveLength(1);
     });
 
     it('updates a bind variable when a child emits change', () => {

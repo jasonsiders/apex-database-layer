@@ -26,22 +26,25 @@
         <div class="slds-form-element slds-var-m-top_medium">
             <label class="slds-form-element__label">Bind Variables</label>
             <div class="slds-form-element__control">
-                <template for:each={decoratedBinds} for:item="bind">
-                    <c-flow-untyped-variable-input
-                        key={bind.indexKey}
-                        index={bind.indexKey}
-                        variable={bind.variable}
-                        resource-options={resourceOptions}
-                        onchange={handleBindChange}
-                        onremove={handleBindRemove}
-                    ></c-flow-untyped-variable-input>
-                </template>
-                <lightning-button
-                    class="slds-var-m-top_small"
-                    label="Add Bind Variable"
-                    icon-name="utility:add"
-                    onclick={handleBindAdd}
-                ></lightning-button>
+                <div class="binds-list">
+                    <template for:each={decoratedBinds} for:item="bind">
+                        <c-flow-untyped-variable-input
+                            key={bind.indexKey}
+                            index={bind.indexKey}
+                            variable={bind.variable}
+                            resource-options={resourceOptions}
+                            onchange={handleBindChange}
+                            onremove={handleBindRemove}
+                        ></c-flow-untyped-variable-input>
+                    </template>
+                </div>
+                <div class="bind-actions">
+                    <lightning-button
+                        label="Add Bind Variable"
+                        icon-name="utility:add"
+                        onclick={handleBindAdd}
+                    ></lightning-button>
+                </div>
             </div>
         </div>
     </div>

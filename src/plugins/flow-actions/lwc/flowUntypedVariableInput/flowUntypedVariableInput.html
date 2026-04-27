@@ -1,6 +1,6 @@
 <template>
-    <div class="bind-row slds-grid slds-gutters_x-small slds-grid_vertical-align-end">
-        <div class="slds-col slds-size_3-of-12">
+    <div class="bind-row">
+        <div class="bind-field">
             <lightning-input
                 data-id="key"
                 label="Bind Name"
@@ -10,7 +10,7 @@
                 required
             ></lightning-input>
         </div>
-        <div class="slds-col slds-size_4-of-12">
+        <div class="bind-field">
             <c-flow-combobox
                 data-id="value"
                 included
@@ -22,7 +22,7 @@
                 value={textValue}
             ></c-flow-combobox>
         </div>
-        <div class="slds-col slds-size_3-of-12">
+        <div class="bind-field">
             <lightning-input
                 data-id="type-name"
                 label="Type"
@@ -32,23 +32,30 @@
                 value={typeName}
             ></lightning-input>
         </div>
-        <div class="slds-col slds-size_1-of-12">
-            <lightning-input
-                checked={isCollection}
-                data-id="is-collection"
-                label="List"
-                onchange={handleIsCollectionChange}
-                type="toggle"
-            ></lightning-input>
+        <div class="bind-list-field">
+            <span class="slds-form-element__label bind-field-label">List</span>
+            <div class="bind-list-control">
+                <lightning-input
+                    checked={isCollection}
+                    data-id="is-collection"
+                    label="List"
+                    onchange={handleIsCollectionChange}
+                    type="checkbox"
+                    variant="label-hidden"
+                ></lightning-input>
+            </div>
         </div>
-        <div class="slds-col slds-size_1-of-12 slds-grid slds-grid_align-end">
-            <lightning-button-icon
-                alternative-text="Remove"
-                icon-name="utility:delete"
-                onclick={handleRemove}
-                title="Remove"
-                variant="bare"
-            ></lightning-button-icon>
+        <div class="bind-remove-field">
+            <span class="slds-form-element__label bind-field-label bind-field-label_placeholder" aria-hidden="true">&nbsp;</span>
+            <div class="bind-remove-control">
+                <lightning-button-icon
+                    alternative-text="Remove"
+                    icon-name="utility:delete"
+                    onclick={handleRemove}
+                    title="Remove"
+                    variant="bare"
+                ></lightning-button-icon>
+            </div>
         </div>
     </div>
 </template>

@@ -6,17 +6,30 @@ const EVT_VALUE_CHANGED = 'configuration_editor_input_value_changed';
 const EVT_VALUE_DELETED = 'configuration_editor_input_value_deleted';
 
 export default class InvocableSoqlPropertyEditor extends LightningElement {
-    @api inputVariables = [];
     @api outputVariables = [];
     @api genericTypeMappings = [];
     @api resourceOptions = [];
+    _inputVariables = [];
+    _queryDraft = '';
+    _bindsDraft = [];
+
+    @api
+    get inputVariables() {
+        return this._inputVariables;
+    }
+
+    set inputVariables(value) {
+        this._inputVariables = Array.isArray(value) ? value : [];
+        this._queryDraft = this._readInputValue(this._inputVariables, INPUT_VAR_QUERY) ?? '';
+        this._bindsDraft = this._cloneBinds(this._readInputValue(this._inputVariables, INPUT_VAR_BINDS));
+    }
 
     get bindsValue() {
-        return this._inputValue(INPUT_VAR_BINDS) ?? [];
+        return this._bindsDraft;
     }
 
     get queryValue() {
-        return this._inputValue(INPUT_VAR_QUERY) ?? '';
+        return this._queryDraft;
     }
 
     get decoratedBinds() {
@@ -40,7 +53,8 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
     }
 
     handleQueryInput(event) {
-        this._syncHighlight(event.target.value);
+        this._queryDraft = event.target.value;
+        this._syncHighlight(this._queryDraft);
     }
 
     handleEditorScroll(event) {
@@ -52,26 +66,34 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
     }
 
     handleQueryChange(event) {
-        this._dispatchChange(INPUT_VAR_QUERY, event.target.value || null, 'String');
+        this._queryDraft = event.target.value || '';
+        this._dispatchChange(INPUT_VAR_QUERY, this._queryDraft || null, 'String');
     }
 
     handleBindChange(event) {
         const updated = this.bindsValue.map((b, i) => (i === event.detail.index ? event.detail.variable : b));
+        this._bindsDraft = updated;
         this._dispatchChange(INPUT_VAR_BINDS, updated, 'sobject');
     }
 
     handleBindAdd() {
         const updated = [...this.bindsValue, { key: '', textValue: '', typeName: 'String', isCollection: false }];
+        this._bindsDraft = updated;
         this._dispatchChange(INPUT_VAR_BINDS, updated, 'sobject');
     }
 
     handleBindRemove(event) {
         const updated = this.bindsValue.filter((_, i) => i !== event.detail.index);
+        this._bindsDraft = updated;
         this._dispatchChange(INPUT_VAR_BINDS, updated.length ? updated : null, 'sobject');
     }
 
-    _inputValue(name) {
-        return (this.inputVariables ?? []).find((v) => v.name === name)?.value ?? null;
+    _readInputValue(inputVariables, name) {
+        return (inputVariables ?? []).find((v) => v.name === name)?.value ?? null;
+    }
+
+    _cloneBinds(binds) {
+        return Array.isArray(binds) ? binds.map((bind) => ({ ...bind })) : [];
     }
 
     _syncHighlight(text) {
