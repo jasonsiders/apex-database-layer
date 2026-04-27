@@ -6,19 +6,18 @@
 global class MockSoql extends Soql {
 	/** @description Tracks all mock SOQL queries and row counts for assertion in tests */
 	@SuppressWarnings('PMD.PropertyNamingConventions')
-	global static MockSoql.Database MockDatabase {
-		get {
-			MockDatabase = MockDatabase ?? new MockSoql.Database();
-			return MockDatabase;
-		}
-		private set;
-	}
+	global static MockSoql.Database MockDatabase { get; private set; }
 	/** @description Prefix used for auto-generated alias keys in aggregate results */
-	private static final String AGGREGATE_KEY_PREFIX = 'expr';
+	private static final String AGGREGATE_KEY_PREFIX;
 	/** @description Global simulator applied to all queries unless overridden at the instance level */
 	private static MockSoql.Simulator globalMock;
 	/** @description Instance-level simulator that takes precedence over the global simulator */
 	private transient MockSoql.Simulator currentMock;
+
+	static {
+		AGGREGATE_KEY_PREFIX = 'expr';
+		MockDatabase = new MockSoql.Database();
+	}
 
 	/**
 	 * @description Constructor for MockSoql instance.
