@@ -418,6 +418,63 @@ private class MockSoqlTest {
 	}
 
 	@IsTest
+	private static void shouldTrackNumQueriesInMockDatabase() {
+		MockSoql.MockDatabase?.reset();
+		MockSoql soql = (MockSoql) DatabaseLayer.Soql.newQuery(Account.SObjectType)?.addSelect(Account.Name);
+		soql?.setMock()?.withResults(MockSoqlTest.initAccounts(NUM_ACCS));
+
+		Test.startTest();
+		soql?.query();
+		soql?.query();
+		Test.stopTest();
+
+		Assert.areEqual(2, MockSoql.MockDatabase?.getNumQueries(), 'Wrong number of tracked queries');
+	}
+
+	@IsTest
+	private static void shouldTrackQueryRowsInMockDatabase() {
+		MockSoql.MockDatabase?.reset();
+		MockSoql soql = (MockSoql) DatabaseLayer.Soql.newQuery(Account.SObjectType)?.addSelect(Account.Name);
+		soql?.setMock()?.withResults(MockSoqlTest.initAccounts(NUM_ACCS));
+
+		Test.startTest();
+		soql?.query();
+		Test.stopTest();
+
+		Assert.areEqual(NUM_ACCS, MockSoql.MockDatabase?.getQueryRows(), 'Wrong number of tracked query rows');
+	}
+
+	@IsTest
+	private static void shouldTrackQueriesListInMockDatabase() {
+		MockSoql.MockDatabase?.reset();
+		MockSoql soql = (MockSoql) DatabaseLayer.Soql.newQuery(Account.SObjectType)?.addSelect(Account.Name);
+		soql?.setMock()?.withResults(MockSoqlTest.initAccounts(NUM_ACCS));
+
+		Test.startTest();
+		soql?.query();
+		Test.stopTest();
+
+		List<Soql.Request> queries = MockSoql.MockDatabase?.getQueries();
+		Assert.areEqual(1, queries?.size(), 'Wrong number of queries in list');
+		Assert.areNotEqual(null, queries?.get(0), 'Tracked request is null');
+	}
+
+	@IsTest
+	private static void shouldResetMockDatabase() {
+		MockSoql soql = (MockSoql) DatabaseLayer.Soql.newQuery(Account.SObjectType)?.addSelect(Account.Name);
+		soql?.setMock()?.withResults(MockSoqlTest.initAccounts(NUM_ACCS));
+		soql?.query();
+
+		Test.startTest();
+		MockSoql.MockDatabase?.reset();
+		Test.stopTest();
+
+		Assert.areEqual(0, MockSoql.MockDatabase?.getNumQueries(), 'NumQueries not reset');
+		Assert.areEqual(0, MockSoql.MockDatabase?.getQueryRows(), 'QueryRows not reset');
+		Assert.areEqual(true, MockSoql.MockDatabase?.getQueries()?.isEmpty(), 'Queries list not reset');
+	}
+
+	@IsTest
 	private static void shouldRunPreAndPostProcessorPluginLogic() {
 		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
 
