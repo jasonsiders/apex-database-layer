@@ -12,7 +12,7 @@ global abstract inherited sharing class InvocableSoql {
 	 * @param inputs List of query inputs containing query strings and bind variables
 	 * @return List of query outputs with results populated
 	 */
-	@InvocableMethod(category='Database Layer' label='SOQL Query' iconName='slds:standard:record_lookup')
+	@InvocableMethod(category='Database Layer' label='SOQL Query' iconName='slds:standard:record_lookup' configurationEditor='c:invocableSoqlPropertyEditor')
 	global static List<Output> invoke(List<Input> inputs) {
 		return new Container(inputs).run();
 	}
