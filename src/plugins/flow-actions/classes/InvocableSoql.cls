@@ -65,15 +65,15 @@ global abstract inherited sharing class InvocableSoql {
 		@InvocableVariable(label='All Results')
 		global List<SObject> allResults;
 		/**
-		 * @description The bind variables used in the query.
-		 */
-		@InvocableVariable(label='Bind Variables')
-		global List<FlowUntypedVariable> binds;
-		/**
 		 * @description The first record from the query results, or null if no results.
 		 */
 		@InvocableVariable(label='First Result')
 		global SObject firstResult;
+		/**
+		 * @description The bind variables used in the query.
+		 */
+		@InvocableVariable(label='Bind Variables')
+		global List<FlowUntypedVariable> binds;
 		/**
 		 * @description The rendered SOQL query string with bind variable placeholders.
 		 */
