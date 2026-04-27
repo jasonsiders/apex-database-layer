@@ -6,12 +6,20 @@
                 Query
             </label>
             <div class="slds-form-element__control">
-                <textarea
-                    id="query-input"
-                    class="code-editor"
-                    name="query"
-                    onchange={handleQueryChange}
-                ></textarea>
+                <div class="code-editor-wrapper">
+                    <pre class="code-highlight slds-m-around_none slds-scrollable_none" lwc:dom="manual" aria-hidden="true"></pre>
+                    <textarea
+                        id="query-input"
+                        class="code-editor slds-m-around_none"
+                        name="query"
+                        autocapitalize="off"
+                        autocomplete="off"
+                        onchange={handleQueryChange}
+                        oninput={handleQueryInput}
+                        onscroll={handleEditorScroll}
+                        spellcheck="false"
+                    ></textarea>
+                </div>
             </div>
         </div>
 
