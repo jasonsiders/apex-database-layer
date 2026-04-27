@@ -6,7 +6,7 @@
  * are grouped and their bind values are merged into a single IN-list query where possible.
  */
 @SuppressWarnings('PMD.AvoidGlobalModifier')
-global abstract inherited sharing class InvocableSoqlQueryRecords {
+global abstract inherited sharing class InvocableSoql {
 	/**
 	 * @description Invokes the SOQL query action with automatic bulkification for identical queries.
 	 * @param inputs List of query inputs containing query strings and bind variables

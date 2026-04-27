@@ -1,6 +1,6 @@
 @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveRunAs')
 @IsTest
-private class InvocableSoqlQueryRecordsTest {
+private class InvocableSoqlTest {
 	private static final String QUERY_BY_NAME = 'SELECT Id, Name FROM Account WHERE Name = :name';
 	private static final String QUERY_BY_NAME_AND_PHONE = 'SELECT Id, Name FROM Account WHERE Name = :name AND Phone = :phone';
 	private static final String QUERY_NESTED_WHERE = 'SELECT Id, Name FROM Account WHERE (Name = :name OR Status__c = :status) AND IsActive = :active';
@@ -30,8 +30,8 @@ private class InvocableSoqlQueryRecordsTest {
 		return var;
 	}
 
-	private static InvocableSoqlQueryRecords.Input createInput(String query, List<FlowUntypedVariable> binds) {
-		InvocableSoqlQueryRecords.Input input = new InvocableSoqlQueryRecords.Input();
+	private static InvocableSoql.Input createInput(String query, List<FlowUntypedVariable> binds) {
+		InvocableSoql.Input input = new InvocableSoql.Input();
 		input.query = query;
 		input.binds = binds ?? new List<FlowUntypedVariable>{};
 		return input;
@@ -42,14 +42,14 @@ private class InvocableSoqlQueryRecordsTest {
 		Account mockAccount = new Account(Name = 'Acme');
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ mockAccount });
 
-		InvocableSoqlQueryRecords.Input input = InvocableSoqlQueryRecordsTest.createInput(
+		InvocableSoql.Input input = InvocableSoqlTest.createInput(
 			QUERY_BY_NAME,
-			new List<FlowUntypedVariable>{ InvocableSoqlQueryRecordsTest.createStringVariable('name', '"Acme"') }
+			new List<FlowUntypedVariable>{ InvocableSoqlTest.createStringVariable('name', '"Acme"') }
 		);
 
 		Test.startTest();
-		List<InvocableSoqlQueryRecords.Output> outputs = InvocableSoqlQueryRecords.invoke(
-			new List<InvocableSoqlQueryRecords.Input>{ input }
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(
+			new List<InvocableSoql.Input>{ input }
 		);
 		Test.stopTest();
 
@@ -62,8 +62,8 @@ private class InvocableSoqlQueryRecordsTest {
 	@IsTest
 	private static void shouldReturnEmptyOutputForEmptyInputs() {
 		Test.startTest();
-		List<InvocableSoqlQueryRecords.Output> outputs = InvocableSoqlQueryRecords.invoke(
-			new List<InvocableSoqlQueryRecords.Input>{}
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(
+			new List<InvocableSoql.Input>{}
 		);
 		Test.stopTest();
 
@@ -74,14 +74,14 @@ private class InvocableSoqlQueryRecordsTest {
 	private static void shouldReturnEmptyResultsWhenQueryReturnsNothing() {
 		MockSoql.setGlobalMock().withResults(new List<SObject>{});
 
-		InvocableSoqlQueryRecords.Input input = InvocableSoqlQueryRecordsTest.createInput(
+		InvocableSoql.Input input = InvocableSoqlTest.createInput(
 			QUERY_BY_NAME,
-			new List<FlowUntypedVariable>{ InvocableSoqlQueryRecordsTest.createStringVariable('name', '"NoMatch"') }
+			new List<FlowUntypedVariable>{ InvocableSoqlTest.createStringVariable('name', '"NoMatch"') }
 		);
 
 		Test.startTest();
-		List<InvocableSoqlQueryRecords.Output> outputs = InvocableSoqlQueryRecords.invoke(
-			new List<InvocableSoqlQueryRecords.Input>{ input }
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(
+			new List<InvocableSoql.Input>{ input }
 		);
 		Test.stopTest();
 
@@ -95,11 +95,11 @@ private class InvocableSoqlQueryRecordsTest {
 		Account account2 = new Account(Name = 'Account2');
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ account1, account2 });
 
-		InvocableSoqlQueryRecords.Input input = InvocableSoqlQueryRecordsTest.createInput(QUERY_NO_WHERE, null);
+		InvocableSoql.Input input = InvocableSoqlTest.createInput(QUERY_NO_WHERE, null);
 
 		Test.startTest();
-		List<InvocableSoqlQueryRecords.Output> outputs = InvocableSoqlQueryRecords.invoke(
-			new List<InvocableSoqlQueryRecords.Input>{ input }
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(
+			new List<InvocableSoql.Input>{ input }
 		);
 		Test.stopTest();
 
@@ -116,17 +116,17 @@ private class InvocableSoqlQueryRecordsTest {
 		Account mockAccount = new Account(Name = 'TestAccount', Phone = '555-1234');
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ mockAccount });
 
-		InvocableSoqlQueryRecords.Input input = InvocableSoqlQueryRecordsTest.createInput(
+		InvocableSoql.Input input = InvocableSoqlTest.createInput(
 			QUERY_BY_NAME_AND_PHONE,
 			new List<FlowUntypedVariable>{
-				InvocableSoqlQueryRecordsTest.createStringVariable('name', '"TestAccount"'),
-				InvocableSoqlQueryRecordsTest.createStringVariable('phone', '"555-1234"')
+				InvocableSoqlTest.createStringVariable('name', '"TestAccount"'),
+				InvocableSoqlTest.createStringVariable('phone', '"555-1234"')
 			}
 		);
 
 		Test.startTest();
-		List<InvocableSoqlQueryRecords.Output> outputs = InvocableSoqlQueryRecords.invoke(
-			new List<InvocableSoqlQueryRecords.Input>{ input }
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(
+			new List<InvocableSoql.Input>{ input }
 		);
 		Test.stopTest();
 
@@ -140,14 +140,14 @@ private class InvocableSoqlQueryRecordsTest {
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ acmeAccount });
 
 		List<FlowUntypedVariable> binds = new List<FlowUntypedVariable>{
-			InvocableSoqlQueryRecordsTest.createStringVariable('name', '"Acme"')
+			InvocableSoqlTest.createStringVariable('name', '"Acme"')
 		};
-		InvocableSoqlQueryRecords.Input input1 = InvocableSoqlQueryRecordsTest.createInput(QUERY_BY_NAME, binds);
-		InvocableSoqlQueryRecords.Input input2 = InvocableSoqlQueryRecordsTest.createInput(QUERY_BY_NAME, binds);
+		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(QUERY_BY_NAME, binds);
+		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(QUERY_BY_NAME, binds);
 
 		Test.startTest();
-		List<InvocableSoqlQueryRecords.Output> outputs = InvocableSoqlQueryRecords.invoke(
-			new List<InvocableSoqlQueryRecords.Input>{ input1, input2 }
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(
+			new List<InvocableSoql.Input>{ input1, input2 }
 		);
 		Test.stopTest();
 
@@ -163,18 +163,18 @@ private class InvocableSoqlQueryRecordsTest {
 		Account betaAccount = new Account(Name = 'Beta');
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ acmeAccount, betaAccount });
 
-		InvocableSoqlQueryRecords.Input input1 = InvocableSoqlQueryRecordsTest.createInput(
+		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(
 			QUERY_BY_NAME,
-			new List<FlowUntypedVariable>{ InvocableSoqlQueryRecordsTest.createStringVariable('name', '"Acme"') }
+			new List<FlowUntypedVariable>{ InvocableSoqlTest.createStringVariable('name', '"Acme"') }
 		);
-		InvocableSoqlQueryRecords.Input input2 = InvocableSoqlQueryRecordsTest.createInput(
+		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(
 			QUERY_BY_NAME,
-			new List<FlowUntypedVariable>{ InvocableSoqlQueryRecordsTest.createStringVariable('name', '"Beta"') }
+			new List<FlowUntypedVariable>{ InvocableSoqlTest.createStringVariable('name', '"Beta"') }
 		);
 
 		Test.startTest();
-		List<InvocableSoqlQueryRecords.Output> outputs = InvocableSoqlQueryRecords.invoke(
-			new List<InvocableSoqlQueryRecords.Input>{ input1, input2 }
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(
+			new List<InvocableSoql.Input>{ input1, input2 }
 		);
 		Test.stopTest();
 
@@ -190,18 +190,18 @@ private class InvocableSoqlQueryRecordsTest {
 		Account acmeAccount = new Account(Name = 'Acme');
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ acmeAccount });
 
-		InvocableSoqlQueryRecords.Input input1 = InvocableSoqlQueryRecordsTest.createInput(
+		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(
 			QUERY_BY_NAME,
-			new List<FlowUntypedVariable>{ InvocableSoqlQueryRecordsTest.createStringVariable('name', '"Acme"') }
+			new List<FlowUntypedVariable>{ InvocableSoqlTest.createStringVariable('name', '"Acme"') }
 		);
-		InvocableSoqlQueryRecords.Input input2 = InvocableSoqlQueryRecordsTest.createInput(
+		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(
 			QUERY_BY_NAME,
-			new List<FlowUntypedVariable>{ InvocableSoqlQueryRecordsTest.createStringVariable('name', '"NoMatch"') }
+			new List<FlowUntypedVariable>{ InvocableSoqlTest.createStringVariable('name', '"NoMatch"') }
 		);
 
 		Test.startTest();
-		List<InvocableSoqlQueryRecords.Output> outputs = InvocableSoqlQueryRecords.invoke(
-			new List<InvocableSoqlQueryRecords.Input>{ input1, input2 }
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(
+			new List<InvocableSoql.Input>{ input1, input2 }
 		);
 		Test.stopTest();
 
@@ -216,26 +216,26 @@ private class InvocableSoqlQueryRecordsTest {
 		Account account2 = new Account(Name = 'Beta');
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ account1, account2 });
 
-		InvocableSoqlQueryRecords.Input input1 = InvocableSoqlQueryRecordsTest.createInput(
+		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(
 			QUERY_NESTED_WHERE,
 			new List<FlowUntypedVariable>{
-				InvocableSoqlQueryRecordsTest.createStringVariable('name', '"Acme"'),
-				InvocableSoqlQueryRecordsTest.createStringVariable('status', '"Active"'),
-				InvocableSoqlQueryRecordsTest.createBooleanVariable('active', true)
+				InvocableSoqlTest.createStringVariable('name', '"Acme"'),
+				InvocableSoqlTest.createStringVariable('status', '"Active"'),
+				InvocableSoqlTest.createBooleanVariable('active', true)
 			}
 		);
-		InvocableSoqlQueryRecords.Input input2 = InvocableSoqlQueryRecordsTest.createInput(
+		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(
 			QUERY_NESTED_WHERE,
 			new List<FlowUntypedVariable>{
-				InvocableSoqlQueryRecordsTest.createStringVariable('name', '"Beta"'),
-				InvocableSoqlQueryRecordsTest.createStringVariable('status', '"Active"'),
-				InvocableSoqlQueryRecordsTest.createBooleanVariable('active', true)
+				InvocableSoqlTest.createStringVariable('name', '"Beta"'),
+				InvocableSoqlTest.createStringVariable('status', '"Active"'),
+				InvocableSoqlTest.createBooleanVariable('active', true)
 			}
 		);
 
 		Test.startTest();
-		List<InvocableSoqlQueryRecords.Output> outputs = InvocableSoqlQueryRecords.invoke(
-			new List<InvocableSoqlQueryRecords.Input>{ input1, input2 }
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(
+			new List<InvocableSoql.Input>{ input1, input2 }
 		);
 		Test.stopTest();
 
@@ -250,18 +250,18 @@ private class InvocableSoqlQueryRecordsTest {
 		Account acmeAccount = new Account(Name = 'Acme');
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ acmeAccount });
 
-		InvocableSoqlQueryRecords.Input input1 = InvocableSoqlQueryRecordsTest.createInput(
+		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(
 			QUERY_PARENT_FIELD,
-			new List<FlowUntypedVariable>{ InvocableSoqlQueryRecordsTest.createStringVariable('name', '"Acme"') }
+			new List<FlowUntypedVariable>{ InvocableSoqlTest.createStringVariable('name', '"Acme"') }
 		);
-		InvocableSoqlQueryRecords.Input input2 = InvocableSoqlQueryRecordsTest.createInput(
+		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(
 			QUERY_PARENT_FIELD,
-			new List<FlowUntypedVariable>{ InvocableSoqlQueryRecordsTest.createStringVariable('name', '"Beta"') }
+			new List<FlowUntypedVariable>{ InvocableSoqlTest.createStringVariable('name', '"Beta"') }
 		);
 
 		Test.startTest();
-		List<InvocableSoqlQueryRecords.Output> outputs = InvocableSoqlQueryRecords.invoke(
-			new List<InvocableSoqlQueryRecords.Input>{ input1, input2 }
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(
+			new List<InvocableSoql.Input>{ input1, input2 }
 		);
 		Test.stopTest();
 
@@ -274,12 +274,12 @@ private class InvocableSoqlQueryRecordsTest {
 		Account account2 = new Account(Name = 'Account2');
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ account1, account2 });
 
-		InvocableSoqlQueryRecords.Input input1 = InvocableSoqlQueryRecordsTest.createInput(QUERY_NO_WHERE, null);
-		InvocableSoqlQueryRecords.Input input2 = InvocableSoqlQueryRecordsTest.createInput(QUERY_NO_WHERE, null);
+		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(QUERY_NO_WHERE, null);
+		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(QUERY_NO_WHERE, null);
 
 		Test.startTest();
-		List<InvocableSoqlQueryRecords.Output> outputs = InvocableSoqlQueryRecords.invoke(
-			new List<InvocableSoqlQueryRecords.Input>{ input1, input2 }
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(
+			new List<InvocableSoql.Input>{ input1, input2 }
 		);
 		Test.stopTest();
 
@@ -294,18 +294,18 @@ private class InvocableSoqlQueryRecordsTest {
 		Account betaAccount = new Account(Name = 'Beta', Phone = '555-1234');
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ acmeAccount, betaAccount });
 
-		InvocableSoqlQueryRecords.Input input1 = InvocableSoqlQueryRecordsTest.createInput(
+		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(
 			QUERY_WITH_LITERAL,
-			new List<FlowUntypedVariable>{ InvocableSoqlQueryRecordsTest.createStringVariable('name', '"Acme"') }
+			new List<FlowUntypedVariable>{ InvocableSoqlTest.createStringVariable('name', '"Acme"') }
 		);
-		InvocableSoqlQueryRecords.Input input2 = InvocableSoqlQueryRecordsTest.createInput(
+		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(
 			QUERY_WITH_LITERAL,
-			new List<FlowUntypedVariable>{ InvocableSoqlQueryRecordsTest.createStringVariable('name', '"Beta"') }
+			new List<FlowUntypedVariable>{ InvocableSoqlTest.createStringVariable('name', '"Beta"') }
 		);
 
 		Test.startTest();
-		List<InvocableSoqlQueryRecords.Output> outputs = InvocableSoqlQueryRecords.invoke(
-			new List<InvocableSoqlQueryRecords.Input>{ input1, input2 }
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(
+			new List<InvocableSoql.Input>{ input1, input2 }
 		);
 		Test.stopTest();
 
@@ -320,24 +320,24 @@ private class InvocableSoqlQueryRecordsTest {
 		Account betaAccount = new Account(Name = 'Beta', Phone = '555-5678');
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ acmeAccount, betaAccount });
 
-		InvocableSoqlQueryRecords.Input input1 = InvocableSoqlQueryRecordsTest.createInput(
+		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(
 			QUERY_MULTIPLE_PIVOTS,
 			new List<FlowUntypedVariable>{
-				InvocableSoqlQueryRecordsTest.createStringVariable('name', '"Acme"'),
-				InvocableSoqlQueryRecordsTest.createStringVariable('phone', '"555-1234"')
+				InvocableSoqlTest.createStringVariable('name', '"Acme"'),
+				InvocableSoqlTest.createStringVariable('phone', '"555-1234"')
 			}
 		);
-		InvocableSoqlQueryRecords.Input input2 = InvocableSoqlQueryRecordsTest.createInput(
+		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(
 			QUERY_MULTIPLE_PIVOTS,
 			new List<FlowUntypedVariable>{
-				InvocableSoqlQueryRecordsTest.createStringVariable('name', '"Beta"'),
-				InvocableSoqlQueryRecordsTest.createStringVariable('phone', '"555-5678"')
+				InvocableSoqlTest.createStringVariable('name', '"Beta"'),
+				InvocableSoqlTest.createStringVariable('phone', '"555-5678"')
 			}
 		);
 
 		Test.startTest();
-		List<InvocableSoqlQueryRecords.Output> outputs = InvocableSoqlQueryRecords.invoke(
-			new List<InvocableSoqlQueryRecords.Input>{ input1, input2 }
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(
+			new List<InvocableSoql.Input>{ input1, input2 }
 		);
 		Test.stopTest();
 
@@ -351,18 +351,18 @@ private class InvocableSoqlQueryRecordsTest {
 		Account account = new Account(Name = 'Test', NumberOfEmployees = 100);
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ account });
 
-		InvocableSoqlQueryRecords.Input input1 = InvocableSoqlQueryRecordsTest.createInput(
+		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(
 			QUERY_WITH_COMPARISON,
-			new List<FlowUntypedVariable>{ InvocableSoqlQueryRecordsTest.createStringVariable('count', '50') }
+			new List<FlowUntypedVariable>{ InvocableSoqlTest.createStringVariable('count', '50') }
 		);
-		InvocableSoqlQueryRecords.Input input2 = InvocableSoqlQueryRecordsTest.createInput(
+		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(
 			QUERY_WITH_COMPARISON,
-			new List<FlowUntypedVariable>{ InvocableSoqlQueryRecordsTest.createStringVariable('count', '150') }
+			new List<FlowUntypedVariable>{ InvocableSoqlTest.createStringVariable('count', '150') }
 		);
 
 		Test.startTest();
-		List<InvocableSoqlQueryRecords.Output> outputs = InvocableSoqlQueryRecords.invoke(
-			new List<InvocableSoqlQueryRecords.Input>{ input1, input2 }
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(
+			new List<InvocableSoql.Input>{ input1, input2 }
 		);
 		Test.stopTest();
 
