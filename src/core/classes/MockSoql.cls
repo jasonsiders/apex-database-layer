@@ -4,11 +4,16 @@
 @SuppressWarnings('PMD.AvoidGlobalModifier')
 @IsTest
 global class MockSoql extends Soql {
+	/** @description Tracks all mock SOQL queries and row counts for assertion in tests */
+	@SuppressWarnings('PMD.PropertyNamingConventions')
+	global static MockSoql.Database MockDatabase { get; private set; }
+
+	/** @description Prefix used for auto-generated alias keys in aggregate results */
 	private static final String AGGREGATE_KEY_PREFIX = 'expr';
+	/** @description Global simulator applied to all queries unless overridden at the instance level */
 	private static MockSoql.Simulator globalMock;
+	/** @description Instance-level simulator that takes precedence over the global simulator */
 	private transient MockSoql.Simulator currentMock;
-	private static Integer numQueries = 0; 
-	private static Integer numQueryRows = 0;
 
 	/**
 	 * @description Constructor for MockSoql instance.
@@ -47,6 +52,11 @@ global class MockSoql extends Soql {
 	}
 
 	// **** MEMBER **** //
+	/**
+	 * @description Initializes a mock SOQL request for the given operation.
+	 * @param operation The operation type being performed
+	 * @return A MockSoql.Request configured with the active simulator
+	 */
 	public override Soql.Request initRequest(Soql.Operation operation) {
 		MockSoql.Simulator simulator = this.getSimulator();
 		return new MockSoql.Request(this, operation, simulator);
@@ -70,6 +80,10 @@ global class MockSoql extends Soql {
 		return (MockSoql.StaticResults) this.setMock(new MockSoql.StaticResults());
 	}
 
+	/**
+	 * @description Returns the active simulator for this query, preferring the instance-level mock over the global mock.
+	 * @return The active MockSoql.Simulator, or null if none is set
+	 */
 	private MockSoql.Simulator getSimulator() {
 		// If the current query has a specific simulator assigned to it, return that simulator
 		// Else return the globally assigned simulator
@@ -81,6 +95,7 @@ global class MockSoql extends Soql {
 	 * @description Mock implementation of aggregate query results with support for aliases and auto-generated field names.
 	 */
 	global class AggregateResult extends Soql.AggregateResult {
+		/** @description Tracks how many parameters have been added without an explicit alias */
 		private Integer numUnaliasedKeys = 0;
 
 		/**
@@ -113,6 +128,10 @@ global class MockSoql extends Soql {
 			return this.addParameter(key, value);
 		}
 
+		/**
+		 * @description Increments the unaliased key counter when the provided key matches the auto-generated prefix.
+		 * @param key The alias key to evaluate
+		 */
 		private void incrementAliasedKeyCount(String key) {
 			// If the key is unaliased, increment the counter. Else, do nothing
 			if (key?.startsWith(AGGREGATE_KEY_PREFIX) == true) {
@@ -125,6 +144,7 @@ global class MockSoql extends Soql {
 	 * @description Mock implementation of Database.Cursor using List<SObject> for behavior simulation.
 	 */
 	global class Cursor extends Soql.Cursor {
+		/** @description The records returned by the mocked query, used to back all cursor operations */
 		private List<SObject> records;
 
 		/**
@@ -137,6 +157,12 @@ global class MockSoql extends Soql {
 			this.records = mockQuery?.query();
 		}
 
+		/**
+		 * @description Fetches a slice of records starting at the given position.
+		 * @param position The zero-based index to start fetching from
+		 * @param count The number of records to fetch
+		 * @return The records in the requested range
+		 */
 		global override List<SObject> fetch(Integer position, Integer count) {
 			// Mocks native functionality by retrieving SObjects between the specified params from the underlying list
 			this.validateFetch(position, count);
@@ -144,10 +170,18 @@ global class MockSoql extends Soql {
 			return (List<SObject>) this.slice(this.records, position, count);
 		}
 
+		/**
+		 * @description Returns the total number of records available in this cursor.
+		 * @return The number of records, or 0 if the record list is null
+		 */
 		global override Integer getNumRecords() {
 			return this.records?.size() ?? 0;
 		}
 
+		/**
+		 * @description Creates a fake Database.Cursor object with a valid-looking queryId so getCursor() returns non-null.
+		 * @return A deserialized Database.Cursor with a fabricated queryId
+		 */
 		private Database.Cursor initMockCursor() {
 			// Mocks a fake Database.Cursor object, so that Soql.Cursor.getCursor() will return a non-null object
 			// Note: Cursors have a 15-character queryId property that always starts with the same key prefix
@@ -159,6 +193,13 @@ global class MockSoql extends Soql {
 			);
 		}
 
+		/**
+		 * @description Returns a sub-list of objects starting at the given index for the specified number of elements.
+		 * @param input The source list to slice
+		 * @param first The zero-based index to start from
+		 * @param numElements The number of elements to include
+		 * @return A new list containing the requested slice
+		 */
 		private List<Object> slice(List<Object> input, Integer first, Integer numElements) {
 			// Retrieves a portion of the provided objects, starting at the "first" index, until the list size matches the numElements
 			// Similar to slice() in JS, except the second parameter specifies the number of elements to return, not the ending index
@@ -174,6 +215,11 @@ global class MockSoql extends Soql {
 			return results;
 		}
 
+		/**
+		 * @description Validates that the fetch arguments are non-null, non-negative, and within bounds.
+		 * @param position The zero-based start index
+		 * @param count The number of records to fetch
+		 */
 		private void validateFetch(Integer position, Integer count) {
 			// Throws an exception if the provided arguments are invalid
 			this.validateFetchArgsAreNotNull(position, count);
@@ -181,6 +227,11 @@ global class MockSoql extends Soql {
 			this.validateFetchArgsAreInBounds(position, count);
 		}
 
+		/**
+		 * @description Throws a NullPointerException if either fetch argument is null.
+		 * @param position The zero-based start index
+		 * @param count The number of records to fetch
+		 */
 		private void validateFetchArgsAreNotNull(Integer position, Integer count) {
 			// Neither parameter should be null:
 			if (position == null || count == null) {
@@ -190,6 +241,11 @@ global class MockSoql extends Soql {
 			}
 		}
 
+		/**
+		 * @description Throws an InvalidParameterValueException if either fetch argument is negative.
+		 * @param position The zero-based start index
+		 * @param count The number of records to fetch
+		 */
 		private void validateFetchArgsArePositive(Integer position, Integer count) {
 			// Neither parameter should be negative:
 			if (position < 0) {
@@ -199,6 +255,11 @@ global class MockSoql extends Soql {
 			}
 		}
 
+		/**
+		 * @description Throws an InvalidParameterValueException if the fetch range exceeds the available records.
+		 * @param position The zero-based start index
+		 * @param count The number of records to fetch
+		 */
 		private void validateFetchArgsAreInBounds(Integer position, Integer count) {
 			// Should not attempt to fetch an index that doesn't exist:
 			Integer maxIndexToFetch = (position + count);
@@ -206,6 +267,64 @@ global class MockSoql extends Soql {
 			if (maxIndexToFetch > upperBound) {
 				throw new Soql.InvalidParameterValueException('Fetch beyond bound detected: ' + maxIndexToFetch);
 			}
+		}
+	}
+
+	/**
+	 * @description Tracks mock SOQL query requests and aggregate row counts for test-time assertion.
+	 */
+	global class Database {
+		/** @description Running total of rows returned across all registered queries */
+		private Integer numQueryRows;
+		/** @description Ordered list of all query requests registered against this mock database */
+		private List<Soql.Request> requests;
+
+		/** @description Initializes the mock database with empty query tracking state */
+		private Database() {
+			this.reset();
+		}
+
+		/**
+		 * @description Returns the total number of queries that have been executed.
+		 * @return The number of registered query requests
+		 */
+		global Integer getNumQueries() {
+			return this.requests?.size();
+		}
+
+		/**
+		 * @description Returns all query requests that have been executed.
+		 * @return The list of registered Soql.Request instances
+		 */
+		global List<Soql.Request> getQueries() {
+			return this.requests;
+		}
+
+		/**
+		 * @description Returns the total number of rows returned across all executed queries.
+		 * @return The cumulative row count
+		 */
+		global Integer getQueryRows() {
+			return this.numQueryRows;
+		}
+
+		/**
+		 * @description Resets the mock database, clearing all query history and row counts.
+		 */
+		global void reset() {
+			this.numQueryRows = 0;
+			this.requests = new List<Soql.Request>{};
+		}
+
+		/**
+		 * @description Records a completed query request and its result row count.
+		 * @param request The query request that was executed
+		 * @param results The results returned by the query
+		 */
+		private void register(Soql.Request request, List<Object> results) {
+			Integer rows = results?.size() ?? 0;
+			this.numQueryRows += rows;
+			this.requests?.add(request);
 		}
 	}
 
@@ -219,7 +338,9 @@ global class MockSoql extends Soql {
 	 * instead of testing via Database.executeBatch()
 	 */
 	global class QueryLocator extends Soql.QueryLocator {
+		/** @description The SOQL query string associated with this locator */
 		private String query;
+		/** @description The records returned by the mocked query, used to back the iterator */
 		private List<SObject> records;
 
 		/**
@@ -232,10 +353,18 @@ global class MockSoql extends Soql {
 			this.records = mockQuery?.query();
 		}
 
+		/**
+		 * @description Returns the SOQL query string associated with this locator.
+		 * @return The SOQL query string
+		 */
 		global override String getQuery() {
 			return this.query;
 		}
 
+		/**
+		 * @description Returns an iterator over the mocked query results.
+		 * @return A MockSoql.QueryLocatorIterator for the records
+		 */
 		global override System.Iterator<SObject> iterator() {
 			return new MockSoql.QueryLocatorIterator(this.records);
 		}
@@ -245,7 +374,9 @@ global class MockSoql extends Soql {
 	 * @description Mock iterator implementation for QueryLocator batch processing.
 	 */
 	global class QueryLocatorIterator implements System.Iterator<SObject> {
+		/** @description The current position in the records list */
 		private Integer index = 0;
+		/** @description The records to iterate over */
 		private List<SObject> records;
 
 		/**
@@ -283,6 +414,7 @@ global class MockSoql extends Soql {
 	 * @description Mock SOQL request implementation that uses simulators to return predefined results.
 	 */
 	public class Request extends Soql.Request {
+		/** @description The simulator used to generate mock results for this request */
 		private transient MockSoql.Simulator simulator;
 
 		/**
@@ -344,8 +476,7 @@ global class MockSoql extends Soql {
 		private Object simulate() {
 			// Run the Simulator logic
 			List<Object> results = this.simulator?.simulateQuery(this.query);
-			MockSoql.numQueries++;
-			MockSoql.numQueryRows += results?.size() ?? 0; 
+			MockSoql.MockDatabase?.register(this, results);
 			return results;
 		}
 	}
@@ -366,7 +497,9 @@ global class MockSoql extends Soql {
 	 * @description Static result simulator that returns predefined results or throws configured exceptions.
 	 */
 	global class StaticResults implements MockSoql.Simulator {
+		/** @description The exception to throw when the query is executed, if configured */
 		private Exception error;
+		/** @description The predefined results to return when the query is executed */
 		private List<Object> results;
 
 		/**
