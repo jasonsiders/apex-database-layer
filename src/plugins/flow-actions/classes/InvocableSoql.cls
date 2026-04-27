@@ -209,9 +209,8 @@ global abstract inherited sharing class InvocableSoql {
 				return;
 			}
 			Soql.ConditionalLogic whereCriteria = this.outputs?.get(indexes?.get(0)).soql?.whereCriteria;
-			Soql.Condition pivotCondition = (whereCriteria != null)
-				? this.findPivotCondition(whereCriteria.getCriterion())
-				: null;
+			List<Soql.Criteria> pivotCriterion = whereCriteria?.getCriterion();
+			Soql.Condition pivotCondition = (whereCriteria != null) ? this.findPivotCondition(pivotCriterion) : null;
 			if (pivotCondition == null) {
 				this.executePerInput(indexes);
 				return;
