@@ -1,11 +1,40 @@
 <template>
     <div class="slds-form slds-form_stacked">
-        <lightning-textarea
-            name="query"
-            label="Query"
-            required
-            value={queryValue}
-            onchange={handleQueryChange}
-        ></lightning-textarea>
+        <div class="slds-form-element">
+            <label class="slds-form-element__label" for="query-input">
+                <abbr class="slds-required" title="required">*</abbr>
+                Query
+            </label>
+            <div class="slds-form-element__control">
+                <textarea
+                    id="query-input"
+                    class="code-editor"
+                    name="query"
+                    onchange={handleQueryChange}
+                ></textarea>
+            </div>
+        </div>
+
+        <div class="slds-form-element slds-var-m-top_medium">
+            <label class="slds-form-element__label">Bind Variables</label>
+            <div class="slds-form-element__control">
+                <template for:each={decoratedBinds} for:item="bind">
+                    <c-flow-untyped-variable-input
+                        key={bind.indexKey}
+                        index={bind.indexKey}
+                        variable={bind.variable}
+                        resource-options={resourceOptions}
+                        onchange={handleBindChange}
+                        onremove={handleBindRemove}
+                    ></c-flow-untyped-variable-input>
+                </template>
+                <lightning-button
+                    class="slds-var-m-top_small"
+                    label="Add Bind Variable"
+                    icon-name="utility:add"
+                    onclick={handleBindAdd}
+                ></lightning-button>
+            </div>
+        </div>
     </div>
 </template>

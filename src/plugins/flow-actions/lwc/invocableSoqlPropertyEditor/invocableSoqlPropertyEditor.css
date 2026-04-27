@@ -1,0 +1,21 @@
+.code-editor {
+    font-family: 'Cascadia Code', 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    min-height: 120px;
+    width: 100%;
+    resize: vertical;
+    padding: 8px 12px;
+    background: #f8f8f8;
+    border: 1px solid #c9c7c5;
+    border-radius: 4px;
+    color: #1e1e1e;
+    tab-size: 4;
+    box-sizing: border-box;
+}
+
+.code-editor:focus {
+    outline: none;
+    border-color: #0070d2;
+    box-shadow: 0 0 0 1px #0070d2;
+}

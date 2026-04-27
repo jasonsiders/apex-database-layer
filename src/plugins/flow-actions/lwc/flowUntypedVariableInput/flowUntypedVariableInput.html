@@ -1,0 +1,54 @@
+<template>
+    <div class="bind-row slds-grid slds-gutters_x-small slds-grid_vertical-align-end">
+        <div class="slds-col slds-size_3-of-12">
+            <lightning-input
+                data-id="key"
+                label="Bind Name"
+                value={key}
+                placeholder="e.g. recordId"
+                onchange={handleKeyChange}
+                required
+            ></lightning-input>
+        </div>
+        <div class="slds-col slds-size_4-of-12">
+            <c-flow-combobox
+                data-id="value"
+                included
+                label="Value"
+                name="textValue"
+                onfieldchange={handleValueChange}
+                required
+                resource-options={resourceOptions}
+                value={textValue}
+            ></c-flow-combobox>
+        </div>
+        <div class="slds-col slds-size_3-of-12">
+            <lightning-input
+                data-id="type-name"
+                label="Type"
+                onchange={handleTypeNameChange}
+                placeholder="e.g. String"
+                required
+                value={typeName}
+            ></lightning-input>
+        </div>
+        <div class="slds-col slds-size_1-of-12">
+            <lightning-input
+                checked={isCollection}
+                data-id="is-collection"
+                label="List"
+                onchange={handleIsCollectionChange}
+                type="toggle"
+            ></lightning-input>
+        </div>
+        <div class="slds-col slds-size_1-of-12 slds-grid slds-grid_align-end">
+            <lightning-button-icon
+                alternative-text="Remove"
+                icon-name="utility:delete"
+                onclick={handleRemove}
+                title="Remove"
+                variant="bare"
+            ></lightning-button-icon>
+        </div>
+    </div>
+</template>
