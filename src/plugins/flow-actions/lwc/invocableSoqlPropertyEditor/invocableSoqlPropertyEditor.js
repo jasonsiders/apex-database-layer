@@ -50,7 +50,7 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
         if (!this.queryValue) {
             const errorString = "Missing required field: Query";
             errors.push({ key: INPUT_VAR_QUERY, errorString });
-            Toast.show({ label: "Invalid Query:", message: errorString, variant: "error" }, this);
+            Toast.show({ label: "Invalid Query...", message: errorString, variant: "error" }, this);
         }
         return errors;
     }
