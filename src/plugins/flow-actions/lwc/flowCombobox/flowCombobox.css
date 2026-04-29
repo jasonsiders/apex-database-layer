@@ -18,6 +18,16 @@
 	padding: 0.375rem 0 0.75rem 1.25rem;
 }
 
+.field-row_label-hidden {
+	display: block;
+	padding-top: 0;
+	padding-bottom: 0;
+}
+
+.field-row_no-toggle {
+	grid-template-columns: minmax(0, 1fr);
+}
+
 .field-type {
 	position: absolute;
 	top: 0.7rem;

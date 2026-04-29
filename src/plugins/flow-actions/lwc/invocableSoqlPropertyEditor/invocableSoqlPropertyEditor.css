@@ -1,3 +1,4 @@
+
 .code-editor-wrapper {
     display: grid;
     border: 1px solid #c9c7c5;
@@ -42,11 +43,19 @@
 
 .binds-list {
     display: grid;
-    row-gap: 0.875rem;
+    row-gap: 0.5rem;
 }
 
-.bind-actions {
-    padding-top: 0.875rem;
+.binds-header {
+    display: grid;
+    grid-template-columns: 2fr 2fr 3fr 2rem;
+    column-gap: 0.5rem;
+}
+
+.section-divider {
+    border: none;
+    border-bottom: 1px solid var(--lwc-colorBorder, #dddbda);
+    margin: 1.25rem 0 0;
 }
 
 .hl-kw { color: #0070d2; font-weight: bold; }

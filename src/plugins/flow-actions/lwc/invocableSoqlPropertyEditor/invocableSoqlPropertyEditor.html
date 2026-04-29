@@ -1,8 +1,7 @@
 <template>
     <div class="slds-form slds-form_stacked">
         <div class="slds-form-element">
-            <label class="slds-form-element__label" for="query-input">
-                <abbr class="slds-required" title="required">*</abbr>
+            <label class="slds-text-heading_small slds-var-m-bottom_xx-small" for="query-input">
                 Query
             </label>
             <div class="slds-form-element__control">
@@ -17,16 +16,31 @@
                         onchange={handleQueryChange}
                         oninput={handleQueryInput}
                         onscroll={handleEditorScroll}
+                        placeholder={queryPlaceholder}
                         spellcheck="false"
                     ></textarea>
                 </div>
+                <div class="slds-var-m-top_x-small">
+                    <lightning-button
+                        label="Validate"
+                        icon-name="utility:magicwand"
+                        onclick={handleValidate}
+                    ></lightning-button>
+                </div>
             </div>
         </div>
-
+        <hr class="section-divider" />
         <div class="slds-form-element slds-var-m-top_medium">
-            <label class="slds-form-element__label">Bind Variables</label>
+            <label class="slds-text-heading_small slds-var-m-bottom_xx-small">Variables</label>
             <div class="slds-form-element__control">
                 <div class="binds-list">
+                    <template if:true={hasBinds}>
+                        <div class="binds-header slds-p-bottom_none">
+                            <span class="slds-form-element__label slds-m-bottom_none">Name</span>
+                            <span class="slds-form-element__label slds-m-bottom_none">Type</span>
+                            <span class="slds-form-element__label slds-m-bottom_none">Value</span>
+                        </div>
+                    </template>
                     <template for:each={decoratedBinds} for:item="bind">
                         <c-flow-untyped-variable-input
                             key={bind.indexKey}
@@ -38,14 +52,15 @@
                         ></c-flow-untyped-variable-input>
                     </template>
                 </div>
-                <div class="bind-actions">
+                <div class="slds-p-top_none slds-var-m-top_x-small">
                     <lightning-button
-                        label="Add Bind Variable"
+                        label="Add Variable"
                         icon-name="utility:add"
                         onclick={handleBindAdd}
                     ></lightning-button>
                 </div>
             </div>
         </div>
+        <hr class="section-divider" />
     </div>
 </template>

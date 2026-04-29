@@ -8,15 +8,17 @@
 			></lightning-icon>
 		</div>
 
-		<div class="field-label-row">
-			<template lwc:if={required}>
-				<span class="required-indicator">*</span>
-			</template>
-			<span class="field-label slds-form-element__label">{label}</span>
-			<template lwc:if={helpText}>
-				<lightning-helptext content={helpText}></lightning-helptext>
-			</template>
-		</div>
+		<template lwc:if={showLabel}>
+			<div class="field-label-row">
+				<template lwc:if={required}>
+					<span class="required-indicator">*</span>
+				</template>
+				<span class="field-label slds-form-element__label">{label}</span>
+				<template lwc:if={helpText}>
+					<lightning-helptext content={helpText}></lightning-helptext>
+				</template>
+			</div>
+		</template>
 
 		<div class="field-main">
 			<template lwc:if={showTypePicker}>

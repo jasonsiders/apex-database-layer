@@ -175,6 +175,7 @@ function matchesLiteralOptionByText(option, text) {
 export default class FlowCombobox extends LightningElement {
 	@api name;
 	@api label;
+	@api hideLabel = false;
 	@api helpText;
 	@api errorMessage;
 	@api valueDataType = "String";
@@ -226,10 +227,17 @@ export default class FlowCombobox extends LightningElement {
 		return this._validationError ?? this.errorMessage ?? null;
 	}
 
+	get showLabel() {
+		return !this.hideLabel;
+	}
+
 	get fieldRowClass() {
-		return this.effectiveErrorMessage
+		const base = this.effectiveErrorMessage
 			? "field-row slds-form-element slds-has-error"
 			: "field-row slds-form-element";
+		const labelHidden = this.hideLabel ? " field-row_label-hidden" : "";
+		const noToggle = !this.showIncludedToggle ? " field-row_no-toggle" : "";
+		return `${base}${labelHidden}${noToggle}`;
 	}
 
 	get isIncluded() {
@@ -290,16 +298,16 @@ export default class FlowCombobox extends LightningElement {
 	}
 
 	get typeMarkerIconName() {
-		switch ((this.fieldDataType || '').toLowerCase()) {
-			case 'boolean':  return 'utility:toggle';
-			case 'date':     return 'utility:event';
-			case 'datetime': return 'utility:date_time';
-			case 'number':	 return 'utility:number_input';
-			case 'integer':	 return 'utility:number_input';
-			case 'double':	 return 'utility:number_input';
-			case 'currency': return 'utility:number_input';
-			case 'sobject':  return 'utility:record_alt';
-			default:         return 'utility:text';
+		switch ((this.fieldDataType || "").toLowerCase()) {
+			case "boolean":  return "utility:toggle";
+			case "date":     return "utility:event";
+			case "datetime": return "utility:date_time";
+			case "number":	 return "utility:number_input";
+			case "integer":	 return "utility:number_input";
+			case "double":	 return "utility:number_input";
+			case "currency": return "utility:number_input";
+			case "sobject":  return "utility:record_alt";
+			default:         return "utility:text";
 		}
 	}
 
@@ -550,7 +558,6 @@ export default class FlowCombobox extends LightningElement {
 
 	_syncRenderedInputValue() {
 		const input = this.template.querySelector('[data-id="resource-input"]');
-
 		if (input) {
 			input.value = this.displayTextValue;
 		}
@@ -722,7 +729,6 @@ export default class FlowCombobox extends LightningElement {
 
 	handleResourceTriggerClick() {
 		this._setResourcePickerOpen(!this._isResourcePickerOpen);
-
 		if (this._isResourcePickerOpen) {
 			this.template.querySelector('[data-id="resource-input"]')?.focus();
 		}
@@ -757,7 +763,6 @@ export default class FlowCombobox extends LightningElement {
 			this._focusInputAfterRender = false;
 			this.template.querySelector('[data-id="resource-input"]')?.focus();
 		}
-
 		if (this._pendingScrollFocusedOption) {
 			this._pendingScrollFocusedOption = false;
 			if (this._focusedOptionKey) {
@@ -794,13 +799,13 @@ export default class FlowCombobox extends LightningElement {
 
 	handleNewResourceClick() {
 		this._setResourcePickerOpen(false);
-		this.dispatchEvent(new CustomEvent('newresource', { bubbles: true, composed: true }));
+		this.dispatchEvent(new CustomEvent("newresource", { bubbles: true, composed: true }));
 	}
 
 	// ── SObject type picker ────────────────────────────────────────────────────
 
 	get showTypePicker() {
-		return this.fieldDataType?.toLowerCase() === 'sobject' && !!this.typeName;
+		return this.fieldDataType?.toLowerCase() === "sobject" && !!this.typeName;
 	}
 
 	get showVariablePicker() {
@@ -820,7 +825,7 @@ export default class FlowCombobox extends LightningElement {
 	}
 
 	handleTypeMappingChange(event) {
-		this.dispatchEvent(new CustomEvent('configuration_editor_generic_type_mapping_changed', {
+		this.dispatchEvent(new CustomEvent("configuration_editor_generic_type_mapping_changed", {
 			bubbles: true,
 			composed: true,
 			detail: { typeName: this.typeName, typeValue: event.detail.value }

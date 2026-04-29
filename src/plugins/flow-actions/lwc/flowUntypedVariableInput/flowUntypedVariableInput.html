@@ -1,66 +1,47 @@
 <template>
-    <div class="bind-card">
-        <div class="bind-fields-grid">
-            <div class="bind-field">
-                <lightning-input
-                    data-id="key"
-                    label="Bind Name"
-                    value={key}
-                    placeholder="e.g. recordId"
-                    onchange={handleKeyChange}
-                    required
-                ></lightning-input>
-            </div>
-            <div class="bind-field">
-                <c-flow-combobox
-                    data-id="value"
-                    included
-                    label="Value"
-                    name="textValue"
-                    onfieldchange={handleValueChange}
-                    required
-                    resource-options={resourceOptions}
-                    value={textValue}
-                ></c-flow-combobox>
-            </div>
-            <div class="bind-field">
-                <lightning-input
-                    data-id="type-name"
-                    label="Type"
-                    onchange={handleTypeNameChange}
-                    placeholder="e.g. String"
-                    required
-                    value={typeName}
-                ></lightning-input>
-            </div>
-            <div class="bind-list-field">
-                <span class="slds-form-element__label bind-field-label">Return Shape</span>
-                <div class="bind-list-control">
-                    <lightning-button-stateful
-                        class="list-mode-button"
-                        data-id="is-collection"
-                        icon-name-when-off="utility:record"
-                        icon-name-when-on="utility:collection"
-                        label-when-hover={listModeLabel}
-                        label-when-off={listModeLabel}
-                        label-when-on={listModeLabel}
-                        onclick={handleIsCollectionToggle}
-                        selected={isCollection}
-                    ></lightning-button-stateful>
-                </div>
-            </div>
+    <div class="bind-row">
+        <div class="bind-col bind-col-name">
+            <lightning-input
+                data-id="key"
+                label="Bind Name"
+                variant="label-hidden"
+                value={key}
+                placeholder="e.g. recordId"
+                onchange={handleKeyChange}
+                required
+            ></lightning-input>
         </div>
-        <div class="bind-remove-rail">
-            <div class="bind-remove-control">
-                <lightning-button-icon
-                    alternative-text="Remove"
-                    icon-name="utility:delete"
-                    onclick={handleRemove}
-                    size="medium"
-                    title="Remove"
-                    variant="border-filled"
-                ></lightning-button-icon>
-            </div>
+        <div class="bind-col bind-col-type">
+            <lightning-combobox
+                data-id="type"
+                label="Type"
+                variant="label-hidden"
+                value={typeValue}
+                options={typeOptions}
+                onchange={handleTypeChange}
+                required
+            ></lightning-combobox>
+        </div>
+        <div class="bind-col bind-col-value">
+            <c-flow-combobox
+                data-id="value"
+                included
+                hide-label
+                label="Value"
+                name="textValue"
+                onfieldchange={handleValueChange}
+                required
+                resource-options={resourceOptions}
+                value={textValue}
+            ></c-flow-combobox>
+        </div>
+        <div class="bind-col slds-grid slds-grid_vertical-align-center slds-grid_align-center">
+            <lightning-button-icon
+                alternative-text="Remove"
+                icon-name="utility:delete"
+                onclick={handleRemove}
+                title="Remove"
+            ></lightning-button-icon>
         </div>
     </div>
 </template>
