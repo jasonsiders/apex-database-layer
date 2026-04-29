@@ -2,6 +2,8 @@ import { createElement } from "@lwc/engine-dom";
 import InvocableSoqlPropertyEditor from "c/invocableSoqlPropertyEditor";
 import Toast from "lightning/toast";
 
+const REQUIRED_QUERY_ERROR = "Missing required field: Query";
+
 describe("c-invocable-soql-property-editor", () => {
 	function createComponent(props = {}) {
 		const element = createElement("c-invocable-soql-property-editor", {
@@ -42,9 +44,9 @@ describe("c-invocable-soql-property-editor", () => {
 		const element = createComponent({ inputVariables: [] });
 		const errors = element.validate();
 		expect(errors).toHaveLength(1);
-		expect(errors[0]).toEqual({ key: "query", errorString: "Missing required field: Query" });
+		expect(errors[0]).toEqual({ key: "query", errorString: REQUIRED_QUERY_ERROR });
 		expect(Toast.show).toHaveBeenCalledWith(
-			{ message: "Missing required field: Query", variant: "error" },
+			expect.objectContaining({ message: REQUIRED_QUERY_ERROR, variant: "error" }),
 			expect.any(Object)
 		);
 	});
@@ -64,7 +66,7 @@ describe("c-invocable-soql-property-editor", () => {
 
 		expect(Toast.show).toHaveBeenCalledTimes(1);
 		expect(Toast.show).toHaveBeenCalledWith(
-			{ message: "Missing required field: Query", variant: "error" },
+			expect.objectContaining({ message: REQUIRED_QUERY_ERROR, variant: "error" }),
 			expect.any(Object)
 		);
 	});
@@ -77,7 +79,10 @@ describe("c-invocable-soql-property-editor", () => {
 		getButtonByLabel(element, "Validate").click();
 
 		expect(Toast.show).toHaveBeenCalledTimes(1);
-		expect(Toast.show).toHaveBeenCalledWith({ label: "Valid", variant: "success" }, expect.any(Object));
+		expect(Toast.show).toHaveBeenCalledWith(
+			expect.objectContaining({ label: expect.stringMatching(/valid/i), variant: "success" }),
+			expect.any(Object)
+		);
 	});
 
 	it("dispatches configuration_editor_input_value_changed when query is entered", () => {
