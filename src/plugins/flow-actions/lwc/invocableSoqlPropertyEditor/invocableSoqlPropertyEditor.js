@@ -23,6 +23,7 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 		this._inputVariables = Array.isArray(value) ? value : [];
 		this._queryDraft = this._readInputValue(this._inputVariables, INPUT_VAR_QUERY) ?? "";
 		this._bindsDraft = this._cloneBinds(this._readInputValue(this._inputVariables, INPUT_VAR_BINDS));
+        console.log(`@jason: [setter] bindsDraft=${JSON.stringify(this._bindsDraft)}`);
 	}
 
 	get bindsValue() {
@@ -76,6 +77,7 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 	handleBindChange(event) {
 		const updated = this.bindsValue.map((b, i) => (i === event.detail.index ? { ...b, ...event.detail.patch } : b));
 		this._bindsDraft = updated;
+        console.log(`@jason: [handleBindChange] patch=${JSON.stringify(event.detail.patch)} -> bindsDraft=${JSON.stringify(this._bindsDraft)}`);
 		this._dispatchChange(INPUT_VAR_BINDS, updated, "sobject");
 	}
 
