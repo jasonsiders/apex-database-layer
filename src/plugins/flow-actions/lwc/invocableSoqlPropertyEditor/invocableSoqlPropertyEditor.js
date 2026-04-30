@@ -46,11 +46,14 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 	}
 
 	@api async validate() {
-		const bindKeys = this._bindsDraft.map((b) => b.key);
 		try {
+            const bindKeys = this._bindsDraft.map((b) => b.key);
+            console.log(`@jason: query: ${this._queryDraft}`);
+            console.log(`@jason: binds: ${JSON.stringify(bindKeys)}`);
 			await validateQuery({ queryToValidate: this._queryDraft, bindKeys });
 			return [];
 		} catch (error) {
+            console.log(`@jason: error: ${JSON.stringify(error)}`);
 			Toast.show({ label: "Invalid Query...", message: error?.body?.message, variant: "error" }, this);
 			return [{ key: INPUT_VAR_QUERY, errorString: error?.body?.message }];
 		}
