@@ -14,6 +14,7 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 	_inputVariables = [];
 	_queryDraft = "";
 	_bindsDraft = [];
+	_bindsInitialized = false;
 
 	@api get inputVariables() {
 		return this._inputVariables;
@@ -22,8 +23,10 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 	set inputVariables(value) {
 		this._inputVariables = Array.isArray(value) ? value : [];
 		this._queryDraft = this._readInputValue(this._inputVariables, INPUT_VAR_QUERY) ?? "";
-		this._bindsDraft = this._cloneBinds(this._readInputValue(this._inputVariables, INPUT_VAR_BINDS));
-        console.log(`@jason: [setter] bindsDraft=${JSON.stringify(this._bindsDraft)}`);
+		if (!this._bindsInitialized) {
+			this._bindsDraft = this._cloneBinds(this._readInputValue(this._inputVariables, INPUT_VAR_BINDS));
+			this._bindsInitialized = true;
+		}
 	}
 
 	get bindsValue() {
