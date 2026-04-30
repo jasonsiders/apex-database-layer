@@ -51,13 +51,10 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 
 	@api async validate() {
 		try {
-            const bindKeys = this._bindsDraft.map((b) => b.key);
-            console.log(`@jason: query: ${this._queryDraft}`);
-            console.log(`@jason: binds: ${JSON.stringify(bindKeys)}`);
+			const bindKeys = this._bindsDraft.map((b) => b.key);
 			await validateQuery({ queryToValidate: this._queryDraft, bindKeys });
 			return [];
 		} catch (error) {
-            console.log(`@jason: error: ${JSON.stringify(error)}`);
 			Toast.show({ label: "Invalid Query...", message: error?.body?.message, variant: "error" }, this);
 			return [{ key: INPUT_VAR_QUERY, errorString: error?.body?.message }];
 		}
@@ -78,9 +75,11 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 	}
 
 	handleBindChange(event) {
-		const updated = this.bindsValue.map((b, i) => (i === event.detail.index ? { ...b, ...event.detail.patch } : b));
+		if (!event?.detail?.patch) return;
+		const updated = this.bindsValue.map((b, i) =>
+			i === Number(event.detail.index) ? { ...b, ...event.detail.patch } : b
+		);
 		this._bindsDraft = updated;
-        console.log(`@jason: [handleBindChange] patch=${JSON.stringify(event.detail.patch)} -> bindsDraft=${JSON.stringify(this._bindsDraft)}`);
 		this._dispatchChange(INPUT_VAR_BINDS, updated, "sobject");
 	}
 
