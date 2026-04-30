@@ -18,6 +18,27 @@ global abstract inherited sharing class InvocableSoql {
 	}
 
 	/**
+	 * @description Method used by the custom property editor to validate query inputs
+	 * @param queryToValidate The raw SOQL query to process
+	 * @param bindKeys List of bind variables included in the invocable configuration, mapped to null values for validation purposes only
+	 * @throws AuraHandledException if any Exception is thrown during query validation
+	 */
+	@AuraEnabled(cacheable=true)
+	global static void validateQuery(String queryToValidate, List<String> bindKeys) {
+		try {
+			Soql soql = DatabaseLayer.Soql.newQuery(queryToValidate);
+			for (String bindKey : bindKeys ?? new List<String>{}) {
+				soql?.addBind(bindKey, null);
+			}
+			soql?.queryFirst();
+		} catch (Exception anyError) {
+			String msg = anyError?.getMessage();
+			Boolean shouldWrap = System.Request.getCurrent().getQuiddity() == System.Quiddity.AURA;
+			throw (shouldWrap) ? new AuraHandledException(msg) : anyError;
+		}
+	}
+
+	/**
 	 * @description Input structure for SOQL queries with bind variables.
 	 */
 	global class Input {

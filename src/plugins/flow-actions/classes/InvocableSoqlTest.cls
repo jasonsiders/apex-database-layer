@@ -444,4 +444,66 @@ private class InvocableSoqlTest {
 		// executePerInput: nested WHERE blocks IN-list optimization, each input fires its own query
 		Assert.areEqual(2, MockSoql.MockDatabase?.getNumQueries(), 'Nested WHERE fallback should fire 1 query per input');
 	}
+
+	@IsTest 
+	private static void shouldValidateSimpleQuery() {
+		DatabaseLayer.useRealData();
+		String query = 'SELECT Id FROM Account ORDER BY CreatedDate DESC LIMIT 1';
+
+		Test.startTest();
+		try {
+			InvocableSoql.validateQuery(query, null);
+		} catch (Exception anyError) {
+			Assert.fail('Should not have thrown an exception');
+		}
+		Test.stopTest();
+	}
+
+	@IsTest 
+	private static void shouldValidateQueryWithBinds() {
+		DatabaseLayer.useRealData();
+		String query = 'SELECT Id FROM Account WHERE Name = :name';
+		List<String> binds = new List<String>{ 'name' };
+
+		Test.startTest();
+		try {
+			InvocableSoql.validateQuery(query, binds);
+		} catch (Exception anyError) {
+			Assert.fail('Should not have thrown an exception');
+		}
+		Test.stopTest();
+	}
+
+	@SuppressWarnings('PMD.EmptyCatchBlock')
+	@IsTest 
+	private static void shouldThrowExceptionIfInvalidQueryString() {
+		DatabaseLayer.useRealData();
+		String query = 'asdf';
+
+		Test.startTest();
+		try {
+			InvocableSoql.validateQuery(query, null);
+			Assert.fail('Should have thrown an exception');
+		} catch (Exception anyError) {
+			// As expected...
+		}
+		Test.stopTest();
+	}
+
+	@SuppressWarnings('PMD.EmptyCatchBlock')
+	@IsTest 
+	private static void shouldThrowExceptionIfMissingBinds() {
+		DatabaseLayer.useRealData();
+		String query = 'SELECT Id FROM Account WHERE Name = :name';
+		List<String> binds = new List<String>{ 'someOtherBind' };
+
+		Test.startTest();
+		try {
+			InvocableSoql.validateQuery(query, binds);
+			Assert.fail('Should have thrown an exception');
+		} catch (Exception anyError) {
+			// As expected...
+		}
+		Test.stopTest();
+	}
 }
