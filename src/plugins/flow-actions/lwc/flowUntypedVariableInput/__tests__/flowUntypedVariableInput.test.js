@@ -44,7 +44,7 @@ describe("c-flow-untyped-variable-input", () => {
 		keyInput.dispatchEvent(new Event("change"));
 
 		expect(events).toHaveLength(1);
-		expect(events[0].detail).toEqual({ index: 0, variable: { ...defaultVariable, key: "accountId" } });
+		expect(events[0].detail).toEqual({ index: 0, patch: { key: "accountId" } });
 	});
 
 	it("emits change with updated typeName when type input changes", () => {
@@ -58,7 +58,7 @@ describe("c-flow-untyped-variable-input", () => {
 		expect(events).toHaveLength(1);
 		expect(events[0].detail).toEqual({
 			index: 1,
-			variable: { ...defaultVariable, typeName: "Decimal", isCollection: false }
+			patch: { typeName: "Decimal", isCollection: false }
 		});
 	});
 
@@ -72,7 +72,7 @@ describe("c-flow-untyped-variable-input", () => {
 			.dispatchEvent(new CustomEvent("change", { detail: { value: "Text (Collection)" } }));
 
 		expect(events).toHaveLength(1);
-		expect(events[0].detail).toEqual({ index: 0, variable: { ...defaultVariable, isCollection: true } });
+		expect(events[0].detail).toEqual({ index: 0, patch: { typeName: "String", isCollection: true } });
 	});
 
 	it("emits change with updated textValue when value combobox changes", () => {
@@ -87,7 +87,7 @@ describe("c-flow-untyped-variable-input", () => {
 		);
 
 		expect(events).toHaveLength(1);
-		expect(events[0].detail).toEqual({ index: 0, variable: { ...defaultVariable, textValue: "{!newVar}" } });
+		expect(events[0].detail).toEqual({ index: 0, patch: { textValue: "{!newVar}" } });
 	});
 
 	it("emits remove event with index when remove button is clicked", () => {

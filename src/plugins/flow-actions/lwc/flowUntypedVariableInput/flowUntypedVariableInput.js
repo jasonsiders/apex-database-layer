@@ -62,7 +62,7 @@ export default class FlowUntypedVariableInput extends LightningElement {
     _emitChange(patch) {
         this.dispatchEvent(
             new CustomEvent("change", {
-                detail: { index: this.index, variable: { ...this.variable, ...patch } }
+                detail: { index: this.index, patch }
             })
         );
     }

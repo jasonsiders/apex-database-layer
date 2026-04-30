@@ -74,7 +74,7 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 	}
 
 	handleBindChange(event) {
-		const updated = this.bindsValue.map((b, i) => (i === event.detail.index ? event.detail.variable : b));
+		const updated = this.bindsValue.map((b, i) => (i === event.detail.index ? { ...b, ...event.detail.patch } : b));
 		this._bindsDraft = updated;
 		this._dispatchChange(INPUT_VAR_BINDS, updated, "sobject");
 	}

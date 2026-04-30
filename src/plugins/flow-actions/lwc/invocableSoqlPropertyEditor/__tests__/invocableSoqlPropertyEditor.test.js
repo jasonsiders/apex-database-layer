@@ -184,7 +184,7 @@ describe("c-invocable-soql-property-editor", () => {
 		const bindInput = element.shadowRoot.querySelector("c-flow-untyped-variable-input");
 		bindInput.dispatchEvent(
 			new CustomEvent("change", {
-				detail: { index: 0, variable: { key: "accountId", textValue: "", typeName: "Id", isCollection: false } }
+				detail: { index: 0, patch: { key: "accountId", typeName: "Id" } }
 			})
 		);
 
