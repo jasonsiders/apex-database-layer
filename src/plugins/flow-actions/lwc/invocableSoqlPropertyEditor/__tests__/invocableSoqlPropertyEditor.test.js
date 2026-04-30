@@ -1,8 +1,15 @@
 import { createElement } from "@lwc/engine-dom";
 import InvocableSoqlPropertyEditor from "c/invocableSoqlPropertyEditor";
 import Toast from "lightning/toast";
+import validateQuery from "@salesforce/apex/InvocableSoql.validateQuery";
 
-const REQUIRED_QUERY_ERROR = "Missing required field: Query";
+jest.mock(
+	"@salesforce/apex/InvocableSoql.validateQuery",
+	() => ({ default: jest.fn().mockResolvedValue(undefined) }),
+	{ virtual: true }
+);
+
+const flushPromises = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe("c-invocable-soql-property-editor", () => {
 	function createComponent(props = {}) {
@@ -40,47 +47,71 @@ describe("c-invocable-soql-property-editor", () => {
 		expect(element.shadowRoot.querySelector(".code-editor").value).toBe("SELECT Id FROM Account");
 	});
 
-	it("validate() returns an error when query is empty", () => {
-		const element = createComponent({ inputVariables: [] });
-		const errors = element.validate();
-		expect(errors).toHaveLength(1);
-		expect(errors[0]).toEqual({ key: "query", errorString: REQUIRED_QUERY_ERROR });
-		expect(Toast.show).toHaveBeenCalledWith(
-			expect.objectContaining({ message: REQUIRED_QUERY_ERROR, variant: "error" }),
-			expect.any(Object)
-		);
-	});
-
-	it("validate() returns no errors when query is set", () => {
+	it("validate() calls validateQuery with the current query", () => {
 		const element = createComponent({
 			inputVariables: [{ name: "query", value: "SELECT Id FROM Account", valueDataType: "String" }]
 		});
-		expect(element.validate()).toHaveLength(0);
+		element.validate();
+		expect(validateQuery).toHaveBeenCalledWith({ queryToValidate: "SELECT Id FROM Account", bindKeys: [] });
+	});
+
+	it("validate() calls validateQuery with bind keys from current binds", () => {
+		const binds = [{ key: "recordId", textValue: "", typeName: "String", isCollection: false }];
+		const element = createComponent({
+			inputVariables: [
+				{ name: "query", value: "SELECT Id FROM Account WHERE Id = :recordId", valueDataType: "String" },
+				{ name: "binds", value: binds, valueDataType: "sobject" }
+			]
+		});
+		element.validate();
+		expect(validateQuery).toHaveBeenCalledWith({
+			queryToValidate: "SELECT Id FROM Account WHERE Id = :recordId",
+			bindKeys: ["recordId"]
+		});
+	});
+
+	it("validate() returns [] when validateQuery does not throw", async () => {
+		const element = createComponent({
+			inputVariables: [{ name: "query", value: "SELECT Id FROM Account", valueDataType: "String" }]
+		});
+		expect(await element.validate()).toEqual([]);
 		expect(Toast.show).not.toHaveBeenCalled();
 	});
 
-	it("handleValidate() shows an error toast when query is empty", () => {
-		const element = createComponent({ inputVariables: [] });
-
-		getButtonByLabel(element, "Validate").click();
-
-		expect(Toast.show).toHaveBeenCalledTimes(1);
+	it("validate() shows error toast when validateQuery rejects", async () => {
+		validateQuery.mockRejectedValueOnce({ body: { message: "Invalid query syntax" } });
+		const element = createComponent({
+			inputVariables: [{ name: "query", value: "SELECT FROM Account", valueDataType: "String" }]
+		});
+		await element.validate();
 		expect(Toast.show).toHaveBeenCalledWith(
-			expect.objectContaining({ message: REQUIRED_QUERY_ERROR, variant: "error" }),
+			expect.objectContaining({ message: "Invalid query syntax", variant: "error" }),
 			expect.any(Object)
 		);
 	});
 
-	it("handleValidate() shows a success toast when query is set", () => {
+	it("handleValidate() shows a success toast when validateQuery resolves", async () => {
 		const element = createComponent({
 			inputVariables: [{ name: "query", value: "SELECT Id FROM Account", valueDataType: "String" }]
 		});
-
 		getButtonByLabel(element, "Validate").click();
-
+		await flushPromises();
 		expect(Toast.show).toHaveBeenCalledTimes(1);
 		expect(Toast.show).toHaveBeenCalledWith(
 			expect.objectContaining({ label: expect.stringMatching(/valid/i), variant: "success" }),
+			expect.any(Object)
+		);
+	});
+
+	it("handleValidate() shows an error toast when validateQuery rejects", async () => {
+		validateQuery.mockRejectedValueOnce({ body: { message: "Unknown field: Namee" } });
+		const element = createComponent({
+			inputVariables: [{ name: "query", value: "SELECT Namee FROM Account", valueDataType: "String" }]
+		});
+		getButtonByLabel(element, "Validate").click();
+		await flushPromises();
+		expect(Toast.show).toHaveBeenCalledWith(
+			expect.objectContaining({ message: "Unknown field: Namee", variant: "error" }),
 			expect.any(Object)
 		);
 	});
