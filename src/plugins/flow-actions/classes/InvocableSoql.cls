@@ -221,9 +221,8 @@ global abstract inherited sharing class InvocableSoql {
 			List<Soql.Criteria> criterion = this.outputs?.get(indexes?.get(0)).soql.whereCriteria.getCriterion();
 			for (Soql.Criteria criteria : criterion) {
 				if (criteria == pivotCondition) {
-					newCriteria.addCondition(
-						new Soql.Condition(pivotCondition.property, Soql.IN_COLLECTION, ':' + bindVarName)
-					);
+					Soql.Condition condition = new Soql.Condition(pivotCondition.property, Soql.IN_COLLECTION, ':' + bindVarName);
+					newCriteria.addCondition(condition);
 				} else {
 					newCriteria.addCondition(criteria);
 				}
