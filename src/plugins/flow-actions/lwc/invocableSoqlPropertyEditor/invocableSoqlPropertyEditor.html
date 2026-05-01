@@ -1,6 +1,6 @@
 <template>
     <div class="slds-form slds-form_stacked">
-        <div class="slds-form-element">
+        <div class={formElementClass}>
             <label class="slds-text-heading_small slds-var-m-bottom_xx-small" for="query-input">
                 Query
             </label>
@@ -9,6 +9,7 @@
                     <pre class="code-highlight slds-m-around_none slds-scrollable_none" lwc:dom="manual" aria-hidden="true"></pre>
                     <textarea
                         id="query-input"
+                        lwc:ref="editor" 
                         class="code-editor slds-m-around_none"
                         name="query"
                         autocapitalize="off"
@@ -20,6 +21,12 @@
                         spellcheck="false"
                     ></textarea>
                 </div>
+                <template if:true={queryError}>
+                    <p class="slds-form-element__help query-status" role="alert">{queryError}</p>
+                </template>
+                <template if:true={querySuccess}>
+                    <p class="slds-form-element__help slds-text-color_success query-status" role="status">{querySuccess}</p>
+                </template>
                 <div class="slds-var-m-top_x-small">
                     <lightning-button
                         label="Validate"

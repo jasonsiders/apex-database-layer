@@ -1,5 +1,4 @@
 import { LightningElement, api } from "lwc";
-import Toast from "lightning/toast";
 import validateQuery from "@salesforce/apex/InvocableSoql.validateQuery";
 
 const EVT_VALUE_CHANGED = "configuration_editor_input_value_changed";
@@ -13,6 +12,9 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 	@api resourceOptions = [];
 	_inputVariables = [];
 	_queryDraft = "";
+	_queryError = null;
+	_querySuccess = null;
+	_queryInitialized = false;
 	_bindsDraft = [];
 	_bindsInitialized = false;
 
@@ -22,7 +24,10 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 
 	set inputVariables(value) {
 		this._inputVariables = Array.isArray(value) ? value : [];
-		this._queryDraft = this._readInputValue(this._inputVariables, INPUT_VAR_QUERY) ?? "";
+		if (!this._queryInitialized) {
+			this._queryDraft = this._readInputValue(this._inputVariables, INPUT_VAR_QUERY) ?? "";
+			this._queryInitialized = true;
+		}
 		if (!this._bindsInitialized) {
 			this._bindsDraft = this._cloneBinds(this._readInputValue(this._inputVariables, INPUT_VAR_BINDS));
 			this._bindsInitialized = true;
@@ -41,6 +46,18 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 		return "ex., SELECT Id, Name FROM Account WHERE Id = :recordId...";
 	}
 
+	get formElementClass() {
+		return this._queryError ? "slds-form-element slds-has-error" : "slds-form-element";
+	}
+
+	get queryError() {
+		return this._queryError;
+	}
+
+	get querySuccess() {
+		return this._querySuccess;
+	}
+
 	get queryValue() {
 		return this._queryDraft;
 	}
@@ -53,10 +70,14 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 		try {
 			const bindKeys = this._bindsDraft.map((b) => b.key);
 			await validateQuery({ queryToValidate: this._queryDraft, bindKeys });
+			this._queryError = null;
 			return [];
 		} catch (error) {
-			Toast.show({ label: "Invalid Query...", message: error?.body?.message, variant: "error" }, this);
-			return [{ key: INPUT_VAR_QUERY, errorString: error?.body?.message }];
+			// Note: Soql.cls appends the offending query to the error message on a new line
+			// This information is redundant, since the query is displayed in the input element
+			const errorString = error?.body?.message?.split("\n")?.[0];
+			this._queryError = `Error: ${errorString}`;
+			return [{ key: INPUT_VAR_QUERY, errorString }];
 		}
 	}
 
@@ -109,9 +130,7 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 
 	async handleValidate() {
 		const errors = await this.validate();
-		if (!errors.length) {
-			Toast.show({ label: "Valid!", variant: "success" }, this);
-		}
+		this._querySuccess = errors.length ? null : "✓ Valid";
 	}
 
 	_cloneBinds(binds) {

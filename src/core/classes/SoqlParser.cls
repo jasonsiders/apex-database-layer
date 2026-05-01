@@ -83,7 +83,7 @@ public class SoqlParser {
 			SoqlParser.ParseContext ctx = new SoqlParser.ParseContext(str, positions);
 			this.applyParsers(builder, ctx);
 		} catch (Exception anyError) {
-			throw new System.QueryException('Invalid query: ' + str);
+			throw new System.QueryException('Invalid query: "' + str + '"');
 		}
 	}
 

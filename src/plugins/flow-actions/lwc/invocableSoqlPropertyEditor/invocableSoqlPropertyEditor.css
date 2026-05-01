@@ -58,6 +58,8 @@
     margin: 1.25rem 0 0;
 }
 
+.query-status { font-weight: 450; }
+
 .hl-kw { color: #0070d2; font-weight: bold; }
 .hl-fn { color: #7b5ea7; }
 .hl-dt { color: #2e7d32; }

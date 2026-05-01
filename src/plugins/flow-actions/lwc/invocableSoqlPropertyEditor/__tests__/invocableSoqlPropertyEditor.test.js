@@ -1,6 +1,5 @@
 import { createElement } from "@lwc/engine-dom";
 import InvocableSoqlPropertyEditor from "c/invocableSoqlPropertyEditor";
-import Toast from "lightning/toast";
 import validateQuery from "@salesforce/apex/InvocableSoql.validateQuery";
 
 jest.mock(
@@ -75,45 +74,58 @@ describe("c-invocable-soql-property-editor", () => {
 			inputVariables: [{ name: "query", value: "SELECT Id FROM Account", valueDataType: "String" }]
 		});
 		expect(await element.validate()).toEqual([]);
-		expect(Toast.show).not.toHaveBeenCalled();
 	});
 
-	it("validate() shows error toast when validateQuery rejects", async () => {
+	it("validate() renders an inline SLDS error when validateQuery rejects", async () => {
 		validateQuery.mockRejectedValueOnce({ body: { message: "Invalid query syntax" } });
 		const element = createComponent({
 			inputVariables: [{ name: "query", value: "SELECT FROM Account", valueDataType: "String" }]
 		});
 		await element.validate();
-		expect(Toast.show).toHaveBeenCalledWith(
-			expect.objectContaining({ message: "Invalid query syntax", variant: "error" }),
-			expect.any(Object)
-		);
+		await Promise.resolve();
+		const errorEl = element.shadowRoot.querySelector(".slds-form-element__help");
+		expect(errorEl).not.toBeNull();
+		expect(errorEl.textContent).toBe("Error: Invalid query syntax");
+		expect(element.shadowRoot.querySelector(".slds-has-error")).not.toBeNull();
 	});
 
-	it("handleValidate() shows a success toast when validateQuery resolves", async () => {
+	it("handleValidate() renders an inline SLDS success message when validateQuery resolves", async () => {
 		const element = createComponent({
 			inputVariables: [{ name: "query", value: "SELECT Id FROM Account", valueDataType: "String" }]
 		});
 		getButtonByLabel(element, "Validate").click();
 		await flushPromises();
-		expect(Toast.show).toHaveBeenCalledTimes(1);
-		expect(Toast.show).toHaveBeenCalledWith(
-			expect.objectContaining({ label: expect.stringMatching(/valid/i), variant: "success" }),
-			expect.any(Object)
-		);
+		const successEl = element.shadowRoot.querySelector(".slds-text-color_success");
+		expect(successEl).not.toBeNull();
+		expect(successEl.textContent).toBe("✓ Valid");
 	});
 
-	it("handleValidate() shows an error toast when validateQuery rejects", async () => {
+	it("validate() clears the inline error when validateQuery resolves after a prior failure", async () => {
+		validateQuery.mockRejectedValueOnce({ body: { message: "Bad query" } });
+		const element = createComponent({
+			inputVariables: [{ name: "query", value: "SELECT FROM Account", valueDataType: "String" }]
+		});
+		await element.validate();
+		await Promise.resolve();
+		expect(element.shadowRoot.querySelector(".slds-form-element__help")).not.toBeNull();
+
+		await element.validate();
+		await Promise.resolve();
+		expect(element.shadowRoot.querySelector(".slds-form-element__help")).toBeNull();
+		expect(element.shadowRoot.querySelector(".slds-has-error")).toBeNull();
+	});
+
+	it("handleValidate() renders an inline SLDS error when validateQuery rejects", async () => {
 		validateQuery.mockRejectedValueOnce({ body: { message: "Unknown field: Namee" } });
 		const element = createComponent({
 			inputVariables: [{ name: "query", value: "SELECT Namee FROM Account", valueDataType: "String" }]
 		});
 		getButtonByLabel(element, "Validate").click();
 		await flushPromises();
-		expect(Toast.show).toHaveBeenCalledWith(
-			expect.objectContaining({ message: "Unknown field: Namee", variant: "error" }),
-			expect.any(Object)
-		);
+		const errorEl = element.shadowRoot.querySelector(".slds-form-element__help");
+		expect(errorEl).not.toBeNull();
+		expect(errorEl.textContent).toBe("Error: Unknown field: Namee");
+		expect(element.shadowRoot.querySelector(".slds-has-error")).not.toBeNull();
 	});
 
 	it("dispatches configuration_editor_input_value_changed when query is entered", () => {
