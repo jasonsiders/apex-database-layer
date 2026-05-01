@@ -78,10 +78,9 @@ global abstract inherited sharing class InvocableSoql {
 		 * @return List of configured bind variables
 		 */
 		private List<BindVariable> getBinds() {
-			if (String.isNotBlank(this.bindsJson)) {
-				return (List<BindVariable>) JSON.deserialize(this.bindsJson, List<BindVariable>.class);
-			}
-			return new List<BindVariable>{};
+			return String.isNotBlank(this.bindsJson) 
+				? (List<BindVariable>) JSON.deserialize(this.bindsJson, List<BindVariable>.class)
+				: new List<BindVariable>{};
 		}
 	}
 
@@ -177,10 +176,10 @@ global abstract inherited sharing class InvocableSoql {
 		private Type determineType() {
 			String typeName = (this.isCollection == true) ? 'List<' + this.typeName + '>' : this.typeName;
 			Type type = Type.forName(typeName);
-			if (type != null) {
-				return type;
+			if (type == null) {
+				throw new System.TypeException('Invalid type: ' + typeName);	
 			}
-			throw new System.TypeException('Invalid type: ' + typeName);
+			return type;
 		}
 	}
 
@@ -201,7 +200,8 @@ global abstract inherited sharing class InvocableSoql {
 		private Container(List<Input> inputs) {
 			this.outputs = new List<Output>{};
 			for (Input input : inputs) {
-				this.outputs.add(new Output(input));
+				Output output = new Output(input);
+				this.outputs.add(output);
 			}
 		}
 
