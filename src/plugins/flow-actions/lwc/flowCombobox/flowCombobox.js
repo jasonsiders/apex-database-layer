@@ -1,6 +1,8 @@
 import { LightningElement, api } from "lwc";
 import describeSObjectFields from "@salesforce/apex/InvocableSoql.describeSObjectFields";
 
+const MAX_RELATIONSHIP_DEPTH = 5;
+
 function normalizeTextValue(value) {
 	if (value === undefined || value === null) {
 		return "";
@@ -235,6 +237,25 @@ function toReferenceValue(referenceName) {
 	return referenceName ? `{!${referenceName}}` : "";
 }
 
+function getRelationshipObjectType(field) {
+	return field?.relationshipObjectType ?? field?.relationshipObjectTypes?.[0] ?? null;
+}
+
+function toDrilldownResource(option) {
+	const relationshipReferenceName = option.relationshipReferenceName ?? option.referenceName;
+	const relationshipObjectType = option.relationshipObjectType ?? option.objectType;
+
+	return {
+		...option,
+		value: toReferenceValue(relationshipReferenceName),
+		pillLabel: relationshipReferenceName,
+		referenceName: relationshipReferenceName,
+		objectType: relationshipObjectType,
+		relationshipDepth: option.relationshipDepth ?? 0,
+		isSelectable: false
+	};
+}
+
 function dedupeOptionsByReferenceName(options) {
 	const seen = new Set();
 	const result = [];
@@ -348,8 +369,15 @@ export default class FlowCombobox extends LightningElement {
 		return normalizeReferenceName(this.value);
 	}
 
+	get selectableResourceOptions() {
+		return [
+			...(this.resourceOptions || []),
+			...Object.values(this._dynamicChildOptionsByParent).flatMap((options) => options)
+		];
+	}
+
 	get selectedResource() {
-		return (this.resourceOptions || []).find(
+		return this.selectableResourceOptions.find(
 			(option) =>
 				option.value === this.value ||
 				option.referenceName === this.selectedResourceName ||
@@ -706,13 +734,13 @@ export default class FlowCombobox extends LightningElement {
 	}
 
 	_openDrilldown(option) {
-		this._drilldownResource = option;
+		this._drilldownResource = toDrilldownResource(option);
 		this._draftTextValue = "";
 		this._focusedOptionKey = null;
 		this._suppressTextCommitAfterSelection = true;
 		this._setResourcePickerOpen(true);
 		this._syncRenderedInputValue();
-		this._loadDrilldownFields(option);
+		this._loadDrilldownFields(this._drilldownResource);
 	}
 
 	_getChildResourceOptions(parentOption) {
@@ -742,6 +770,16 @@ export default class FlowCombobox extends LightningElement {
 			const dynamicOptions = (fields ?? [])
 				.map((field) => {
 					const referenceName = `${parentOption.referenceName}.${field.name}`;
+					const relationshipObjectType = getRelationshipObjectType(field);
+					const relationshipDepth = (parentOption.relationshipDepth ?? 0) + 1;
+					const relationshipReferenceName = field.relationshipName
+						? `${parentOption.referenceName}.${field.relationshipName}`
+						: null;
+					const isDrillable =
+						!!relationshipReferenceName &&
+						!!relationshipObjectType &&
+						relationshipDepth <= MAX_RELATIONSHIP_DEPTH;
+
 					return {
 						label: `Field: ${field.label}`,
 						value: toReferenceValue(referenceName),
@@ -750,13 +788,20 @@ export default class FlowCombobox extends LightningElement {
 						displayLabel: field.label,
 						dataType: field.dataType,
 						valueDataType: field.dataType,
+						objectType: relationshipObjectType,
 						parentObjectType: parentOption.objectType,
 						parentReferenceName: parentOption.referenceName,
+						relationshipName: field.relationshipName,
+						relationshipReferenceName,
+						relationshipObjectType,
+						relationshipObjectTypes: field.relationshipObjectTypes,
+						relationshipDepth,
+						isDrillable,
 						isCollection: false,
 						category: "recordFields"
 					};
 				})
-				.filter((option) => isCompatibleDataType(option.dataType, this.fieldDataType));
+				.filter((option) => option.isDrillable || isCompatibleDataType(option.dataType, this.fieldDataType));
 			this._dynamicChildOptionsByParent = {
 				...this._dynamicChildOptionsByParent,
 				[parentOption.referenceName]: dynamicOptions
@@ -944,6 +989,24 @@ export default class FlowCombobox extends LightningElement {
 		this._ignoreNextTextChange = true;
 		this._ignoreNextResourceClick = true;
 		this.handleResourceOptionClick(event);
+	}
+
+	handleResourceOptionChevronMouseDown(event) {
+		event.preventDefault();
+		event.stopPropagation();
+		this._ignoreNextTextChange = true;
+	}
+
+	handleResourceOptionChevronClick(event) {
+		event.preventDefault();
+		event.stopPropagation();
+		this._ignoreNextTextChange = true;
+
+		const selectedOption =
+			this.dropdownOptions.find((option) => option.key === event.currentTarget.dataset.key) ?? null;
+		if (selectedOption?.isDrillable) {
+			this._openDrilldown(selectedOption);
+		}
 	}
 
 	handleResourceOptionClick(event) {

@@ -89,6 +89,35 @@ private class InvocableSoqlTest {
 	}
 
 	@IsTest
+	private static void shouldDescribeRelationshipFieldsForPropertyEditor() {
+		Test.startTest();
+		List<InvocableSoql.FieldOption> fields = InvocableSoql.describeSObjectFields('Opportunity');
+		Test.stopTest();
+
+		Map<String, InvocableSoql.FieldOption> fieldsByName = new Map<String, InvocableSoql.FieldOption>{};
+		for (InvocableSoql.FieldOption field : fields) {
+			fieldsByName.put(field.name, field);
+		}
+
+		Assert.isTrue(fieldsByName.containsKey('AccountId'), 'Opportunity.AccountId should be available');
+		Assert.areEqual('String', fieldsByName.get('AccountId').dataType, 'Lookup IDs should map to String');
+		Assert.areEqual(
+			'Account',
+			fieldsByName.get('AccountId').relationshipName,
+			'Relationship name should be exposed'
+		);
+		Assert.areEqual(
+			'Account',
+			fieldsByName.get('AccountId').relationshipObjectType,
+			'Relationship object type should be exposed'
+		);
+		Assert.isTrue(
+			fieldsByName.get('AccountId').relationshipObjectTypes.contains('Account'),
+			'All relationship object types should be exposed'
+		);
+	}
+
+	@IsTest
 	private static void shouldReturnNoFieldsForUnknownSObjectDescribe() {
 		Test.startTest();
 		List<InvocableSoql.FieldOption> fields = InvocableSoql.describeSObjectFields('NotARealObject__c');

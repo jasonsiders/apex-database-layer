@@ -140,7 +140,12 @@
 																			>
 																		</span>
 																		<template lwc:if={resourceOption.isDrillable}>
-																			<span class="resource-option-chevron">
+																			<span
+																				class="resource-option-chevron"
+																				data-key={resourceOption.key}
+																				onmousedown={handleResourceOptionChevronMouseDown}
+																				onclick={handleResourceOptionChevronClick}
+																			>
 																				<lightning-icon
 																					icon-name="utility:chevronright"
 																					size="xx-small"

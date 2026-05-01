@@ -79,6 +79,12 @@ global abstract inherited sharing class InvocableSoql {
 		global String label;
 		@AuraEnabled
 		global String name;
+		@AuraEnabled
+		global String relationshipName;
+		@AuraEnabled
+		global String relationshipObjectType;
+		@AuraEnabled
+		global List<String> relationshipObjectTypes;
 
 		global FieldOption() {
 		}
@@ -87,6 +93,9 @@ global abstract inherited sharing class InvocableSoql {
 			this.name = field.getName();
 			this.label = field.getLabel();
 			this.dataType = InvocableSoql.toFlowDataType(field.getType());
+			this.relationshipName = field.getRelationshipName();
+			this.relationshipObjectTypes = InvocableSoql.toSObjectTypeNames(field.getReferenceTo());
+			this.relationshipObjectType = InvocableSoql.chooseRelationshipObjectType(this.relationshipObjectTypes);
 		}
 	}
 
@@ -255,6 +264,29 @@ global abstract inherited sharing class InvocableSoql {
 			return 'Decimal';
 		}
 		return 'String';
+	}
+
+	private static List<String> toSObjectTypeNames(List<Schema.SObjectType> sObjectTypes) {
+		List<String> results = new List<String>{};
+		for (Schema.SObjectType sObjectType : sObjectTypes ?? new List<Schema.SObjectType>{}) {
+			results.add(sObjectType.getDescribe().getName());
+		}
+		return results;
+	}
+
+	private static String chooseRelationshipObjectType(List<String> objectTypes) {
+		if (objectTypes == null || objectTypes.isEmpty()) {
+			return null;
+		}
+		if (objectTypes.contains('User')) {
+			return 'User';
+		}
+		for (String objectType : objectTypes) {
+			if (objectType != 'Group') {
+				return objectType;
+			}
+		}
+		return objectTypes[0];
 	}
 
 	/**

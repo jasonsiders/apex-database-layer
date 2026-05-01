@@ -578,6 +578,155 @@ describe("c-flow-combobox", () => {
 		});
 	});
 
+	it("selects lookup IDs from relationship field rows", async () => {
+		describeSObjectFields.mockResolvedValueOnce([
+			{
+				name: "AccountId",
+				label: "Account ID",
+				dataType: "String",
+				relationshipName: "Account",
+				relationshipObjectType: "Account",
+				relationshipObjectTypes: ["Account"]
+			}
+		]);
+		const element = createComponent({
+			name: "value",
+			label: "Value",
+			fieldDataType: "String",
+			included: true,
+			resourceOptions: [
+				{
+					label: "Variable: opp",
+					value: "{!opp}",
+					pillLabel: "opp",
+					referenceName: "opp",
+					objectType: "Opportunity",
+					dataType: "SObject",
+					isSelectable: false
+				}
+			]
+		});
+		const handler = jest.fn();
+		element.addEventListener("fieldchange", handler);
+
+		getTextInput(element).dispatchEvent(new CustomEvent("focus"));
+		await Promise.resolve();
+		element.shadowRoot.querySelector(".resource-option").click();
+		await flushPromises();
+
+		element.shadowRoot.querySelector(".resource-option").click();
+		await Promise.resolve();
+
+		expect(handler).toHaveBeenCalledTimes(1);
+		expect(handler.mock.calls[0][0].detail).toEqual({
+			name: "value",
+			value: "{!opp.AccountId}",
+			valueDataType: "reference"
+		});
+	});
+
+	it("drills through relationship fields and emits grandparent field references", async () => {
+		describeSObjectFields
+			.mockResolvedValueOnce([
+				{
+					name: "AccountId",
+					label: "Account ID",
+					dataType: "String",
+					relationshipName: "Account",
+					relationshipObjectType: "Account",
+					relationshipObjectTypes: ["Account"]
+				}
+			])
+			.mockResolvedValueOnce([{ name: "Name", label: "Account Name", dataType: "String" }]);
+		const element = createComponent({
+			name: "value",
+			label: "Value",
+			fieldDataType: "String",
+			included: true,
+			resourceOptions: [
+				{
+					label: "Variable: opp",
+					value: "{!opp}",
+					pillLabel: "opp",
+					referenceName: "opp",
+					objectType: "Opportunity",
+					dataType: "SObject",
+					isSelectable: false
+				}
+			]
+		});
+		const handler = jest.fn();
+		element.addEventListener("fieldchange", handler);
+
+		getTextInput(element).dispatchEvent(new CustomEvent("focus"));
+		await Promise.resolve();
+		element.shadowRoot.querySelector(".resource-option").click();
+		await flushPromises();
+
+		const relationshipOption = element.shadowRoot.querySelector(".resource-option");
+		expect(relationshipOption.textContent).toContain("Account ID");
+		expect(relationshipOption.querySelector(".resource-option-chevron")).not.toBeNull();
+
+		relationshipOption.querySelector(".resource-option-chevron").click();
+		await flushPromises();
+
+		expect(describeSObjectFields).toHaveBeenNthCalledWith(1, { objectApiName: "Opportunity" });
+		expect(describeSObjectFields).toHaveBeenNthCalledWith(2, { objectApiName: "Account" });
+		expect(element.shadowRoot.querySelector(".resource-dropdown-header").textContent).toContain(
+			"All Resources > Account ID"
+		);
+		expect(element.shadowRoot.querySelector(".resource-option").textContent).toContain("Account Name");
+
+		element.shadowRoot.querySelector(".resource-option").click();
+		await Promise.resolve();
+
+		expect(handler).toHaveBeenCalledTimes(1);
+		expect(handler.mock.calls[0][0].detail).toEqual({
+			name: "value",
+			value: "{!opp.Account.Name}",
+			valueDataType: "reference"
+		});
+	});
+
+	it("stops drilling relationship fields after five parent levels", async () => {
+		describeSObjectFields.mockResolvedValueOnce([
+			{
+				name: "ManagerId",
+				label: "Manager ID",
+				dataType: "String",
+				relationshipName: "Manager",
+				relationshipObjectType: "User",
+				relationshipObjectTypes: ["User"]
+			}
+		]);
+		const element = createComponent({
+			name: "value",
+			label: "Value",
+			fieldDataType: "String",
+			included: true,
+			resourceOptions: [
+				{
+					label: "Variable: deepUser",
+					value: "{!deepUser}",
+					pillLabel: "deepUser",
+					referenceName: "deepUser",
+					objectType: "User",
+					dataType: "SObject",
+					relationshipDepth: 5,
+					isSelectable: false
+				}
+			]
+		});
+
+		getTextInput(element).dispatchEvent(new CustomEvent("focus"));
+		await Promise.resolve();
+		element.shadowRoot.querySelector(".resource-option").click();
+		await flushPromises();
+
+		expect(element.shadowRoot.querySelector(".resource-option").textContent).toContain("Manager ID");
+		expect(element.shadowRoot.querySelector(".resource-option-chevron")).toBeNull();
+	});
+
 	it("does not commit a typed literal on blur for boolean fields", async () => {
 		const element = createComponent({
 			name: "allOrNone",
