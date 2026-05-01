@@ -7,20 +7,6 @@
  */
 @SuppressWarnings('PMD.AvoidGlobalModifier')
 global abstract inherited sharing class InvocableSoql {
-	private static final Set<Schema.DisplayType> DECIMAL_DISPLAY_TYPES = new Set<Schema.DisplayType>{
-		Schema.DisplayType.Currency,
-		Schema.DisplayType.Double,
-		Schema.DisplayType.Integer,
-		Schema.DisplayType.Long,
-		Schema.DisplayType.Percent
-	};
-	private static final Set<Schema.DisplayType> FLOW_NAMED_DISPLAY_TYPES = new Set<Schema.DisplayType>{
-		Schema.DisplayType.Boolean,
-		Schema.DisplayType.Date,
-		Schema.DisplayType.DateTime,
-		Schema.DisplayType.Time
-	};
-
 	/**
 	 * @description Invokes the SOQL query action with automatic bulkification for identical queries.
 	 * @param inputs List of query inputs containing query strings and bind variables
@@ -106,10 +92,60 @@ global abstract inherited sharing class InvocableSoql {
 		private FieldOption(Schema.DescribeFieldResult field) {
 			this.name = field.getName();
 			this.label = field.getLabel();
-			this.dataType = InvocableSoql.toFlowDataType(field.getType());
+			this.dataType = this.toFlowDataType(field.getType());
 			this.relationshipName = field.getRelationshipName();
-			this.relationshipObjectTypes = InvocableSoql.toSObjectTypeNames(field.getReferenceTo());
-			this.relationshipObjectType = InvocableSoql.chooseRelationshipObjectType(this.relationshipObjectTypes);
+			this.relationshipObjectTypes = this.toSObjectTypeNames(field.getReferenceTo());
+			this.relationshipObjectType = this.chooseRelationshipObjectType();
+		}
+
+		private String toFlowDataType(Schema.DisplayType displayType) {
+			if (
+				new Set<Schema.DisplayType>{
+						Schema.DisplayType.Currency,
+						Schema.DisplayType.Double,
+						Schema.DisplayType.Integer,
+						Schema.DisplayType.Long,
+						Schema.DisplayType.Percent
+					}
+					.contains(displayType)
+			) {
+				return 'Decimal';
+			}
+			if (
+				new Set<Schema.DisplayType>{
+						Schema.DisplayType.Boolean,
+						Schema.DisplayType.Date,
+						Schema.DisplayType.DateTime,
+						Schema.DisplayType.Time
+					}
+					.contains(displayType)
+			) {
+				return displayType.name();
+			}
+			return 'String';
+		}
+
+		private List<String> toSObjectTypeNames(List<Schema.SObjectType> sObjectTypes) {
+			List<String> results = new List<String>{};
+			for (Schema.SObjectType sObjectType : sObjectTypes ?? new List<Schema.SObjectType>{}) {
+				results.add(sObjectType.getDescribe().getName());
+			}
+			return results;
+		}
+
+		private String chooseRelationshipObjectType() {
+			if (this.relationshipObjectTypes == null || this.relationshipObjectTypes.isEmpty()) {
+				return null;
+			}
+			if (this.relationshipObjectTypes.contains('User')) {
+				return 'User';
+			}
+			for (String objectType : this.relationshipObjectTypes) {
+				if (objectType != 'Group') {
+					return objectType;
+				}
+			}
+			return this.relationshipObjectTypes[0];
 		}
 	}
 
@@ -252,36 +288,6 @@ global abstract inherited sharing class InvocableSoql {
 			}
 			throw new System.TypeException('Invalid type: ' + typeName);
 		}
-	}
-
-	private static String toFlowDataType(Schema.DisplayType displayType) {
-		if (DECIMAL_DISPLAY_TYPES.contains(displayType)) {
-			return 'Decimal';
-		}
-		return FLOW_NAMED_DISPLAY_TYPES.contains(displayType) ? displayType.name() : 'String';
-	}
-
-	private static List<String> toSObjectTypeNames(List<Schema.SObjectType> sObjectTypes) {
-		List<String> results = new List<String>{};
-		for (Schema.SObjectType sObjectType : sObjectTypes ?? new List<Schema.SObjectType>{}) {
-			results.add(sObjectType.getDescribe().getName());
-		}
-		return results;
-	}
-
-	private static String chooseRelationshipObjectType(List<String> objectTypes) {
-		if (objectTypes == null || objectTypes.isEmpty()) {
-			return null;
-		}
-		if (objectTypes.contains('User')) {
-			return 'User';
-		}
-		for (String objectType : objectTypes) {
-			if (objectType != 'Group') {
-				return objectType;
-			}
-		}
-		return objectTypes[0];
 	}
 
 	/**
