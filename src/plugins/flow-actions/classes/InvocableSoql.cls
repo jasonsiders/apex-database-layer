@@ -7,6 +7,20 @@
  */
 @SuppressWarnings('PMD.AvoidGlobalModifier')
 global abstract inherited sharing class InvocableSoql {
+	private static final Set<Schema.DisplayType> DECIMAL_DISPLAY_TYPES = new Set<Schema.DisplayType>{
+		Schema.DisplayType.Currency,
+		Schema.DisplayType.Double,
+		Schema.DisplayType.Integer,
+		Schema.DisplayType.Long,
+		Schema.DisplayType.Percent
+	};
+	private static final Set<Schema.DisplayType> FLOW_NAMED_DISPLAY_TYPES = new Set<Schema.DisplayType>{
+		Schema.DisplayType.Boolean,
+		Schema.DisplayType.Date,
+		Schema.DisplayType.DateTime,
+		Schema.DisplayType.Time
+	};
+
 	/**
 	 * @description Invokes the SOQL query action with automatic bulkification for identical queries.
 	 * @param inputs List of query inputs containing query strings and bind variables
@@ -241,23 +255,10 @@ global abstract inherited sharing class InvocableSoql {
 	}
 
 	private static String toFlowDataType(Schema.DisplayType displayType) {
-		String typeName = String.valueOf(displayType);
-		if (typeName == 'Boolean') {
-			return 'Boolean';
-		}
-		if (typeName == 'Date') {
-			return 'Date';
-		}
-		if (typeName == 'DateTime') {
-			return 'DateTime';
-		}
-		if (typeName == 'Time') {
-			return 'Time';
-		}
-		if (new Set<String>{ 'Currency', 'Double', 'Integer', 'Long', 'Percent' }.contains(typeName)) {
+		if (DECIMAL_DISPLAY_TYPES.contains(displayType)) {
 			return 'Decimal';
 		}
-		return 'String';
+		return FLOW_NAMED_DISPLAY_TYPES.contains(displayType) ? displayType.name() : 'String';
 	}
 
 	private static List<String> toSObjectTypeNames(List<Schema.SObjectType> sObjectTypes) {
