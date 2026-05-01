@@ -9,11 +9,199 @@ const INPUT_VAR_BINDS = "binds";
 const INPUT_VAR_BINDS_JSON = "bindsJson";
 const DATA_TYPE_STRING = "String";
 const OUTPUT_TYPE_MAPPINGS = ["U__allResults", "U__firstResult"];
+const RESOURCE_COLLECTIONS = [
+	{ key: "variables", labelPrefix: "Variable" },
+	{ key: "constants", category: "constants", labelPrefix: "Constant" },
+	{ key: "formulas", category: "formulas", labelPrefix: "Formula" },
+	{ key: "recordLookups", labelPrefix: "Record" },
+	{ key: "recordCreates", labelPrefix: "Record" },
+	{ key: "recordUpdates", labelPrefix: "Record" }
+];
+
+function asArray(value) {
+	return Array.isArray(value) ? value : [];
+}
+
+function readCollection(builderContext, key) {
+	return asArray(builderContext?.[key] ?? builderContext?.resources?.[key] ?? builderContext?.flow?.[key]);
+}
+
+function readName(resource) {
+	return resource?.name ?? resource?.apiName ?? resource?.fullName ?? resource?.developerName ?? null;
+}
+
+function readLabel(resource, fallback) {
+	return resource?.label ?? resource?.masterLabel ?? resource?.displayName ?? fallback;
+}
+
+function readObjectType(resource) {
+	return (
+		resource?.objectType ??
+		resource?.objectTypeName ??
+		resource?.sobjectType ??
+		resource?.sObjectType ??
+		resource?.typeValue ??
+		null
+	);
+}
+
+function normalizeDataType(dataType, objectType) {
+	const normalized = String(dataType ?? "")
+		.trim()
+		.toLowerCase();
+
+	if (objectType || ["sobject", "record", "apex"].includes(normalized)) {
+		return "SObject";
+	}
+
+	if (
+		["string", "text", "textarea", "picklist", "multipicklist", "id", "email", "phone", "url"].includes(normalized)
+	) {
+		return "String";
+	}
+
+	if (["datetime", "date/time"].includes(normalized)) {
+		return "DateTime";
+	}
+
+	if (normalized === "date") {
+		return "Date";
+	}
+
+	if (normalized === "time") {
+		return "Time";
+	}
+
+	if (normalized === "boolean") {
+		return "Boolean";
+	}
+
+	if (["decimal", "double", "currency", "integer", "int", "long", "number"].includes(normalized)) {
+		return "Decimal";
+	}
+
+	return dataType ?? null;
+}
+
+function readIsCollection(resource) {
+	if (resource?.isCollection !== undefined) {
+		return resource.isCollection === true || resource.isCollection === "true";
+	}
+
+	return String(resource?.dataType ?? "").endsWith("[]");
+}
+
+function toReferenceValue(referenceName) {
+	return referenceName ? `{!${referenceName}}` : "";
+}
+
+function buildResourceOption(resource, { category, labelPrefix, referenceName } = {}) {
+	const name = referenceName ?? resource?.referenceName ?? readName(resource);
+	if (!name) {
+		return null;
+	}
+
+	const objectType = readObjectType(resource);
+	const dataType = normalizeDataType(resource?.dataType ?? resource?.valueDataType ?? resource?.type, objectType);
+	const displayLabel = readLabel(resource, name);
+	const label = resource?.label ?? (labelPrefix ? `${labelPrefix}: ${displayLabel}` : displayLabel);
+
+	return {
+		label,
+		value: resource?.value ?? toReferenceValue(name),
+		pillLabel: resource?.pillLabel ?? name,
+		referenceName: name,
+		displayLabel,
+		dataType,
+		valueDataType: dataType,
+		objectType,
+		isCollection: readIsCollection(resource),
+		category: resource?.category ?? category
+	};
+}
+
+function readFieldName(field) {
+	return field?.name ?? field?.apiName ?? field?.fieldApiName ?? field?.qualifiedApiName ?? null;
+}
+
+function readFieldOptions(resource, parentOption) {
+	const fieldSources = [
+		resource?.fields,
+		resource?.fieldDefinitions,
+		resource?.properties,
+		resource?.objectInfo?.fields ? Object.values(resource.objectInfo.fields) : null
+	];
+	const fields = fieldSources.find((source) => Array.isArray(source)) ?? [];
+
+	return fields
+		.map((field) => {
+			const fieldName = readFieldName(field);
+			if (!fieldName) {
+				return null;
+			}
+
+			const referenceName = `${parentOption.referenceName}.${fieldName}`;
+			const displayLabel = `${parentOption.displayLabel}.${readLabel(field, fieldName)}`;
+			return {
+				label: `Field: ${displayLabel}`,
+				value: toReferenceValue(referenceName),
+				pillLabel: referenceName,
+				referenceName,
+				displayLabel,
+				dataType: normalizeDataType(field?.dataType ?? field?.valueDataType ?? field?.type),
+				valueDataType: normalizeDataType(field?.dataType ?? field?.valueDataType ?? field?.type),
+				objectType: null,
+				parentObjectType: parentOption.objectType,
+				isCollection: readIsCollection(field),
+				category: "recordFields"
+			};
+		})
+		.filter(Boolean);
+}
+
+function readActionOutputOptions(action) {
+	const actionName = readName(action);
+	if (!actionName) {
+		return [];
+	}
+
+	return asArray(action?.outputParameters ?? action?.outputVariables ?? action?.outputs)
+		.map((output) => {
+			const outputName = readName(output);
+			if (!outputName) {
+				return null;
+			}
+
+			return buildResourceOption(output, {
+				category: "actionOutputs",
+				labelPrefix: "Action Output",
+				referenceName: `${actionName}.${outputName}`
+			});
+		})
+		.filter(Boolean);
+}
+
+function dedupeResourceOptions(options) {
+	const seen = new Set();
+	const result = [];
+
+	for (const option of options) {
+		const key = option?.referenceName ?? option?.value;
+		if (!key || seen.has(key)) {
+			continue;
+		}
+
+		seen.add(key);
+		result.push(option);
+	}
+
+	return result;
+}
 
 export default class InvocableSoqlPropertyEditor extends LightningElement {
 	@api outputVariables = [];
-	@api resourceOptions = [];
 
+	_builderContext = {};
 	_genericTypeMappings = [];
 	_inputVariables = [];
 	_queryDraft = "";
@@ -21,8 +209,17 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 	_querySuccess = null;
 	_queryInitialized = false;
 	_outputTypeValue = null;
+	_resourceOptions = [];
 	_bindsDraft = [];
 	_bindsInitialized = false;
+
+	@api get builderContext() {
+		return this._builderContext;
+	}
+
+	set builderContext(value) {
+		this._builderContext = value ?? {};
+	}
 
 	@api get genericTypeMappings() {
 		return this._genericTypeMappings;
@@ -50,6 +247,14 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 			);
 			this._bindsInitialized = true;
 		}
+	}
+
+	@api get resourceOptions() {
+		return this._resourceOptions;
+	}
+
+	set resourceOptions(value) {
+		this._resourceOptions = Array.isArray(value) ? value : [];
 	}
 
 	get bindsValue() {
@@ -82,6 +287,10 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 
 	get hasBinds() {
 		return this.bindsValue.length > 0;
+	}
+
+	get availableResourceOptions() {
+		return dedupeResourceOptions([...this._resourceOptions, ...this._deriveResourceOptions()]);
 	}
 
 	@api async validate() {
@@ -218,6 +427,27 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 	_readOutputTypeValue(genericTypeMappings) {
 		return (genericTypeMappings ?? []).find((mapping) => OUTPUT_TYPE_MAPPINGS.includes(mapping.typeName))
 			?.typeValue;
+	}
+
+	_deriveResourceOptions() {
+		const options = [];
+
+		for (const collection of RESOURCE_COLLECTIONS) {
+			for (const resource of readCollection(this._builderContext, collection.key)) {
+				const option = buildResourceOption(resource, collection);
+				if (!option) {
+					continue;
+				}
+
+				options.push(option, ...readFieldOptions(resource, option));
+			}
+		}
+
+		for (const action of readCollection(this._builderContext, "actionCalls")) {
+			options.push(...readActionOutputOptions(action));
+		}
+
+		return options;
 	}
 
 	_syncHighlight(text) {

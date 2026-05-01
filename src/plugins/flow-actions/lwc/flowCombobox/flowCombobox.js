@@ -84,6 +84,8 @@ function deriveGroupLabel(categoryKey) {
 		recordCollections: "Record Collections",
 		globalVariables: "Global Variables",
 		globalConstants: "Global Constants",
+		recordFields: "Record Fields",
+		actionOutputs: "Action Outputs",
 		variables: "Variables",
 		formulas: "Formulas",
 		constants: "Constants"
@@ -126,6 +128,10 @@ function deriveIconName(resourceOption, categoryKey) {
 
 	if (categoryKey === "recordCollections") {
 		return "utility:multi_picklist";
+	}
+
+	if (categoryKey === "recordFields") {
+		return "utility:text";
 	}
 
 	if (categoryKey === "formulas") {
@@ -299,15 +305,26 @@ export default class FlowCombobox extends LightningElement {
 
 	get typeMarkerIconName() {
 		switch ((this.fieldDataType || "").toLowerCase()) {
-			case "boolean":  return "utility:toggle";
-			case "date":     return "utility:event";
-			case "datetime": return "utility:date_time";
-			case "number":	 return "utility:number_input";
-			case "integer":	 return "utility:number_input";
-			case "double":	 return "utility:number_input";
-			case "currency": return "utility:number_input";
-			case "sobject":  return "utility:record_alt";
-			default:         return "utility:text";
+			case "boolean":
+				return "utility:toggle";
+			case "date":
+				return "utility:event";
+			case "datetime":
+				return "utility:date_time";
+			case "number":
+				return "utility:number_input";
+			case "decimal":
+				return "utility:number_input";
+			case "integer":
+				return "utility:number_input";
+			case "double":
+				return "utility:number_input";
+			case "currency":
+				return "utility:number_input";
+			case "sobject":
+				return "utility:record_alt";
+			default:
+				return "utility:text";
 		}
 	}
 
@@ -366,8 +383,7 @@ export default class FlowCombobox extends LightningElement {
 			.map((resourceOption, index) => {
 				const categoryKey = deriveCategoryKey(resourceOption);
 				const key =
-					resourceOption.key ??
-					`resource-${resourceOption.referenceName ?? resourceOption.value ?? index}`;
+					resourceOption.key ?? `resource-${resourceOption.referenceName ?? resourceOption.value ?? index}`;
 
 				return {
 					...resourceOption,
@@ -400,9 +416,11 @@ export default class FlowCombobox extends LightningElement {
 		const sectionOrder = [
 			"recordVariables",
 			"recordCollections",
+			"recordFields",
 			"variables",
 			"formulas",
 			"constants",
+			"actionOutputs",
 			"globalVariables",
 			"globalConstants"
 		];
@@ -815,7 +833,7 @@ export default class FlowCombobox extends LightningElement {
 	get sobjectTypeOptions() {
 		const seen = new Set();
 		const result = [];
-		for (const opt of (this.resourceOptions || [])) {
+		for (const opt of this.resourceOptions || []) {
 			if (opt.objectType && !seen.has(opt.objectType)) {
 				seen.add(opt.objectType);
 				result.push({ label: opt.objectType, value: opt.objectType });
@@ -825,10 +843,12 @@ export default class FlowCombobox extends LightningElement {
 	}
 
 	handleTypeMappingChange(event) {
-		this.dispatchEvent(new CustomEvent("configuration_editor_generic_type_mapping_changed", {
-			bubbles: true,
-			composed: true,
-			detail: { typeName: this.typeName, typeValue: event.detail.value }
-		}));
+		this.dispatchEvent(
+			new CustomEvent("configuration_editor_generic_type_mapping_changed", {
+				bubbles: true,
+				composed: true,
+				detail: { typeName: this.typeName, typeValue: event.detail.value }
+			})
+		);
 	}
 }

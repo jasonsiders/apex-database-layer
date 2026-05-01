@@ -227,6 +227,53 @@ describe("c-invocable-soql-property-editor", () => {
 		expect(element.shadowRoot.querySelectorAll("c-flow-untyped-variable-input")).toHaveLength(1);
 	});
 
+	it("derives bind resource options from Flow Builder context variables", async () => {
+		const element = createComponent({
+			builderContext: {
+				variables: [
+					{ name: "accountName", dataType: "String" },
+					{
+						name: "opp",
+						label: "opp",
+						dataType: "SObject",
+						objectType: "Opportunity",
+						fields: [
+							{ name: "Name", dataType: "String" },
+							{ name: "CloseDate", dataType: "Date" }
+						]
+					}
+				]
+			}
+		});
+
+		getButtonByLabel(element, "Add Variable").click();
+		await Promise.resolve();
+
+		const bindInput = element.shadowRoot.querySelector("c-flow-untyped-variable-input");
+		expect(bindInput.resourceOptions).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					referenceName: "accountName",
+					value: "{!accountName}",
+					dataType: "String"
+				}),
+				expect.objectContaining({
+					referenceName: "opp",
+					value: "{!opp}",
+					dataType: "SObject",
+					objectType: "Opportunity"
+				}),
+				expect.objectContaining({
+					referenceName: "opp.Name",
+					value: "{!opp.Name}",
+					dataType: "String",
+					category: "recordFields",
+					parentObjectType: "Opportunity"
+				})
+			])
+		);
+	});
+
 	it("updates a bind variable when a child emits change", () => {
 		const initial = [{ key: "recordId", textValue: "", typeName: "String", isCollection: false }];
 		const element = createComponent({

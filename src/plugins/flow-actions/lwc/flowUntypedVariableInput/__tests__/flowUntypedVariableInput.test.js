@@ -34,6 +34,51 @@ describe("c-flow-untyped-variable-input", () => {
 		expect(element.shadowRoot.querySelector('[data-id="type"]').value).toBe("Text");
 	});
 
+	it("passes compatible scalar resources and record fields to the value combobox", async () => {
+		const element = createComponent({
+			variable: { ...defaultVariable, typeName: "String", isCollection: false },
+			resourceOptions: [
+				{ referenceName: "accountName", value: "{!accountName}", dataType: "String" },
+				{ referenceName: "closeDate", value: "{!closeDate}", dataType: "Date" },
+				{ referenceName: "opp", value: "{!opp}", dataType: "SObject", objectType: "Opportunity" },
+				{
+					referenceName: "opp.Name",
+					value: "{!opp.Name}",
+					dataType: "String",
+					parentObjectType: "Opportunity",
+					category: "recordFields"
+				}
+			]
+		});
+		await Promise.resolve();
+
+		const valueInput = element.shadowRoot.querySelector('[data-id="value"]');
+		expect(valueInput.fieldDataType).toBe("String");
+		expect(valueInput.resourceOptions.map((option) => option.referenceName)).toEqual(["accountName", "opp.Name"]);
+	});
+
+	it("passes only SObject resources to the value combobox for record binds", async () => {
+		const element = createComponent({
+			variable: { ...defaultVariable, typeName: "SObject", isCollection: false },
+			resourceOptions: [
+				{ referenceName: "accountName", value: "{!accountName}", dataType: "String" },
+				{ referenceName: "opp", value: "{!opp}", dataType: "SObject", objectType: "Opportunity" },
+				{
+					referenceName: "opp.Name",
+					value: "{!opp.Name}",
+					dataType: "String",
+					parentObjectType: "Opportunity",
+					category: "recordFields"
+				}
+			]
+		});
+		await Promise.resolve();
+
+		expect(element.shadowRoot.querySelector('[data-id="value"]').resourceOptions).toEqual([
+			expect.objectContaining({ referenceName: "opp" })
+		]);
+	});
+
 	it("emits change with updated key when key input changes", () => {
 		const element = createComponent({ index: 0, variable: defaultVariable });
 		const events = [];

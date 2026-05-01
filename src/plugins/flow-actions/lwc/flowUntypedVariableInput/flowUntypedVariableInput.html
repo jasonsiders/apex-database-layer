@@ -1,48 +1,49 @@
 <template>
-    <div class="bind-row">
-        <div class="bind-col bind-col-name">
-            <lightning-input
-                data-id="key"
-                label="Bind Name"
-                variant="label-hidden"
-                value={key}
-                placeholder="e.g. recordId"
-                oninput={handleKeyChange}
-                onchange={handleKeyChange}
-                required
-            ></lightning-input>
-        </div>
-        <div class="bind-col bind-col-type">
-            <lightning-combobox
-                data-id="type"
-                label="Type"
-                variant="label-hidden"
-                value={typeValue}
-                options={typeOptions}
-                onchange={handleTypeChange}
-                required
-            ></lightning-combobox>
-        </div>
-        <div class="bind-col bind-col-value">
-            <c-flow-combobox
-                data-id="value"
-                included
-                hide-label
-                label="Value"
-                name="textValue"
-                onfieldchange={handleValueChange}
-                required
-                resource-options={resourceOptions}
-                value={textValue}
-            ></c-flow-combobox>
-        </div>
-        <div class="bind-col slds-grid slds-grid_vertical-align-center slds-grid_align-center">
-            <lightning-button-icon
-                alternative-text="Remove"
-                icon-name="utility:delete"
-                onclick={handleRemove}
-                title="Remove"
-            ></lightning-button-icon>
-        </div>
-    </div>
+	<div class="bind-row">
+		<div class="bind-col bind-col-name">
+			<lightning-input
+				data-id="key"
+				label="Bind Name"
+				variant="label-hidden"
+				value={key}
+				placeholder="e.g. recordId"
+				oninput={handleKeyChange}
+				onchange={handleKeyChange}
+				required
+			></lightning-input>
+		</div>
+		<div class="bind-col bind-col-type">
+			<lightning-combobox
+				data-id="type"
+				label="Type"
+				variant="label-hidden"
+				value={typeValue}
+				options={typeOptions}
+				onchange={handleTypeChange}
+				required
+			></lightning-combobox>
+		</div>
+		<div class="bind-col bind-col-value">
+			<c-flow-combobox
+				data-id="value"
+				included
+				hide-label
+				label="Value"
+				name="textValue"
+				field-data-type={fieldDataType}
+				onfieldchange={handleValueChange}
+				required
+				resource-options={filteredResourceOptions}
+				value={textValue}
+			></c-flow-combobox>
+		</div>
+		<div class="bind-col slds-grid slds-grid_vertical-align-center slds-grid_align-center">
+			<lightning-button-icon
+				alternative-text="Remove"
+				icon-name="utility:delete"
+				onclick={handleRemove}
+				title="Remove"
+			></lightning-button-icon>
+		</div>
+	</div>
 </template>
