@@ -97,21 +97,32 @@ function shouldShowDrillableResource(resourceOption, variableTypeName, variableI
 }
 
 export default class SoqlBindInput extends LightningElement {
+	/** Zero-based row index used when emitting bind row changes. */
 	@api index;
+
+	/** Current bind variable definition for this row. */
 	@api variable = {};
+
+	/** Flow resource options available to the value picker. */
 	@api resourceOptions = [];
+
+	/** Validation message to display against the bind name input. */
 	@api errorMessage;
 
+	/** Picklist options for bind variable type selection. */
 	typeOptions = TYPE_OPTIONS;
 
+	/** Bind variable name. */
 	get key() {
 		return this.variable?.key ?? "";
 	}
 
+	/** Literal or Flow resource value assigned to the bind variable. */
 	get textValue() {
 		return this.variable?.textValue ?? null;
 	}
 
+	/** Selected bind type metadata, defaulting to Text. */
 	get selectedType() {
 		const { typeName, isCollection: selectedIsCollection } = this.variable ?? {};
 		return (
@@ -119,14 +130,17 @@ export default class SoqlBindInput extends LightningElement {
 		);
 	}
 
+	/** Combobox value representing the selected bind type. */
 	get typeValue() {
 		return this.selectedType.label;
 	}
 
+	/** Normalized data type used by the Flow resource picker. */
 	get fieldDataType() {
 		return normalizeTypeName(this.selectedType.typeName);
 	}
 
+	/** Resource options compatible with the selected bind type. */
 	get filteredResourceOptions() {
 		return (this.resourceOptions ?? [])
 			.filter(
@@ -145,25 +159,35 @@ export default class SoqlBindInput extends LightningElement {
 			);
 	}
 
+	/**
+	 * Applies the current row-level validation message.
+	 * @param {string} [errorMessage=this.errorMessage] Message to display.
+	 * @param {{ report?: boolean }} [options={}] Whether to report validity immediately.
+	 * @returns {boolean} True when the row has no validation error.
+	 */
 	@api validate(errorMessage = this.errorMessage, { report = true } = {}) {
 		this.errorMessage = errorMessage ?? null;
 		this._applyKeyValidity(report);
 		return !this.errorMessage;
 	}
 
+	/** Reapplies validation after render so the native input stays in sync. */
 	renderedCallback() {
 		this._applyKeyValidity(false);
 	}
 
+	/** Emits a bind row patch when the bind name changes. */
 	handleKeyChange(event) {
 		this.validate(null, { report: false });
 		this._emitChange({ key: event.target.value });
 	}
 
+	/** Emits a bind row patch when the bind value changes. */
 	handleValueChange(event) {
 		this._emitChange({ textValue: event.detail.value });
 	}
 
+	/** Emits a bind row patch when the bind type changes. */
 	handleTypeChange(event) {
 		const match = TYPES.find((t) => t.label === event.detail.value);
 		if (match) {
@@ -171,10 +195,12 @@ export default class SoqlBindInput extends LightningElement {
 		}
 	}
 
+	/** Requests removal of this bind row. */
 	handleRemove() {
 		this.dispatchEvent(new CustomEvent("remove", { detail: { index: this.index } }));
 	}
 
+	/** Applies custom validity to the bind name input. */
 	_applyKeyValidity(report) {
 		const keyInput = this.template.querySelector('[data-id="key"]');
 		if (!keyInput) {
@@ -187,6 +213,7 @@ export default class SoqlBindInput extends LightningElement {
 		}
 	}
 
+	/** Dispatches a partial bind row update to the property editor. */
 	_emitChange(patch) {
 		this.dispatchEvent(
 			new CustomEvent("change", {

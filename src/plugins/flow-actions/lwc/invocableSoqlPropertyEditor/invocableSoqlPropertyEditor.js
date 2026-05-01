@@ -446,43 +446,75 @@ function dedupeResourceOptions(options) {
 }
 
 export default class InvocableSoqlPropertyEditor extends LightningElement {
+	/** Output variables supplied by Flow Builder for the selected action. */
 	@api outputVariables = [];
 
+	/** Flow Builder context used to derive available resources. */
 	_builderContext = {};
+
+	/** Generic type mappings for the invocable action outputs. */
 	_genericTypeMappings = [];
+
+	/** Current Flow input variables for the action. */
 	_inputVariables = [];
+
+	/** Draft SOQL query text shown in the editor. */
 	_queryDraft = "";
+
+	/** Current query validation error message. */
 	_queryError = null;
+
+	/** Current query validation success message. */
 	_querySuccess = null;
+
+	/** Whether the query draft has been initialized from Flow input variables. */
 	_queryInitialized = false;
+
+	/** Current SObject type mapped to the generic output variables. */
 	_outputTypeValue = null;
+
+	/** Resource options explicitly passed to the CPE. */
 	_resourceOptions = [];
+
+	/** Draft bind variable rows serialized into action input metadata. */
 	_bindsDraft = [];
+
+	/** Whether bind rows have been initialized from Flow input variables. */
 	_bindsInitialized = false;
+
+	/** Bind validation messages keyed by bind row index. */
 	_bindValidationErrors = {};
+
+	/** Whether bind validation has been requested at least once. */
 	_hasValidatedBinds = false;
 
+	/** Flow Builder context exposed by the custom property editor contract. */
 	@api get builderContext() {
 		return this._builderContext;
 	}
 
+	/** Stores the latest Flow Builder context. */
 	set builderContext(value) {
 		this._builderContext = value ?? {};
 	}
 
+	/** Flow generic type mappings exposed by the custom property editor contract. */
 	@api get genericTypeMappings() {
 		return this._genericTypeMappings;
 	}
 
+	/** Stores generic type mappings and tracks the current output object type. */
 	set genericTypeMappings(value) {
 		this._genericTypeMappings = Array.isArray(value) ? value : [];
 		this._outputTypeValue = this._readOutputTypeValue(this._genericTypeMappings);
 	}
 
+	/** Flow action input variables exposed by the custom property editor contract. */
 	@api get inputVariables() {
 		return this._inputVariables;
 	}
 
+	/** Initializes query and bind drafts from Flow action input variables. */
 	set inputVariables(value) {
 		this._inputVariables = Array.isArray(value) ? value : [];
 		if (!this._queryInitialized) {
@@ -498,18 +530,22 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 		}
 	}
 
+	/** Additional Flow resource options that callers can inject. */
 	@api get resourceOptions() {
 		return this._resourceOptions;
 	}
 
+	/** Stores externally supplied Flow resource options. */
 	set resourceOptions(value) {
 		this._resourceOptions = Array.isArray(value) ? value : [];
 	}
 
+	/** Current bind rows used by the template. */
 	get bindsValue() {
 		return this._bindsDraft;
 	}
 
+	/** Bind rows decorated with stable keys and row-level validation messages. */
 	get decoratedBinds() {
 		return this.bindsValue.map((variable, index) => ({
 			variable,
@@ -518,30 +554,37 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 		}));
 	}
 
+	/** Placeholder shown in the SOQL editor. */
 	get queryPlaceholder() {
 		return "ex., SELECT Id, Name FROM Account WHERE Id = :recordId...";
 	}
 
+	/** CSS class for the query editor form element. */
 	get formElementClass() {
 		return this._queryError ? "slds-form-element slds-has-error" : "slds-form-element";
 	}
 
+	/** Current query validation error. */
 	get queryError() {
 		return this._queryError;
 	}
 
+	/** Current query validation success state. */
 	get querySuccess() {
 		return this._querySuccess;
 	}
 
+	/** Current SOQL query text. */
 	get queryValue() {
 		return this._queryDraft;
 	}
 
+	/** Whether at least one bind row exists. */
 	get hasBinds() {
 		return this.bindsValue.length > 0;
 	}
 
+	/** All Flow resource options available to bind value inputs. */
 	get availableResourceOptions() {
 		return dedupeResourceOptions([
 			...this._resourceOptions,
@@ -550,6 +593,10 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 		]);
 	}
 
+	/**
+	 * Validates bind metadata and the SOQL query through Apex.
+	 * @returns {Promise<Array<{ key: string, errorString: string }>>} Flow validation errors.
+	 */
 	@api async validate() {
 		this._hasValidatedBinds = true;
 		const bindErrors = this._validateBindReferences({ report: true });
@@ -572,6 +619,7 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 		}
 	}
 
+	/** Keeps the query highlighter and bind row validity synced after render. */
 	renderedCallback() {
 		const textarea = this.template.querySelector(".code-editor");
 		if (textarea && document.activeElement !== textarea) {
@@ -581,6 +629,7 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 		this._applyBindValidationErrors(false);
 	}
 
+	/** Adds a blank bind row and persists the updated bind metadata. */
 	handleBindAdd() {
 		const updated = [...this.bindsValue, { key: "", textValue: "", typeName: "String", isCollection: false }];
 		this._bindsDraft = updated;
@@ -588,6 +637,7 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 		this._syncBindValidationStateAfterInput();
 	}
 
+	/** Applies a child bind row patch and persists the updated bind metadata. */
 	handleBindChange(event) {
 		if (!event?.detail?.patch) return;
 		const updated = this.bindsValue.map((b, i) =>
@@ -598,6 +648,7 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 		this._syncBindValidationStateAfterInput();
 	}
 
+	/** Removes a bind row and persists the updated bind metadata. */
 	handleBindRemove(event) {
 		const removeIndex = Number(event.detail.index);
 		if (Number.isNaN(removeIndex)) return;
@@ -607,6 +658,7 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 		this._syncBindValidationStateAfterInput();
 	}
 
+	/** Mirrors textarea scroll position into the syntax highlight layer. */
 	handleEditorScroll(event) {
 		const pre = this.template.querySelector(".code-highlight");
 		if (pre) {
@@ -615,6 +667,7 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 		}
 	}
 
+	/** Updates query draft state, Flow metadata, highlighting, and bind validation. */
 	handleQueryInput(event) {
 		this._updateQuery(event.target.value);
 		this._syncOutputTypeMappings();
@@ -622,11 +675,13 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 		this._syncBindValidationStateAfterInput();
 	}
 
+	/** Runs explicit query validation and shows the result inline. */
 	async handleValidate() {
 		const errors = await this.validate();
 		this._querySuccess = errors.length ? null : "✓ Valid";
 	}
 
+	/** Clones persisted bind metadata from JSON or array form. */
 	_cloneBinds(binds) {
 		if (typeof binds === "string") {
 			try {
@@ -638,12 +693,18 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 		return Array.isArray(binds) ? binds.map((bind) => ({ ...bind })) : [];
 	}
 
+	/** Revalidates bind rows after user edits once validation has been requested. */
 	_syncBindValidationStateAfterInput() {
 		if (this._hasValidatedBinds) {
 			this._validateBindReferences({ report: false });
 		}
 	}
 
+	/**
+	 * Validates bind names against query references and row-level naming rules.
+	 * @param {{ report?: boolean }} [options={}] Whether to report validity immediately.
+	 * @returns {Array<{ key: string, errorString: string }>} Flow validation errors.
+	 */
 	_validateBindReferences({ report = true } = {}) {
 		const referencedBindNames = extractBindReferenceNames(this._queryDraft);
 		const bindKeyCounts = new Map();
@@ -687,12 +748,14 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 		return errors;
 	}
 
+	/** Applies stored bind validation messages to child bind inputs. */
 	_applyBindValidationErrors(report) {
 		this.template.querySelectorAll("c-soql-bind-input").forEach((bindInput, index) => {
 			bindInput.validate?.(this._bindValidationErrors[index] ?? null, { report });
 		});
 	}
 
+	/** Dispatches Flow input metadata updates for serialized bind rows. */
 	_dispatchBindsChange(binds) {
 		const value = binds.length ? JSON.stringify(binds) : null;
 		this._dispatchChange(INPUT_VAR_BINDS_JSON, value, DATA_TYPE_STRING);
@@ -701,6 +764,7 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 		}
 	}
 
+	/** Dispatches Flow Builder input value change or deletion events. */
 	_dispatchChange(name, value, dataType) {
 		const eventName = value == null ? EVT_VALUE_DELETED : EVT_VALUE_CHANGED;
 		const detail = value == null ? { name } : { name, newValue: value, newValueDataType: dataType };
@@ -714,10 +778,12 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 		);
 	}
 
+	/** Checks whether Flow currently has an input variable by name. */
 	_hasInputVariable(name) {
 		return this._inputVariables.some((inputVariable) => inputVariable.name === name);
 	}
 
+	/** Dispatches Flow Builder generic type mapping updates. */
 	_dispatchGenericTypeMapping(typeName, typeValue) {
 		const detail = { typeName, typeValue };
 		this.dispatchEvent(
@@ -730,6 +796,7 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 		);
 	}
 
+	/** Converts SOQL text into HTML used by the syntax highlight layer. */
 	_highlight(text) {
 		const escaped = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 		return escaped.replace(
@@ -744,15 +811,18 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 		);
 	}
 
+	/** Reads a named input variable value from Flow metadata. */
 	_readInputValue(inputVariables, name) {
 		return (inputVariables ?? []).find((v) => v.name === name)?.value ?? null;
 	}
 
+	/** Reads the current mapped SObject type from Flow generic type mappings. */
 	_readOutputTypeValue(genericTypeMappings) {
 		return (genericTypeMappings ?? []).find((mapping) => OUTPUT_TYPE_MAPPINGS.includes(mapping.typeName))
 			?.typeValue;
 	}
 
+	/** Builds resource options from Flow Builder context collections. */
 	_deriveResourceOptions() {
 		const options = [];
 
@@ -774,6 +844,7 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 		return options;
 	}
 
+	/** Syncs the syntax highlight layer with the latest query text. */
 	_syncHighlight(text) {
 		const pre = this.template.querySelector(".code-highlight");
 		if (pre) {
@@ -781,11 +852,13 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 		}
 	}
 
+	/** Updates the query draft and persists it to Flow input metadata. */
 	_updateQuery(value) {
 		this._queryDraft = value || "";
 		this._dispatchChange(INPUT_VAR_QUERY, this._queryDraft || null, DATA_TYPE_STRING);
 	}
 
+	/** Extracts the top-level SObject name from a SOQL FROM clause. */
 	_extractRootObjectName(query) {
 		const text = query || "";
 		let depth = 0;
@@ -820,6 +893,7 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 		return null;
 	}
 
+	/** Checks whether text contains a standalone word at the given index. */
 	_matchesWord(text, index, word) {
 		return (
 			text.slice(index, index + word.length).toUpperCase() === word &&
@@ -828,10 +902,12 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 		);
 	}
 
+	/** Checks whether a character is part of a SOQL identifier. */
 	_isWordChar(char) {
 		return /[A-Za-z0-9_]/.test(char || "");
 	}
 
+	/** Advances an index past whitespace. */
 	_skipWhitespace(text, index) {
 		let nextIndex = index;
 		while (/\s/.test(text[nextIndex] || "")) {
@@ -840,6 +916,7 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 		return nextIndex;
 	}
 
+	/** Updates Flow output generic type mappings based on the query root object. */
 	_syncOutputTypeMappings() {
 		const nextOutputTypeValue = this._extractRootObjectName(this._queryDraft);
 		if (!nextOutputTypeValue || nextOutputTypeValue === this._outputTypeValue) {
