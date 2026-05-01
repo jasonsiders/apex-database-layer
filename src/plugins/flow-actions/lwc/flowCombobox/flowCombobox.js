@@ -178,6 +178,13 @@ function matchesLiteralOptionByText(option, text) {
 		.includes(normalizedText);
 }
 
+function isChildResourceOption(resourceOption, parentOption) {
+	return (
+		resourceOption.parentReferenceName === parentOption.referenceName ||
+		(!!parentOption.referenceName && resourceOption.referenceName?.startsWith(`${parentOption.referenceName}.`))
+	);
+}
+
 export default class FlowCombobox extends LightningElement {
 	@api name;
 	@api label;
@@ -203,6 +210,7 @@ export default class FlowCombobox extends LightningElement {
 	_ignoreNextResourceClick = false;
 	_ignoreNextTextChange = false;
 	_isResourcePickerOpen = false;
+	_drilldownResource = null;
 	_pendingScrollFocusedOption = false;
 	_pendingSelection = null;
 	_suppressTextCommitAfterSelection = false;
@@ -221,6 +229,7 @@ export default class FlowCombobox extends LightningElement {
 		this._pendingSelection = null;
 		this._forceLiteralInput = false;
 		this._validationError = null;
+		this._drilldownResource = null;
 		this._setResourcePickerOpen(false);
 	}
 
@@ -375,10 +384,26 @@ export default class FlowCombobox extends LightningElement {
 		return (this.resourceOptions || []).length > 0;
 	}
 
+	get drilldownResourceLabel() {
+		return deriveDisplayLabel(this._drilldownResource ?? {});
+	}
+
+	get candidateResourceOptions() {
+		if (this._drilldownResource) {
+			return (this.resourceOptions || []).filter((resourceOption) =>
+				isChildResourceOption(resourceOption, this._drilldownResource)
+			);
+		}
+
+		return (this.resourceOptions || []).filter(
+			(resourceOption) => !resourceOption.parentReferenceName && resourceOption.category !== "recordFields"
+		);
+	}
+
 	get visibleResourceOptions() {
 		const query = this.displayTextValue;
 
-		return (this.resourceOptions || [])
+		return this.candidateResourceOptions
 			.filter((resourceOption) => matchesResourceOption(resourceOption, query))
 			.map((resourceOption, index) => {
 				const categoryKey = deriveCategoryKey(resourceOption);
@@ -394,7 +419,8 @@ export default class FlowCombobox extends LightningElement {
 					displayLabel: deriveDisplayLabel(resourceOption),
 					iconName: deriveIconName(resourceOption, categoryKey),
 					valueDataType: "reference",
-					isDrillable: !!resourceOption.objectType,
+					isDrillable: resourceOption.isDrillable ?? !!resourceOption.objectType,
+					isSelectable: resourceOption.isSelectable !== false,
 					isFocused: this._focusedOptionKey === key
 				};
 			});
@@ -555,6 +581,10 @@ export default class FlowCombobox extends LightningElement {
 	}
 
 	get dropdownHeaderLabel() {
+		if (this._drilldownResource) {
+			return `All Resources > ${this.drilldownResourceLabel}`;
+		}
+
 		if (this.visibleLiteralOptions.length && this.visibleResourceOptions.length) {
 			return "All Values and Resources";
 		}
@@ -571,6 +601,7 @@ export default class FlowCombobox extends LightningElement {
 		this.classList.toggle("resource-picker-open", isOpen);
 		if (!isOpen) {
 			this._focusedOptionKey = null;
+			this._drilldownResource = null;
 		}
 	}
 
@@ -600,10 +631,20 @@ export default class FlowCombobox extends LightningElement {
 		this._pendingSelection = option;
 		this._draftTextValue = null;
 		this._forceLiteralInput = false;
+		this._drilldownResource = null;
 		this._suppressTextCommitAfterSelection = true;
 		this._setResourcePickerOpen(false);
 		this._syncRenderedInputValue();
 		this._emitFieldChange(option.value, option.valueDataType);
+	}
+
+	_openDrilldown(option) {
+		this._drilldownResource = option;
+		this._draftTextValue = "";
+		this._focusedOptionKey = null;
+		this._suppressTextCommitAfterSelection = true;
+		this._setResourcePickerOpen(true);
+		this._syncRenderedInputValue();
 	}
 
 	_findLiteralOptionByText(text) {
@@ -640,7 +681,11 @@ export default class FlowCombobox extends LightningElement {
 			event.preventDefault();
 			const focusedOption = options.find((o) => o.key === this._focusedOptionKey);
 			if (focusedOption) {
-				this._emitSelection(focusedOption);
+				if (focusedOption.isDrillable && !focusedOption.isSelectable) {
+					this._openDrilldown(focusedOption);
+				} else if (focusedOption.isSelectable) {
+					this._emitSelection(focusedOption);
+				}
 			}
 		} else if (event.key === "Escape") {
 			this._setResourcePickerOpen(false);
@@ -752,6 +797,21 @@ export default class FlowCombobox extends LightningElement {
 		}
 	}
 
+	handleDropdownHeaderMouseDown(event) {
+		event.preventDefault();
+	}
+
+	handleDropdownHeaderClick() {
+		if (!this._drilldownResource) {
+			return;
+		}
+
+		this._drilldownResource = null;
+		this._draftTextValue = "";
+		this._focusedOptionKey = null;
+		this._syncRenderedInputValue();
+	}
+
 	handleResourceOptionMouseDown(event) {
 		event.preventDefault();
 		this._ignoreNextTextChange = true;
@@ -770,6 +830,15 @@ export default class FlowCombobox extends LightningElement {
 			this.dropdownOptions.find((option) => option.key === event.currentTarget.dataset.key) ?? null;
 
 		if (!selectedOption) {
+			return;
+		}
+
+		if (selectedOption.isDrillable && !selectedOption.isSelectable) {
+			this._openDrilldown(selectedOption);
+			return;
+		}
+
+		if (!selectedOption.isSelectable) {
 			return;
 		}
 
@@ -796,6 +865,7 @@ export default class FlowCombobox extends LightningElement {
 		this._forceLiteralInput = true;
 		this._draftTextValue = "";
 		this._value = null;
+		this._drilldownResource = null;
 		this._suppressTextCommitAfterSelection = false;
 		this._focusInputAfterRender = true;
 		this._setResourcePickerOpen(false);

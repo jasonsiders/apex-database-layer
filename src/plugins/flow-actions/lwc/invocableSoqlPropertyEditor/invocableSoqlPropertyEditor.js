@@ -11,6 +11,14 @@ const DATA_TYPE_STRING = "String";
 const OUTPUT_TYPE_MAPPINGS = ["U__allResults", "U__firstResult"];
 const RESOURCE_COLLECTIONS = [
 	{ key: "variables", labelPrefix: "Variable" },
+	{ key: "recordVariables", category: "recordVariables", labelPrefix: "Variable", dataType: "SObject" },
+	{
+		key: "recordCollections",
+		category: "recordCollections",
+		labelPrefix: "Variable",
+		dataType: "SObject",
+		isCollection: true
+	},
 	{ key: "constants", category: "constants", labelPrefix: "Constant" },
 	{ key: "formulas", category: "formulas", labelPrefix: "Formula" },
 	{ key: "recordLookups", labelPrefix: "Record" },
@@ -35,14 +43,18 @@ function readLabel(resource, fallback) {
 }
 
 function readObjectType(resource) {
-	return (
+	const objectType =
 		resource?.objectType ??
 		resource?.objectTypeName ??
 		resource?.sobjectType ??
 		resource?.sObjectType ??
+		resource?.objectApiName ??
+		resource?.entityName ??
+		resource?.object ??
 		resource?.typeValue ??
-		null
-	);
+		null;
+
+	return typeof objectType === "string" ? objectType : null;
 }
 
 function normalizeDataType(dataType, objectType) {
@@ -83,26 +95,50 @@ function normalizeDataType(dataType, objectType) {
 	return dataType ?? null;
 }
 
-function readIsCollection(resource) {
+function readIsCollection(resource, defaultValue = false) {
 	if (resource?.isCollection !== undefined) {
 		return resource.isCollection === true || resource.isCollection === "true";
 	}
 
-	return String(resource?.dataType ?? "").endsWith("[]");
+	if (resource?.getFirstRecordOnly !== undefined) {
+		return resource.getFirstRecordOnly !== true && resource.getFirstRecordOnly !== "true";
+	}
+
+	if (String(resource?.dataType ?? "").endsWith("[]")) {
+		return true;
+	}
+
+	return defaultValue;
 }
 
 function toReferenceValue(referenceName) {
 	return referenceName ? `{!${referenceName}}` : "";
 }
 
-function buildResourceOption(resource, { category, labelPrefix, referenceName } = {}) {
+function hasFieldMetadata(resource) {
+	return [
+		resource?.fields,
+		resource?.fieldDefinitions,
+		resource?.properties,
+		resource?.queriedFields,
+		resource?.fieldNames,
+		resource?.objectInfo?.fields ? Object.values(resource.objectInfo.fields) : null
+	].some((source) => Array.isArray(source) && source.length > 0);
+}
+
+function buildResourceOption(
+	resource,
+	{ category, labelPrefix, referenceName, dataType: defaultDataType, isCollection } = {}
+) {
 	const name = referenceName ?? resource?.referenceName ?? readName(resource);
 	if (!name) {
 		return null;
 	}
 
 	const objectType = readObjectType(resource);
-	const dataType = normalizeDataType(resource?.dataType ?? resource?.valueDataType ?? resource?.type, objectType);
+	const rawDataType = resource?.dataType ?? resource?.valueDataType ?? resource?.type ?? defaultDataType;
+	const hasFields = hasFieldMetadata(resource);
+	const dataType = normalizeDataType(rawDataType, objectType || hasFields) ?? DATA_TYPE_STRING;
 	const displayLabel = readLabel(resource, name);
 	const label = resource?.label ?? (labelPrefix ? `${labelPrefix}: ${displayLabel}` : displayLabel);
 
@@ -115,13 +151,22 @@ function buildResourceOption(resource, { category, labelPrefix, referenceName } 
 		dataType,
 		valueDataType: dataType,
 		objectType,
-		isCollection: readIsCollection(resource),
+		isDrillable: dataType === "SObject" && hasFields,
+		isCollection: readIsCollection(resource, isCollection === true),
 		category: resource?.category ?? category
 	};
 }
 
 function readFieldName(field) {
+	if (typeof field === "string") {
+		return field;
+	}
+
 	return field?.name ?? field?.apiName ?? field?.fieldApiName ?? field?.qualifiedApiName ?? null;
+}
+
+function readFieldDataType(field) {
+	return typeof field === "string" ? null : (field?.dataType ?? field?.valueDataType ?? field?.type);
 }
 
 function readFieldOptions(resource, parentOption) {
@@ -129,6 +174,8 @@ function readFieldOptions(resource, parentOption) {
 		resource?.fields,
 		resource?.fieldDefinitions,
 		resource?.properties,
+		resource?.queriedFields,
+		resource?.fieldNames,
 		resource?.objectInfo?.fields ? Object.values(resource.objectInfo.fields) : null
 	];
 	const fields = fieldSources.find((source) => Array.isArray(source)) ?? [];
@@ -142,21 +189,32 @@ function readFieldOptions(resource, parentOption) {
 
 			const referenceName = `${parentOption.referenceName}.${fieldName}`;
 			const displayLabel = `${parentOption.displayLabel}.${readLabel(field, fieldName)}`;
+			const dataType = normalizeDataType(readFieldDataType(field));
 			return {
 				label: `Field: ${displayLabel}`,
 				value: toReferenceValue(referenceName),
 				pillLabel: referenceName,
 				referenceName,
 				displayLabel,
-				dataType: normalizeDataType(field?.dataType ?? field?.valueDataType ?? field?.type),
-				valueDataType: normalizeDataType(field?.dataType ?? field?.valueDataType ?? field?.type),
+				dataType,
+				valueDataType: dataType,
 				objectType: null,
 				parentObjectType: parentOption.objectType,
+				parentReferenceName: parentOption.referenceName,
 				isCollection: readIsCollection(field),
 				category: "recordFields"
 			};
 		})
 		.filter(Boolean);
+}
+
+function scoreResourceOption(option) {
+	return [
+		option?.dataType ? 1 : 0,
+		option?.objectType ? 1 : 0,
+		option?.category ? 1 : 0,
+		option?.parentObjectType ? 1 : 0
+	].reduce((sum, value) => sum + value, 0);
 }
 
 function readActionOutputOptions(action) {
@@ -182,17 +240,25 @@ function readActionOutputOptions(action) {
 }
 
 function dedupeResourceOptions(options) {
-	const seen = new Set();
+	const indexesByKey = new Map();
 	const result = [];
 
 	for (const option of options) {
 		const key = option?.referenceName ?? option?.value;
-		if (!key || seen.has(key)) {
+		if (!key) {
 			continue;
 		}
 
-		seen.add(key);
-		result.push(option);
+		if (!indexesByKey.has(key)) {
+			indexesByKey.set(key, result.length);
+			result.push(option);
+			continue;
+		}
+
+		const existingIndex = indexesByKey.get(key);
+		if (scoreResourceOption(option) > scoreResourceOption(result[existingIndex])) {
+			result[existingIndex] = option;
+		}
 	}
 
 	return result;

@@ -61,25 +61,42 @@ function isCollection(value) {
 	return value === true || value === "true";
 }
 
-function isResourceCompatible(resourceOption, variableTypeName, variableIsCollection) {
-	const resourceTypeName = normalizeTypeName(
+function getResourceTypeName(resourceOption) {
+	return normalizeTypeName(
 		resourceOption?.dataType ?? resourceOption?.valueDataType ?? resourceOption?.type,
 		resourceOption?.parentObjectType ? null : resourceOption?.objectType
 	);
+}
+
+function isComplexResource(resourceOption) {
+	return getResourceTypeName(resourceOption) === "SObject" && !isCollection(resourceOption?.isCollection);
+}
+
+function isResourceCompatible(resourceOption, variableTypeName, variableIsCollection) {
+	const resourceTypeName = getResourceTypeName(resourceOption);
 	const bindTypeName = normalizeTypeName(variableTypeName);
 
 	if (isCollection(resourceOption?.isCollection) !== isCollection(variableIsCollection)) {
 		return false;
 	}
 
-	if (!resourceTypeName || !bindTypeName) {
-		return true;
+	if (!bindTypeName) {
+		return false;
+	}
+
+	if (!resourceTypeName) {
+		return resourceOption?.category === "recordFields" && bindTypeName !== "SObject";
 	}
 
 	return resourceTypeName === bindTypeName;
 }
 
-export default class FlowUntypedVariableInput extends LightningElement {
+function shouldShowDrillableResource(resourceOption, variableTypeName, variableIsCollection) {
+	const bindTypeName = normalizeTypeName(variableTypeName);
+	return bindTypeName !== "SObject" && !isCollection(variableIsCollection) && isComplexResource(resourceOption);
+}
+
+export default class SoqlBindInput extends LightningElement {
 	@api index;
 	@api variable = {};
 	@api resourceOptions = [];
@@ -110,9 +127,21 @@ export default class FlowUntypedVariableInput extends LightningElement {
 	}
 
 	get filteredResourceOptions() {
-		return (this.resourceOptions ?? []).filter((resourceOption) =>
-			isResourceCompatible(resourceOption, this.selectedType.typeName, this.selectedType.isCollection)
-		);
+		return (this.resourceOptions ?? [])
+			.filter(
+				(resourceOption) =>
+					isResourceCompatible(resourceOption, this.selectedType.typeName, this.selectedType.isCollection) ||
+					shouldShowDrillableResource(
+						resourceOption,
+						this.selectedType.typeName,
+						this.selectedType.isCollection
+					)
+			)
+			.map((resourceOption) =>
+				shouldShowDrillableResource(resourceOption, this.selectedType.typeName, this.selectedType.isCollection)
+					? { ...resourceOption, isSelectable: false }
+					: resourceOption
+			);
 	}
 
 	handleKeyChange(event) {

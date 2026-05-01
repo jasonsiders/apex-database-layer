@@ -1,7 +1,7 @@
 <template>
 	<div class="slds-form slds-form_stacked">
 		<div class={formElementClass}>
-			<label class="slds-text-heading_small slds-var-m-bottom_xx-small" for="query-input"> Query </label>
+			<label class="slds-text-heading_small slds-var-m-bottom_small" for="query-input"> Query </label>
 			<div class="slds-form-element__control">
 				<div class="code-editor-wrapper">
 					<pre
@@ -41,7 +41,7 @@
 		</div>
 		<hr class="section-divider" />
 		<div class="slds-form-element slds-var-m-top_medium">
-			<label class="slds-text-heading_small slds-var-m-bottom_xx-small">Variables</label>
+			<label class="slds-text-heading_small slds-var-m-bottom_small">Variables</label>
 			<div class="slds-form-element__control">
 				<div class="binds-list">
 					<template if:true={hasBinds}>
@@ -52,14 +52,14 @@
 						</div>
 					</template>
 					<template for:each={decoratedBinds} for:item="bind">
-						<c-flow-untyped-variable-input
+						<c-soql-bind-input
 							key={bind.indexKey}
 							index={bind.indexKey}
 							variable={bind.variable}
 							resource-options={availableResourceOptions}
 							onchange={handleBindChange}
 							onremove={handleBindRemove}
-						></c-flow-untyped-variable-input>
+						></c-soql-bind-input>
 					</template>
 				</div>
 				<div class="slds-p-top_none slds-var-m-top_x-small">

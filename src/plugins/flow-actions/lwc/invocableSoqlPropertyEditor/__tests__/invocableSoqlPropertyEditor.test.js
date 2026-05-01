@@ -224,7 +224,7 @@ describe("c-invocable-soql-property-editor", () => {
 				isCollection: false
 			}
 		]);
-		expect(element.shadowRoot.querySelectorAll("c-flow-untyped-variable-input")).toHaveLength(1);
+		expect(element.shadowRoot.querySelectorAll("c-soql-bind-input")).toHaveLength(1);
 	});
 
 	it("derives bind resource options from Flow Builder context variables", async () => {
@@ -249,7 +249,7 @@ describe("c-invocable-soql-property-editor", () => {
 		getButtonByLabel(element, "Add Variable").click();
 		await Promise.resolve();
 
-		const bindInput = element.shadowRoot.querySelector("c-flow-untyped-variable-input");
+		const bindInput = element.shadowRoot.querySelector("c-soql-bind-input");
 		expect(bindInput.resourceOptions).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
@@ -268,7 +268,93 @@ describe("c-invocable-soql-property-editor", () => {
 					value: "{!opp.Name}",
 					dataType: "String",
 					category: "recordFields",
+					parentReferenceName: "opp",
 					parentObjectType: "Opportunity"
+				})
+			])
+		);
+	});
+
+	it("passes weak Flow variable metadata through to the rendered bind combobox", async () => {
+		const element = createComponent({
+			builderContext: {
+				variables: [{ name: "accountName", label: "accountName" }],
+				recordVariables: [
+					{
+						name: "opp",
+						label: "opp",
+						objectType: "Opportunity",
+						fields: [{ name: "Name", dataType: "String" }]
+					}
+				]
+			}
+		});
+
+		getButtonByLabel(element, "Add Variable").click();
+		await Promise.resolve();
+		await Promise.resolve();
+
+		const valueCombobox = element.shadowRoot
+			.querySelector("c-soql-bind-input")
+			.shadowRoot.querySelector("c-flow-combobox");
+		expect(valueCombobox.resourceOptions).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					referenceName: "accountName",
+					dataType: "String"
+				}),
+				expect.objectContaining({
+					referenceName: "opp",
+					dataType: "SObject",
+					objectType: "Opportunity",
+					isSelectable: false
+				}),
+				expect.objectContaining({
+					referenceName: "opp.Name",
+					value: "{!opp.Name}",
+					category: "recordFields",
+					parentReferenceName: "opp"
+				})
+			])
+		);
+	});
+
+	it("derives native Get Records outputs as SObject resources and keeps queried fields addressable", async () => {
+		const element = createComponent({
+			builderContext: {
+				variables: [{ name: "Get_Records", label: "Get Records" }],
+				recordLookups: [
+					{
+						name: "Get_Records",
+						label: "Get Records",
+						object: "Account",
+						getFirstRecordOnly: true,
+						queriedFields: ["Id", "Name"]
+					}
+				]
+			}
+		});
+
+		getButtonByLabel(element, "Add Variable").click();
+		await Promise.resolve();
+
+		const bindInput = element.shadowRoot.querySelector("c-soql-bind-input");
+		expect(bindInput.resourceOptions).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					referenceName: "Get_Records",
+					displayLabel: "Get Records",
+					dataType: "SObject",
+					objectType: "Account",
+					isCollection: false
+				}),
+				expect.objectContaining({
+					referenceName: "Get_Records.Name",
+					displayLabel: "Get Records.Name",
+					value: "{!Get_Records.Name}",
+					category: "recordFields",
+					parentReferenceName: "Get_Records",
+					parentObjectType: "Account"
 				})
 			])
 		);
@@ -282,7 +368,7 @@ describe("c-invocable-soql-property-editor", () => {
 		const events = [];
 		element.addEventListener("configuration_editor_input_value_changed", (e) => events.push(e));
 
-		const bindInput = element.shadowRoot.querySelector("c-flow-untyped-variable-input");
+		const bindInput = element.shadowRoot.querySelector("c-soql-bind-input");
 		bindInput.dispatchEvent(
 			new CustomEvent("change", {
 				detail: { index: 0, patch: { key: "accountId", typeName: "Id" } }
@@ -305,14 +391,14 @@ describe("c-invocable-soql-property-editor", () => {
 		const events = [];
 		element.addEventListener("configuration_editor_input_value_changed", (e) => events.push(e));
 
-		const [, secondBindInput] = element.shadowRoot.querySelectorAll("c-flow-untyped-variable-input");
+		const [, secondBindInput] = element.shadowRoot.querySelectorAll("c-soql-bind-input");
 		secondBindInput.dispatchEvent(new CustomEvent("remove", { detail: { index: "1" } }));
 		await Promise.resolve();
 
 		expect(events).toHaveLength(1);
 		expectFlowEventContract(events[0]);
 		expectSerializedBinds(events[0], [{ key: "recordId", textValue: "", typeName: "String", isCollection: false }]);
-		expect(element.shadowRoot.querySelectorAll("c-flow-untyped-variable-input")).toHaveLength(1);
+		expect(element.shadowRoot.querySelectorAll("c-soql-bind-input")).toHaveLength(1);
 	});
 
 	it("dispatches configuration_editor_input_value_deleted for bindsJson when last bind is removed", () => {
@@ -323,7 +409,7 @@ describe("c-invocable-soql-property-editor", () => {
 		const deletedEvents = [];
 		element.addEventListener("configuration_editor_input_value_deleted", (e) => deletedEvents.push(e));
 
-		const bindInput = element.shadowRoot.querySelector("c-flow-untyped-variable-input");
+		const bindInput = element.shadowRoot.querySelector("c-soql-bind-input");
 		bindInput.dispatchEvent(new CustomEvent("remove", { detail: { index: 0 } }));
 
 		expect(deletedEvents).toHaveLength(1);
@@ -339,7 +425,7 @@ describe("c-invocable-soql-property-editor", () => {
 		const deletedEvents = [];
 		element.addEventListener("configuration_editor_input_value_deleted", (e) => deletedEvents.push(e));
 
-		const bindInput = element.shadowRoot.querySelector("c-flow-untyped-variable-input");
+		const bindInput = element.shadowRoot.querySelector("c-soql-bind-input");
 		bindInput.dispatchEvent(new CustomEvent("remove", { detail: { index: 0 } }));
 
 		expect(deletedEvents).toHaveLength(2);

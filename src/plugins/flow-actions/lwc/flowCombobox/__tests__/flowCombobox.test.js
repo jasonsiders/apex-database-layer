@@ -426,10 +426,24 @@ describe("c-flow-combobox", () => {
 
 	it("shows a drillable chevron for SObject resources and none for scalar resources", async () => {
 		const element = createComponent({
-			name: "rec", label: "Rec", included: true,
+			name: "rec",
+			label: "Rec",
+			included: true,
 			resourceOptions: [
-				{ label: "Variable: record", value: "{!record}", pillLabel: "record", referenceName: "record", objectType: "Account" },
-				{ label: "Variable: textVar", value: "{!textVar}", pillLabel: "textVar", referenceName: "textVar", dataType: "String" }
+				{
+					label: "Variable: record",
+					value: "{!record}",
+					pillLabel: "record",
+					referenceName: "record",
+					objectType: "Account"
+				},
+				{
+					label: "Variable: textVar",
+					value: "{!textVar}",
+					pillLabel: "textVar",
+					referenceName: "textVar",
+					dataType: "String"
+				}
 			]
 		});
 		getTextInput(element).dispatchEvent(new CustomEvent("focus"));
@@ -439,11 +453,86 @@ describe("c-flow-combobox", () => {
 		expect(options[1].querySelector(".resource-option-chevron")).toBeNull();
 	});
 
+	it("drills into non-selectable SObject resources and emits the selected field reference", async () => {
+		const element = createComponent({
+			name: "value",
+			label: "Value",
+			fieldDataType: "String",
+			included: true,
+			resourceOptions: [
+				{
+					label: "Variable: opp",
+					value: "{!opp}",
+					pillLabel: "opp",
+					referenceName: "opp",
+					objectType: "Opportunity",
+					dataType: "SObject",
+					isSelectable: false
+				},
+				{
+					label: "Field: opp.Name",
+					value: "{!opp.Name}",
+					pillLabel: "opp.Name",
+					referenceName: "opp.Name",
+					displayLabel: "opp.Name",
+					dataType: "String",
+					category: "recordFields",
+					parentReferenceName: "opp",
+					parentObjectType: "Opportunity"
+				},
+				{
+					label: "Variable: accountName",
+					value: "{!accountName}",
+					pillLabel: "accountName",
+					referenceName: "accountName",
+					dataType: "String"
+				}
+			]
+		});
+		const handler = jest.fn();
+		element.addEventListener("fieldchange", handler);
+
+		getTextInput(element).dispatchEvent(new CustomEvent("focus"));
+		await Promise.resolve();
+
+		const rootOptions = [...element.shadowRoot.querySelectorAll(".resource-option")].map((option) =>
+			option.textContent.trim()
+		);
+		expect(rootOptions.join(" ")).toContain("opp");
+		expect(rootOptions.join(" ")).toContain("accountName");
+		expect(rootOptions.join(" ")).not.toContain("opp.Name");
+
+		element.shadowRoot.querySelector(".resource-option").click();
+		await Promise.resolve();
+
+		expect(handler).not.toHaveBeenCalled();
+		expect(element.shadowRoot.querySelector(".resource-dropdown-header").textContent).toContain(
+			"All Resources > opp"
+		);
+		expect(element.shadowRoot.querySelector(".resource-option").textContent).toContain("opp.Name");
+
+		element.shadowRoot.querySelector(".resource-option").click();
+		await Promise.resolve();
+
+		expect(handler).toHaveBeenCalledTimes(1);
+		expect(handler.mock.calls[0][0].detail).toEqual({
+			name: "value",
+			value: "{!opp.Name}",
+			valueDataType: "reference"
+		});
+	});
+
 	it("does not commit a typed literal on blur for boolean fields", async () => {
 		const element = createComponent({
-			name: "allOrNone", label: "All Or None",
-			fieldDataType: "Boolean", inputType: "boolean", included: true,
-			options: [{ label: "True", value: "true" }, { label: "False", value: "false" }]
+			name: "allOrNone",
+			label: "All Or None",
+			fieldDataType: "Boolean",
+			inputType: "boolean",
+			included: true,
+			options: [
+				{ label: "True", value: "true" },
+				{ label: "False", value: "false" }
+			]
 		});
 		const handler = jest.fn();
 		element.addEventListener("fieldchange", handler);
@@ -465,8 +554,12 @@ describe("c-flow-combobox", () => {
 
 	it("clears the validation error when a new value is set", async () => {
 		const element = createComponent({
-			name: "record", label: "SObject Record", included: true,
-			resourceOptions: [{ label: "Variable: record", value: "{!record}", pillLabel: "record", referenceName: "record" }]
+			name: "record",
+			label: "SObject Record",
+			included: true,
+			resourceOptions: [
+				{ label: "Variable: record", value: "{!record}", pillLabel: "record", referenceName: "record" }
+			]
 		});
 		element.validate("This field is required.");
 		await Promise.resolve();
@@ -486,7 +579,9 @@ describe("c-flow-combobox", () => {
 
 	it("shows errorMessage prop as a fallback when validate() has not been called", async () => {
 		const element = createComponent({
-			name: "record", label: "SObject Record", included: true,
+			name: "record",
+			label: "SObject Record",
+			included: true,
 			errorMessage: "Prop error"
 		});
 		await Promise.resolve();
@@ -495,7 +590,9 @@ describe("c-flow-combobox", () => {
 
 	it("validate() error takes precedence over the errorMessage prop", async () => {
 		const element = createComponent({
-			name: "record", label: "SObject Record", included: true,
+			name: "record",
+			label: "SObject Record",
+			included: true,
 			errorMessage: "Prop error"
 		});
 		element.validate("Validate error");
@@ -591,9 +688,7 @@ describe("c-flow-combobox", () => {
 		await Promise.resolve();
 
 		const typeMappingEvents = [];
-		element.addEventListener("configuration_editor_generic_type_mapping_changed", (e) =>
-			typeMappingEvents.push(e)
-		);
+		element.addEventListener("configuration_editor_generic_type_mapping_changed", (e) => typeMappingEvents.push(e));
 
 		element.shadowRoot
 			.querySelector('[data-id="type-picker"]')

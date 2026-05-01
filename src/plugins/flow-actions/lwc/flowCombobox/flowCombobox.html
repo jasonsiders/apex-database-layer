@@ -1,11 +1,7 @@
 <template>
 	<div class={fieldRowClass}>
 		<div class="field-type">
-			<lightning-icon
-				class="type-marker-icon"
-				icon-name={typeMarkerIconName}
-				size="xx-small"
-			></lightning-icon>
+			<lightning-icon class="type-marker-icon" icon-name={typeMarkerIconName} size="xx-small"></lightning-icon>
 		</div>
 
 		<template lwc:if={showLabel}>
@@ -61,7 +57,9 @@
 									aria-expanded={showResourceDropdown}
 									aria-haspopup="listbox"
 								>
-									<div class="slds-combobox__form-element slds-input-has-icon slds-input-has-icon_right resource-combobox-input-wrap">
+									<div
+										class="slds-combobox__form-element slds-input-has-icon slds-input-has-icon_right resource-combobox-input-wrap"
+									>
 										<lightning-input
 											data-id="resource-input"
 											class="field-control resource-combobox-input"
@@ -75,7 +73,7 @@
 											oninput={handleTextInput}
 											onblur={handleBlur}
 											onchange={handleTextChange}
-										onkeydown={handleInputKeyDown}
+											onkeydown={handleInputKeyDown}
 										></lightning-input>
 
 										<div class="resource-trigger">
@@ -92,14 +90,25 @@
 
 									<template lwc:if={showResourceDropdown}>
 										<div class="resource-dropdown slds-p-around_none" role="listbox">
-											<div class="resource-dropdown-header slds-text-body_small">{dropdownHeaderLabel}</div>
+											<div
+												class="resource-dropdown-header slds-text-body_small"
+												onmousedown={handleDropdownHeaderMouseDown}
+												onclick={handleDropdownHeaderClick}
+											>
+												{dropdownHeaderLabel}
+											</div>
 
 											<template lwc:if={hasVisibleOptions}>
 												<template for:each={dropdownSections} for:item="section">
 													<div key={section.key} class="resource-section">
-														<div class="resource-section-title slds-text-body_small">{section.label}</div>
+														<div class="resource-section-title slds-text-body_small">
+															{section.label}
+														</div>
 
-														<ul class="resource-section-options slds-m-around_none" role="presentation">
+														<ul
+															class="resource-section-options slds-m-around_none"
+															role="presentation"
+														>
 															<template
 																for:each={section.options}
 																for:item="resourceOption"
@@ -114,7 +123,9 @@
 																		onmousedown={handleResourceOptionMouseDown}
 																		onclick={handleResourceOptionClick}
 																	>
-																		<span class="resource-option-figure slds-grid_align-center">
+																		<span
+																			class="resource-option-figure slds-grid_align-center"
+																		>
 																			<lightning-icon
 																				class="resource-option-icon"
 																				icon-name={resourceOption.iconName}
@@ -122,11 +133,18 @@
 																			></lightning-icon>
 																		</span>
 																		<span class="slds-media__body">
-																			<span class="slds-truncate" title={resourceOption.displayLabel}>{resourceOption.displayLabel}</span>
+																			<span
+																				class="slds-truncate"
+																				title={resourceOption.displayLabel}
+																				>{resourceOption.displayLabel}</span
+																			>
 																		</span>
 																		<template lwc:if={resourceOption.isDrillable}>
 																			<span class="resource-option-chevron">
-																				<lightning-icon icon-name="utility:chevronright" size="xx-small"></lightning-icon>
+																				<lightning-icon
+																					icon-name="utility:chevronright"
+																					size="xx-small"
+																				></lightning-icon>
 																			</span>
 																		</template>
 																	</button>
@@ -138,9 +156,10 @@
 											</template>
 
 											<template lwc:else>
-												<div class="resource-empty slds-var-p-around_small">No matching values or resources</div>
+												<div class="resource-empty slds-var-p-around_small">
+													No matching values or resources
+												</div>
 											</template>
-
 										</div>
 									</template>
 								</div>

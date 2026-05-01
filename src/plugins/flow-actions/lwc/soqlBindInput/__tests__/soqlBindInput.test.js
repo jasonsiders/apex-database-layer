@@ -1,10 +1,10 @@
 import { createElement } from "@lwc/engine-dom";
-import FlowUntypedVariableInput from "c/flowUntypedVariableInput";
+import SoqlBindInput from "c/soqlBindInput";
 
-describe("c-flow-untyped-variable-input", () => {
+describe("c-soql-bind-input", () => {
 	function createComponent(props = {}) {
-		const element = createElement("c-flow-untyped-variable-input", {
-			is: FlowUntypedVariableInput
+		const element = createElement("c-soql-bind-input", {
+			is: SoqlBindInput
 		});
 		Object.assign(element, props);
 		document.body.appendChild(element);
@@ -41,11 +41,18 @@ describe("c-flow-untyped-variable-input", () => {
 				{ referenceName: "accountName", value: "{!accountName}", dataType: "String" },
 				{ referenceName: "closeDate", value: "{!closeDate}", dataType: "Date" },
 				{ referenceName: "opp", value: "{!opp}", dataType: "SObject", objectType: "Opportunity" },
+				{ referenceName: "untypedRoot", value: "{!untypedRoot}" },
 				{
 					referenceName: "opp.Name",
 					value: "{!opp.Name}",
 					dataType: "String",
 					parentObjectType: "Opportunity",
+					category: "recordFields"
+				},
+				{
+					referenceName: "Get_Records.Name",
+					value: "{!Get_Records.Name}",
+					parentObjectType: "Account",
 					category: "recordFields"
 				}
 			]
@@ -54,7 +61,13 @@ describe("c-flow-untyped-variable-input", () => {
 
 		const valueInput = element.shadowRoot.querySelector('[data-id="value"]');
 		expect(valueInput.fieldDataType).toBe("String");
-		expect(valueInput.resourceOptions.map((option) => option.referenceName)).toEqual(["accountName", "opp.Name"]);
+		expect(valueInput.resourceOptions.map((option) => option.referenceName)).toEqual([
+			"accountName",
+			"opp",
+			"opp.Name",
+			"Get_Records.Name"
+		]);
+		expect(valueInput.resourceOptions.find((option) => option.referenceName === "opp").isSelectable).toBe(false);
 	});
 
 	it("passes only SObject resources to the value combobox for record binds", async () => {
