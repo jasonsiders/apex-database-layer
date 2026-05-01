@@ -188,6 +188,10 @@ function deriveTooltip(resourceOption) {
 }
 
 function deriveIconName(resourceOption, categoryKey) {
+	if (resourceOption.iconName) {
+		return resourceOption.iconName;
+	}
+
 	if (resourceOption.dataType === "Boolean" || resourceOption.valueDataType === "Boolean") {
 		return "utility:toggle";
 	}
@@ -575,8 +579,8 @@ export default class FlowCombobox extends LightningElement {
 			"formulas",
 			"constants",
 			"actionOutputs",
-			"globalVariables",
-			"globalConstants"
+			"globalConstants",
+			"globalVariables"
 		];
 		const sectionsByKey = new Map();
 

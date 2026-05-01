@@ -32,7 +32,8 @@ function standardResourceOption({
 	dataType,
 	objectType,
 	parentReferenceName,
-	isDrillable = false
+	isDrillable = false,
+	iconName
 }) {
 	const category = referenceName.startsWith("$GlobalConstant.") ? "globalConstants" : "globalVariables";
 	const labelPrefix = category === "globalConstants" ? "Global Constant" : "Global Variable";
@@ -49,6 +50,7 @@ function standardResourceOption({
 		parentReferenceName,
 		isCollection: false,
 		isDrillable,
+		iconName,
 		category
 	};
 }
@@ -65,7 +67,8 @@ const STANDARD_RESOURCE_OPTIONS = [
 		referenceName: "$Api",
 		displayLabel: "API",
 		dataType: "SObject",
-		isDrillable: true
+		isDrillable: true,
+		iconName: "utility:world"
 	}),
 	standardResourceOption({
 		referenceName: "$Api.Session_ID",
@@ -77,7 +80,8 @@ const STANDARD_RESOURCE_OPTIONS = [
 		referenceName: "$Flow",
 		displayLabel: "Running Flow Interview",
 		dataType: "SObject",
-		isDrillable: true
+		isDrillable: true,
+		iconName: "utility:flow"
 	}),
 	standardResourceOption({
 		referenceName: "$Flow.FaultMessage",
@@ -108,28 +112,45 @@ const STANDARD_RESOURCE_OPTIONS = [
 		displayLabel: "Running Org",
 		dataType: "SObject",
 		objectType: "Organization",
-		isDrillable: true
+		isDrillable: true,
+		iconName: "utility:company"
 	}),
 	standardResourceOption({
 		referenceName: "$User",
 		displayLabel: "Running User",
 		dataType: "SObject",
 		objectType: "User",
-		isDrillable: true
+		isDrillable: true,
+		iconName: "utility:user"
 	}),
 	standardResourceOption({
 		referenceName: "$Profile",
 		displayLabel: "Running User Profile",
 		dataType: "SObject",
 		objectType: "Profile",
-		isDrillable: true
+		isDrillable: true,
+		iconName: "utility:user"
 	}),
 	standardResourceOption({
 		referenceName: "$UserRole",
 		displayLabel: "Running User Role",
 		dataType: "SObject",
 		objectType: "UserRole",
-		isDrillable: true
+		isDrillable: true,
+		iconName: "utility:user"
+	}),
+	standardResourceOption({
+		referenceName: "$System",
+		displayLabel: "System",
+		dataType: "SObject",
+		isDrillable: true,
+		iconName: "utility:world"
+	}),
+	standardResourceOption({
+		referenceName: "$System.OriginDateTime",
+		displayLabel: "Origin Date/Time",
+		dataType: "DateTime",
+		parentReferenceName: "$System"
 	})
 ];
 

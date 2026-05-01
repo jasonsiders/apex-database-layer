@@ -294,9 +294,8 @@ describe("c-invocable-soql-property-editor", () => {
 		await Promise.resolve();
 		await Promise.resolve();
 
-		const valueCombobox = element.shadowRoot
-			.querySelector("c-soql-bind-input")
-			.shadowRoot.querySelector("c-flow-combobox");
+		const bindInput = element.shadowRoot.querySelector("c-soql-bind-input");
+		const valueCombobox = bindInput.shadowRoot.querySelector("c-flow-combobox");
 		expect(valueCombobox.resourceOptions).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
@@ -340,7 +339,26 @@ describe("c-invocable-soql-property-editor", () => {
 					objectType: "User",
 					isDrillable: true,
 					isSelectable: false,
-					category: "globalVariables"
+					category: "globalVariables",
+					iconName: "utility:user"
+				}),
+				expect.objectContaining({
+					referenceName: "$System",
+					displayLabel: "System",
+					isDrillable: true,
+					isSelectable: false,
+					category: "globalVariables",
+					iconName: "utility:world"
+				})
+			])
+		);
+		expect(bindInput.resourceOptions).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					referenceName: "$System.OriginDateTime",
+					value: "{!$System.OriginDateTime}",
+					dataType: "DateTime",
+					parentReferenceName: "$System"
 				})
 			])
 		);

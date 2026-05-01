@@ -149,6 +149,51 @@ describe("c-flow-combobox", () => {
 		);
 	});
 
+	it("orders global constants before global variables and uses explicit global variable icons", async () => {
+		const element = createComponent({
+			name: "value",
+			label: "Value",
+			fieldDataType: "String",
+			included: true,
+			resourceOptions: [
+				{
+					label: "Global Variable: Running User",
+					value: "{!$User}",
+					pillLabel: "$User",
+					referenceName: "$User",
+					displayLabel: "Running User",
+					dataType: "SObject",
+					category: "globalVariables",
+					isDrillable: true,
+					iconName: "utility:user"
+				},
+				{
+					label: "Global Constant: Blank Value (Empty String)",
+					value: "{!$GlobalConstant.EmptyString}",
+					pillLabel: "$GlobalConstant.EmptyString",
+					referenceName: "$GlobalConstant.EmptyString",
+					displayLabel: "Blank Value (Empty String)",
+					dataType: "String",
+					category: "globalConstants"
+				}
+			]
+		});
+
+		getTextInput(element).dispatchEvent(new CustomEvent("focus"));
+		await Promise.resolve();
+
+		const sections = [...element.shadowRoot.querySelectorAll(".resource-section-title")].map((section) =>
+			section.textContent.trim()
+		);
+		const userOption = [...element.shadowRoot.querySelectorAll(".resource-option")].find((option) =>
+			option.textContent.includes("Running User")
+		);
+
+		expect(sections).toEqual(["Global Constants", "Global Variables"]);
+		expect(userOption.querySelector(".resource-option-icon").iconName).toBe("utility:user");
+		expect(userOption.querySelector(".resource-option-chevron")).not.toBeNull();
+	});
+
 	it("keeps matching picklist values visible while typing a partial search", async () => {
 		const element = createComponent({
 			name: "accessLevelName",
