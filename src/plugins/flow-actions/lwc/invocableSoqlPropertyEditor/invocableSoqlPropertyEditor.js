@@ -6,7 +6,7 @@ const EVT_VALUE_DELETED = "configuration_editor_input_value_deleted";
 const EVT_GENERIC_TYPE_MAPPING_CHANGED = "configuration_editor_generic_type_mapping_changed";
 const INPUT_VAR_QUERY = "query";
 const INPUT_VAR_BINDS = "binds";
-const DATA_TYPE_APEX = "Apex";
+const INPUT_VAR_BINDS_JSON = "bindsJson";
 const DATA_TYPE_STRING = "String";
 const OUTPUT_TYPE_MAPPINGS = ["U__allResults", "U__firstResult"];
 
@@ -44,7 +44,10 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 			this._queryInitialized = true;
 		}
 		if (!this._bindsInitialized) {
-			this._bindsDraft = this._cloneBinds(this._readInputValue(this._inputVariables, INPUT_VAR_BINDS));
+			this._bindsDraft = this._cloneBinds(
+				this._readInputValue(this._inputVariables, INPUT_VAR_BINDS_JSON) ??
+					this._readInputValue(this._inputVariables, INPUT_VAR_BINDS)
+			);
 			this._bindsInitialized = true;
 		}
 	}
@@ -107,7 +110,7 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 	handleBindAdd() {
 		const updated = [...this.bindsValue, { key: "", textValue: "", typeName: "String", isCollection: false }];
 		this._bindsDraft = updated;
-		this._dispatchChange(INPUT_VAR_BINDS, updated, DATA_TYPE_APEX);
+		this._dispatchBindsChange(updated);
 	}
 
 	handleBindChange(event) {
@@ -116,13 +119,15 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 			i === Number(event.detail.index) ? { ...b, ...event.detail.patch } : b
 		);
 		this._bindsDraft = updated;
-		this._dispatchChange(INPUT_VAR_BINDS, updated, DATA_TYPE_APEX);
+		this._dispatchBindsChange(updated);
 	}
 
 	handleBindRemove(event) {
-		const updated = this.bindsValue.filter((_, i) => i !== event.detail.index);
+		const removeIndex = Number(event.detail.index);
+		if (Number.isNaN(removeIndex)) return;
+		const updated = this.bindsValue.filter((_, i) => i !== removeIndex);
 		this._bindsDraft = updated;
-		this._dispatchChange(INPUT_VAR_BINDS, updated.length ? updated : null, DATA_TYPE_APEX);
+		this._dispatchBindsChange(updated);
 	}
 
 	handleEditorScroll(event) {
@@ -145,7 +150,22 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 	}
 
 	_cloneBinds(binds) {
+		if (typeof binds === "string") {
+			try {
+				return this._cloneBinds(JSON.parse(binds));
+			} catch {
+				return [];
+			}
+		}
 		return Array.isArray(binds) ? binds.map((bind) => ({ ...bind })) : [];
+	}
+
+	_dispatchBindsChange(binds) {
+		const value = binds.length ? JSON.stringify(binds) : null;
+		this._dispatchChange(INPUT_VAR_BINDS_JSON, value, DATA_TYPE_STRING);
+		if (this._hasInputVariable(INPUT_VAR_BINDS)) {
+			this._dispatchChange(INPUT_VAR_BINDS, null, DATA_TYPE_STRING);
+		}
 	}
 
 	_dispatchChange(name, value, dataType) {
@@ -159,6 +179,10 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 				detail
 			})
 		);
+	}
+
+	_hasInputVariable(name) {
+		return this._inputVariables.some((inputVariable) => inputVariable.name === name);
 	}
 
 	_dispatchGenericTypeMapping(typeName, typeValue) {

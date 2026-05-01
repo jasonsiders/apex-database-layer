@@ -12,7 +12,12 @@ global abstract inherited sharing class InvocableSoql {
 	 * @param inputs List of query inputs containing query strings and bind variables
 	 * @return List of query outputs with results populated
 	 */
-	@InvocableMethod(category='Database Layer' label='Query Records' iconName='slds:standard:record_lookup' configurationEditor='c:invocableSoqlPropertyEditor')
+	@InvocableMethod(
+		category='Database Layer'
+		label='Query Records'
+		iconName='slds:standard:record_lookup'
+		configurationEditor='c:invocableSoqlPropertyEditor'
+	)
 	global static List<Output> invoke(List<Input> inputs) {
 		return new Container(inputs).run();
 	}
@@ -43,10 +48,10 @@ global abstract inherited sharing class InvocableSoql {
 	 */
 	global class Input {
 		/**
-		 * @description List of bind variables for the query.
+		 * @description JSON-serialized bind variables persisted by the custom property editor.
 		 */
-		@InvocableVariable(label='Bind Variables')
-		global List<FlowUntypedVariable> binds;
+		@InvocableVariable(label='Bind Variables JSON')
+		global String bindsJson;
 		/**
 		 * @description The SOQL query string to execute.
 		 */
@@ -54,25 +59,29 @@ global abstract inherited sharing class InvocableSoql {
 		global String query;
 
 		/**
-		 * @description Initializes a new Input with an empty binds list.
-		 */
-		global Input() {
-			this.binds = new List<FlowUntypedVariable>{};
-		}
-
-		/**
 		 * @description Converts the list of bind variables into a map keyed by bind variable name.
 		 * @return Map of bind variable name to Soql.Binder
 		 */
 		private Map<String, Soql.Binder> getBindsByName() {
 			Map<String, Soql.Binder> results = new Map<String, Soql.Binder>{};
-			for (FlowUntypedVariable bind : this.binds) {
+			for (BindVariable bind : this.getBinds()) {
 				String key = bind?.key;
 				Object value = bind?.getValue();
 				Soql.Binder binder = new Soql.Binder(key, value);
 				results?.put(key, binder);
 			}
 			return results;
+		}
+
+		/**
+		 * @description Resolves bind variables from either Apex collection input or CPE JSON input.
+		 * @return List of configured bind variables
+		 */
+		private List<BindVariable> getBinds() {
+			if (String.isNotBlank(this.bindsJson)) {
+				return (List<BindVariable>) JSON.deserialize(this.bindsJson, List<BindVariable>.class);
+			}
+			return new List<BindVariable>{};
 		}
 	}
 
@@ -93,8 +102,8 @@ global abstract inherited sharing class InvocableSoql {
 		/**
 		 * @description The bind variables used in the query.
 		 */
-		@InvocableVariable(label='Bind Variables')
-		global List<FlowUntypedVariable> binds;
+		@InvocableVariable(label='Bind Variables JSON')
+		global String bindsJson;
 		/**
 		 * @description The rendered SOQL query string with bind variable placeholders.
 		 */
@@ -110,7 +119,6 @@ global abstract inherited sharing class InvocableSoql {
 		 */
 		global Output() {
 			this.allResults = new List<SObject>{};
-			this.binds = new List<FlowUntypedVariable>{};
 		}
 
 		/**
@@ -119,7 +127,7 @@ global abstract inherited sharing class InvocableSoql {
 		 */
 		private Output(Input input) {
 			this();
-			this.binds = input?.binds;
+			this.bindsJson = input?.bindsJson;
 			Map<String, Soql.Binder> bindMap = input?.getBindsByName();
 			this.soql = DatabaseLayer.Soql.newQuery(input?.query)?.addBind(bindMap)?.toSoql();
 			this.query = this.soql?.toString();
@@ -133,6 +141,52 @@ global abstract inherited sharing class InvocableSoql {
 			this.allResults = this.soql?.query();
 			this.firstResult = (allResults?.isEmpty() == false) ? allResults?.get(0) : null;
 			return this;
+		}
+	}
+
+	/**
+	 * @description Private JSON DTO for bind variable configuration persisted by the custom property editor.
+	 */
+	private class BindVariable {
+		private String key;
+		private String textValue;
+		private String typeName;
+		private Boolean isCollection;
+
+		/**
+		 * @description Deserializes textValue into the Apex type described by typeName and isCollection.
+		 * @return The deserialized value as its resolved Apex type
+		 */
+		private Object getValue() {
+			Type type = this.determineType();
+			return this.convertFromTextTo(type);
+		}
+
+		/**
+		 * @description Deserializes textValue into the given Apex type.
+		 * @param type The target Apex type to deserialize into
+		 * @return The deserialized object
+		 */
+		private Object convertFromTextTo(Type type) {
+			try {
+				return JSON.deserialize(this.textValue, type);
+			} catch (System.JsonException error) {
+				String msg = 'Invalid ' + type + ' value: ' + this.textValue + '\n' + error;
+				throw new System.IllegalArgumentException(msg);
+			}
+		}
+
+		/**
+		 * @description Resolves the target Apex type from typeName, wrapping it in List<> when isCollection is true.
+		 * @return The resolved Apex Type
+		 */
+		private Type determineType() {
+			String typeName = (this.isCollection == true) ? 'List<' + this.typeName + '>' : this.typeName;
+			Type type = Type.forName(typeName);
+			if (type != null) {
+				return type;
+			}
+			throw new System.TypeException('Invalid type: ' + typeName);
 		}
 	}
 

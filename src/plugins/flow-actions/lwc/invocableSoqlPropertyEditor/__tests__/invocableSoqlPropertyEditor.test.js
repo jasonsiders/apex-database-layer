@@ -30,6 +30,12 @@ describe("c-invocable-soql-property-editor", () => {
 		expect(event.cancelable).toBe(false);
 	}
 
+	function expectSerializedBinds(event, expectedBinds) {
+		expect(event.detail.name).toBe("bindsJson");
+		expect(event.detail.newValueDataType).toBe("String");
+		expect(JSON.parse(event.detail.newValue)).toEqual(expectedBinds);
+	}
+
 	afterEach(() => {
 		while (document.body.firstChild) {
 			document.body.removeChild(document.body.firstChild);
@@ -200,7 +206,7 @@ describe("c-invocable-soql-property-editor", () => {
 		expect(element.shadowRoot.querySelector("lightning-button")).not.toBeNull();
 	});
 
-	it("dispatches configuration_editor_input_value_changed with a new bind when Add is clicked", async () => {
+	it("dispatches configuration_editor_input_value_changed with serialized binds when Add is clicked", async () => {
 		const element = createComponent({ inputVariables: [] });
 		const events = [];
 		element.addEventListener("configuration_editor_input_value_changed", (e) => events.push(e));
@@ -210,22 +216,21 @@ describe("c-invocable-soql-property-editor", () => {
 
 		expect(events).toHaveLength(1);
 		expectFlowEventContract(events[0]);
-		expect(events[0].detail.name).toBe("binds");
-		expect(events[0].detail.newValueDataType).toBe("Apex");
-		expect(events[0].detail.newValue).toHaveLength(1);
-		expect(events[0].detail.newValue[0]).toEqual({
-			key: "",
-			textValue: "",
-			typeName: "String",
-			isCollection: false
-		});
+		expectSerializedBinds(events[0], [
+			{
+				key: "",
+				textValue: "",
+				typeName: "String",
+				isCollection: false
+			}
+		]);
 		expect(element.shadowRoot.querySelectorAll("c-flow-untyped-variable-input")).toHaveLength(1);
 	});
 
 	it("updates a bind variable when a child emits change", () => {
 		const initial = [{ key: "recordId", textValue: "", typeName: "String", isCollection: false }];
 		const element = createComponent({
-			inputVariables: [{ name: "binds", value: initial, valueDataType: "Apex" }]
+			inputVariables: [{ name: "bindsJson", value: JSON.stringify(initial), valueDataType: "String" }]
 		});
 		const events = [];
 		element.addEventListener("configuration_editor_input_value_changed", (e) => events.push(e));
@@ -239,11 +244,47 @@ describe("c-invocable-soql-property-editor", () => {
 
 		expect(events).toHaveLength(1);
 		expectFlowEventContract(events[0]);
-		expect(events[0].detail.newValueDataType).toBe("Apex");
-		expect(events[0].detail.newValue[0].key).toBe("accountId");
+		expectSerializedBinds(events[0], [{ key: "accountId", textValue: "", typeName: "Id", isCollection: false }]);
 	});
 
-	it("dispatches configuration_editor_input_value_deleted for binds when last bind is removed", () => {
+	it("removes the selected bind variable when a child emits a string index", async () => {
+		const initial = [
+			{ key: "recordId", textValue: "", typeName: "String", isCollection: false },
+			{ key: "accountId", textValue: "", typeName: "String", isCollection: false }
+		];
+		const element = createComponent({
+			inputVariables: [{ name: "binds", value: initial, valueDataType: "Apex" }]
+		});
+		const events = [];
+		element.addEventListener("configuration_editor_input_value_changed", (e) => events.push(e));
+
+		const [, secondBindInput] = element.shadowRoot.querySelectorAll("c-flow-untyped-variable-input");
+		secondBindInput.dispatchEvent(new CustomEvent("remove", { detail: { index: "1" } }));
+		await Promise.resolve();
+
+		expect(events).toHaveLength(1);
+		expectFlowEventContract(events[0]);
+		expectSerializedBinds(events[0], [{ key: "recordId", textValue: "", typeName: "String", isCollection: false }]);
+		expect(element.shadowRoot.querySelectorAll("c-flow-untyped-variable-input")).toHaveLength(1);
+	});
+
+	it("dispatches configuration_editor_input_value_deleted for bindsJson when last bind is removed", () => {
+		const initial = [{ key: "recordId", textValue: "", typeName: "String", isCollection: false }];
+		const element = createComponent({
+			inputVariables: [{ name: "bindsJson", value: JSON.stringify(initial), valueDataType: "String" }]
+		});
+		const deletedEvents = [];
+		element.addEventListener("configuration_editor_input_value_deleted", (e) => deletedEvents.push(e));
+
+		const bindInput = element.shadowRoot.querySelector("c-flow-untyped-variable-input");
+		bindInput.dispatchEvent(new CustomEvent("remove", { detail: { index: 0 } }));
+
+		expect(deletedEvents).toHaveLength(1);
+		expectFlowEventContract(deletedEvents[0]);
+		expect(deletedEvents[0].detail).toEqual({ name: "bindsJson" });
+	});
+
+	it("deletes stale binds metadata when an existing flow still has the old binds input", () => {
 		const initial = [{ key: "recordId", textValue: "", typeName: "String", isCollection: false }];
 		const element = createComponent({
 			inputVariables: [{ name: "binds", value: initial, valueDataType: "Apex" }]
@@ -254,8 +295,9 @@ describe("c-invocable-soql-property-editor", () => {
 		const bindInput = element.shadowRoot.querySelector("c-flow-untyped-variable-input");
 		bindInput.dispatchEvent(new CustomEvent("remove", { detail: { index: 0 } }));
 
-		expect(deletedEvents).toHaveLength(1);
+		expect(deletedEvents).toHaveLength(2);
 		expectFlowEventContract(deletedEvents[0]);
-		expect(deletedEvents[0].detail).toEqual({ name: "binds" });
+		expectFlowEventContract(deletedEvents[1]);
+		expect(deletedEvents.map((event) => event.detail)).toEqual([{ name: "bindsJson" }, { name: "binds" }]);
 	});
 });

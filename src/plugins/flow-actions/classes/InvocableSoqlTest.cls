@@ -14,26 +14,32 @@ private class InvocableSoqlTest {
 		DatabaseLayer.useMocks();
 	}
 
-	private static FlowUntypedVariable createStringVariable(String key, String value) {
-		FlowUntypedVariable var = new FlowUntypedVariable();
-		var.key = key;
-		var.typeName = 'String';
-		var.textValue = value;
-		return var;
+	private static Map<String, Object> createStringVariable(String key, String value) {
+		return InvocableSoqlTest.createBindVariable(key, value, 'String', false);
 	}
 
-	private static FlowUntypedVariable createBooleanVariable(String key, Boolean value) {
-		FlowUntypedVariable var = new FlowUntypedVariable();
-		var.key = key;
-		var.typeName = 'Boolean';
-		var.textValue = String.valueOf(value);
-		return var;
+	private static Map<String, Object> createBooleanVariable(String key, Boolean value) {
+		return InvocableSoqlTest.createBindVariable(key, String.valueOf(value), 'Boolean', false);
 	}
 
-	private static InvocableSoql.Input createInput(String query, List<FlowUntypedVariable> binds) {
+	private static Map<String, Object> createBindVariable(
+		String key,
+		String textValue,
+		String typeName,
+		Boolean isCollection
+	) {
+		return new Map<String, Object>{
+			'key' => key,
+			'textValue' => textValue,
+			'typeName' => typeName,
+			'isCollection' => isCollection
+		};
+	}
+
+	private static InvocableSoql.Input createInput(String query, List<Map<String, Object>> binds) {
 		InvocableSoql.Input input = new InvocableSoql.Input();
 		input.query = query;
-		input.binds = binds ?? new List<FlowUntypedVariable>{};
+		input.bindsJson = JSON.serialize(binds ?? new List<Map<String, Object>>{});
 		return input;
 	}
 
@@ -44,13 +50,11 @@ private class InvocableSoqlTest {
 
 		InvocableSoql.Input input = InvocableSoqlTest.createInput(
 			QUERY_BY_NAME,
-			new List<FlowUntypedVariable>{ InvocableSoqlTest.createStringVariable('name', '"Acme"') }
+			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', '"Acme"') }
 		);
 
 		Test.startTest();
-		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(
-			new List<InvocableSoql.Input>{ input }
-		);
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(new List<InvocableSoql.Input>{ input });
 		Test.stopTest();
 
 		Assert.areEqual(1, outputs.size(), 'Should return 1 output');
@@ -62,9 +66,7 @@ private class InvocableSoqlTest {
 	@IsTest
 	private static void shouldReturnEmptyOutputForEmptyInputs() {
 		Test.startTest();
-		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(
-			new List<InvocableSoql.Input>{}
-		);
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(new List<InvocableSoql.Input>{});
 		Test.stopTest();
 
 		Assert.areEqual(0, outputs.size(), 'Should return empty list for empty inputs');
@@ -76,13 +78,11 @@ private class InvocableSoqlTest {
 
 		InvocableSoql.Input input = InvocableSoqlTest.createInput(
 			QUERY_BY_NAME,
-			new List<FlowUntypedVariable>{ InvocableSoqlTest.createStringVariable('name', '"NoMatch"') }
+			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', '"NoMatch"') }
 		);
 
 		Test.startTest();
-		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(
-			new List<InvocableSoql.Input>{ input }
-		);
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(new List<InvocableSoql.Input>{ input });
 		Test.stopTest();
 
 		Assert.areEqual(0, outputs[0].allResults.size(), 'allResults should be empty');
@@ -98,9 +98,7 @@ private class InvocableSoqlTest {
 		InvocableSoql.Input input = InvocableSoqlTest.createInput(QUERY_NO_WHERE, null);
 
 		Test.startTest();
-		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(
-			new List<InvocableSoql.Input>{ input }
-		);
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(new List<InvocableSoql.Input>{ input });
 		Test.stopTest();
 
 		Assert.areEqual(2, outputs[0].allResults.size(), 'Should have 2 results');
@@ -118,16 +116,14 @@ private class InvocableSoqlTest {
 
 		InvocableSoql.Input input = InvocableSoqlTest.createInput(
 			QUERY_BY_NAME_AND_PHONE,
-			new List<FlowUntypedVariable>{
+			new List<Map<String, Object>>{
 				InvocableSoqlTest.createStringVariable('name', '"TestAccount"'),
 				InvocableSoqlTest.createStringVariable('phone', '"555-1234"')
 			}
 		);
 
 		Test.startTest();
-		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(
-			new List<InvocableSoql.Input>{ input }
-		);
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(new List<InvocableSoql.Input>{ input });
 		Test.stopTest();
 
 		Assert.isTrue(outputs[0].query.contains(':name'), 'Query should contain :name');
@@ -135,20 +131,39 @@ private class InvocableSoqlTest {
 	}
 
 	@IsTest
+	private static void shouldApplySerializedBindVariables() {
+		Account mockAccount = new Account(Name = 'JsonAccount');
+		MockSoql.setGlobalMock().withResults(new List<SObject>{ mockAccount });
+
+		InvocableSoql.Input input = InvocableSoqlTest.createInput(
+			QUERY_BY_NAME,
+			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', '"JsonAccount"') }
+		);
+
+		Test.startTest();
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(new List<InvocableSoql.Input>{ input });
+		Test.stopTest();
+
+		List<Object> outputBinds = (List<Object>) JSON.deserializeUntyped(outputs[0].bindsJson);
+		Map<String, Object> outputBind = (Map<String, Object>) outputBinds[0];
+		Assert.areEqual(1, outputBinds.size(), 'Output should include serialized bind variables');
+		Assert.areEqual('name', outputBind.get('key'), 'Serialized bind key should be preserved');
+		Assert.isTrue(outputs[0].query.contains(':name'), 'Query should contain :name');
+	}
+
+	@IsTest
 	private static void shouldExecuteOnceForIdenticalBindValues() {
 		Account acmeAccount = new Account(Name = 'Acme');
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ acmeAccount });
 
-		List<FlowUntypedVariable> binds = new List<FlowUntypedVariable>{
+		List<Map<String, Object>> binds = new List<Map<String, Object>>{
 			InvocableSoqlTest.createStringVariable('name', '"Acme"')
 		};
 		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(QUERY_BY_NAME, binds);
 		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(QUERY_BY_NAME, binds);
 
 		Test.startTest();
-		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(
-			new List<InvocableSoql.Input>{ input1, input2 }
-		);
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(new List<InvocableSoql.Input>{ input1, input2 });
 		Test.stopTest();
 
 		Assert.areEqual(2, outputs.size(), 'Should return 2 outputs');
@@ -165,17 +180,15 @@ private class InvocableSoqlTest {
 
 		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(
 			QUERY_BY_NAME,
-			new List<FlowUntypedVariable>{ InvocableSoqlTest.createStringVariable('name', '"Acme"') }
+			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', '"Acme"') }
 		);
 		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(
 			QUERY_BY_NAME,
-			new List<FlowUntypedVariable>{ InvocableSoqlTest.createStringVariable('name', '"Beta"') }
+			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', '"Beta"') }
 		);
 
 		Test.startTest();
-		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(
-			new List<InvocableSoql.Input>{ input1, input2 }
-		);
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(new List<InvocableSoql.Input>{ input1, input2 });
 		Test.stopTest();
 
 		Assert.areEqual(2, outputs.size(), 'Should return 2 outputs');
@@ -192,17 +205,15 @@ private class InvocableSoqlTest {
 
 		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(
 			QUERY_BY_NAME,
-			new List<FlowUntypedVariable>{ InvocableSoqlTest.createStringVariable('name', '"Acme"') }
+			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', '"Acme"') }
 		);
 		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(
 			QUERY_BY_NAME,
-			new List<FlowUntypedVariable>{ InvocableSoqlTest.createStringVariable('name', '"NoMatch"') }
+			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', '"NoMatch"') }
 		);
 
 		Test.startTest();
-		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(
-			new List<InvocableSoql.Input>{ input1, input2 }
-		);
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(new List<InvocableSoql.Input>{ input1, input2 });
 		Test.stopTest();
 
 		Assert.areEqual(1, outputs[0].allResults.size(), 'Matched input should have 1 result');
@@ -218,7 +229,7 @@ private class InvocableSoqlTest {
 
 		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(
 			QUERY_NESTED_WHERE,
-			new List<FlowUntypedVariable>{
+			new List<Map<String, Object>>{
 				InvocableSoqlTest.createStringVariable('name', '"Acme"'),
 				InvocableSoqlTest.createStringVariable('status', '"Active"'),
 				InvocableSoqlTest.createBooleanVariable('active', true)
@@ -226,7 +237,7 @@ private class InvocableSoqlTest {
 		);
 		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(
 			QUERY_NESTED_WHERE,
-			new List<FlowUntypedVariable>{
+			new List<Map<String, Object>>{
 				InvocableSoqlTest.createStringVariable('name', '"Beta"'),
 				InvocableSoqlTest.createStringVariable('status', '"Active"'),
 				InvocableSoqlTest.createBooleanVariable('active', true)
@@ -234,9 +245,7 @@ private class InvocableSoqlTest {
 		);
 
 		Test.startTest();
-		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(
-			new List<InvocableSoql.Input>{ input1, input2 }
-		);
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(new List<InvocableSoql.Input>{ input1, input2 });
 		Test.stopTest();
 
 		Assert.areEqual(2, outputs.size(), 'Should return 2 outputs');
@@ -252,17 +261,15 @@ private class InvocableSoqlTest {
 
 		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(
 			QUERY_PARENT_FIELD,
-			new List<FlowUntypedVariable>{ InvocableSoqlTest.createStringVariable('name', '"Acme"') }
+			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', '"Acme"') }
 		);
 		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(
 			QUERY_PARENT_FIELD,
-			new List<FlowUntypedVariable>{ InvocableSoqlTest.createStringVariable('name', '"Beta"') }
+			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', '"Beta"') }
 		);
 
 		Test.startTest();
-		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(
-			new List<InvocableSoql.Input>{ input1, input2 }
-		);
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(new List<InvocableSoql.Input>{ input1, input2 });
 		Test.stopTest();
 
 		Assert.areEqual(2, outputs.size(), 'Should return 2 outputs');
@@ -278,9 +285,7 @@ private class InvocableSoqlTest {
 		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(QUERY_NO_WHERE, null);
 
 		Test.startTest();
-		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(
-			new List<InvocableSoql.Input>{ input1, input2 }
-		);
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(new List<InvocableSoql.Input>{ input1, input2 });
 		Test.stopTest();
 
 		Assert.areEqual(2, outputs.size(), 'Should return 2 outputs');
@@ -296,17 +301,15 @@ private class InvocableSoqlTest {
 
 		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(
 			QUERY_WITH_LITERAL,
-			new List<FlowUntypedVariable>{ InvocableSoqlTest.createStringVariable('name', '"Acme"') }
+			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', '"Acme"') }
 		);
 		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(
 			QUERY_WITH_LITERAL,
-			new List<FlowUntypedVariable>{ InvocableSoqlTest.createStringVariable('name', '"Beta"') }
+			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', '"Beta"') }
 		);
 
 		Test.startTest();
-		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(
-			new List<InvocableSoql.Input>{ input1, input2 }
-		);
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(new List<InvocableSoql.Input>{ input1, input2 });
 		Test.stopTest();
 
 		Assert.areEqual(2, outputs.size(), 'Should return 2 outputs');
@@ -322,23 +325,21 @@ private class InvocableSoqlTest {
 
 		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(
 			QUERY_MULTIPLE_PIVOTS,
-			new List<FlowUntypedVariable>{
+			new List<Map<String, Object>>{
 				InvocableSoqlTest.createStringVariable('name', '"Acme"'),
 				InvocableSoqlTest.createStringVariable('phone', '"555-1234"')
 			}
 		);
 		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(
 			QUERY_MULTIPLE_PIVOTS,
-			new List<FlowUntypedVariable>{
+			new List<Map<String, Object>>{
 				InvocableSoqlTest.createStringVariable('name', '"Beta"'),
 				InvocableSoqlTest.createStringVariable('phone', '"555-5678"')
 			}
 		);
 
 		Test.startTest();
-		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(
-			new List<InvocableSoql.Input>{ input1, input2 }
-		);
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(new List<InvocableSoql.Input>{ input1, input2 });
 		Test.stopTest();
 
 		Assert.areEqual(2, outputs.size(), 'Should return 2 outputs');
@@ -353,17 +354,15 @@ private class InvocableSoqlTest {
 
 		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(
 			QUERY_WITH_COMPARISON,
-			new List<FlowUntypedVariable>{ InvocableSoqlTest.createStringVariable('count', '50') }
+			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('count', '50') }
 		);
 		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(
 			QUERY_WITH_COMPARISON,
-			new List<FlowUntypedVariable>{ InvocableSoqlTest.createStringVariable('count', '150') }
+			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('count', '150') }
 		);
 
 		Test.startTest();
-		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(
-			new List<InvocableSoql.Input>{ input1, input2 }
-		);
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(new List<InvocableSoql.Input>{ input1, input2 });
 		Test.stopTest();
 
 		Assert.areEqual(2, outputs.size(), 'Should return 2 outputs');
@@ -376,7 +375,7 @@ private class InvocableSoqlTest {
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ new Account(Name = 'Acme') });
 		InvocableSoql.Input input = InvocableSoqlTest.createInput(
 			QUERY_BY_NAME,
-			new List<FlowUntypedVariable>{ InvocableSoqlTest.createStringVariable('name', '"Acme"') }
+			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', '"Acme"') }
 		);
 		Test.startTest();
 		InvocableSoql.invoke(new List<InvocableSoql.Input>{ input });
@@ -387,7 +386,7 @@ private class InvocableSoqlTest {
 	@IsTest
 	private static void shouldFireOneQueryForIdenticalBindValues() {
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ new Account(Name = 'Acme') });
-		List<FlowUntypedVariable> binds = new List<FlowUntypedVariable>{
+		List<Map<String, Object>> binds = new List<Map<String, Object>>{
 			InvocableSoqlTest.createStringVariable('name', '"Acme"')
 		};
 		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(QUERY_BY_NAME, binds);
@@ -405,17 +404,21 @@ private class InvocableSoqlTest {
 			.withResults(new List<SObject>{ new Account(Name = 'Acme'), new Account(Name = 'Beta') });
 		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(
 			QUERY_BY_NAME,
-			new List<FlowUntypedVariable>{ InvocableSoqlTest.createStringVariable('name', '"Acme"') }
+			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', '"Acme"') }
 		);
 		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(
 			QUERY_BY_NAME,
-			new List<FlowUntypedVariable>{ InvocableSoqlTest.createStringVariable('name', '"Beta"') }
+			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', '"Beta"') }
 		);
 		Test.startTest();
 		InvocableSoql.invoke(new List<InvocableSoql.Input>{ input1, input2 });
 		Test.stopTest();
 		// executeWithInList: bind values are merged into one IN-list query
-		Assert.areEqual(1, MockSoql.MockDatabase?.getNumQueries(), 'Different bind values should merge into 1 IN-list query');
+		Assert.areEqual(
+			1,
+			MockSoql.MockDatabase?.getNumQueries(),
+			'Different bind values should merge into 1 IN-list query'
+		);
 	}
 
 	@IsTest
@@ -424,7 +427,7 @@ private class InvocableSoqlTest {
 			.withResults(new List<SObject>{ new Account(Name = 'Acme'), new Account(Name = 'Beta') });
 		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(
 			QUERY_NESTED_WHERE,
-			new List<FlowUntypedVariable>{
+			new List<Map<String, Object>>{
 				InvocableSoqlTest.createStringVariable('name', '"Acme"'),
 				InvocableSoqlTest.createStringVariable('status', '"Active"'),
 				InvocableSoqlTest.createBooleanVariable('active', true)
@@ -432,7 +435,7 @@ private class InvocableSoqlTest {
 		);
 		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(
 			QUERY_NESTED_WHERE,
-			new List<FlowUntypedVariable>{
+			new List<Map<String, Object>>{
 				InvocableSoqlTest.createStringVariable('name', '"Beta"'),
 				InvocableSoqlTest.createStringVariable('status', '"Active"'),
 				InvocableSoqlTest.createBooleanVariable('active', true)
@@ -442,10 +445,14 @@ private class InvocableSoqlTest {
 		InvocableSoql.invoke(new List<InvocableSoql.Input>{ input1, input2 });
 		Test.stopTest();
 		// executePerInput: nested WHERE blocks IN-list optimization, each input fires its own query
-		Assert.areEqual(2, MockSoql.MockDatabase?.getNumQueries(), 'Nested WHERE fallback should fire 1 query per input');
+		Assert.areEqual(
+			2,
+			MockSoql.MockDatabase?.getNumQueries(),
+			'Nested WHERE fallback should fire 1 query per input'
+		);
 	}
 
-	@IsTest 
+	@IsTest
 	private static void shouldValidateSimpleQuery() {
 		DatabaseLayer.useRealData();
 		String query = 'SELECT Id FROM Account ORDER BY CreatedDate DESC LIMIT 1';
@@ -459,7 +466,7 @@ private class InvocableSoqlTest {
 		Test.stopTest();
 	}
 
-	@IsTest 
+	@IsTest
 	private static void shouldValidateQueryWithBinds() {
 		DatabaseLayer.useRealData();
 		String query = 'SELECT Id FROM Account WHERE Name = :name';
@@ -475,7 +482,7 @@ private class InvocableSoqlTest {
 	}
 
 	@SuppressWarnings('PMD.EmptyCatchBlock')
-	@IsTest 
+	@IsTest
 	private static void shouldThrowExceptionIfInvalidQueryString() {
 		DatabaseLayer.useRealData();
 		String query = 'asdf';
@@ -491,7 +498,7 @@ private class InvocableSoqlTest {
 	}
 
 	@SuppressWarnings('PMD.EmptyCatchBlock')
-	@IsTest 
+	@IsTest
 	private static void shouldThrowExceptionIfMissingBinds() {
 		DatabaseLayer.useRealData();
 		String query = 'SELECT Id FROM Account WHERE Name = :name';

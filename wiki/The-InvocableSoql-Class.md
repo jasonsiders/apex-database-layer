@@ -26,11 +26,11 @@ The action can be used in Salesforce Flow to execute complex SOQL queries that a
 // This would be configured in Flow Builder UI, but conceptually:
 // Input 1:
 // query: "SELECT Id, Name FROM Account WHERE Type = :accountType ORDER BY Name"
-// binds: [{ key: "accountType", textValue: "Customer", typeName: "String" }]
+// bindsJson: "[{\"key\":\"accountType\",\"textValue\":\"\\\"Customer\\\"\",\"typeName\":\"String\",\"isCollection\":false}]"
 
 // Input 2: 
 // query: "SELECT Id, Name FROM Account WHERE Type = :accountType ORDER BY Name"  
-// binds: [{ key: "accountType", textValue: "Partner", typeName: "String" }]
+// bindsJson: "[{\"key\":\"accountType\",\"textValue\":\"\\\"Partner\\\"\",\"typeName\":\"String\",\"isCollection\":false}]"
 
 // The action will automatically optimize these into a single query:
 // "SELECT Id, Name FROM Account WHERE Type IN ('Customer', 'Partner') ORDER BY Name"
@@ -42,13 +42,13 @@ The `Input` class represents the input structure for SOQL queries with bind vari
 
 ### Properties
 
-#### `binds`
+#### `bindsJson`
 
-List of bind variables for the query.
+JSON-serialized bind variables for the query.
 
-- **Type:** `List<FlowUntypedVariable>`
+- **Type:** `String`
 - **Access:** `global`
-- **Flow Label:** Bind Variables
+- **Flow Label:** Bind Variables JSON
 
 #### `query`
 
@@ -58,17 +58,6 @@ The SOQL query string to execute.
 - **Access:** `global`
 - **Required:** `true`
 - **Flow Label:** Query
-
-### Constructors
-
-#### `Input()`
-
-Initializes a new Input with an empty binds list.
-
-```apex
-Input input = new Input();
-// input.binds is automatically initialized as an empty list
-```
 
 ## Output Class
 
@@ -84,13 +73,13 @@ All records returned by the query.
 - **Access:** `global`
 - **Flow Label:** All Results
 
-#### `binds`
+#### `bindsJson`
 
-The bind variables used in the query.
+The JSON-serialized bind variables used in the query.
 
-- **Type:** `List<FlowUntypedVariable>`
+- **Type:** `String`
 - **Access:** `global`  
-- **Flow Label:** Bind Variables
+- **Flow Label:** Bind Variables JSON
 
 #### `firstResult`
 
@@ -112,11 +101,11 @@ The rendered SOQL query string with bind variable placeholders.
 
 #### `Output()`
 
-Initializes a new Output with empty results and binds.
+Initializes a new Output with empty results.
 
 ```apex
 Output output = new Output();
-// output.allResults and output.binds are automatically initialized as empty lists
+// output.allResults is automatically initialized as an empty list
 ```
 
 ## Bulkification Features
