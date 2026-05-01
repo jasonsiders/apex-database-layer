@@ -80,6 +80,10 @@ function isReferenceText(value) {
 	return /^\{![^}]+\}$/.test(trimmed);
 }
 
+function allowsRawInputValue(fieldDataType) {
+	return ["String", "Decimal", "Date", "DateTime", "Time"].includes(normalizeDataType(fieldDataType));
+}
+
 function normalizeReferenceName(value) {
 	if (typeof value !== "string") {
 		return null;
@@ -386,6 +390,10 @@ export default class FlowCombobox extends LightningElement {
 
 	get allowsLiteralChoices() {
 		return this.inputType === "picklist";
+	}
+
+	get allowsRawInputValue() {
+		return allowsRawInputValue(this.fieldDataType);
 	}
 
 	get hasDefaultValue() {
@@ -1077,9 +1085,11 @@ export default class FlowCombobox extends LightningElement {
 			return;
 		}
 
-		this._draftTextValue = nextTextValue;
-		this._setResourcePickerOpen(false);
-		this._emitFieldChange(nextTextValue, this.fieldDataType);
+		if (this.allowsRawInputValue) {
+			this._draftTextValue = nextTextValue;
+			this._setResourcePickerOpen(false);
+			this._emitFieldChange(nextTextValue, this.fieldDataType);
+		}
 	}
 
 	async handleBlur(event) {
@@ -1113,7 +1123,12 @@ export default class FlowCombobox extends LightningElement {
 			}
 		}
 
-		if (this.inputType === "text" && this._draftTextValue !== null && !this._suppressTextCommitAfterSelection) {
+		if (
+			!this.allowsLiteralChoices &&
+			this.allowsRawInputValue &&
+			this._draftTextValue !== null &&
+			!this._suppressTextCommitAfterSelection
+		) {
 			this._value = this._draftTextValue;
 			this._emitFieldChange(this._draftTextValue, this.fieldDataType);
 		}

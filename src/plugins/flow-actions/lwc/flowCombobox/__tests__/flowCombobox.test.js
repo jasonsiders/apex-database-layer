@@ -477,6 +477,39 @@ describe("c-flow-combobox", () => {
 		});
 	});
 
+	it("emits a raw number value for decimal inputs without selecting a resource", async () => {
+		const element = createComponent({
+			name: "employeeCount",
+			label: "Employee Count",
+			fieldDataType: "Decimal",
+			included: true,
+			resourceOptions: [
+				{
+					label: "Variable: fallbackCount",
+					value: "{!fallbackCount}",
+					pillLabel: "fallbackCount",
+					referenceName: "fallbackCount",
+					dataType: "Decimal"
+				}
+			]
+		});
+		const handler = jest.fn();
+		element.addEventListener("fieldchange", handler);
+
+		const input = getTextInput(element);
+		input.value = "123.45";
+		input.dispatchEvent(new Event("input"));
+		input.dispatchEvent(new Event("change"));
+		await Promise.resolve();
+
+		expect(handler).toHaveBeenCalledTimes(1);
+		expect(handler.mock.calls[0][0].detail).toEqual({
+			name: "employeeCount",
+			value: "123.45",
+			valueDataType: "Decimal"
+		});
+	});
+
 	it("treats incomplete Flow reference text as a raw value", async () => {
 		const element = createComponent({
 			name: "ownerName",
