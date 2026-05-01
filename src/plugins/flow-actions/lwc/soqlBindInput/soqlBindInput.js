@@ -100,6 +100,7 @@ export default class SoqlBindInput extends LightningElement {
 	@api index;
 	@api variable = {};
 	@api resourceOptions = [];
+	@api errorMessage;
 
 	typeOptions = TYPE_OPTIONS;
 
@@ -144,7 +145,18 @@ export default class SoqlBindInput extends LightningElement {
 			);
 	}
 
+	@api validate(errorMessage = this.errorMessage, { report = true } = {}) {
+		this.errorMessage = errorMessage ?? null;
+		this._applyKeyValidity(report);
+		return !this.errorMessage;
+	}
+
+	renderedCallback() {
+		this._applyKeyValidity(false);
+	}
+
 	handleKeyChange(event) {
+		this.validate(null, { report: false });
 		this._emitChange({ key: event.target.value });
 	}
 
@@ -161,6 +173,18 @@ export default class SoqlBindInput extends LightningElement {
 
 	handleRemove() {
 		this.dispatchEvent(new CustomEvent("remove", { detail: { index: this.index } }));
+	}
+
+	_applyKeyValidity(report) {
+		const keyInput = this.template.querySelector('[data-id="key"]');
+		if (!keyInput) {
+			return;
+		}
+
+		keyInput.setCustomValidity(this.errorMessage ?? "");
+		if (report) {
+			keyInput.reportValidity();
+		}
 	}
 
 	_emitChange(patch) {

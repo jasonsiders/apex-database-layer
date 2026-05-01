@@ -79,6 +79,98 @@ describe("c-invocable-soql-property-editor", () => {
 		});
 	});
 
+	it("validate() sets custom validity on orphaned bind variables", async () => {
+		const binds = [
+			{ key: "name", textValue: "", typeName: "String", isCollection: false },
+			{ key: "foo", textValue: "", typeName: "String", isCollection: false }
+		];
+		const element = createComponent({
+			inputVariables: [
+				{ name: "query", value: "SELECT Id FROM Account WHERE Name = :name", valueDataType: "String" },
+				{ name: "bindsJson", value: JSON.stringify(binds), valueDataType: "String" }
+			]
+		});
+		await Promise.resolve();
+		const [, orphanedBindInput] = element.shadowRoot.querySelectorAll("c-soql-bind-input");
+		const keyInput = orphanedBindInput.shadowRoot.querySelector('[data-id="key"]');
+		const setCustomValidity = jest.spyOn(keyInput, "setCustomValidity");
+		const reportValidity = jest.spyOn(keyInput, "reportValidity");
+
+		const result = await element.validate();
+
+		expect(validateQuery).not.toHaveBeenCalled();
+		expect(result).toEqual([
+			{
+				key: "bindsJson",
+				errorString: 'Bind variable "foo" is not referenced by the query.'
+			}
+		]);
+		expect(setCustomValidity).toHaveBeenLastCalledWith('Bind variable "foo" is not referenced by the query.');
+		expect(reportValidity).toHaveBeenCalled();
+	});
+
+	it("validate() flags all bind variables as orphaned when the query has no bind references", async () => {
+		const binds = [{ key: "name", textValue: "", typeName: "String", isCollection: false }];
+		const element = createComponent({
+			inputVariables: [
+				{ name: "query", value: "SELECT Id FROM Account", valueDataType: "String" },
+				{ name: "bindsJson", value: JSON.stringify(binds), valueDataType: "String" }
+			]
+		});
+		await Promise.resolve();
+		const bindInput = element.shadowRoot.querySelector("c-soql-bind-input");
+		const setCustomValidity = jest.spyOn(
+			bindInput.shadowRoot.querySelector('[data-id="key"]'),
+			"setCustomValidity"
+		);
+
+		await element.validate();
+
+		expect(setCustomValidity).toHaveBeenLastCalledWith('Bind variable "name" is not referenced by the query.');
+	});
+
+	it("validate() ignores bind-like text inside quoted query literals", async () => {
+		const binds = [{ key: "foo", textValue: "", typeName: "String", isCollection: false }];
+		const element = createComponent({
+			inputVariables: [
+				{ name: "query", value: "SELECT Id FROM Account WHERE Name = ':foo'", valueDataType: "String" },
+				{ name: "bindsJson", value: JSON.stringify(binds), valueDataType: "String" }
+			]
+		});
+		await Promise.resolve();
+		const bindInput = element.shadowRoot.querySelector("c-soql-bind-input");
+		const setCustomValidity = jest.spyOn(
+			bindInput.shadowRoot.querySelector('[data-id="key"]'),
+			"setCustomValidity"
+		);
+
+		await element.validate();
+
+		expect(setCustomValidity).toHaveBeenLastCalledWith('Bind variable "foo" is not referenced by the query.');
+	});
+
+	it("clears orphaned bind custom validity when the query is edited to use the bind", async () => {
+		const binds = [{ key: "foo", textValue: "", typeName: "String", isCollection: false }];
+		const element = createComponent({
+			inputVariables: [
+				{ name: "query", value: "SELECT Id FROM Account", valueDataType: "String" },
+				{ name: "bindsJson", value: JSON.stringify(binds), valueDataType: "String" }
+			]
+		});
+		await Promise.resolve();
+		const bindInput = element.shadowRoot.querySelector("c-soql-bind-input");
+		const keyInput = bindInput.shadowRoot.querySelector('[data-id="key"]');
+		const setCustomValidity = jest.spyOn(keyInput, "setCustomValidity");
+
+		await element.validate();
+		const textarea = element.shadowRoot.querySelector(".code-editor");
+		textarea.value = "SELECT Id FROM Account WHERE Name = :foo";
+		textarea.dispatchEvent(new Event("input"));
+		await Promise.resolve();
+
+		expect(setCustomValidity).toHaveBeenLastCalledWith("");
+	});
+
 	it("validate() returns [] when validateQuery does not throw", async () => {
 		const element = createComponent({
 			inputVariables: [{ name: "query", value: "SELECT Id FROM Account", valueDataType: "String" }]

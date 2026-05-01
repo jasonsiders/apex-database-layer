@@ -106,6 +106,30 @@ describe("c-soql-bind-input", () => {
 		expect(events[0].detail).toEqual({ index: 0, patch: { key: "accountId" } });
 	});
 
+	it("sets custom validity on the bind name input when validate() receives an error", () => {
+		const element = createComponent({ variable: defaultVariable });
+		const keyInput = element.shadowRoot.querySelector('[data-id="key"]');
+		const setCustomValidity = jest.spyOn(keyInput, "setCustomValidity");
+		const reportValidity = jest.spyOn(keyInput, "reportValidity");
+
+		expect(element.validate("Bind variable is not referenced by the query.")).toBe(false);
+
+		expect(setCustomValidity).toHaveBeenLastCalledWith("Bind variable is not referenced by the query.");
+		expect(reportValidity).toHaveBeenCalled();
+	});
+
+	it("clears custom validity when the bind name is edited", () => {
+		const element = createComponent({ variable: defaultVariable });
+		const keyInput = element.shadowRoot.querySelector('[data-id="key"]');
+		const setCustomValidity = jest.spyOn(keyInput, "setCustomValidity");
+
+		element.validate("Bind variable is not referenced by the query.");
+		keyInput.value = "accountId";
+		keyInput.dispatchEvent(new Event("input"));
+
+		expect(setCustomValidity).toHaveBeenLastCalledWith("");
+	});
+
 	it("emits change with updated typeName when type input changes", () => {
 		const element = createComponent({ index: 1, variable: defaultVariable });
 		const events = [];

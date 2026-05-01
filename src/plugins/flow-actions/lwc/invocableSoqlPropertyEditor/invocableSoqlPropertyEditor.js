@@ -8,6 +8,7 @@ const INPUT_VAR_QUERY = "query";
 const INPUT_VAR_BINDS = "binds";
 const INPUT_VAR_BINDS_JSON = "bindsJson";
 const DATA_TYPE_STRING = "String";
+const ORPHANED_BIND_ERROR_SUFFIX = "is not referenced by the query.";
 const OUTPUT_TYPE_MAPPINGS = ["U__allResults", "U__firstResult"];
 const RESOURCE_COLLECTIONS = [
 	{ key: "variables", labelPrefix: "Variable" },
@@ -243,6 +244,54 @@ function toReferenceValue(referenceName) {
 	return referenceName ? `{!${referenceName}}` : "";
 }
 
+function maskQuotedText(query) {
+	const text = query || "";
+	let result = "";
+	let quote = null;
+
+	for (let index = 0; index < text.length; index++) {
+		const char = text[index];
+
+		if (quote) {
+			result += " ";
+			if (char === "\\" && index + 1 < text.length) {
+				result += " ";
+				index++;
+			} else if (char === quote) {
+				quote = null;
+			}
+			continue;
+		}
+
+		if (char === "'" || char === '"') {
+			quote = char;
+			result += " ";
+			continue;
+		}
+
+		result += char;
+	}
+
+	return result;
+}
+
+function extractBindReferenceNames(query) {
+	const names = new Set();
+	const text = maskQuotedText(query);
+	const bindPattern = /:([A-Za-z_][A-Za-z0-9_]*)\b/g;
+	let match;
+
+	while ((match = bindPattern.exec(text)) !== null) {
+		if (text[match.index - 1] === ":") {
+			continue;
+		}
+
+		names.add(match[1]);
+	}
+
+	return names;
+}
+
 function hasFieldMetadata(resource) {
 	return [
 		resource?.fields,
@@ -406,6 +455,8 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 	_resourceOptions = [];
 	_bindsDraft = [];
 	_bindsInitialized = false;
+	_bindValidationErrors = {};
+	_hasValidatedBinds = false;
 
 	@api get builderContext() {
 		return this._builderContext;
@@ -456,7 +507,11 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 	}
 
 	get decoratedBinds() {
-		return this.bindsValue.map((variable, index) => ({ variable, indexKey: String(index) }));
+		return this.bindsValue.map((variable, index) => ({
+			variable,
+			indexKey: String(index),
+			errorMessage: this._bindValidationErrors[index] ?? null
+		}));
 	}
 
 	get queryPlaceholder() {
@@ -492,6 +547,13 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 	}
 
 	@api async validate() {
+		this._hasValidatedBinds = true;
+		const bindErrors = this._validateBindReferences({ report: true });
+		if (bindErrors.length) {
+			this._queryError = null;
+			return bindErrors;
+		}
+
 		try {
 			const bindKeys = this._bindsDraft.map((b) => b.key);
 			await validateQuery({ queryToValidate: this._queryDraft, bindKeys });
@@ -512,12 +574,14 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 			textarea.value = this.queryValue;
 			this._syncHighlight(this.queryValue);
 		}
+		this._applyBindValidationErrors(false);
 	}
 
 	handleBindAdd() {
 		const updated = [...this.bindsValue, { key: "", textValue: "", typeName: "String", isCollection: false }];
 		this._bindsDraft = updated;
 		this._dispatchBindsChange(updated);
+		this._syncBindValidationStateAfterInput();
 	}
 
 	handleBindChange(event) {
@@ -527,6 +591,7 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 		);
 		this._bindsDraft = updated;
 		this._dispatchBindsChange(updated);
+		this._syncBindValidationStateAfterInput();
 	}
 
 	handleBindRemove(event) {
@@ -535,6 +600,7 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 		const updated = this.bindsValue.filter((_, i) => i !== removeIndex);
 		this._bindsDraft = updated;
 		this._dispatchBindsChange(updated);
+		this._syncBindValidationStateAfterInput();
 	}
 
 	handleEditorScroll(event) {
@@ -549,6 +615,7 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 		this._updateQuery(event.target.value);
 		this._syncOutputTypeMappings();
 		this._syncHighlight(this._queryDraft);
+		this._syncBindValidationStateAfterInput();
 	}
 
 	async handleValidate() {
@@ -565,6 +632,39 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 			}
 		}
 		return Array.isArray(binds) ? binds.map((bind) => ({ ...bind })) : [];
+	}
+
+	_syncBindValidationStateAfterInput() {
+		if (this._hasValidatedBinds) {
+			this._validateBindReferences({ report: false });
+		}
+	}
+
+	_validateBindReferences({ report = true } = {}) {
+		const referencedBindNames = extractBindReferenceNames(this._queryDraft);
+		const errorsByIndex = {};
+		const errors = [];
+
+		this._bindsDraft.forEach((bind, index) => {
+			const key = String(bind?.key ?? "").trim();
+			if (!key || referencedBindNames.has(key)) {
+				return;
+			}
+
+			const errorString = `Bind variable "${key}" ${ORPHANED_BIND_ERROR_SUFFIX}`;
+			errorsByIndex[index] = errorString;
+			errors.push({ key: INPUT_VAR_BINDS_JSON, errorString });
+		});
+
+		this._bindValidationErrors = errorsByIndex;
+		this._applyBindValidationErrors(report);
+		return errors;
+	}
+
+	_applyBindValidationErrors(report) {
+		this.template.querySelectorAll("c-soql-bind-input").forEach((bindInput, index) => {
+			bindInput.validate?.(this._bindValidationErrors[index] ?? null, { report });
+		});
 	}
 
 	_dispatchBindsChange(binds) {
