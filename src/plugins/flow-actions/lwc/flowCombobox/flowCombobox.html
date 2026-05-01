@@ -33,19 +33,30 @@
 					<div class="control-cell">
 						<template lwc:if={showSelectedResourcePill}>
 							<div class="slds-pill_container">
-								<lightning-pill
-									class="selected-resource-pill"
-									label={activeReferenceSelection.displayLabel}
-									name={activeReferenceSelection.referenceName}
-									onremove={handleSelectedResourceRemove}
-								>
+								<span class="selected-resource-pill slds-pill" title={activeReferenceSelection.tooltip}>
 									<lightning-icon
-										class="resource-option-icon"
+										class="selected-resource-pill-icon"
 										icon-name={activeReferenceSelection.iconName}
 										size="x-small"
 										alternative-text={activeReferenceSelection.displayLabel}
 									></lightning-icon>
-								</lightning-pill>
+									<span class="slds-pill__label" title={activeReferenceSelection.tooltip}>
+										{activeReferenceSelection.displayLabel}
+									</span>
+									<button
+										class="selected-resource-pill-remove slds-button slds-button_icon slds-pill__remove"
+										type="button"
+										title="Remove selected resource"
+										onclick={handleSelectedResourceRemove}
+									>
+										<lightning-icon
+											icon-name="utility:close"
+											size="xx-small"
+											alternative-text="Remove selected resource"
+										></lightning-icon>
+										<span class="slds-assistive-text">Remove selected resource</span>
+									</button>
+								</span>
 							</div>
 						</template>
 
@@ -135,7 +146,7 @@
 																		<span class="slds-media__body">
 																			<span
 																				class="slds-truncate"
-																				title={resourceOption.displayLabel}
+																				title={resourceOption.tooltip}
 																				>{resourceOption.displayLabel}</span
 																			>
 																		</span>

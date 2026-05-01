@@ -233,7 +233,9 @@ describe("c-flow-combobox", () => {
 			value: "{!record}",
 			valueDataType: "reference"
 		});
-		expect(element.shadowRoot.querySelector("lightning-pill").label).toBe("record");
+		expect(element.shadowRoot.querySelector(".selected-resource-pill .slds-pill__label").textContent).toBe(
+			"record"
+		);
 		expect(element.classList.contains("resource-picker-open")).toBe(false);
 	});
 
@@ -676,6 +678,7 @@ describe("c-flow-combobox", () => {
 			"All Resources > Account ID"
 		);
 		expect(element.shadowRoot.querySelector(".resource-option").textContent).toContain("Account Name");
+		expect(element.shadowRoot.querySelector(".resource-option .slds-truncate").title).toBe("{!opp.Account.Name}");
 
 		element.shadowRoot.querySelector(".resource-option").click();
 		await Promise.resolve();
@@ -686,6 +689,7 @@ describe("c-flow-combobox", () => {
 			value: "{!opp.Account.Name}",
 			valueDataType: "reference"
 		});
+		expect(element.shadowRoot.querySelector(".selected-resource-pill").title).toBe("{!opp.Account.Name}");
 	});
 
 	it("accepts a typed relationship reference and converts it to a selected resource pill", async () => {
@@ -737,7 +741,10 @@ describe("c-flow-combobox", () => {
 			value: "{!opp.Account.Name}",
 			valueDataType: "reference"
 		});
-		expect(element.shadowRoot.querySelector("lightning-pill").label).toBe("Account Name");
+		expect(element.shadowRoot.querySelector(".selected-resource-pill .slds-pill__label").textContent.trim()).toBe(
+			"Account Name"
+		);
+		expect(element.shadowRoot.querySelector(".selected-resource-pill").title).toBe("{!opp.Account.Name}");
 	});
 
 	it("sets custom validity when a typed resource reference cannot be resolved", async () => {

@@ -211,7 +211,6 @@
 	--slds-c-icon-color-foreground-default: var(--lwc-colorTextIconDefault, #706e6b);
 }
 
-
 .resource-option-chevron {
 	display: flex;
 	align-items: center;
@@ -224,20 +223,27 @@
 	line-height: 1.25;
 }
 
-
 .selected-resource-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
 	max-width: 100%;
-	--slds-c-pill-color-background: var(--lwc-colorBackgroundAlt, #ffffff);
+	min-height: 1.75rem;
+	background: var(--lwc-colorBackgroundAlt, #ffffff);
 	color: var(--lwc-brandAccessible, #0176d3);
-	--slds-c-pill-sizing-border: 1px;
-	--slds-c-pill-color-border: var(--lwc-colorBorderInput, #c9c9c9);
-	--slds-c-pill-radius-border: 0.25rem;
+	border: 1px solid var(--lwc-colorBorderInput, #c9c9c9);
+	border-radius: 0.25rem;
+	padding-left: 0.35rem;
 }
 
-.selected-resource-pill lightning-icon {
+.selected-resource-pill-icon,
+.selected-resource-pill-remove lightning-icon {
 	--slds-c-icon-color-foreground-default: var(--lwc-colorTextIconDefault, #747474);
 }
 
+.selected-resource-pill .slds-pill__label {
+	margin-left: 0;
+}
 
 .field-error {
 	line-height: 1.35;

@@ -178,6 +178,15 @@ function deriveDisplayLabel(resourceOption) {
 	return resourceOption.pillLabel ?? resourceOption.referenceName ?? resourceOption.label ?? "";
 }
 
+function deriveTooltip(resourceOption) {
+	return (
+		resourceOption.value ??
+		resourceOption.pillLabel ??
+		resourceOption.referenceName ??
+		deriveDisplayLabel(resourceOption)
+	);
+}
+
 function deriveIconName(resourceOption, categoryKey) {
 	if (resourceOption.dataType === "Boolean" || resourceOption.valueDataType === "Boolean") {
 		return "utility:toggle";
@@ -426,6 +435,7 @@ export default class FlowCombobox extends LightningElement {
 			categoryKey,
 			groupLabel: deriveGroupLabel(categoryKey),
 			displayLabel: deriveDisplayLabel(selectedResource),
+			tooltip: deriveTooltip(selectedResource),
 			iconName: deriveIconName(selectedResource, categoryKey)
 		};
 	}
@@ -470,6 +480,7 @@ export default class FlowCombobox extends LightningElement {
 				groupLabel: "Values",
 				displayLabel: option.label ?? String(option.value ?? ""),
 				label: option.label ?? String(option.value ?? ""),
+				tooltip: option.label ?? String(option.value ?? ""),
 				rawValue: option.value,
 				value,
 				valueDataType: this.fieldDataType,
@@ -533,6 +544,7 @@ export default class FlowCombobox extends LightningElement {
 					categoryKey,
 					groupLabel: deriveGroupLabel(categoryKey),
 					displayLabel: deriveDisplayLabel(resourceOption),
+					tooltip: deriveTooltip(resourceOption),
 					iconName: deriveIconName(resourceOption, categoryKey),
 					valueDataType: "reference",
 					isDrillable: resourceOption.isDrillable ?? !!resourceOption.objectType,
@@ -773,6 +785,7 @@ export default class FlowCombobox extends LightningElement {
 			categoryKey,
 			groupLabel: deriveGroupLabel(categoryKey),
 			displayLabel: deriveDisplayLabel(option),
+			tooltip: deriveTooltip(option),
 			iconName: deriveIconName(option, categoryKey),
 			valueDataType: "reference",
 			isSelectable: option.isSelectable !== false
