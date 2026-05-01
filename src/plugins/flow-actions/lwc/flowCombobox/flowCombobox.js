@@ -76,7 +76,8 @@ function isReference(valueDataType, value) {
 }
 
 function isReferenceText(value) {
-	return typeof value === "string" && value.trim().startsWith("{!");
+	const trimmed = typeof value === "string" ? value.trim() : "";
+	return /^\{![^}]+\}$/.test(trimmed);
 }
 
 function normalizeReferenceName(value) {
@@ -1073,10 +1074,6 @@ export default class FlowCombobox extends LightningElement {
 
 			this._draftTextValue = nextTextValue;
 			this._setResourcePickerOpen(true);
-			return;
-		}
-
-		if (this.hasResourceOptions) {
 			return;
 		}
 

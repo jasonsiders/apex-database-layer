@@ -444,6 +444,74 @@ describe("c-flow-combobox", () => {
 		});
 	});
 
+	it("emits a raw text value when the searchable input changes without selecting a resource", async () => {
+		const element = createComponent({
+			name: "ownerName",
+			label: "Owner Name",
+			fieldDataType: "String",
+			included: true,
+			resourceOptions: [
+				{
+					label: "Variable: accountName",
+					value: "{!accountName}",
+					pillLabel: "accountName",
+					referenceName: "accountName",
+					dataType: "String"
+				}
+			]
+		});
+		const handler = jest.fn();
+		element.addEventListener("fieldchange", handler);
+
+		const input = getTextInput(element);
+		input.value = "asdf";
+		input.dispatchEvent(new Event("input"));
+		input.dispatchEvent(new Event("change"));
+		await Promise.resolve();
+
+		expect(handler).toHaveBeenCalledTimes(1);
+		expect(handler.mock.calls[0][0].detail).toEqual({
+			name: "ownerName",
+			value: "asdf",
+			valueDataType: "String"
+		});
+	});
+
+	it("treats incomplete Flow reference text as a raw value", async () => {
+		const element = createComponent({
+			name: "ownerName",
+			label: "Owner Name",
+			fieldDataType: "String",
+			included: true,
+			resourceOptions: [
+				{
+					label: "Variable: accountName",
+					value: "{!accountName}",
+					pillLabel: "accountName",
+					referenceName: "accountName",
+					dataType: "String"
+				}
+			]
+		});
+		const handler = jest.fn();
+		element.addEventListener("fieldchange", handler);
+
+		const input = getTextInput(element);
+		const setCustomValidity = jest.spyOn(input, "setCustomValidity");
+		input.value = "{!accountName";
+		input.dispatchEvent(new Event("input"));
+		input.dispatchEvent(new Event("change"));
+		await Promise.resolve();
+
+		expect(handler).toHaveBeenCalledTimes(1);
+		expect(handler.mock.calls[0][0].detail).toEqual({
+			name: "ownerName",
+			value: "{!accountName",
+			valueDataType: "String"
+		});
+		expect(setCustomValidity).not.toHaveBeenCalledWith("Enter a valid Flow resource reference.");
+	});
+
 	it("shows an empty-state row when no resources match the current input", async () => {
 		const element = createComponent({
 			name: "record",
