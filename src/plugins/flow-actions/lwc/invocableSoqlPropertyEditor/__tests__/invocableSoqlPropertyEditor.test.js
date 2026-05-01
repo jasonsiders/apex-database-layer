@@ -109,6 +109,97 @@ describe("c-invocable-soql-property-editor", () => {
 		expect(reportValidity).toHaveBeenCalled();
 	});
 
+	it("validate() sets custom validity on duplicate bind variables", async () => {
+		const binds = [
+			{ key: "name", textValue: "", typeName: "String", isCollection: false },
+			{ key: "name", textValue: "", typeName: "String", isCollection: false }
+		];
+		const element = createComponent({
+			inputVariables: [
+				{ name: "query", value: "SELECT Id FROM Account WHERE Name = :name", valueDataType: "String" },
+				{ name: "bindsJson", value: JSON.stringify(binds), valueDataType: "String" }
+			]
+		});
+		await Promise.resolve();
+		const [firstBindInput, secondBindInput] = element.shadowRoot.querySelectorAll("c-soql-bind-input");
+		const firstSetCustomValidity = jest.spyOn(
+			firstBindInput.shadowRoot.querySelector('[data-id="key"]'),
+			"setCustomValidity"
+		);
+		const secondSetCustomValidity = jest.spyOn(
+			secondBindInput.shadowRoot.querySelector('[data-id="key"]'),
+			"setCustomValidity"
+		);
+
+		const result = await element.validate();
+
+		expect(validateQuery).not.toHaveBeenCalled();
+		expect(result).toEqual([
+			{
+				key: "bindsJson",
+				errorString: 'Bind variable "name" is already defined.'
+			},
+			{
+				key: "bindsJson",
+				errorString: 'Bind variable "name" is already defined.'
+			}
+		]);
+		expect(firstSetCustomValidity).toHaveBeenLastCalledWith('Bind variable "name" is already defined.');
+		expect(secondSetCustomValidity).toHaveBeenLastCalledWith('Bind variable "name" is already defined.');
+	});
+
+	it("validate() sets custom validity on bind names with spaces or special characters", async () => {
+		const binds = [{ key: "bad key!", textValue: "", typeName: "String", isCollection: false }];
+		const element = createComponent({
+			inputVariables: [
+				{ name: "query", value: "SELECT Id FROM Account WHERE Name = :bad_key", valueDataType: "String" },
+				{ name: "bindsJson", value: JSON.stringify(binds), valueDataType: "String" }
+			]
+		});
+		await Promise.resolve();
+		const bindInput = element.shadowRoot.querySelector("c-soql-bind-input");
+		const setCustomValidity = jest.spyOn(
+			bindInput.shadowRoot.querySelector('[data-id="key"]'),
+			"setCustomValidity"
+		);
+
+		const result = await element.validate();
+
+		expect(validateQuery).not.toHaveBeenCalled();
+		expect(result).toEqual([
+			{
+				key: "bindsJson",
+				errorString:
+					"Bind variable names can contain only letters, numbers, and underscores, and must start with a letter or underscore."
+			}
+		]);
+		expect(setCustomValidity).toHaveBeenLastCalledWith(
+			"Bind variable names can contain only letters, numbers, and underscores, and must start with a letter or underscore."
+		);
+	});
+
+	it("validate() sets custom validity on bind names that start with a number", async () => {
+		const binds = [{ key: "1name", textValue: "", typeName: "String", isCollection: false }];
+		const element = createComponent({
+			inputVariables: [
+				{ name: "query", value: "SELECT Id FROM Account WHERE Name = :name", valueDataType: "String" },
+				{ name: "bindsJson", value: JSON.stringify(binds), valueDataType: "String" }
+			]
+		});
+		await Promise.resolve();
+		const bindInput = element.shadowRoot.querySelector("c-soql-bind-input");
+		const setCustomValidity = jest.spyOn(
+			bindInput.shadowRoot.querySelector('[data-id="key"]'),
+			"setCustomValidity"
+		);
+
+		await element.validate();
+
+		expect(setCustomValidity).toHaveBeenLastCalledWith(
+			"Bind variable names can contain only letters, numbers, and underscores, and must start with a letter or underscore."
+		);
+	});
+
 	it("validate() flags all bind variables as orphaned when the query has no bind references", async () => {
 		const binds = [{ key: "name", textValue: "", typeName: "String", isCollection: false }];
 		const element = createComponent({

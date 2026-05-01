@@ -8,6 +8,10 @@ const INPUT_VAR_QUERY = "query";
 const INPUT_VAR_BINDS = "binds";
 const INPUT_VAR_BINDS_JSON = "bindsJson";
 const DATA_TYPE_STRING = "String";
+const BIND_KEY_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
+const INVALID_BIND_KEY_MESSAGE =
+	"Bind variable names can contain only letters, numbers, and underscores, and must start with a letter or underscore.";
+const DUPLICATE_BIND_ERROR_SUFFIX = "is already defined.";
 const ORPHANED_BIND_ERROR_SUFFIX = "is not referenced by the query.";
 const OUTPUT_TYPE_MAPPINGS = ["U__allResults", "U__firstResult"];
 const RESOURCE_COLLECTIONS = [
@@ -642,16 +646,38 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 
 	_validateBindReferences({ report = true } = {}) {
 		const referencedBindNames = extractBindReferenceNames(this._queryDraft);
+		const bindKeyCounts = new Map();
 		const errorsByIndex = {};
 		const errors = [];
 
-		this._bindsDraft.forEach((bind, index) => {
-			const key = String(bind?.key ?? "").trim();
-			if (!key || referencedBindNames.has(key)) {
+		this._bindsDraft.forEach((bind) => {
+			const key = String(bind?.key ?? "");
+			if (!key || !BIND_KEY_PATTERN.test(key)) {
 				return;
 			}
 
-			const errorString = `Bind variable "${key}" ${ORPHANED_BIND_ERROR_SUFFIX}`;
+			bindKeyCounts.set(key, (bindKeyCounts.get(key) ?? 0) + 1);
+		});
+
+		this._bindsDraft.forEach((bind, index) => {
+			const key = String(bind?.key ?? "");
+			if (!key) {
+				return;
+			}
+
+			let errorString;
+			if (!BIND_KEY_PATTERN.test(key)) {
+				errorString = INVALID_BIND_KEY_MESSAGE;
+			} else if (bindKeyCounts.get(key) > 1) {
+				errorString = `Bind variable "${key}" ${DUPLICATE_BIND_ERROR_SUFFIX}`;
+			} else if (!referencedBindNames.has(key)) {
+				errorString = `Bind variable "${key}" ${ORPHANED_BIND_ERROR_SUFFIX}`;
+			}
+
+			if (!errorString) {
+				return;
+			}
+
 			errorsByIndex[index] = errorString;
 			errors.push({ key: INPUT_VAR_BINDS_JSON, errorString });
 		});
