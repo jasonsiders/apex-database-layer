@@ -2,11 +2,9 @@ import { createElement } from "@lwc/engine-dom";
 import InvocableSoqlPropertyEditor from "c/invocableSoqlPropertyEditor";
 import validateQuery from "@salesforce/apex/InvocableSoql.validateQuery";
 
-jest.mock(
-	"@salesforce/apex/InvocableSoql.validateQuery",
-	() => ({ default: jest.fn().mockResolvedValue(undefined) }),
-	{ virtual: true }
-);
+jest.mock("@salesforce/apex/InvocableSoql.validateQuery", () => ({ default: jest.fn().mockResolvedValue(undefined) }), {
+	virtual: true
+});
 
 const flushPromises = () => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -24,6 +22,12 @@ describe("c-invocable-soql-property-editor", () => {
 		return Array.from(element.shadowRoot.querySelectorAll("lightning-button")).find(
 			(button) => button.label === label
 		);
+	}
+
+	function expectFlowEventContract(event) {
+		expect(event.bubbles).toBe(true);
+		expect(event.composed).toBe(true);
+		expect(event.cancelable).toBe(false);
 	}
 
 	afterEach(() => {
@@ -59,7 +63,7 @@ describe("c-invocable-soql-property-editor", () => {
 		const element = createComponent({
 			inputVariables: [
 				{ name: "query", value: "SELECT Id FROM Account WHERE Id = :recordId", valueDataType: "String" },
-				{ name: "binds", value: binds, valueDataType: "sobject" }
+				{ name: "binds", value: binds, valueDataType: "Apex" }
 			]
 		});
 		element.validate();
@@ -135,9 +139,10 @@ describe("c-invocable-soql-property-editor", () => {
 
 		const textarea = element.shadowRoot.querySelector(".code-editor");
 		textarea.value = "SELECT Id FROM Contact";
-		textarea.dispatchEvent(new Event("change"));
+		textarea.dispatchEvent(new Event("input"));
 
 		expect(events).toHaveLength(1);
+		expectFlowEventContract(events[0]);
 		expect(events[0].detail).toEqual({
 			name: "query",
 			newValue: "SELECT Id FROM Contact",
@@ -154,10 +159,40 @@ describe("c-invocable-soql-property-editor", () => {
 
 		const textarea = element.shadowRoot.querySelector(".code-editor");
 		textarea.value = "";
-		textarea.dispatchEvent(new Event("change"));
+		textarea.dispatchEvent(new Event("input"));
 
 		expect(deletedEvents).toHaveLength(1);
-		expect(deletedEvents[0].detail.name).toBe("query");
+		expectFlowEventContract(deletedEvents[0]);
+		expect(deletedEvents[0].detail).toEqual({ name: "query" });
+	});
+
+	it("dispatches generic output type mappings when the query root object is entered", () => {
+		const element = createComponent();
+		const events = [];
+		element.addEventListener("configuration_editor_generic_type_mapping_changed", (e) => events.push(e));
+
+		const textarea = element.shadowRoot.querySelector(".code-editor");
+		textarea.value = "SELECT Id FROM Account";
+		textarea.dispatchEvent(new Event("input"));
+
+		expect(events).toHaveLength(2);
+		expectFlowEventContract(events[0]);
+		expect(events.map((event) => event.detail)).toEqual([
+			{ typeName: "U__allResults", typeValue: "Account" },
+			{ typeName: "U__firstResult", typeValue: "Account" }
+		]);
+	});
+
+	it("uses the top-level query object for generic output type mappings", () => {
+		const element = createComponent();
+		const events = [];
+		element.addEventListener("configuration_editor_generic_type_mapping_changed", (e) => events.push(e));
+
+		const textarea = element.shadowRoot.querySelector(".code-editor");
+		textarea.value = "SELECT Id, (SELECT Id FROM Contacts) FROM Account";
+		textarea.dispatchEvent(new Event("input"));
+
+		expect(events.map((event) => event.detail.typeValue)).toEqual(["Account", "Account"]);
 	});
 
 	it("renders an Add Bind Variable button", () => {
@@ -174,7 +209,9 @@ describe("c-invocable-soql-property-editor", () => {
 		await Promise.resolve();
 
 		expect(events).toHaveLength(1);
+		expectFlowEventContract(events[0]);
 		expect(events[0].detail.name).toBe("binds");
+		expect(events[0].detail.newValueDataType).toBe("Apex");
 		expect(events[0].detail.newValue).toHaveLength(1);
 		expect(events[0].detail.newValue[0]).toEqual({
 			key: "",
@@ -188,7 +225,7 @@ describe("c-invocable-soql-property-editor", () => {
 	it("updates a bind variable when a child emits change", () => {
 		const initial = [{ key: "recordId", textValue: "", typeName: "String", isCollection: false }];
 		const element = createComponent({
-			inputVariables: [{ name: "binds", value: initial, valueDataType: "sobject" }]
+			inputVariables: [{ name: "binds", value: initial, valueDataType: "Apex" }]
 		});
 		const events = [];
 		element.addEventListener("configuration_editor_input_value_changed", (e) => events.push(e));
@@ -201,13 +238,15 @@ describe("c-invocable-soql-property-editor", () => {
 		);
 
 		expect(events).toHaveLength(1);
+		expectFlowEventContract(events[0]);
+		expect(events[0].detail.newValueDataType).toBe("Apex");
 		expect(events[0].detail.newValue[0].key).toBe("accountId");
 	});
 
 	it("dispatches configuration_editor_input_value_deleted for binds when last bind is removed", () => {
 		const initial = [{ key: "recordId", textValue: "", typeName: "String", isCollection: false }];
 		const element = createComponent({
-			inputVariables: [{ name: "binds", value: initial, valueDataType: "sobject" }]
+			inputVariables: [{ name: "binds", value: initial, valueDataType: "Apex" }]
 		});
 		const deletedEvents = [];
 		element.addEventListener("configuration_editor_input_value_deleted", (e) => deletedEvents.push(e));
@@ -216,6 +255,7 @@ describe("c-invocable-soql-property-editor", () => {
 		bindInput.dispatchEvent(new CustomEvent("remove", { detail: { index: 0 } }));
 
 		expect(deletedEvents).toHaveLength(1);
-		expect(deletedEvents[0].detail.name).toBe("binds");
+		expectFlowEventContract(deletedEvents[0]);
+		expect(deletedEvents[0].detail).toEqual({ name: "binds" });
 	});
 });

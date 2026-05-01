@@ -1,73 +1,76 @@
 <template>
-    <div class="slds-form slds-form_stacked">
-        <div class={formElementClass}>
-            <label class="slds-text-heading_small slds-var-m-bottom_xx-small" for="query-input">
-                Query
-            </label>
-            <div class="slds-form-element__control">
-                <div class="code-editor-wrapper">
-                    <pre class="code-highlight slds-m-around_none slds-scrollable_none" lwc:dom="manual" aria-hidden="true"></pre>
-                    <textarea
-                        id="query-input"
-                        lwc:ref="editor" 
-                        class="code-editor slds-m-around_none"
-                        name="query"
-                        autocapitalize="off"
-                        autocomplete="off"
-                        onchange={handleQueryChange}
-                        oninput={handleQueryInput}
-                        onscroll={handleEditorScroll}
-                        placeholder={queryPlaceholder}
-                        spellcheck="false"
-                    ></textarea>
-                </div>
-                <template if:true={queryError}>
-                    <p class="slds-form-element__help query-status" role="alert">{queryError}</p>
-                </template>
-                <template if:true={querySuccess}>
-                    <p class="slds-form-element__help slds-text-color_success query-status" role="status">{querySuccess}</p>
-                </template>
-                <div class="slds-var-m-top_x-small">
-                    <lightning-button
-                        label="Validate"
-                        icon-name="utility:magicwand"
-                        onclick={handleValidate}
-                    ></lightning-button>
-                </div>
-            </div>
-        </div>
-        <hr class="section-divider" />
-        <div class="slds-form-element slds-var-m-top_medium">
-            <label class="slds-text-heading_small slds-var-m-bottom_xx-small">Variables</label>
-            <div class="slds-form-element__control">
-                <div class="binds-list">
-                    <template if:true={hasBinds}>
-                        <div class="binds-header slds-p-bottom_none">
-                            <span class="slds-form-element__label slds-m-bottom_none">Name</span>
-                            <span class="slds-form-element__label slds-m-bottom_none">Type</span>
-                            <span class="slds-form-element__label slds-m-bottom_none">Value</span>
-                        </div>
-                    </template>
-                    <template for:each={decoratedBinds} for:item="bind">
-                        <c-flow-untyped-variable-input
-                            key={bind.indexKey}
-                            index={bind.indexKey}
-                            variable={bind.variable}
-                            resource-options={resourceOptions}
-                            onchange={handleBindChange}
-                            onremove={handleBindRemove}
-                        ></c-flow-untyped-variable-input>
-                    </template>
-                </div>
-                <div class="slds-p-top_none slds-var-m-top_x-small">
-                    <lightning-button
-                        label="Add Variable"
-                        icon-name="utility:add"
-                        onclick={handleBindAdd}
-                    ></lightning-button>
-                </div>
-            </div>
-        </div>
-        <hr class="section-divider" />
-    </div>
+	<div class="slds-form slds-form_stacked">
+		<div class={formElementClass}>
+			<label class="slds-text-heading_small slds-var-m-bottom_xx-small" for="query-input"> Query </label>
+			<div class="slds-form-element__control">
+				<div class="code-editor-wrapper">
+					<pre
+						class="code-highlight slds-m-around_none slds-scrollable_none"
+						lwc:dom="manual"
+						aria-hidden="true"
+					></pre>
+					<textarea
+						id="query-input"
+						lwc:ref="editor"
+						class="code-editor slds-m-around_none"
+						name="query"
+						autocapitalize="off"
+						autocomplete="off"
+						oninput={handleQueryInput}
+						onscroll={handleEditorScroll}
+						placeholder={queryPlaceholder}
+						spellcheck="false"
+					></textarea>
+				</div>
+				<template if:true={queryError}>
+					<p class="slds-form-element__help query-status" role="alert">{queryError}</p>
+				</template>
+				<template if:true={querySuccess}>
+					<p class="slds-form-element__help slds-text-color_success query-status" role="status">
+						{querySuccess}
+					</p>
+				</template>
+				<div class="slds-var-m-top_x-small">
+					<lightning-button
+						label="Validate"
+						icon-name="utility:magicwand"
+						onclick={handleValidate}
+					></lightning-button>
+				</div>
+			</div>
+		</div>
+		<hr class="section-divider" />
+		<div class="slds-form-element slds-var-m-top_medium">
+			<label class="slds-text-heading_small slds-var-m-bottom_xx-small">Variables</label>
+			<div class="slds-form-element__control">
+				<div class="binds-list">
+					<template if:true={hasBinds}>
+						<div class="binds-header slds-p-bottom_none">
+							<span class="slds-form-element__label slds-m-bottom_none">Name</span>
+							<span class="slds-form-element__label slds-m-bottom_none">Type</span>
+							<span class="slds-form-element__label slds-m-bottom_none">Value</span>
+						</div>
+					</template>
+					<template for:each={decoratedBinds} for:item="bind">
+						<c-flow-untyped-variable-input
+							key={bind.indexKey}
+							index={bind.indexKey}
+							variable={bind.variable}
+							resource-options={resourceOptions}
+							onchange={handleBindChange}
+							onremove={handleBindRemove}
+						></c-flow-untyped-variable-input>
+					</template>
+				</div>
+				<div class="slds-p-top_none slds-var-m-top_x-small">
+					<lightning-button
+						label="Add Variable"
+						icon-name="utility:add"
+						onclick={handleBindAdd}
+					></lightning-button>
+				</div>
+			</div>
+		</div>
+		<hr class="section-divider" />
+	</div>
 </template>

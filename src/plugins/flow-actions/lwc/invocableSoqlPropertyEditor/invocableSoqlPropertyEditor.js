@@ -3,20 +3,35 @@ import validateQuery from "@salesforce/apex/InvocableSoql.validateQuery";
 
 const EVT_VALUE_CHANGED = "configuration_editor_input_value_changed";
 const EVT_VALUE_DELETED = "configuration_editor_input_value_deleted";
+const EVT_GENERIC_TYPE_MAPPING_CHANGED = "configuration_editor_generic_type_mapping_changed";
 const INPUT_VAR_QUERY = "query";
 const INPUT_VAR_BINDS = "binds";
+const DATA_TYPE_APEX = "Apex";
+const DATA_TYPE_STRING = "String";
+const OUTPUT_TYPE_MAPPINGS = ["U__allResults", "U__firstResult"];
 
 export default class InvocableSoqlPropertyEditor extends LightningElement {
 	@api outputVariables = [];
-	@api genericTypeMappings = [];
 	@api resourceOptions = [];
+
+	_genericTypeMappings = [];
 	_inputVariables = [];
 	_queryDraft = "";
 	_queryError = null;
 	_querySuccess = null;
 	_queryInitialized = false;
+	_outputTypeValue = null;
 	_bindsDraft = [];
 	_bindsInitialized = false;
+
+	@api get genericTypeMappings() {
+		return this._genericTypeMappings;
+	}
+
+	set genericTypeMappings(value) {
+		this._genericTypeMappings = Array.isArray(value) ? value : [];
+		this._outputTypeValue = this._readOutputTypeValue(this._genericTypeMappings);
+	}
 
 	@api get inputVariables() {
 		return this._inputVariables;
@@ -92,7 +107,7 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 	handleBindAdd() {
 		const updated = [...this.bindsValue, { key: "", textValue: "", typeName: "String", isCollection: false }];
 		this._bindsDraft = updated;
-		this._dispatchChange(INPUT_VAR_BINDS, updated, "sobject");
+		this._dispatchChange(INPUT_VAR_BINDS, updated, DATA_TYPE_APEX);
 	}
 
 	handleBindChange(event) {
@@ -101,13 +116,13 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 			i === Number(event.detail.index) ? { ...b, ...event.detail.patch } : b
 		);
 		this._bindsDraft = updated;
-		this._dispatchChange(INPUT_VAR_BINDS, updated, "sobject");
+		this._dispatchChange(INPUT_VAR_BINDS, updated, DATA_TYPE_APEX);
 	}
 
 	handleBindRemove(event) {
 		const updated = this.bindsValue.filter((_, i) => i !== event.detail.index);
 		this._bindsDraft = updated;
-		this._dispatchChange(INPUT_VAR_BINDS, updated.length ? updated : null, "sobject");
+		this._dispatchChange(INPUT_VAR_BINDS, updated.length ? updated : null, DATA_TYPE_APEX);
 	}
 
 	handleEditorScroll(event) {
@@ -118,13 +133,9 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 		}
 	}
 
-	handleQueryChange(event) {
-		this._queryDraft = event.target.value || "";
-		this._dispatchChange(INPUT_VAR_QUERY, this._queryDraft || null, "String");
-	}
-
 	handleQueryInput(event) {
-		this._queryDraft = event.target.value;
+		this._updateQuery(event.target.value);
+		this._syncOutputTypeMappings();
 		this._syncHighlight(this._queryDraft);
 	}
 
@@ -139,11 +150,25 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 
 	_dispatchChange(name, value, dataType) {
 		const eventName = value == null ? EVT_VALUE_DELETED : EVT_VALUE_CHANGED;
+		const detail = value == null ? { name } : { name, newValue: value, newValueDataType: dataType };
 		this.dispatchEvent(
 			new CustomEvent(eventName, {
 				bubbles: true,
 				cancelable: false,
-				detail: { name, newValue: value, newValueDataType: dataType }
+				composed: true,
+				detail
+			})
+		);
+	}
+
+	_dispatchGenericTypeMapping(typeName, typeValue) {
+		const detail = { typeName, typeValue };
+		this.dispatchEvent(
+			new CustomEvent(EVT_GENERIC_TYPE_MAPPING_CHANGED, {
+				bubbles: true,
+				cancelable: false,
+				composed: true,
+				detail
 			})
 		);
 	}
@@ -166,10 +191,85 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 		return (inputVariables ?? []).find((v) => v.name === name)?.value ?? null;
 	}
 
+	_readOutputTypeValue(genericTypeMappings) {
+		return (genericTypeMappings ?? []).find((mapping) => OUTPUT_TYPE_MAPPINGS.includes(mapping.typeName))
+			?.typeValue;
+	}
+
 	_syncHighlight(text) {
 		const pre = this.template.querySelector(".code-highlight");
 		if (pre) {
 			pre.innerHTML = this._highlight(text) + "\n";
+		}
+	}
+
+	_updateQuery(value) {
+		this._queryDraft = value || "";
+		this._dispatchChange(INPUT_VAR_QUERY, this._queryDraft || null, DATA_TYPE_STRING);
+	}
+
+	_extractRootObjectName(query) {
+		const text = query || "";
+		let depth = 0;
+		let quote = null;
+		for (let index = 0; index < text.length; index++) {
+			const char = text[index];
+			if (quote) {
+				if (char === "\\" && index + 1 < text.length) {
+					index++;
+				} else if (char === quote) {
+					quote = null;
+				}
+				continue;
+			}
+			if (char === "'" || char === '"') {
+				quote = char;
+				continue;
+			}
+			if (char === "(") {
+				depth++;
+				continue;
+			}
+			if (char === ")") {
+				depth = Math.max(depth - 1, 0);
+				continue;
+			}
+			if (depth === 0 && this._matchesWord(text, index, "FROM")) {
+				const objectNameStart = this._skipWhitespace(text, index + "FROM".length);
+				return text.slice(objectNameStart).match(/^([A-Za-z_][A-Za-z0-9_]*)\b/)?.[1] ?? null;
+			}
+		}
+		return null;
+	}
+
+	_matchesWord(text, index, word) {
+		return (
+			text.slice(index, index + word.length).toUpperCase() === word &&
+			!this._isWordChar(text[index - 1]) &&
+			!this._isWordChar(text[index + word.length])
+		);
+	}
+
+	_isWordChar(char) {
+		return /[A-Za-z0-9_]/.test(char || "");
+	}
+
+	_skipWhitespace(text, index) {
+		let nextIndex = index;
+		while (/\s/.test(text[nextIndex] || "")) {
+			nextIndex++;
+		}
+		return nextIndex;
+	}
+
+	_syncOutputTypeMappings() {
+		const nextOutputTypeValue = this._extractRootObjectName(this._queryDraft);
+		if (!nextOutputTypeValue || nextOutputTypeValue === this._outputTypeValue) {
+			return;
+		}
+		this._outputTypeValue = nextOutputTypeValue;
+		for (const typeName of OUTPUT_TYPE_MAPPINGS) {
+			this._dispatchGenericTypeMapping(typeName, nextOutputTypeValue);
 		}
 	}
 }
