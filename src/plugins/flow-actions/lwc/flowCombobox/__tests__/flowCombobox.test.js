@@ -262,6 +262,15 @@ describe("c-flow-combobox", () => {
 		expect(element.shadowRoot.querySelector(".selected-resource-pill")).toBeNull();
 		expect(getTextInput(element).value).toBe("{!record}");
 		expect(handler).toHaveBeenCalledTimes(1);
+
+		const editInput = getTextInput(element);
+		editInput.value = "{!recor}";
+		editInput.dispatchEvent(new Event("input"));
+		await Promise.resolve();
+
+		expect(element.shadowRoot.querySelector(".selected-resource-pill")).toBeNull();
+		expect(getTextInput(element).value).toBe("{!recor}");
+		expect(handler).toHaveBeenCalledTimes(1);
 	});
 
 	it("uses field search as the default placeholder", () => {

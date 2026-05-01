@@ -957,7 +957,7 @@ export default class FlowCombobox extends LightningElement {
 		if (!selectedOption) {
 			this._draftTextValue = inputValue;
 			this._pendingSelection = null;
-			this._forceLiteralInput = false;
+			this._forceLiteralInput = true;
 			this._setInputCustomValidity(INVALID_RESOURCE_REFERENCE_MESSAGE);
 			return true;
 		}
@@ -1028,7 +1028,6 @@ export default class FlowCombobox extends LightningElement {
 
 		this._setInputCustomValidity("", false);
 		this._focusedOptionKey = null;
-		this._forceLiteralInput = false;
 		this._suppressTextCommitAfterSelection = false;
 		this._draftTextValue = event.target.value;
 		this._setResourcePickerOpen(true);
