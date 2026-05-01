@@ -156,11 +156,6 @@ global abstract inherited sharing class InvocableSoql {
 		@InvocableVariable(label='First Result')
 		global SObject firstResult;
 		/**
-		 * @description The bind variables used in the query.
-		 */
-		@InvocableVariable(label='Bind Variables JSON')
-		global String bindsJson;
-		/**
 		 * @description The rendered SOQL query string with bind variable placeholders.
 		 */
 		@InvocableVariable(label='Query')
@@ -183,7 +178,6 @@ global abstract inherited sharing class InvocableSoql {
 		 */
 		private Output(Input input) {
 			this();
-			this.bindsJson = input?.bindsJson;
 			Map<String, Soql.Binder> bindMap = input?.getBindsByName();
 			this.soql = DatabaseLayer.Soql.newQuery(input?.query)?.addBind(bindMap)?.toSoql();
 			this.query = this.soql?.toString();

@@ -198,11 +198,8 @@ private class InvocableSoqlTest {
 		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(new List<InvocableSoql.Input>{ input });
 		Test.stopTest();
 
-		List<Object> outputBinds = (List<Object>) JSON.deserializeUntyped(outputs[0].bindsJson);
-		Map<String, Object> outputBind = (Map<String, Object>) outputBinds[0];
-		Assert.areEqual(1, outputBinds.size(), 'Output should include serialized bind variables');
-		Assert.areEqual('name', outputBind.get('key'), 'Serialized bind key should be preserved');
-		Assert.isTrue(outputs[0].query.contains(':name'), 'Query should contain :name');
+		InvocableSoql.Output output = outputs?.get(0);
+		Assert.areEqual(QUERY_BY_NAME, output?.query, 'Wrong query');
 	}
 
 	@IsTest
