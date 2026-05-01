@@ -26,6 +26,113 @@ const RESOURCE_COLLECTIONS = [
 	{ key: "recordUpdates", labelPrefix: "Record" }
 ];
 
+function standardResourceOption({
+	referenceName,
+	displayLabel,
+	dataType,
+	objectType,
+	parentReferenceName,
+	isDrillable = false
+}) {
+	const category = referenceName.startsWith("$GlobalConstant.") ? "globalConstants" : "globalVariables";
+	const labelPrefix = category === "globalConstants" ? "Global Constant" : "Global Variable";
+
+	return {
+		label: `${labelPrefix}: ${displayLabel}`,
+		value: toReferenceValue(referenceName),
+		pillLabel: referenceName,
+		referenceName,
+		displayLabel,
+		dataType,
+		valueDataType: dataType,
+		objectType,
+		parentReferenceName,
+		isCollection: false,
+		isDrillable,
+		category
+	};
+}
+
+const STANDARD_RESOURCE_OPTIONS = [
+	standardResourceOption({ referenceName: "$GlobalConstant.False", displayLabel: "False", dataType: "Boolean" }),
+	standardResourceOption({ referenceName: "$GlobalConstant.True", displayLabel: "True", dataType: "Boolean" }),
+	standardResourceOption({
+		referenceName: "$GlobalConstant.EmptyString",
+		displayLabel: "Blank Value (Empty String)",
+		dataType: "String"
+	}),
+	standardResourceOption({
+		referenceName: "$Api",
+		displayLabel: "API",
+		dataType: "SObject",
+		isDrillable: true
+	}),
+	standardResourceOption({
+		referenceName: "$Api.Session_ID",
+		displayLabel: "Session ID",
+		dataType: "String",
+		parentReferenceName: "$Api"
+	}),
+	standardResourceOption({
+		referenceName: "$Flow",
+		displayLabel: "Running Flow Interview",
+		dataType: "SObject",
+		isDrillable: true
+	}),
+	standardResourceOption({
+		referenceName: "$Flow.FaultMessage",
+		displayLabel: "Fault Message",
+		dataType: "String",
+		parentReferenceName: "$Flow"
+	}),
+	standardResourceOption({
+		referenceName: "$Flow.CurrentDate",
+		displayLabel: "Current Date",
+		dataType: "Date",
+		parentReferenceName: "$Flow"
+	}),
+	standardResourceOption({
+		referenceName: "$Flow.CurrentDateTime",
+		displayLabel: "Current Date/Time",
+		dataType: "DateTime",
+		parentReferenceName: "$Flow"
+	}),
+	standardResourceOption({
+		referenceName: "$Flow.InterviewStartTime",
+		displayLabel: "Interview Start Time",
+		dataType: "DateTime",
+		parentReferenceName: "$Flow"
+	}),
+	standardResourceOption({
+		referenceName: "$Organization",
+		displayLabel: "Running Org",
+		dataType: "SObject",
+		objectType: "Organization",
+		isDrillable: true
+	}),
+	standardResourceOption({
+		referenceName: "$User",
+		displayLabel: "Running User",
+		dataType: "SObject",
+		objectType: "User",
+		isDrillable: true
+	}),
+	standardResourceOption({
+		referenceName: "$Profile",
+		displayLabel: "Running User Profile",
+		dataType: "SObject",
+		objectType: "Profile",
+		isDrillable: true
+	}),
+	standardResourceOption({
+		referenceName: "$UserRole",
+		displayLabel: "Running User Role",
+		dataType: "SObject",
+		objectType: "UserRole",
+		isDrillable: true
+	})
+];
+
 function asArray(value) {
 	return Array.isArray(value) ? value : [];
 }
@@ -356,7 +463,11 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 	}
 
 	get availableResourceOptions() {
-		return dedupeResourceOptions([...this._resourceOptions, ...this._deriveResourceOptions()]);
+		return dedupeResourceOptions([
+			...this._resourceOptions,
+			...this._deriveResourceOptions(),
+			...STANDARD_RESOURCE_OPTIONS
+		]);
 	}
 
 	@api async validate() {

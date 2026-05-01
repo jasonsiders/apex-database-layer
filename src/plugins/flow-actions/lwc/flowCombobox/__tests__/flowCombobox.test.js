@@ -1,5 +1,12 @@
 import { createElement } from "lwc";
 import FlowCombobox from "c/flowCombobox";
+import describeSObjectFields from "@salesforce/apex/InvocableSoql.describeSObjectFields";
+
+jest.mock("@salesforce/apex/InvocableSoql.describeSObjectFields", () => ({ default: jest.fn() }), {
+	virtual: true
+});
+
+const flushPromises = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe("c-flow-combobox", () => {
 	function createComponent(props = {}) {
@@ -20,6 +27,7 @@ describe("c-flow-combobox", () => {
 		while (document.body.firstChild) {
 			document.body.removeChild(document.body.firstChild);
 		}
+		jest.clearAllMocks();
 	});
 
 	it("shows grouped resource options when the searchable input is focused with an empty query", async () => {
@@ -465,8 +473,8 @@ describe("c-flow-combobox", () => {
 					value: "{!opp}",
 					pillLabel: "opp",
 					referenceName: "opp",
-					objectType: "Opportunity",
 					dataType: "SObject",
+					isDrillable: true,
 					isSelectable: false
 				},
 				{
@@ -518,6 +526,54 @@ describe("c-flow-combobox", () => {
 		expect(handler.mock.calls[0][0].detail).toEqual({
 			name: "value",
 			value: "{!opp.Name}",
+			valueDataType: "reference"
+		});
+	});
+
+	it("loads SObject fields when a drillable resource has no preloaded child options", async () => {
+		describeSObjectFields.mockResolvedValueOnce([
+			{ name: "Name", label: "Account Name", dataType: "String" },
+			{ name: "CreatedDate", label: "Created Date", dataType: "DateTime" }
+		]);
+		const element = createComponent({
+			name: "value",
+			label: "Value",
+			fieldDataType: "String",
+			included: true,
+			resourceOptions: [
+				{
+					label: "Variable: account",
+					value: "{!account}",
+					pillLabel: "account",
+					referenceName: "account",
+					objectType: "Account",
+					dataType: "SObject",
+					isSelectable: false
+				}
+			]
+		});
+		const handler = jest.fn();
+		element.addEventListener("fieldchange", handler);
+
+		getTextInput(element).dispatchEvent(new CustomEvent("focus"));
+		await Promise.resolve();
+		element.shadowRoot.querySelector(".resource-option").click();
+		await flushPromises();
+
+		expect(describeSObjectFields).toHaveBeenCalledWith({ objectApiName: "Account" });
+		const optionText = [...element.shadowRoot.querySelectorAll(".resource-option")]
+			.map((option) => option.textContent)
+			.join(" ");
+		expect(optionText).toContain("Account Name");
+		expect(optionText).not.toContain("Created Date");
+
+		element.shadowRoot.querySelector(".resource-option").click();
+		await Promise.resolve();
+
+		expect(handler).toHaveBeenCalledTimes(1);
+		expect(handler.mock.calls[0][0].detail).toEqual({
+			name: "value",
+			value: "{!account.Name}",
 			valueDataType: "reference"
 		});
 	});

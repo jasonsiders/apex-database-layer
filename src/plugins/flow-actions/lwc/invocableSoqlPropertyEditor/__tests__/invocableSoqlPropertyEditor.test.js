@@ -307,6 +307,7 @@ describe("c-invocable-soql-property-editor", () => {
 					referenceName: "opp",
 					dataType: "SObject",
 					objectType: "Opportunity",
+					isDrillable: true,
 					isSelectable: false
 				}),
 				expect.objectContaining({
@@ -314,6 +315,32 @@ describe("c-invocable-soql-property-editor", () => {
 					value: "{!opp.Name}",
 					category: "recordFields",
 					parentReferenceName: "opp"
+				}),
+				expect.objectContaining({
+					referenceName: "$GlobalConstant.EmptyString",
+					dataType: "String",
+					category: "globalConstants"
+				}),
+				expect.objectContaining({
+					referenceName: "$Flow",
+					displayLabel: "Running Flow Interview",
+					isDrillable: true,
+					isSelectable: false,
+					category: "globalVariables"
+				}),
+				expect.objectContaining({
+					referenceName: "$Flow.FaultMessage",
+					value: "{!$Flow.FaultMessage}",
+					dataType: "String",
+					parentReferenceName: "$Flow"
+				}),
+				expect.objectContaining({
+					referenceName: "$User",
+					displayLabel: "Running User",
+					objectType: "User",
+					isDrillable: true,
+					isSelectable: false,
+					category: "globalVariables"
 				})
 			])
 		);

@@ -44,6 +44,53 @@ global abstract inherited sharing class InvocableSoql {
 	}
 
 	/**
+	 * @description Returns fields for an SObject resource so the custom property editor can drill into record variables.
+	 * @param objectApiName The API name of the SObject to describe
+	 * @return Field options compatible with the custom property editor resource picker
+	 */
+	@AuraEnabled(cacheable=true)
+	global static List<FieldOption> describeSObjectFields(String objectApiName) {
+		if (String.isBlank(objectApiName)) {
+			return new List<FieldOption>{};
+		}
+
+		Schema.SObjectType sObjectType = Schema.getGlobalDescribe().get(objectApiName);
+		if (sObjectType == null) {
+			return new List<FieldOption>{};
+		}
+
+		List<FieldOption> results = new List<FieldOption>{};
+		for (Schema.SObjectField field : sObjectType.getDescribe().fields.getMap().values()) {
+			Schema.DescribeFieldResult describe = field.getDescribe();
+			if (describe.isAccessible()) {
+				results.add(new FieldOption(describe));
+			}
+		}
+		return results;
+	}
+
+	/**
+	 * @description Field metadata consumed by the custom property editor resource picker.
+	 */
+	global class FieldOption {
+		@AuraEnabled
+		global String dataType;
+		@AuraEnabled
+		global String label;
+		@AuraEnabled
+		global String name;
+
+		global FieldOption() {
+		}
+
+		private FieldOption(Schema.DescribeFieldResult field) {
+			this.name = field.getName();
+			this.label = field.getLabel();
+			this.dataType = InvocableSoql.toFlowDataType(field.getType());
+		}
+	}
+
+	/**
 	 * @description Input structure for SOQL queries with bind variables.
 	 */
 	global class Input {
@@ -188,6 +235,26 @@ global abstract inherited sharing class InvocableSoql {
 			}
 			throw new System.TypeException('Invalid type: ' + typeName);
 		}
+	}
+
+	private static String toFlowDataType(Schema.DisplayType displayType) {
+		String typeName = String.valueOf(displayType);
+		if (typeName == 'Boolean') {
+			return 'Boolean';
+		}
+		if (typeName == 'Date') {
+			return 'Date';
+		}
+		if (typeName == 'DateTime') {
+			return 'DateTime';
+		}
+		if (typeName == 'Time') {
+			return 'Time';
+		}
+		if (new Set<String>{ 'Currency', 'Double', 'Integer', 'Long', 'Percent' }.contains(typeName)) {
+			return 'Decimal';
+		}
+		return 'String';
 	}
 
 	/**

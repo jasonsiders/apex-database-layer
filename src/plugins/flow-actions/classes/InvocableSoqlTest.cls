@@ -73,6 +73,31 @@ private class InvocableSoqlTest {
 	}
 
 	@IsTest
+	private static void shouldDescribeSObjectFieldsForPropertyEditor() {
+		Test.startTest();
+		List<InvocableSoql.FieldOption> fields = InvocableSoql.describeSObjectFields('Account');
+		Test.stopTest();
+
+		Map<String, InvocableSoql.FieldOption> fieldsByName = new Map<String, InvocableSoql.FieldOption>{};
+		for (InvocableSoql.FieldOption field : fields) {
+			fieldsByName.put(field.name, field);
+		}
+
+		Assert.isTrue(fieldsByName.containsKey('Name'), 'Account.Name should be available');
+		Assert.areEqual('String', fieldsByName.get('Name').dataType, 'Account.Name should map to String');
+		Assert.areEqual('Account Name', fieldsByName.get('Name').label, 'Account.Name label should be exposed');
+	}
+
+	@IsTest
+	private static void shouldReturnNoFieldsForUnknownSObjectDescribe() {
+		Test.startTest();
+		List<InvocableSoql.FieldOption> fields = InvocableSoql.describeSObjectFields('NotARealObject__c');
+		Test.stopTest();
+
+		Assert.areEqual(0, fields.size(), 'Unknown object describes should return no field options');
+	}
+
+	@IsTest
 	private static void shouldReturnEmptyResultsWhenQueryReturnsNothing() {
 		MockSoql.setGlobalMock().withResults(new List<SObject>{});
 

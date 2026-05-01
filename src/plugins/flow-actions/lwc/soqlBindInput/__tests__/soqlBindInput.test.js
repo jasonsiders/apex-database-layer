@@ -68,6 +68,7 @@ describe("c-soql-bind-input", () => {
 			"Get_Records.Name"
 		]);
 		expect(valueInput.resourceOptions.find((option) => option.referenceName === "opp").isSelectable).toBe(false);
+		expect(valueInput.resourceOptions.find((option) => option.referenceName === "opp").isDrillable).toBe(true);
 	});
 
 	it("passes only SObject resources to the value combobox for record binds", async () => {

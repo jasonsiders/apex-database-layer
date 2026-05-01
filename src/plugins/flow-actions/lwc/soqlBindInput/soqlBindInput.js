@@ -139,7 +139,7 @@ export default class SoqlBindInput extends LightningElement {
 			)
 			.map((resourceOption) =>
 				shouldShowDrillableResource(resourceOption, this.selectedType.typeName, this.selectedType.isCollection)
-					? { ...resourceOption, isSelectable: false }
+					? { ...resourceOption, isDrillable: true, isSelectable: false }
 					: resourceOption
 			);
 	}

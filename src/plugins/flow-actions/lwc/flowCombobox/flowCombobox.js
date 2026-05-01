@@ -1,4 +1,5 @@
 import { LightningElement, api } from "lwc";
+import describeSObjectFields from "@salesforce/apex/InvocableSoql.describeSObjectFields";
 
 function normalizeTextValue(value) {
 	if (value === undefined || value === null) {
@@ -18,6 +19,51 @@ function normalizeComparableValue(value) {
 	}
 
 	return String(value).trim().toLowerCase();
+}
+
+function normalizeDataType(dataType) {
+	const normalized = String(dataType ?? "")
+		.trim()
+		.toLowerCase();
+
+	if (
+		["string", "text", "textarea", "picklist", "multipicklist", "id", "email", "phone", "url"].includes(normalized)
+	) {
+		return "String";
+	}
+
+	if (["datetime", "date/time"].includes(normalized)) {
+		return "DateTime";
+	}
+
+	if (normalized === "date") {
+		return "Date";
+	}
+
+	if (normalized === "time") {
+		return "Time";
+	}
+
+	if (normalized === "boolean") {
+		return "Boolean";
+	}
+
+	if (["decimal", "double", "currency", "integer", "int", "long", "number", "percent"].includes(normalized)) {
+		return "Decimal";
+	}
+
+	if (["sobject", "record", "apex"].includes(normalized)) {
+		return "SObject";
+	}
+
+	return dataType ?? null;
+}
+
+function isCompatibleDataType(resourceDataType, fieldDataType) {
+	const source = normalizeDataType(resourceDataType);
+	const target = normalizeDataType(fieldDataType);
+
+	return !source || !target || source === target;
 }
 
 function isReference(valueDataType, value) {
@@ -185,6 +231,27 @@ function isChildResourceOption(resourceOption, parentOption) {
 	);
 }
 
+function toReferenceValue(referenceName) {
+	return referenceName ? `{!${referenceName}}` : "";
+}
+
+function dedupeOptionsByReferenceName(options) {
+	const seen = new Set();
+	const result = [];
+
+	for (const option of options) {
+		const key = option?.referenceName ?? option?.value;
+		if (!key || seen.has(key)) {
+			continue;
+		}
+
+		seen.add(key);
+		result.push(option);
+	}
+
+	return result;
+}
+
 export default class FlowCombobox extends LightningElement {
 	@api name;
 	@api label;
@@ -211,6 +278,8 @@ export default class FlowCombobox extends LightningElement {
 	_ignoreNextTextChange = false;
 	_isResourcePickerOpen = false;
 	_drilldownResource = null;
+	_dynamicChildOptionsByParent = {};
+	_loadingFieldsByParent = {};
 	_pendingScrollFocusedOption = false;
 	_pendingSelection = null;
 	_suppressTextCommitAfterSelection = false;
@@ -390,9 +459,7 @@ export default class FlowCombobox extends LightningElement {
 
 	get candidateResourceOptions() {
 		if (this._drilldownResource) {
-			return (this.resourceOptions || []).filter((resourceOption) =>
-				isChildResourceOption(resourceOption, this._drilldownResource)
-			);
+			return this._getChildResourceOptions(this._drilldownResource);
 		}
 
 		return (this.resourceOptions || []).filter(
@@ -645,6 +712,66 @@ export default class FlowCombobox extends LightningElement {
 		this._suppressTextCommitAfterSelection = true;
 		this._setResourcePickerOpen(true);
 		this._syncRenderedInputValue();
+		this._loadDrilldownFields(option);
+	}
+
+	_getChildResourceOptions(parentOption) {
+		const staticOptions = (this.resourceOptions || []).filter((resourceOption) =>
+			isChildResourceOption(resourceOption, parentOption)
+		);
+		const dynamicOptions = this._dynamicChildOptionsByParent[parentOption.referenceName] ?? [];
+		return dedupeOptionsByReferenceName([...staticOptions, ...dynamicOptions]);
+	}
+
+	async _loadDrilldownFields(parentOption) {
+		if (!parentOption?.objectType || this._dynamicChildOptionsByParent[parentOption.referenceName]) {
+			return;
+		}
+
+		if (this._loadingFieldsByParent[parentOption.referenceName]) {
+			return;
+		}
+
+		this._loadingFieldsByParent = {
+			...this._loadingFieldsByParent,
+			[parentOption.referenceName]: true
+		};
+
+		try {
+			const fields = await describeSObjectFields({ objectApiName: parentOption.objectType });
+			const dynamicOptions = (fields ?? [])
+				.map((field) => {
+					const referenceName = `${parentOption.referenceName}.${field.name}`;
+					return {
+						label: `Field: ${field.label}`,
+						value: toReferenceValue(referenceName),
+						pillLabel: referenceName,
+						referenceName,
+						displayLabel: field.label,
+						dataType: field.dataType,
+						valueDataType: field.dataType,
+						parentObjectType: parentOption.objectType,
+						parentReferenceName: parentOption.referenceName,
+						isCollection: false,
+						category: "recordFields"
+					};
+				})
+				.filter((option) => isCompatibleDataType(option.dataType, this.fieldDataType));
+			this._dynamicChildOptionsByParent = {
+				...this._dynamicChildOptionsByParent,
+				[parentOption.referenceName]: dynamicOptions
+			};
+		} catch {
+			this._dynamicChildOptionsByParent = {
+				...this._dynamicChildOptionsByParent,
+				[parentOption.referenceName]: []
+			};
+		} finally {
+			this._loadingFieldsByParent = {
+				...this._loadingFieldsByParent,
+				[parentOption.referenceName]: false
+			};
+		}
 	}
 
 	_findLiteralOptionByText(text) {
