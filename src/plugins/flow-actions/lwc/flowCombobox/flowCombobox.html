@@ -33,7 +33,11 @@
 					<div class="control-cell">
 						<template lwc:if={showSelectedResourcePill}>
 							<div class="slds-pill_container">
-								<span class="selected-resource-pill slds-pill" title={activeReferenceSelection.tooltip}>
+								<span
+									class="selected-resource-pill slds-pill"
+									title={activeReferenceSelection.tooltip}
+									onclick={handleSelectedResourceEdit}
+								>
 									<lightning-icon
 										class="selected-resource-pill-icon"
 										icon-name={activeReferenceSelection.iconName}
@@ -47,6 +51,7 @@
 										class="selected-resource-pill-remove slds-button slds-button_icon slds-pill__remove"
 										type="button"
 										title="Remove selected resource"
+										onmousedown={handleSelectedResourceRemoveMouseDown}
 										onclick={handleSelectedResourceRemove}
 									>
 										<lightning-icon

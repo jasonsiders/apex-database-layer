@@ -689,7 +689,7 @@ export default class FlowCombobox extends LightningElement {
 			return this.placeholder;
 		}
 
-		return "Enter value or search resources...";
+		return "Search a field...";
 	}
 
 	get controlInputWrapClass() {
@@ -1219,7 +1219,25 @@ export default class FlowCombobox extends LightningElement {
 		}
 	}
 
-	handleSelectedResourceRemove() {
+	handleSelectedResourceEdit() {
+		const rawValue = this.activeReferenceSelection?.value ?? this.value ?? "";
+		this._pendingSelection = null;
+		this._forceLiteralInput = true;
+		this._draftTextValue = normalizeTextValue(rawValue);
+		this._drilldownResource = null;
+		this._suppressTextCommitAfterSelection = false;
+		this._focusInputAfterRender = true;
+		this._setResourcePickerOpen(false);
+	}
+
+	handleSelectedResourceRemoveMouseDown(event) {
+		event.preventDefault();
+		event.stopPropagation();
+	}
+
+	handleSelectedResourceRemove(event) {
+		event?.preventDefault();
+		event?.stopPropagation();
 		this._pendingSelection = null;
 		this._forceLiteralInput = true;
 		this._draftTextValue = "";

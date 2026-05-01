@@ -239,6 +239,37 @@ describe("c-flow-combobox", () => {
 		expect(element.classList.contains("resource-picker-open")).toBe(false);
 	});
 
+	it("shows the raw reference text when a selected resource pill is clicked", async () => {
+		const element = createComponent({
+			name: "record",
+			label: "SObject Record",
+			included: true,
+			resourceOptions: [
+				{ label: "Variable: record", value: "{!record}", pillLabel: "record", referenceName: "record" }
+			]
+		});
+		const handler = jest.fn();
+		element.addEventListener("fieldchange", handler);
+
+		getTextInput(element).dispatchEvent(new CustomEvent("focus"));
+		await Promise.resolve();
+		element.shadowRoot.querySelector(".resource-option").click();
+		await Promise.resolve();
+
+		element.shadowRoot.querySelector(".selected-resource-pill").click();
+		await Promise.resolve();
+
+		expect(element.shadowRoot.querySelector(".selected-resource-pill")).toBeNull();
+		expect(getTextInput(element).value).toBe("{!record}");
+		expect(handler).toHaveBeenCalledTimes(1);
+	});
+
+	it("uses field search as the default placeholder", () => {
+		const element = createComponent({ name: "record", label: "SObject Record", included: true });
+
+		expect(getTextInput(element).placeholder).toBe("Search a field...");
+	});
+
 	it("keeps a clicked resource selection from being overwritten by the typed search text", async () => {
 		const element = createComponent({
 			name: "record",
