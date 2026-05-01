@@ -1,5 +1,5 @@
-import { LightningElement, api } from "lwc";
-import describeSObjectFields from "@salesforce/apex/InvocableSoql.describeSObjectFields";
+import { LightningElement, api, wire } from "lwc";
+import { getObjectInfos } from "lightning/uiObjectInfoApi";
 
 const MAX_RELATIONSHIP_DEPTH = 5;
 const INVALID_RESOURCE_REFERENCE_MESSAGE = "Enter a valid Flow resource reference.";
@@ -276,8 +276,50 @@ function referenceNamesMatch(option, referenceName) {
 	);
 }
 
-function getRelationshipObjectType(field) {
-	return field?.relationshipObjectType ?? field?.relationshipObjectTypes?.[0] ?? null;
+function normalizeObjectInfoFieldDataType(dataType) {
+	if (String(dataType ?? "").toLowerCase() === "reference") {
+		return "String";
+	}
+
+	return normalizeDataType(dataType);
+}
+
+function readObjectInfoResult(objectInfoResult) {
+	const result = objectInfoResult?.result ?? objectInfoResult;
+	return result?.fields ? result : null;
+}
+
+function readObjectInfoFields(objectInfo) {
+	const fields = objectInfo?.fields;
+	if (Array.isArray(fields)) {
+		return fields;
+	}
+
+	if (fields && typeof fields === "object") {
+		return Object.entries(fields).map(([apiName, field]) => ({ apiName, ...field }));
+	}
+
+	return [];
+}
+
+function readObjectInfoFieldName(field) {
+	return field?.apiName ?? field?.name ?? field?.fieldApiName ?? null;
+}
+
+function readObjectInfoRelationshipObjectTypes(field) {
+	return (field?.referenceToInfos ?? []).map((referenceToInfo) => referenceToInfo?.apiName).filter(Boolean);
+}
+
+function chooseRelationshipObjectType(objectTypes) {
+	if (!objectTypes?.length) {
+		return null;
+	}
+
+	if (objectTypes.includes("User")) {
+		return "User";
+	}
+
+	return objectTypes.find((objectType) => objectType !== "Group") ?? objectTypes[0];
 }
 
 function toDrilldownResource(option) {
@@ -385,6 +427,18 @@ export default class FlowCombobox extends LightningElement {
 	/** Current resource whose fields are being browsed. */
 	_drilldownResource = null;
 
+	/** Object API names requested through UI API object metadata. */
+	_objectApiNamesToDescribe = [];
+
+	/** UI API object metadata cache keyed by object API name. */
+	_objectInfoByApiName = {};
+
+	/** UI API object metadata errors keyed by object API name. */
+	_objectInfoErrorsByApiName = {};
+
+	/** Pending object metadata resolvers keyed by object API name. */
+	_pendingObjectInfoResolvers = {};
+
 	/** Dynamically described child field options keyed by parent reference name. */
 	_dynamicChildOptionsByParent = {};
 
@@ -432,6 +486,25 @@ export default class FlowCombobox extends LightningElement {
 	@api validate(error) {
 		this._validationError = error ?? null;
 		return !this._validationError;
+	}
+
+	/** Reactive object API names passed to the UI API object metadata wire. */
+	get objectApiNamesToDescribe() {
+		return this._objectApiNamesToDescribe.length ? this._objectApiNamesToDescribe : undefined;
+	}
+
+	/** Receives UI API object metadata for dynamically requested SObjects. */
+	@wire(getObjectInfos, { objectApiNames: "$objectApiNamesToDescribe" })
+	wiredObjectInfos({ data, error }) {
+		if (data?.results) {
+			data.results.forEach((objectInfoResult, index) => {
+				this._handleObjectInfoResult(this.objectApiNamesToDescribe[index], objectInfoResult);
+			});
+		}
+
+		if (error) {
+			this._handleObjectInfoError(error);
+		}
 	}
 
 	/** Effective validation message from internal or external sources. */
@@ -946,7 +1019,7 @@ export default class FlowCombobox extends LightningElement {
 		return this._getChildResourceOptions(parentOption);
 	}
 
-	/** Describes SObject fields for a drilldown parent when they are not cached. */
+	/** Loads UI API SObject fields for a drilldown parent when they are not cached. */
 	async _loadDrilldownFields(parentOption) {
 		if (!parentOption?.objectType || this._dynamicChildOptionsByParent[parentOption.referenceName]) {
 			return;
@@ -962,42 +1035,8 @@ export default class FlowCombobox extends LightningElement {
 		};
 
 		try {
-			const fields = await describeSObjectFields({ objectApiName: parentOption.objectType });
-			const dynamicOptions = (fields ?? [])
-				.map((field) => {
-					const referenceName = `${parentOption.referenceName}.${field.name}`;
-					const relationshipObjectType = getRelationshipObjectType(field);
-					const relationshipDepth = (parentOption.relationshipDepth ?? 0) + 1;
-					const relationshipReferenceName = field.relationshipName
-						? `${parentOption.referenceName}.${field.relationshipName}`
-						: null;
-					const isDrillable =
-						!!relationshipReferenceName &&
-						!!relationshipObjectType &&
-						relationshipDepth <= MAX_RELATIONSHIP_DEPTH;
-
-					return {
-						label: `Field: ${field.label}`,
-						value: toReferenceValue(referenceName),
-						pillLabel: referenceName,
-						referenceName,
-						displayLabel: field.label,
-						dataType: field.dataType,
-						valueDataType: field.dataType,
-						objectType: relationshipObjectType,
-						parentObjectType: parentOption.objectType,
-						parentReferenceName: parentOption.referenceName,
-						relationshipName: field.relationshipName,
-						relationshipReferenceName,
-						relationshipObjectType,
-						relationshipObjectTypes: field.relationshipObjectTypes,
-						relationshipDepth,
-						isDrillable,
-						isCollection: false,
-						category: "recordFields"
-					};
-				})
-				.filter((option) => option.isDrillable || isCompatibleDataType(option.dataType, this.fieldDataType));
+			const objectInfo = await this._requestObjectInfo(parentOption.objectType);
+			const dynamicOptions = objectInfo ? this._buildDynamicChildOptions(parentOption, objectInfo) : [];
 			this._dynamicChildOptionsByParent = {
 				...this._dynamicChildOptionsByParent,
 				[parentOption.referenceName]: dynamicOptions
@@ -1013,6 +1052,127 @@ export default class FlowCombobox extends LightningElement {
 				[parentOption.referenceName]: false
 			};
 		}
+	}
+
+	/** Requests object metadata through the reactive UI API wire and waits for it. */
+	_requestObjectInfo(objectApiName) {
+		if (this._objectInfoByApiName[objectApiName]) {
+			return Promise.resolve(this._objectInfoByApiName[objectApiName]);
+		}
+
+		if (this._objectInfoErrorsByApiName[objectApiName]) {
+			return Promise.resolve(null);
+		}
+
+		return new Promise((resolve) => {
+			this._pendingObjectInfoResolvers = {
+				...this._pendingObjectInfoResolvers,
+				[objectApiName]: [...(this._pendingObjectInfoResolvers[objectApiName] ?? []), resolve]
+			};
+
+			if (!this._objectApiNamesToDescribe.includes(objectApiName)) {
+				this._objectApiNamesToDescribe = [...this._objectApiNamesToDescribe, objectApiName];
+			}
+		});
+	}
+
+	/** Stores a UI API object metadata result and resolves pending requests. */
+	_handleObjectInfoResult(objectApiName, objectInfoResult) {
+		if (!objectApiName) {
+			return;
+		}
+
+		const objectInfo = readObjectInfoResult(objectInfoResult);
+		if (!objectInfo) {
+			this._objectInfoErrorsByApiName = {
+				...this._objectInfoErrorsByApiName,
+				[objectApiName]: objectInfoResult?.result ?? objectInfoResult ?? true
+			};
+			this._resolvePendingObjectInfo(objectApiName, null);
+			return;
+		}
+
+		const { [objectApiName]: _removedError, ...remainingErrors } = this._objectInfoErrorsByApiName;
+		this._objectInfoByApiName = {
+			...this._objectInfoByApiName,
+			[objectApiName]: objectInfo
+		};
+		this._objectInfoErrorsByApiName = remainingErrors;
+		this._resolvePendingObjectInfo(objectApiName, objectInfo);
+	}
+
+	/** Resolves pending object metadata requests with a shared wire error. */
+	_handleObjectInfoError(error) {
+		this._objectInfoErrorsByApiName = this._objectApiNamesToDescribe.reduce(
+			(errorsByApiName, objectApiName) => ({
+				...errorsByApiName,
+				[objectApiName]: error
+			}),
+			this._objectInfoErrorsByApiName
+		);
+
+		Object.keys(this._pendingObjectInfoResolvers).forEach((objectApiName) => {
+			this._resolvePendingObjectInfo(objectApiName, null);
+		});
+	}
+
+	/** Resolves queued promises for an object metadata request. */
+	_resolvePendingObjectInfo(objectApiName, objectInfo) {
+		const resolvers = this._pendingObjectInfoResolvers[objectApiName] ?? [];
+		if (!resolvers.length) {
+			return;
+		}
+
+		const { [objectApiName]: _removedResolvers, ...remainingResolvers } = this._pendingObjectInfoResolvers;
+		this._pendingObjectInfoResolvers = remainingResolvers;
+		resolvers.forEach((resolve) => resolve(objectInfo));
+	}
+
+	/** Converts UI API object metadata fields into resource picker options. */
+	_buildDynamicChildOptions(parentOption, objectInfo) {
+		return readObjectInfoFields(objectInfo)
+			.map((field) => {
+				const fieldName = readObjectInfoFieldName(field);
+				if (!fieldName) {
+					return null;
+				}
+
+				const referenceName = `${parentOption.referenceName}.${fieldName}`;
+				const relationshipObjectTypes = readObjectInfoRelationshipObjectTypes(field);
+				const relationshipObjectType = chooseRelationshipObjectType(relationshipObjectTypes);
+				const relationshipDepth = (parentOption.relationshipDepth ?? 0) + 1;
+				const relationshipReferenceName = field.relationshipName
+					? `${parentOption.referenceName}.${field.relationshipName}`
+					: null;
+				const isDrillable =
+					!!relationshipReferenceName &&
+					!!relationshipObjectType &&
+					relationshipDepth <= MAX_RELATIONSHIP_DEPTH;
+				const dataType = normalizeObjectInfoFieldDataType(field.dataType);
+
+				return {
+					label: `Field: ${field.label}`,
+					value: toReferenceValue(referenceName),
+					pillLabel: referenceName,
+					referenceName,
+					displayLabel: field.label,
+					dataType,
+					valueDataType: dataType,
+					objectType: relationshipObjectType,
+					parentObjectType: parentOption.objectType,
+					parentReferenceName: parentOption.referenceName,
+					relationshipName: field.relationshipName,
+					relationshipReferenceName,
+					relationshipObjectType,
+					relationshipObjectTypes,
+					relationshipDepth,
+					isDrillable,
+					isCollection: false,
+					category: "recordFields"
+				};
+			})
+			.filter(Boolean)
+			.filter((option) => option.isDrillable || isCompatibleDataType(option.dataType, this.fieldDataType));
 	}
 
 	/** Resolves typed Flow reference text into a selectable resource option. */

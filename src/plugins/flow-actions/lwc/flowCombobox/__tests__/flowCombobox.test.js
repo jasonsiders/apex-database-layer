@@ -1,12 +1,35 @@
 import { createElement } from "lwc";
 import FlowCombobox from "c/flowCombobox";
-import describeSObjectFields from "@salesforce/apex/InvocableSoql.describeSObjectFields";
-
-jest.mock("@salesforce/apex/InvocableSoql.describeSObjectFields", () => ({ default: jest.fn() }), {
-	virtual: true
-});
+import { getObjectInfos } from "lightning/uiObjectInfoApi";
 
 const flushPromises = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+function fieldInfo({ apiName, label, dataType = "String", relationshipName = null, relationshipObjectTypes = [] }) {
+	return {
+		apiName,
+		label,
+		dataType,
+		relationshipName,
+		referenceToInfos: relationshipObjectTypes.map((objectApiName) => ({ apiName: objectApiName }))
+	};
+}
+
+function objectInfo(apiName, fields) {
+	return {
+		apiName,
+		fields: Object.fromEntries(fields.map((field) => [field.apiName, field]))
+	};
+}
+
+async function emitObjectInfos(...objectInfos) {
+	getObjectInfos.emit({
+		results: objectInfos.map((info) => ({
+			result: info,
+			statusCode: 200
+		}))
+	});
+	await flushPromises();
+}
 
 describe("c-flow-combobox", () => {
 	function createComponent(props = {}) {
@@ -719,9 +742,9 @@ describe("c-flow-combobox", () => {
 	});
 
 	it("loads SObject fields when a drillable resource has no preloaded child options", async () => {
-		describeSObjectFields.mockResolvedValueOnce([
-			{ name: "Name", label: "Account Name", dataType: "String" },
-			{ name: "CreatedDate", label: "Created Date", dataType: "DateTime" }
+		const accountInfo = objectInfo("Account", [
+			fieldInfo({ apiName: "Name", label: "Account Name" }),
+			fieldInfo({ apiName: "CreatedDate", label: "Created Date", dataType: "DateTime" })
 		]);
 		const element = createComponent({
 			name: "value",
@@ -746,9 +769,11 @@ describe("c-flow-combobox", () => {
 		getTextInput(element).dispatchEvent(new CustomEvent("focus"));
 		await Promise.resolve();
 		element.shadowRoot.querySelector(".resource-option").click();
+		await Promise.resolve();
+		expect(getObjectInfos.getLastConfig().objectApiNames).toEqual(["Account"]);
+		await emitObjectInfos(accountInfo);
 		await flushPromises();
 
-		expect(describeSObjectFields).toHaveBeenCalledWith({ objectApiName: "Account" });
 		const optionText = [...element.shadowRoot.querySelectorAll(".resource-option")]
 			.map((option) => option.textContent)
 			.join(" ");
@@ -767,15 +792,14 @@ describe("c-flow-combobox", () => {
 	});
 
 	it("selects lookup IDs from relationship field rows", async () => {
-		describeSObjectFields.mockResolvedValueOnce([
-			{
-				name: "AccountId",
+		const opportunityInfo = objectInfo("Opportunity", [
+			fieldInfo({
+				apiName: "AccountId",
 				label: "Account ID",
-				dataType: "String",
+				dataType: "Reference",
 				relationshipName: "Account",
-				relationshipObjectType: "Account",
 				relationshipObjectTypes: ["Account"]
-			}
+			})
 		]);
 		const element = createComponent({
 			name: "value",
@@ -800,6 +824,8 @@ describe("c-flow-combobox", () => {
 		getTextInput(element).dispatchEvent(new CustomEvent("focus"));
 		await Promise.resolve();
 		element.shadowRoot.querySelector(".resource-option").click();
+		await Promise.resolve();
+		await emitObjectInfos(opportunityInfo);
 		await flushPromises();
 
 		element.shadowRoot.querySelector(".resource-option").click();
@@ -814,18 +840,16 @@ describe("c-flow-combobox", () => {
 	});
 
 	it("drills through relationship fields and emits grandparent field references", async () => {
-		describeSObjectFields
-			.mockResolvedValueOnce([
-				{
-					name: "AccountId",
-					label: "Account ID",
-					dataType: "String",
-					relationshipName: "Account",
-					relationshipObjectType: "Account",
-					relationshipObjectTypes: ["Account"]
-				}
-			])
-			.mockResolvedValueOnce([{ name: "Name", label: "Account Name", dataType: "String" }]);
+		const opportunityInfo = objectInfo("Opportunity", [
+			fieldInfo({
+				apiName: "AccountId",
+				label: "Account ID",
+				dataType: "Reference",
+				relationshipName: "Account",
+				relationshipObjectTypes: ["Account"]
+			})
+		]);
+		const accountInfo = objectInfo("Account", [fieldInfo({ apiName: "Name", label: "Account Name" })]);
 		const element = createComponent({
 			name: "value",
 			label: "Value",
@@ -849,6 +873,9 @@ describe("c-flow-combobox", () => {
 		getTextInput(element).dispatchEvent(new CustomEvent("focus"));
 		await Promise.resolve();
 		element.shadowRoot.querySelector(".resource-option").click();
+		await Promise.resolve();
+		expect(getObjectInfos.getLastConfig().objectApiNames).toEqual(["Opportunity"]);
+		await emitObjectInfos(opportunityInfo);
 		await flushPromises();
 
 		const relationshipOption = element.shadowRoot.querySelector(".resource-option");
@@ -856,10 +883,11 @@ describe("c-flow-combobox", () => {
 		expect(relationshipOption.querySelector(".resource-option-chevron")).not.toBeNull();
 
 		relationshipOption.querySelector(".resource-option-chevron").click();
+		await Promise.resolve();
+		expect(getObjectInfos.getLastConfig().objectApiNames).toEqual(["Opportunity", "Account"]);
+		await emitObjectInfos(opportunityInfo, accountInfo);
 		await flushPromises();
 
-		expect(describeSObjectFields).toHaveBeenNthCalledWith(1, { objectApiName: "Opportunity" });
-		expect(describeSObjectFields).toHaveBeenNthCalledWith(2, { objectApiName: "Account" });
 		expect(element.shadowRoot.querySelector(".resource-dropdown-header").textContent).toContain(
 			"All Resources > Account ID"
 		);
@@ -879,18 +907,16 @@ describe("c-flow-combobox", () => {
 	});
 
 	it("accepts a typed relationship reference and converts it to a selected resource pill", async () => {
-		describeSObjectFields
-			.mockResolvedValueOnce([
-				{
-					name: "AccountId",
-					label: "Account ID",
-					dataType: "String",
-					relationshipName: "Account",
-					relationshipObjectType: "Account",
-					relationshipObjectTypes: ["Account"]
-				}
-			])
-			.mockResolvedValueOnce([{ name: "Name", label: "Account Name", dataType: "String" }]);
+		const opportunityInfo = objectInfo("Opportunity", [
+			fieldInfo({
+				apiName: "AccountId",
+				label: "Account ID",
+				dataType: "Reference",
+				relationshipName: "Account",
+				relationshipObjectTypes: ["Account"]
+			})
+		]);
+		const accountInfo = objectInfo("Account", [fieldInfo({ apiName: "Name", label: "Account Name" })]);
 		const element = createComponent({
 			name: "value",
 			label: "Value",
@@ -916,10 +942,14 @@ describe("c-flow-combobox", () => {
 		input.value = "{!opp.Account.Name}";
 		input.dispatchEvent(new Event("input"));
 		input.dispatchEvent(new CustomEvent("blur"));
+		await Promise.resolve();
+		expect(getObjectInfos.getLastConfig().objectApiNames).toEqual(["Opportunity"]);
+		await emitObjectInfos(opportunityInfo);
+		await Promise.resolve();
+		expect(getObjectInfos.getLastConfig().objectApiNames).toEqual(["Opportunity", "Account"]);
+		await emitObjectInfos(opportunityInfo, accountInfo);
 		await flushPromises();
 
-		expect(describeSObjectFields).toHaveBeenNthCalledWith(1, { objectApiName: "Opportunity" });
-		expect(describeSObjectFields).toHaveBeenNthCalledWith(2, { objectApiName: "Account" });
 		expect(setCustomValidity).toHaveBeenLastCalledWith("");
 		expect(handler).toHaveBeenCalledTimes(1);
 		expect(handler.mock.calls[0][0].detail).toEqual({
@@ -969,15 +999,14 @@ describe("c-flow-combobox", () => {
 	});
 
 	it("stops drilling relationship fields after five parent levels", async () => {
-		describeSObjectFields.mockResolvedValueOnce([
-			{
-				name: "ManagerId",
+		const userInfo = objectInfo("User", [
+			fieldInfo({
+				apiName: "ManagerId",
 				label: "Manager ID",
-				dataType: "String",
+				dataType: "Reference",
 				relationshipName: "Manager",
-				relationshipObjectType: "User",
 				relationshipObjectTypes: ["User"]
-			}
+			})
 		]);
 		const element = createComponent({
 			name: "value",
@@ -1001,6 +1030,8 @@ describe("c-flow-combobox", () => {
 		getTextInput(element).dispatchEvent(new CustomEvent("focus"));
 		await Promise.resolve();
 		element.shadowRoot.querySelector(".resource-option").click();
+		await Promise.resolve();
+		await emitObjectInfos(userInfo);
 		await flushPromises();
 
 		expect(element.shadowRoot.querySelector(".resource-option").textContent).toContain("Manager ID");
