@@ -2,6 +2,7 @@ import { LightningElement, api } from "lwc";
 import describeSObjectFields from "@salesforce/apex/InvocableSoql.describeSObjectFields";
 
 const MAX_RELATIONSHIP_DEPTH = 5;
+const INVALID_RESOURCE_REFERENCE_MESSAGE = "Enter a valid Flow resource reference.";
 
 function normalizeTextValue(value) {
 	if (value === undefined || value === null) {
@@ -74,6 +75,10 @@ function isReference(valueDataType, value) {
 	);
 }
 
+function isReferenceText(value) {
+	return typeof value === "string" && value.trim().startsWith("{!");
+}
+
 function normalizeReferenceName(value) {
 	if (typeof value !== "string") {
 		return null;
@@ -84,6 +89,14 @@ function normalizeReferenceName(value) {
 	}
 
 	return value;
+}
+
+function unwrapReferenceName(value) {
+	const trimmed = typeof value === "string" ? value.trim() : "";
+	if (!trimmed.startsWith("{!") || !trimmed.endsWith("}")) {
+		return null;
+	}
+	return normalizeReferenceName(trimmed);
 }
 
 function matchesResourceOption(resourceOption, query) {
@@ -235,6 +248,14 @@ function isChildResourceOption(resourceOption, parentOption) {
 
 function toReferenceValue(referenceName) {
 	return referenceName ? `{!${referenceName}}` : "";
+}
+
+function referenceNamesMatch(option, referenceName) {
+	return (
+		option?.value === toReferenceValue(referenceName) ||
+		option?.referenceName === referenceName ||
+		option?.pillLabel === referenceName
+	);
 }
 
 function getRelationshipObjectType(field) {
@@ -701,9 +722,21 @@ export default class FlowCombobox extends LightningElement {
 	}
 
 	_syncRenderedInputValue() {
-		const input = this.template.querySelector('[data-id="resource-input"]');
+		const input = this._getResourceInput();
 		if (input) {
 			input.value = this.displayTextValue;
+		}
+	}
+
+	_getResourceInput() {
+		return this.template.querySelector('[data-id="resource-input"]');
+	}
+
+	_setInputCustomValidity(message, report = true) {
+		const input = this._getResourceInput();
+		input?.setCustomValidity?.(message);
+		if (report) {
+			input?.reportValidity?.();
 		}
 	}
 
@@ -733,6 +766,19 @@ export default class FlowCombobox extends LightningElement {
 		this._emitFieldChange(option.value, option.valueDataType);
 	}
 
+	_toReferenceSelection(option) {
+		const categoryKey = deriveCategoryKey(option);
+		return {
+			...option,
+			categoryKey,
+			groupLabel: deriveGroupLabel(categoryKey),
+			displayLabel: deriveDisplayLabel(option),
+			iconName: deriveIconName(option, categoryKey),
+			valueDataType: "reference",
+			isSelectable: option.isSelectable !== false
+		};
+	}
+
 	_openDrilldown(option) {
 		this._drilldownResource = toDrilldownResource(option);
 		this._draftTextValue = "";
@@ -749,6 +795,11 @@ export default class FlowCombobox extends LightningElement {
 		);
 		const dynamicOptions = this._dynamicChildOptionsByParent[parentOption.referenceName] ?? [];
 		return dedupeOptionsByReferenceName([...staticOptions, ...dynamicOptions]);
+	}
+
+	async _getFieldOptionsForParent(parentOption) {
+		await this._loadDrilldownFields(parentOption);
+		return this._getChildResourceOptions(parentOption);
 	}
 
 	async _loadDrilldownFields(parentOption) {
@@ -819,6 +870,90 @@ export default class FlowCombobox extends LightningElement {
 		}
 	}
 
+	async _resolveTypedResourceOption(inputValue) {
+		const referenceName = unwrapReferenceName(inputValue);
+		if (!referenceName) {
+			return null;
+		}
+
+		const exactOption = this.selectableResourceOptions.find((option) => referenceNamesMatch(option, referenceName));
+		if (
+			exactOption &&
+			exactOption.isSelectable !== false &&
+			isCompatibleDataType(exactOption.dataType ?? exactOption.valueDataType, this.fieldDataType)
+		) {
+			return this._toReferenceSelection(exactOption);
+		}
+
+		const parts = referenceName.split(".").filter(Boolean);
+		if (parts.length < 2 || parts.length > MAX_RELATIONSHIP_DEPTH + 2) {
+			return null;
+		}
+
+		const root = this.resourceOptions.find((option) => referenceNamesMatch(option, parts[0]));
+		if (!root?.objectType) {
+			return null;
+		}
+
+		let parentOption = toDrilldownResource(root);
+		let currentReferenceName = parts[0];
+
+		for (let index = 1; index < parts.length; index++) {
+			const segment = parts[index];
+			const isLastSegment = index === parts.length - 1;
+			const childOptions = await this._getFieldOptionsForParent(parentOption);
+			const directReferenceName = `${currentReferenceName}.${segment}`;
+			const childOption = childOptions.find(
+				(option) =>
+					option.referenceName === directReferenceName ||
+					option.relationshipReferenceName === directReferenceName
+			);
+
+			if (!childOption) {
+				return null;
+			}
+
+			if (isLastSegment) {
+				if (
+					childOption.referenceName === referenceName &&
+					childOption.isSelectable !== false &&
+					isCompatibleDataType(childOption.dataType ?? childOption.valueDataType, this.fieldDataType)
+				) {
+					return this._toReferenceSelection(childOption);
+				}
+				return null;
+			}
+
+			if (childOption.relationshipReferenceName !== directReferenceName || !childOption.isDrillable) {
+				return null;
+			}
+
+			parentOption = toDrilldownResource(childOption);
+			currentReferenceName = directReferenceName;
+		}
+
+		return null;
+	}
+
+	async _commitTypedReference(inputValue) {
+		if (!isReferenceText(inputValue)) {
+			return false;
+		}
+
+		const selectedOption = await this._resolveTypedResourceOption(inputValue);
+		if (!selectedOption) {
+			this._draftTextValue = inputValue;
+			this._pendingSelection = null;
+			this._forceLiteralInput = false;
+			this._setInputCustomValidity(INVALID_RESOURCE_REFERENCE_MESSAGE);
+			return true;
+		}
+
+		this._setInputCustomValidity("");
+		this._emitSelection(selectedOption);
+		return true;
+	}
+
 	_findLiteralOptionByText(text) {
 		return this.literalOptions.find((option) => matchesLiteralOptionByText(option, text)) ?? null;
 	}
@@ -878,6 +1013,7 @@ export default class FlowCombobox extends LightningElement {
 			this._pendingSelection = null;
 		}
 
+		this._setInputCustomValidity("", false);
 		this._focusedOptionKey = null;
 		this._forceLiteralInput = false;
 		this._suppressTextCommitAfterSelection = false;
@@ -885,7 +1021,7 @@ export default class FlowCombobox extends LightningElement {
 		this._setResourcePickerOpen(true);
 	}
 
-	handleTextChange(event) {
+	async handleTextChange(event) {
 		if (this._pendingSelection && event.target.value === this._pendingSelection.displayLabel) {
 			return;
 		}
@@ -900,6 +1036,10 @@ export default class FlowCombobox extends LightningElement {
 		}
 
 		const nextTextValue = event.target.value;
+		if (isReferenceText(nextTextValue) && (await this._commitTypedReference(nextTextValue))) {
+			return;
+		}
+
 		const matchingLiteralOption = this._findLiteralOptionByText(nextTextValue);
 
 		if (matchingLiteralOption) {
@@ -929,7 +1069,23 @@ export default class FlowCombobox extends LightningElement {
 		this._emitFieldChange(nextTextValue, this.fieldDataType);
 	}
 
-	handleBlur() {
+	async handleBlur(event) {
+		const nextTextValue = this._draftTextValue ?? event.target.value;
+		if (isReferenceText(nextTextValue) && (await this._commitTypedReference(nextTextValue))) {
+			this._setResourcePickerOpen(false);
+			this._syncRenderedInputValue();
+			this.dispatchEvent(
+				new CustomEvent("fieldblur", {
+					bubbles: true,
+					composed: true,
+					detail: {
+						name: this.name
+					}
+				})
+			);
+			return;
+		}
+
 		if (this.allowsLiteralChoices && this._draftTextValue !== null) {
 			const matchingLiteralOption = this._findLiteralOptionByText(this._draftTextValue);
 

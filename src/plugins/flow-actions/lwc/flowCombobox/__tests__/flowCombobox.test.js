@@ -688,6 +688,93 @@ describe("c-flow-combobox", () => {
 		});
 	});
 
+	it("accepts a typed relationship reference and converts it to a selected resource pill", async () => {
+		describeSObjectFields
+			.mockResolvedValueOnce([
+				{
+					name: "AccountId",
+					label: "Account ID",
+					dataType: "String",
+					relationshipName: "Account",
+					relationshipObjectType: "Account",
+					relationshipObjectTypes: ["Account"]
+				}
+			])
+			.mockResolvedValueOnce([{ name: "Name", label: "Account Name", dataType: "String" }]);
+		const element = createComponent({
+			name: "value",
+			label: "Value",
+			fieldDataType: "String",
+			included: true,
+			resourceOptions: [
+				{
+					label: "Variable: opp",
+					value: "{!opp}",
+					pillLabel: "opp",
+					referenceName: "opp",
+					objectType: "Opportunity",
+					dataType: "SObject",
+					isSelectable: false
+				}
+			]
+		});
+		const handler = jest.fn();
+		element.addEventListener("fieldchange", handler);
+
+		const input = getTextInput(element);
+		const setCustomValidity = jest.spyOn(input, "setCustomValidity");
+		input.value = "{!opp.Account.Name}";
+		input.dispatchEvent(new Event("input"));
+		input.dispatchEvent(new CustomEvent("blur"));
+		await flushPromises();
+
+		expect(describeSObjectFields).toHaveBeenNthCalledWith(1, { objectApiName: "Opportunity" });
+		expect(describeSObjectFields).toHaveBeenNthCalledWith(2, { objectApiName: "Account" });
+		expect(setCustomValidity).toHaveBeenLastCalledWith("");
+		expect(handler).toHaveBeenCalledTimes(1);
+		expect(handler.mock.calls[0][0].detail).toEqual({
+			name: "value",
+			value: "{!opp.Account.Name}",
+			valueDataType: "reference"
+		});
+		expect(element.shadowRoot.querySelector("lightning-pill").label).toBe("Account Name");
+	});
+
+	it("sets custom validity when a typed resource reference cannot be resolved", async () => {
+		const element = createComponent({
+			name: "value",
+			label: "Value",
+			fieldDataType: "String",
+			included: true,
+			resourceOptions: [
+				{
+					label: "Variable: opp",
+					value: "{!opp}",
+					pillLabel: "opp",
+					referenceName: "opp",
+					objectType: "Opportunity",
+					dataType: "SObject",
+					isSelectable: false
+				}
+			]
+		});
+		const handler = jest.fn();
+		element.addEventListener("fieldchange", handler);
+
+		const input = getTextInput(element);
+		const setCustomValidity = jest.spyOn(input, "setCustomValidity");
+		const reportValidity = jest.spyOn(input, "reportValidity");
+		input.value = "{!adsf}";
+		input.dispatchEvent(new Event("input"));
+		input.dispatchEvent(new CustomEvent("blur"));
+		await flushPromises();
+
+		expect(handler).not.toHaveBeenCalled();
+		expect(setCustomValidity).toHaveBeenLastCalledWith("Enter a valid Flow resource reference.");
+		expect(reportValidity).toHaveBeenCalled();
+		expect(getTextInput(element).value).toBe("{!adsf}");
+	});
+
 	it("stops drilling relationship fields after five parent levels", async () => {
 		describeSObjectFields.mockResolvedValueOnce([
 			{
