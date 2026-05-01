@@ -82,9 +82,8 @@ public class SoqlParser {
 			Map<String, Integer> positions = new SoqlParser.Scanner(str)?.scan();
 			SoqlParser.ParseContext ctx = new SoqlParser.ParseContext(str, positions);
 			this.applyParsers(builder, ctx);
-		} catch (Exception error) {
-			String msg = 'Invalid query: ' + str + '\n' + error + '\n' + error?.getStackTraceString();
-			throw new System.QueryException(msg);
+		} catch (Exception anyError) {
+			throw new System.QueryException('Invalid query: ' + str);
 		}
 	}
 
