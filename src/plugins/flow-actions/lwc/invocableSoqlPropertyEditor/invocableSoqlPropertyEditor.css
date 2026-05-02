@@ -1,67 +1,79 @@
-
 .code-editor-wrapper {
-    display: grid;
-    border: 1px solid #c9c7c5;
-    border-radius: 4px;
-    background: #f8f8f8;
+	display: grid;
+	border: 1px solid #c9c7c5;
+	border-radius: 4px;
+	background: #f8f8f8;
 }
 
 .code-editor-wrapper:focus-within {
-    border-color: #0070d2;
-    box-shadow: 0 0 0 1px #0070d2;
+	border-color: #0070d2;
+	box-shadow: 0 0 0 1px #0070d2;
 }
 
 .code-editor,
 .code-highlight {
-    grid-row: 1;
-    grid-column: 1;
-    font-family: 'Cascadia Code', 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-    font-size: 12px;
-    line-height: 1.6;
-    min-height: 120px;
-    padding: 8px 12px;
-    tab-size: 4;
-    box-sizing: border-box;
-    white-space: pre-wrap;
-    word-wrap: break-word;
+	grid-row: 1;
+	grid-column: 1;
+	font-family: "Cascadia Code", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+	font-size: 12px;
+	line-height: 1.6;
+	min-height: 120px;
+	padding: 8px 12px;
+	tab-size: 4;
+	box-sizing: border-box;
+	white-space: pre-wrap;
+	word-wrap: break-word;
 }
 
 .code-highlight {
-    color: #1e1e1e;
-    pointer-events: none;
+	color: #1e1e1e;
+	pointer-events: none;
 }
 
 .code-editor {
-    background: transparent;
-    border: none;
-    caret-color: #1e1e1e;
-    color: transparent;
-    outline: none;
-    resize: vertical;
-    width: 100%;
+	background: transparent;
+	border: none;
+	caret-color: #1e1e1e;
+	color: transparent;
+	outline: none;
+	resize: vertical;
+	width: 100%;
 }
 
 .binds-list {
-    display: grid;
-    row-gap: 0.5rem;
+	display: grid;
+	row-gap: 0.5rem;
 }
 
 .binds-header {
-    display: grid;
-    grid-template-columns: 2fr 2fr 3fr 2rem;
-    column-gap: 0.5rem;
+	display: grid;
+	grid-template-columns: 2fr 2fr 3fr 2rem;
+	column-gap: 0.5rem;
 }
 
 .section-divider {
-    border: none;
-    border-bottom: 1px solid var(--lwc-colorBorder, #dddbda);
-    margin: 1.25rem 0 0;
+	border: none;
+	border-bottom: 1px solid var(--lwc-colorBorder, #dddbda);
+	margin: 1.25rem 0 0;
 }
 
-.query-status { font-weight: 450; }
+.query-status {
+	font-weight: 450;
+}
 
-.hl-kw { color: #0070d2; font-weight: bold; }
-.hl-fn { color: #7b5ea7; }
-.hl-dt { color: #2e7d32; }
-.hl-str { color: #c0392b; }
-.hl-bind { color: #e67e22; }
+.hl-kw {
+	color: #0070d2;
+	font-weight: bold;
+}
+.hl-fn {
+	color: #7b5ea7;
+}
+.hl-dt {
+	color: #2e7d32;
+}
+.hl-str {
+	color: #c0392b;
+}
+.hl-bind {
+	color: #e67e22;
+}
