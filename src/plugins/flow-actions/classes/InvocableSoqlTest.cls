@@ -15,11 +15,21 @@ private class InvocableSoqlTest {
 	}
 
 	private static Map<String, Object> createStringVariable(String key, String value) {
-		return new Map<String, Object>{ 'key' => key, 'textValue' => value, 'typeName' => 'String', 'isCollection' => false };
+		return new Map<String, Object>{
+			'key' => key,
+			'textValue' => value,
+			'typeName' => 'String',
+			'isCollection' => false
+		};
 	}
 
 	private static Map<String, Object> createBooleanVariable(String key, Boolean value) {
-		return new Map<String, Object>{ 'key' => key, 'textValue' => String.valueOf(value), 'typeName' => 'Boolean', 'isCollection' => false };
+		return new Map<String, Object>{
+			'key' => key,
+			'textValue' => String.valueOf(value),
+			'typeName' => 'Boolean',
+			'isCollection' => false
+		};
 	}
 
 	private static InvocableSoql.Input createInput(String query, List<Map<String, Object>> binds) {
@@ -493,6 +503,69 @@ private class InvocableSoqlTest {
 			Assert.fail('Should have thrown an exception');
 		} catch (Exception anyError) {
 			// As expected...
+		}
+		Test.stopTest();
+	}
+
+	@IsTest
+	private static void shouldHandleNullBindsJson() {
+		MockSoql.setGlobalMock().withResults(new List<SObject>{ new Account(Name = 'Acme') });
+		InvocableSoql.Input input = new InvocableSoql.Input();
+		input.query = QUERY_NO_WHERE;
+
+		Test.startTest();
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(new List<InvocableSoql.Input>{ input });
+		Test.stopTest();
+
+		Assert.areEqual(1, outputs.size(), 'Should return 1 output when bindsJson is null');
+	}
+
+	@SuppressWarnings('PMD.EmptyCatchBlock')
+	@IsTest
+	private static void shouldThrowForUndeserializableBindValue() {
+		InvocableSoql.Input input = InvocableSoqlTest.createInput(
+			QUERY_BY_NAME,
+			new List<Map<String, Object>>{
+				new Map<String, Object>{
+					'key' => 'name',
+					'textValue' => '"NotABoolean"',
+					'typeName' => 'Boolean',
+					'isCollection' => false
+				}
+			}
+		);
+
+		Test.startTest();
+		try {
+			InvocableSoql.invoke(new List<InvocableSoql.Input>{ input });
+			Assert.fail('Should have thrown an exception');
+		} catch (Exception anyError) {
+			// As expected
+		}
+		Test.stopTest();
+	}
+
+	@SuppressWarnings('PMD.EmptyCatchBlock')
+	@IsTest
+	private static void shouldThrowForUnknownBindType() {
+		InvocableSoql.Input input = InvocableSoqlTest.createInput(
+			QUERY_BY_NAME,
+			new List<Map<String, Object>>{
+				new Map<String, Object>{
+					'key' => 'name',
+					'textValue' => '"Acme"',
+					'typeName' => 'UnknownType123',
+					'isCollection' => false
+				}
+			}
+		);
+
+		Test.startTest();
+		try {
+			InvocableSoql.invoke(new List<InvocableSoql.Input>{ input });
+			Assert.fail('Should have thrown an exception');
+		} catch (Exception anyError) {
+			// As expected
 		}
 		Test.stopTest();
 	}
