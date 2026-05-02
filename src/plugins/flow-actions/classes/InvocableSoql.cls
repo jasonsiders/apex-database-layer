@@ -251,7 +251,10 @@ global abstract inherited sharing class InvocableSoql {
 		 * @param pivotCondition The condition to replace
 		 * @return A new ConditionalLogic with the pivot condition replaced
 		 */
-		private Soql.ConditionalLogic replacePivotWithInList(List<Soql.Criteria> criterion, Soql.Condition pivotCondition) {
+		private Soql.ConditionalLogic replacePivotWithInList(
+			List<Soql.Criteria> criterion,
+			Soql.Condition pivotCondition
+		) {
 			Soql.ConditionalLogic newCriteria = new Soql.ConditionalLogic();
 			for (Soql.Criteria criteria : criterion) {
 				Soql.Criteria conditionToAdd = (criteria == pivotCondition)
