@@ -151,8 +151,9 @@ global abstract inherited sharing class InvocableSoql {
 		 * @return The constructed and finalized Soql instance
 		 */
 		private Soql buildSoql(Input input) {
+			String query = input?.query;
 			Map<String, Soql.Binder> bindMap = input?.getBindsByName();
-			return DatabaseLayer.Soql.newQuery(input?.query)?.addBind(bindMap)?.toSoql();
+			return DatabaseLayer.Soql.newQuery(query)?.addBind(bindMap)?.toSoql();
 		}
 	}
 
@@ -240,7 +241,7 @@ global abstract inherited sharing class InvocableSoql {
 		 */
 		private Soql.ConditionalLogic buildInListCriteria(List<Integer> indexes, Soql.Condition pivotCondition) {
 			Output firstOutput = this.outputs.get(indexes.get(0));
-			List<Soql.Criteria> criterion = firstOutput.soql.whereCriteria.getCriterion();
+			List<Soql.Criteria> criterion = firstOutput.soql?.whereCriteria?.getCriterion();
 			return this.replacePivotWithInList(criterion, pivotCondition);
 		}
 
@@ -271,8 +272,9 @@ global abstract inherited sharing class InvocableSoql {
 			List<Object> values = new List<Object>();
 			for (Integer index : indexes) {
 				Output output = this.outputs.get(index);
-				Soql.Binder binder = (Soql.Binder) output.soql.binds?.get(bindVarName);
-				values.add(binder.getValue());
+				Soql.Binder binder = (Soql.Binder) output.soql?.binds?.get(bindVarName);
+				Object value = binder.getValue();
+				values.add(value);
 			}
 			return values;
 		}
@@ -352,7 +354,8 @@ global abstract inherited sharing class InvocableSoql {
 			String bindName = pivotCondition.value.toString().removeStart(':');
 			List<Object> bindValues = this.collectBindValues(indexes, bindName);
 			PivotContext pivot = new PivotContext(pivotCondition, bindName, bindValues);
-			if (this.valuesAreIdentical(pivot.bindValues)) {
+			Boolean identical = this.valuesAreIdentical(pivot.bindValues);
+			if (identical) {
 				this.executeOnceAndCopy(indexes);
 			} else {
 				this.executeWithInList(indexes, pivot);
@@ -377,7 +380,8 @@ global abstract inherited sharing class InvocableSoql {
 		 */
 		private void copyResultsTo(List<Integer> indexes, Output source) {
 			for (Integer i = 1; i < indexes.size(); i++) {
-				Output output = this.outputs.get(indexes.get(i));
+				Integer index = indexes.get(i);
+				Output output = this.outputs.get(index);
 				output.setResults(source.allResults);
 			}
 		}
@@ -401,7 +405,9 @@ global abstract inherited sharing class InvocableSoql {
 		 */
 		private void executeWithInList(List<Integer> indexes, PivotContext pivot) {
 			Output executor = this.runMergedQuery(indexes, pivot);
-			Map<Object, List<SObject>> resultsByValue = this.groupResultsByPivotField(executor.allResults, pivot.condition.property);
+			List<SObject> results = executor.allResults;
+			String pivotField = pivot.condition.property;
+			Map<Object, List<SObject>> resultsByValue = this.groupResultsByPivotField(results, pivotField);
 			this.distributeResults(indexes, pivot.bindValues, resultsByValue);
 		}
 
@@ -414,8 +420,8 @@ global abstract inherited sharing class InvocableSoql {
 		private Output runMergedQuery(List<Integer> indexes, PivotContext pivot) {
 			Soql.ConditionalLogic newCriteria = this.buildInListCriteria(indexes, pivot.condition);
 			Output executor = this.outputs.get(indexes.get(0));
-			executor.soql.setWhereCriteria(newCriteria);
-			executor.soql.addBind(pivot.bindName, pivot.bindValues);
+			executor.soql?.setWhereCriteria(newCriteria);
+			executor.soql?.addBind(pivot.bindName, pivot.bindValues);
 			executor.doQuery();
 			return executor;
 		}
@@ -437,7 +443,8 @@ global abstract inherited sharing class InvocableSoql {
 		private Map<String, List<Integer>> groupByQuery() {
 			Map<String, List<Integer>> grouped = new Map<String, List<Integer>>();
 			for (Integer i = 0; i < this.outputs.size(); i++) {
-				String template = this.outputs.get(i).query;
+				Output output = this.outputs.get(i);
+				String template = output.query;
 				List<Integer> bucket = grouped.get(template);
 				if (bucket == null) {
 					bucket = new List<Integer>();
@@ -489,9 +496,19 @@ global abstract inherited sharing class InvocableSoql {
 			Object firstValue = values?.get(0);
 			Boolean allEqual = true;
 			for (Object value : values) {
-				allEqual = allEqual && ((value == null && firstValue == null) || (value != null && value.equals(firstValue)));
+				allEqual = allEqual && this.equalsFirst(value, firstValue);
 			}
 			return allEqual;
+		}
+
+		/**
+		 * @description Returns true if two nullable objects are equal.
+		 * @param a First object to compare
+		 * @param b Second object to compare
+		 * @return True if both are null or both are non-null and equal
+		 */
+		private Boolean equalsFirst(Object a, Object b) {
+			return (a == null && b == null) || (a != null && a.equals(b));
 		}
 	}
 
@@ -542,13 +559,30 @@ global abstract inherited sharing class InvocableSoql {
 				this.disqualified = true;
 			} else {
 				Soql.Condition condition = (Soql.Condition) criteria;
-				if (this.isEligible(condition)) {
-					if (this.candidate != null) {
-						this.disqualified = true;
-					} else {
-						this.candidate = condition;
-					}
-				}
+				this.evaluateCondition(condition);
+			}
+		}
+
+		/**
+		 * @description Updates candidate or disqualifies the search based on condition eligibility.
+		 * @param condition The condition to evaluate
+		 */
+		private void evaluateCondition(Soql.Condition condition) {
+			Boolean eligible = this.isEligible(condition);
+			if (eligible) {
+				this.recordCandidate(condition);
+			}
+		}
+
+		/**
+		 * @description Records the condition as the candidate, or disqualifies if a candidate already exists.
+		 * @param condition The eligible condition to record
+		 */
+		private void recordCandidate(Soql.Condition condition) {
+			if (this.candidate != null) {
+				this.disqualified = true;
+			} else {
+				this.candidate = condition;
 			}
 		}
 
@@ -577,7 +611,7 @@ global abstract inherited sharing class InvocableSoql {
 			Object value = condition.value;
 			if (opStr == '=' && value instanceof String) {
 				String strValue = (String) value;
-				return strValue?.startsWith(':') == true && condition.property.contains('.') == false;
+				return strValue?.startsWith(':') == true && condition.property?.contains('.') == false;
 			} else {
 				return false;
 			}
