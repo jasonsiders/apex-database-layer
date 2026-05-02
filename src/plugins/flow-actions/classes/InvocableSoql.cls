@@ -39,7 +39,8 @@ global abstract inherited sharing class InvocableSoql {
 		} catch (Exception anyError) {
 			String msg = anyError?.getMessage();
 			Boolean shouldWrap = System.Request.getCurrent().getQuiddity() == System.Quiddity.AURA;
-			throw (shouldWrap) ? new AuraHandledException(msg) : anyError;
+			Exception toThrow = shouldWrap ? new AuraHandledException(msg) : anyError;
+			throw toThrow;
 		}
 	}
 
@@ -74,11 +75,11 @@ global abstract inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description Resolves bind variables from either Apex collection input or CPE JSON input.
+		 * @description Resolves bind variables from CPE JSON input.
 		 * @return List of configured bind variables
 		 */
 		private List<BindVariable> getBinds() {
-			return String.isNotBlank(this.bindsJson) 
+			return String.isNotBlank(this.bindsJson)
 				? (List<BindVariable>) JSON.deserialize(this.bindsJson, List<BindVariable>.class)
 				: new List<BindVariable>{};
 		}
@@ -109,7 +110,7 @@ global abstract inherited sharing class InvocableSoql {
 		private transient Soql soql;
 
 		/**
-		 * @description Initializes a new Output with empty results and binds.
+		 * @description Initializes a new Output with empty results.
 		 */
 		global Output() {
 			this.allResults = new List<SObject>{};
@@ -121,19 +122,37 @@ global abstract inherited sharing class InvocableSoql {
 		 */
 		private Output(Input input) {
 			this();
-			Map<String, Soql.Binder> bindMap = input?.getBindsByName();
-			this.soql = DatabaseLayer.Soql.newQuery(input?.query)?.addBind(bindMap)?.toSoql();
+			this.soql = this.buildSoql(input);
 			this.query = this.soql?.toString();
 		}
 
 		/**
-		 * @description Executes the SOQL query and populates allResults and firstResult.
+		 * @description Executes the SOQL query and stores the results.
 		 * @return This Output instance, for chaining
 		 */
 		private Output doQuery() {
-			this.allResults = this.soql?.query();
-			this.firstResult = (allResults?.isEmpty() == false) ? allResults?.get(0) : null;
+			List<SObject> results = this.soql?.query();
+			this.setResults(results);
 			return this;
+		}
+
+		/**
+		 * @description Sets allResults and derives firstResult from it.
+		 * @param results The query results to store
+		 */
+		private void setResults(List<SObject> results) {
+			this.allResults = results;
+			this.firstResult = results?.isEmpty() == false ? results?.get(0) : null;
+		}
+
+		/**
+		 * @description Builds the Soql object from the given Input.
+		 * @param input The Input containing the query string and bind variables
+		 * @return The constructed and finalized Soql instance
+		 */
+		private Soql buildSoql(Input input) {
+			Map<String, Soql.Binder> bindMap = input?.getBindsByName();
+			return DatabaseLayer.Soql.newQuery(input?.query)?.addBind(bindMap)?.toSoql();
 		}
 	}
 
@@ -170,16 +189,24 @@ global abstract inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description Resolves the target Apex type from typeName, wrapping it in List<> when isCollection is true.
+		 * @description Resolves the target Apex type, wrapping in List<> when isCollection is true.
 		 * @return The resolved Apex Type
 		 */
 		private Type determineType() {
-			String typeName = (this.isCollection == true) ? 'List<' + this.typeName + '>' : this.typeName;
-			Type type = Type.forName(typeName);
+			String resolvedName = this.resolveTypeName();
+			Type type = Type.forName(resolvedName);
 			if (type == null) {
-				throw new System.TypeException('Invalid type: ' + typeName);	
+				throw new System.TypeException('Invalid type: ' + resolvedName);
 			}
 			return type;
+		}
+
+		/**
+		 * @description Builds the Apex type name string, prepending List<> when isCollection is true.
+		 * @return The resolved type name string
+		 */
+		private String resolveTypeName() {
+			return (this.isCollection == true) ? 'List<' + this.typeName + '>' : this.typeName;
 		}
 	}
 
@@ -206,26 +233,30 @@ global abstract inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description Builds a new WHERE criteria replacing the pivot condition with an IN-list bind.
+		 * @description Resolves the source criteria from the first output, then delegates to replacePivotWithInList.
 		 * @param indexes Indexes of the outputs in this group
 		 * @param pivotCondition The condition to replace with an IN-list
-		 * @param bindVarName The bind variable name for the IN-list
 		 * @return A new ConditionalLogic with the pivot condition replaced
 		 */
-		private Soql.ConditionalLogic buildInListCriteria(
-			List<Integer> indexes,
-			Soql.Condition pivotCondition,
-			String bindVarName
-		) {
+		private Soql.ConditionalLogic buildInListCriteria(List<Integer> indexes, Soql.Condition pivotCondition) {
+			Output firstOutput = this.outputs.get(indexes.get(0));
+			List<Soql.Criteria> criterion = firstOutput.soql.whereCriteria.getCriterion();
+			return this.replacePivotWithInList(criterion, pivotCondition);
+		}
+
+		/**
+		 * @description Copies a criteria list, replacing the pivot condition with an IN-list equivalent.
+		 * @param criterion The source criteria to copy
+		 * @param pivotCondition The condition to replace
+		 * @return A new ConditionalLogic with the pivot condition replaced
+		 */
+		private Soql.ConditionalLogic replacePivotWithInList(List<Soql.Criteria> criterion, Soql.Condition pivotCondition) {
 			Soql.ConditionalLogic newCriteria = new Soql.ConditionalLogic();
-			List<Soql.Criteria> criterion = this.outputs?.get(indexes?.get(0)).soql.whereCriteria.getCriterion();
 			for (Soql.Criteria criteria : criterion) {
-				if (criteria == pivotCondition) {
-					Soql.Condition condition = new Soql.Condition(pivotCondition.property, Soql.IN_COLLECTION, ':' + bindVarName);
-					newCriteria.addCondition(condition);
-				} else {
-					newCriteria.addCondition(criteria);
-				}
+				Soql.Criteria conditionToAdd = (criteria == pivotCondition)
+					? new Soql.Condition(pivotCondition.property, Soql.IN_COLLECTION, pivotCondition.value)
+					: criteria;
+				newCriteria.addCondition(conditionToAdd);
 			}
 			return newCriteria;
 		}
@@ -239,7 +270,7 @@ global abstract inherited sharing class InvocableSoql {
 		private List<Object> collectBindValues(List<Integer> indexes, String bindVarName) {
 			List<Object> values = new List<Object>();
 			for (Integer index : indexes) {
-				Output output = this.outputs?.get(index);
+				Output output = this.outputs.get(index);
 				Soql.Binder binder = (Soql.Binder) output.soql.binds?.get(bindVarName);
 				values.add(binder.getValue());
 			}
@@ -249,65 +280,105 @@ global abstract inherited sharing class InvocableSoql {
 		/**
 		 * @description Assigns query results back to each output, matching records by pivot field value.
 		 * @param indexes Indexes of the outputs to populate
-		 * @param origValues Original bind values in index order, used to look up result groups
+		 * @param bindValues Per-input bind values in index order, used to look up result groups
 		 * @param resultsByValue Map of pivot field value to matching records
 		 */
 		private void distributeResults(
 			List<Integer> indexes,
-			List<Object> origValues,
+			List<Object> bindValues,
 			Map<Object, List<SObject>> resultsByValue
 		) {
 			for (Integer i = 0; i < indexes.size(); i++) {
-				Integer index = indexes?.get(i);
-				Output output = this.outputs?.get(index);
-				List<SObject> groupResults = resultsByValue?.get(origValues?.get(i)) ?? new List<SObject>();
-				output.allResults = groupResults;
-				output.firstResult = groupResults?.isEmpty() ? null : groupResults?.get(0);
+				Integer index = indexes.get(i);
+				Object bindValue = bindValues.get(i);
+				Output output = this.outputs.get(index);
+				List<SObject> groupResults = resultsByValue.get(bindValue) ?? new List<SObject>();
+				output.setResults(groupResults);
 			}
 		}
 
 		/**
-		 * @description Executes the appropriate query strategy for a group of identical queries.
-		 * Single inputs are queried directly; groups are bulkified via IN-list where possible.
+		 * @description Routes a group to the appropriate execution strategy based on group size.
 		 * @param indexes Indexes of the outputs in this group
 		 */
 		private void executeGroup(List<Integer> indexes) {
 			if (indexes.size() == 1) {
-				this.outputs?.get(indexes?.get(0)).doQuery();
-				return;
-			}
-			Soql.ConditionalLogic whereCriteria = this.outputs?.get(indexes?.get(0)).soql?.whereCriteria;
-			List<Soql.Criteria> pivotCriterion = whereCriteria?.getCriterion();
-			Soql.Condition pivotCondition = (whereCriteria != null) ? this.findPivotCondition(pivotCriterion) : null;
-			if (pivotCondition == null) {
-				this.executePerInput(indexes);
-				return;
-			}
-			String bindVarName = pivotCondition.value.toString().removeStart(':');
-			List<Object> origValues = this.collectBindValues(indexes, bindVarName);
-			if (this.valuesAreIdentical(origValues)) {
-				this.executeOnceAndCopy(indexes);
+				this.executeSingle(indexes);
 			} else {
-				this.executeWithInList(indexes, pivotCondition, origValues);
+				this.executeBulk(indexes);
 			}
 		}
 
 		/**
-		 * @description Executes the query for the first output and copies results to all others in the group.
+		 * @description Executes the query for a single-output group directly.
+		 * @param indexes Indexes of the outputs in this group
+		 */
+		private void executeSingle(List<Integer> indexes) {
+			Output output = this.outputs.get(indexes.get(0));
+			output.doQuery();
+		}
+
+		/**
+		 * @description Resolves the pivot condition and routes to the appropriate bulk strategy.
+		 * @param indexes Indexes of the outputs in this group
+		 */
+		private void executeBulk(List<Integer> indexes) {
+			Soql.Condition pivotCondition = this.resolvePivotCondition(indexes);
+			if (pivotCondition == null) {
+				this.executePerInput(indexes);
+			} else {
+				this.executePivotGroup(indexes, pivotCondition);
+			}
+		}
+
+		/**
+		 * @description Resolves the pivot condition from the first output's WHERE criteria.
+		 * @param indexes Indexes of the outputs in this group
+		 * @return The single eligible pivot condition, or null if none found
+		 */
+		private Soql.Condition resolvePivotCondition(List<Integer> indexes) {
+			Output firstOutput = this.outputs.get(indexes.get(0));
+			Soql.ConditionalLogic whereCriteria = firstOutput.soql?.whereCriteria;
+			List<Soql.Criteria> criterion = whereCriteria?.getCriterion();
+			return (criterion != null) ? this.findPivotCondition(criterion) : null;
+		}
+
+		/**
+		 * @description Collects bind values for the pivot field and routes to the appropriate execution strategy.
+		 * @param indexes Indexes of the outputs in this group
+		 * @param pivotCondition The eligible pivot condition identified for this group
+		 */
+		private void executePivotGroup(List<Integer> indexes, Soql.Condition pivotCondition) {
+			String bindName = pivotCondition.value.toString().removeStart(':');
+			List<Object> bindValues = this.collectBindValues(indexes, bindName);
+			PivotContext pivot = new PivotContext(pivotCondition, bindName, bindValues);
+			if (this.valuesAreIdentical(pivot.bindValues)) {
+				this.executeOnceAndCopy(indexes);
+			} else {
+				this.executeWithInList(indexes, pivot);
+			}
+		}
+
+		/**
+		 * @description Executes the query for the first output and copies results to the rest of the group.
 		 * Used when all inputs in a group have identical bind variable values.
 		 * @param indexes Indexes of the outputs in this group
 		 */
 		private void executeOnceAndCopy(List<Integer> indexes) {
-			Integer firstIndex = indexes?.get(0);
-			Output firstOutput = this.outputs?.get(firstIndex);
+			Output firstOutput = this.outputs.get(indexes.get(0));
 			firstOutput.doQuery();
-			List<SObject> results = firstOutput.allResults;
-			SObject firstResult = firstOutput.firstResult;
+			this.copyResultsTo(indexes, firstOutput);
+		}
+
+		/**
+		 * @description Copies query results from a source output to all subsequent outputs in the group.
+		 * @param indexes Indexes of the outputs in this group
+		 * @param source The output whose results to copy
+		 */
+		private void copyResultsTo(List<Integer> indexes, Output source) {
 			for (Integer i = 1; i < indexes.size(); i++) {
-				Integer index = indexes?.get(i);
-				Output output = this.outputs?.get(index);
-				output.allResults = results;
-				output.firstResult = firstResult;
+				Output output = this.outputs.get(indexes.get(i));
+				output.setResults(source.allResults);
 			}
 		}
 
@@ -318,7 +389,7 @@ global abstract inherited sharing class InvocableSoql {
 		 */
 		private void executePerInput(List<Integer> indexes) {
 			for (Integer index : indexes) {
-				Output output = this.outputs?.get(index);
+				Output output = this.outputs.get(index);
 				output.doQuery();
 			}
 		}
@@ -326,21 +397,27 @@ global abstract inherited sharing class InvocableSoql {
 		/**
 		 * @description Merges a group of queries into a single IN-list query, then distributes results back.
 		 * @param indexes Indexes of the outputs in this group
-		 * @param pivotCondition The condition to transform into an IN-list
-		 * @param origValues Original bind values in index order
+		 * @param pivot The pivot context for this group
 		 */
-		private void executeWithInList(List<Integer> indexes, Soql.Condition pivotCondition, List<Object> origValues) {
-			String bindVarName = pivotCondition.value.toString().removeStart(':');
-			Soql.ConditionalLogic newCriteria = this.buildInListCriteria(indexes, pivotCondition, bindVarName);
-			Output executor = this.outputs?.get(indexes?.get(0));
+		private void executeWithInList(List<Integer> indexes, PivotContext pivot) {
+			Output executor = this.runMergedQuery(indexes, pivot);
+			Map<Object, List<SObject>> resultsByValue = this.groupResultsByPivotField(executor.allResults, pivot.condition.property);
+			this.distributeResults(indexes, pivot.bindValues, resultsByValue);
+		}
+
+		/**
+		 * @description Configures and executes the IN-list query on the first output in the group.
+		 * @param indexes Indexes of the outputs in this group
+		 * @param pivot The pivot context for this group
+		 * @return The executor output after running the merged query
+		 */
+		private Output runMergedQuery(List<Integer> indexes, PivotContext pivot) {
+			Soql.ConditionalLogic newCriteria = this.buildInListCriteria(indexes, pivot.condition);
+			Output executor = this.outputs.get(indexes.get(0));
 			executor.soql.setWhereCriteria(newCriteria);
-			executor.soql.addBind(bindVarName, origValues);
+			executor.soql.addBind(pivot.bindName, pivot.bindValues);
 			executor.doQuery();
-			Map<Object, List<SObject>> resultsByValue = this.groupResultsByPivotField(
-				executor.allResults,
-				pivotCondition.property
-			);
-			this.distributeResults(indexes, origValues, resultsByValue);
+			return executor;
 		}
 
 		/**
@@ -349,7 +426,8 @@ global abstract inherited sharing class InvocableSoql {
 		 * @return The single eligible pivot condition, or null if none or multiple found
 		 */
 		private Soql.Condition findPivotCondition(List<Soql.Criteria> criterion) {
-			return new PivotConditionFinder().find(criterion);
+			PivotConditionFinder finder = new PivotConditionFinder();
+			return finder.find(criterion);
 		}
 
 		/**
@@ -359,11 +437,13 @@ global abstract inherited sharing class InvocableSoql {
 		private Map<String, List<Integer>> groupByQuery() {
 			Map<String, List<Integer>> grouped = new Map<String, List<Integer>>();
 			for (Integer i = 0; i < this.outputs.size(); i++) {
-				String template = this.outputs?.get(i).query;
-				if (grouped?.containsKey(template) == false) {
-					grouped.put(template, new List<Integer>());
+				String template = this.outputs.get(i).query;
+				List<Integer> bucket = grouped.get(template);
+				if (bucket == null) {
+					bucket = new List<Integer>();
+					grouped.put(template, bucket);
 				}
-				grouped.get(template).add(i);
+				bucket.add(i);
 			}
 			return grouped;
 		}
@@ -378,10 +458,12 @@ global abstract inherited sharing class InvocableSoql {
 			Map<Object, List<SObject>> grouped = new Map<Object, List<SObject>>();
 			for (SObject record : results) {
 				Object key = record.get(pivotProperty);
-				if (grouped?.containsKey(key) == false) {
-					grouped.put(key, new List<SObject>());
+				List<SObject> bucket = grouped.get(key);
+				if (bucket == null) {
+					bucket = new List<SObject>();
+					grouped.put(key, bucket);
 				}
-				grouped.get(key).add(record);
+				bucket.add(record);
 			}
 			return grouped;
 		}
@@ -405,13 +487,26 @@ global abstract inherited sharing class InvocableSoql {
 		 */
 		private Boolean valuesAreIdentical(List<Object> values) {
 			Object firstValue = values?.get(0);
+			Boolean allEqual = true;
 			for (Object value : values) {
-				Boolean isEqual = (value == null && firstValue == null) || (value != null && value.equals(firstValue));
-				if (isEqual == false) {
-					return false;
-				}
+				allEqual = allEqual && ((value == null && firstValue == null) || (value != null && value.equals(firstValue)));
 			}
-			return true;
+			return allEqual;
+		}
+	}
+
+	/**
+	 * @description Encapsulates the pivot condition and per-input bind values for IN-list execution.
+	 */
+	private class PivotContext {
+		private Soql.Condition condition;
+		private String bindName;
+		private List<Object> bindValues;
+
+		private PivotContext(Soql.Condition condition, String bindName, List<Object> bindValues) {
+			this.condition = condition;
+			this.bindName = bindName;
+			this.bindValues = bindValues;
 		}
 	}
 
@@ -445,17 +540,16 @@ global abstract inherited sharing class InvocableSoql {
 		private void evaluate(Soql.Criteria criteria) {
 			if ((criteria instanceof Soql.Condition) == false) {
 				this.disqualified = true;
-				return;
+			} else {
+				Soql.Condition condition = (Soql.Condition) criteria;
+				if (this.isEligible(condition)) {
+					if (this.candidate != null) {
+						this.disqualified = true;
+					} else {
+						this.candidate = condition;
+					}
+				}
 			}
-			Soql.Condition condition = (Soql.Condition) criteria;
-			if (this.isEligible(condition) == false) {
-				return;
-			}
-			if (this.candidate != null) {
-				this.disqualified = true;
-				return;
-			}
-			this.candidate = condition;
 		}
 
 		/**
@@ -465,12 +559,11 @@ global abstract inherited sharing class InvocableSoql {
 		 */
 		private Soql.Condition find(List<Soql.Criteria> criterion) {
 			for (Soql.Criteria criteria : criterion) {
-				this.evaluate(criteria);
-				if (this.disqualified) {
-					return null;
+				if (!this.disqualified) {
+					this.evaluate(criteria);
 				}
 			}
-			return this.candidate;
+			return this.disqualified ? null : this.candidate;
 		}
 
 		/**
@@ -482,11 +575,12 @@ global abstract inherited sharing class InvocableSoql {
 		private Boolean isEligible(Soql.Condition condition) {
 			String opStr = condition.operator?.toString();
 			Object value = condition.value;
-			if (opStr != '=' || (value instanceof String) == false) {
+			if (opStr == '=' && value instanceof String) {
+				String strValue = (String) value;
+				return strValue?.startsWith(':') == true && condition.property.contains('.') == false;
+			} else {
 				return false;
 			}
-			String strValue = (String) value;
-			return strValue?.startsWith(':') && condition.property.contains('.') == false;
 		}
 	}
 }

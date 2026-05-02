@@ -15,25 +15,11 @@ private class InvocableSoqlTest {
 	}
 
 	private static Map<String, Object> createStringVariable(String key, String value) {
-		return InvocableSoqlTest.createBindVariable(key, value, 'String', false);
+		return new Map<String, Object>{ 'key' => key, 'textValue' => value, 'typeName' => 'String', 'isCollection' => false };
 	}
 
 	private static Map<String, Object> createBooleanVariable(String key, Boolean value) {
-		return InvocableSoqlTest.createBindVariable(key, String.valueOf(value), 'Boolean', false);
-	}
-
-	private static Map<String, Object> createBindVariable(
-		String key,
-		String textValue,
-		String typeName,
-		Boolean isCollection
-	) {
-		return new Map<String, Object>{
-			'key' => key,
-			'textValue' => textValue,
-			'typeName' => typeName,
-			'isCollection' => isCollection
-		};
+		return new Map<String, Object>{ 'key' => key, 'textValue' => String.valueOf(value), 'typeName' => 'Boolean', 'isCollection' => false };
 	}
 
 	private static InvocableSoql.Input createInput(String query, List<Map<String, Object>> binds) {
