@@ -535,5 +535,4 @@ describe("c-soql-property-editor", () => {
 		expectFlowEventContract(deletedEvents[0]);
 		expect(deletedEvents[0].detail).toEqual({ name: "bindsJson" });
 	});
-
 });
