@@ -1,5 +1,5 @@
 import { createElement } from "@lwc/engine-dom";
-import InvocableSoqlPropertyEditor from "c/invocableSoqlPropertyEditor";
+import SoqlPropertyEditor from "c/soqlPropertyEditor";
 import validateQuery from "@salesforce/apex/InvocableSoql.validateQuery";
 
 jest.mock("@salesforce/apex/InvocableSoql.validateQuery", () => ({ default: jest.fn().mockResolvedValue(undefined) }), {
@@ -8,10 +8,10 @@ jest.mock("@salesforce/apex/InvocableSoql.validateQuery", () => ({ default: jest
 
 const flushPromises = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-describe("c-invocable-soql-property-editor", () => {
+describe("c-soql-property-editor", () => {
 	function createComponent(props = {}) {
-		const element = createElement("c-invocable-soql-property-editor", {
-			is: InvocableSoqlPropertyEditor
+		const element = createElement("c-soql-property-editor", {
+			is: SoqlPropertyEditor
 		});
 		Object.assign(element, props);
 		document.body.appendChild(element);

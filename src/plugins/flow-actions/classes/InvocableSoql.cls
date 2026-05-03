@@ -16,7 +16,7 @@ global abstract inherited sharing class InvocableSoql {
 		category='Database Layer'
 		label='Query Records'
 		iconName='slds:standard:record_lookup'
-		configurationEditor='c:invocableSoqlPropertyEditor'
+		configurationEditor='c:soqlPropertyEditor'
 	)
 	global static List<Output> invoke(List<Input> inputs) {
 		return new Container(inputs).run();

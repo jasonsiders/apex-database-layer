@@ -25,7 +25,7 @@ const OUTPUT_TYPE_MAPPINGS = ["U__allResults", "U__firstResult"];
  * Provides syntax highlighting, bind variable management, and Apex-side query validation.
  * Emits configuration_editor_input_value_changed and configuration_editor_generic_type_mapping_changed events.
  */
-export default class InvocableSoqlPropertyEditor extends LightningElement {
+export default class SoqlPropertyEditor extends LightningElement {
 	/**
 	 * Flow Builder context exposed by the custom property editor contract.
 	 * Contains Flow resources, variables, constants, and other metadata.
