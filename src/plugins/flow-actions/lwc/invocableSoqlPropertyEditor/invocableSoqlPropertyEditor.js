@@ -38,7 +38,7 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 	 * @returns {string} Query with quoted content replaced by spaces
 	 * @private
 	 */
-	static _maskQuotedText(query) {
+	_maskQuotedText(query) {
 		const text = query || "";
 		let result = "";
 		let quote = null;
@@ -76,7 +76,7 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 	 * @returns {Set<string>} Set of bind variable names referenced in the query
 	 * @private
 	 */
-	static _extractBindReferenceNames(query) {
+	_extractBindReferenceNames(query) {
 		const names = new Set();
 		const text = this._maskQuotedText(query);
 		const bindPattern = /:([A-Za-z_][A-Za-z0-9_]*)\b/g;
@@ -100,7 +100,7 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 	 * @returns {string|null} Validation error message, or null if valid
 	 * @private
 	 */
-	static _validateBindKey(key, bindKeyCounts, referencedNames) {
+	_validateBindKey(key, bindKeyCounts, referencedNames) {
 		if (!BIND_KEY_PATTERN.test(key)) {
 			return INVALID_BIND_KEY_MESSAGE;
 		}
@@ -235,6 +235,25 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 	}
 
 	/**
+	 * Validates the SOQL query through Apex.
+	 * @private
+	 * @returns {Promise<Array<{ key: string, errorString: string }>>} Query validation errors
+	 */
+	async _validateApexQuery() {
+		try {
+			const bindKeys = this._bindsDraft.map((b) => b.key);
+			await validateQuery({ queryToValidate: this._queryDraft, bindKeys });
+			this._queryError = null;
+			return [];
+		} catch (error) {
+			const fullMessage = error?.body?.message ?? "";
+			const errorString = fullMessage.split("\n")[0];
+			this._queryError = `Error: ${errorString}`;
+			return [{ key: INPUT_VAR_QUERY, errorString }];
+		}
+	}
+
+	/**
 	 * Validates bind metadata and the SOQL query through Apex.
 	 * @returns {Promise<Array<{ key: string, errorString: string }>>} Flow validation errors.
 	 */
@@ -245,20 +264,7 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 			this._queryError = null;
 			return bindErrors;
 		}
-
-		try {
-			const bindKeys = this._bindsDraft.map((b) => b.key);
-			await validateQuery({ queryToValidate: this._queryDraft, bindKeys });
-			this._queryError = null;
-			return [];
-		} catch (error) {
-			// Note: Soql.cls appends the offending query to the error message on a new line
-			// This information is redundant, since the query is displayed in the input element
-			const fullMessage = error?.body?.message ?? "";
-			const errorString = fullMessage.split("\n")[0];
-			this._queryError = `Error: ${errorString}`;
-			return [{ key: INPUT_VAR_QUERY, errorString }];
-		}
+		return this._validateApexQuery();
 	}
 
 	/**
@@ -429,29 +435,35 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 	}
 
 	/**
+	 * Builds validation errors for bind variables.
+	 * @private
+	 * @param {Set<string>} referencedNames Set of bind names referenced in the query
+	 * @param {Map<string, number>} bindKeyCounts Count of each bind key
+	 * @returns {{ errorsByIndex: Object, errors: Array }} Error mapping and array
+	 */
+	_buildBindErrors(referencedNames, bindKeyCounts) {
+		const errorsByIndex = {};
+		const errors = [];
+		this._bindsDraft.forEach((bind, index) => {
+			const key = String(bind?.key ?? "");
+			if (!key) return;
+			const errorString = this._validateBindKey(key, bindKeyCounts, referencedNames);
+			if (!errorString) return;
+			errorsByIndex[index] = errorString;
+			errors.push({ key: INPUT_VAR_BINDS_JSON, errorString });
+		});
+		return { errorsByIndex, errors };
+	}
+
+	/**
 	 * Validates bind names against query references and row-level naming rules.
 	 * @param {{ report?: boolean }} [options={}] Whether to report validity immediately.
 	 * @returns {Array<{ key: string, errorString: string }>} Flow validation errors.
 	 */
 	_validateBindReferences({ report = true } = {}) {
-		const referencedNames = InvocableSoqlPropertyEditor._extractBindReferenceNames(this._queryDraft);
+		const referencedNames = this._extractBindReferenceNames(this._queryDraft);
 		const bindKeyCounts = this._countBindKeys();
-		const errorsByIndex = {};
-		const errors = [];
-
-		this._bindsDraft.forEach((bind, index) => {
-			const key = String(bind?.key ?? "");
-			if (!key) {
-				return;
-			}
-			const errorString = InvocableSoqlPropertyEditor._validateBindKey(key, bindKeyCounts, referencedNames);
-			if (!errorString) {
-				return;
-			}
-			errorsByIndex[index] = errorString;
-			errors.push({ key: INPUT_VAR_BINDS_JSON, errorString });
-		});
-
+		const { errorsByIndex, errors } = this._buildBindErrors(referencedNames, bindKeyCounts);
 		this._bindValidationErrors = errorsByIndex;
 		this._applyBindValidationErrors(report);
 		return errors;
@@ -533,6 +545,16 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 	}
 
 	/**
+	 * Escapes HTML special characters in text.
+	 * @private
+	 * @param {string} text - Text to escape
+	 * @returns {string} Escaped text safe for HTML
+	 */
+	_escapeHtml(text) {
+		return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+	}
+
+	/**
 	 * Applies syntax highlighting to SOQL query text.
 	 * Highlights strings, bind references, functions, date functions, and keywords with CSS classes.
 	 * @private
@@ -540,7 +562,7 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 	 * @returns {string} HTML with syntax highlighting spans
 	 */
 	_highlight(text) {
-		const escaped = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+		const escaped = this._escapeHtml(text);
 		return escaped.replace(
 			/("[^"]*")|(\{![^}]+\})|\b(COUNT_DISTINCT|COUNT|SUM|AVG|MIN|MAX|FORMAT|toLabel|convertCurrency|DISTANCE|GEOLOCATION|FIELDS|CALENDAR_YEAR|CALENDAR_MONTH|CALENDAR_QUARTER|DAY_IN_MONTH|DAY_IN_WEEK|DAY_IN_YEAR|DAY_ONLY|FISCAL_MONTH|FISCAL_QUARTER|FISCAL_YEAR|HOUR_IN_DAY|WEEK_IN_MONTH|WEEK_IN_YEAR)\b|\b(LAST_FISCAL_QUARTER|NEXT_FISCAL_QUARTER|THIS_FISCAL_QUARTER|LAST_FISCAL_YEAR|NEXT_FISCAL_YEAR|THIS_FISCAL_YEAR|LAST_N_DAYS|NEXT_N_DAYS|LAST_N_WEEKS|NEXT_N_WEEKS|LAST_N_MONTHS|NEXT_N_MONTHS|LAST_N_QUARTERS|NEXT_N_QUARTERS|LAST_N_YEARS|NEXT_N_YEARS|LAST_90_DAYS|NEXT_90_DAYS|LAST_QUARTER|LAST_MONTH|LAST_WEEK|LAST_YEAR|NEXT_QUARTER|NEXT_MONTH|NEXT_WEEK|NEXT_YEAR|THIS_QUARTER|THIS_MONTH|THIS_WEEK|THIS_YEAR|TODAY|YESTERDAY|TOMORROW)\b|\b(SELECT|FROM|WHERE|AND|OR|NOT|LIKE|IN|INCLUDES|EXCLUDES|AS|WITH|FOR|UPDATE|ORDER|BY|GROUP|HAVING|LIMIT|OFFSET|ASC|DESC|NULLS|FIRST|LAST|NULL|TRUE|FALSE|USING|SCOPE|TYPEOF|WHEN|THEN|ELSE|END|VIEW|REFERENCE|TRACKING|VIEWSTAT)\b/gi,
 			(match, str, bind, fn, dt) => {
@@ -598,6 +620,18 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 	}
 
 	/**
+	 * Extracts the object name immediately after a FROM keyword.
+	 * @private
+	 * @param {string} text - The SOQL query text
+	 * @param {number} fromIndex - The index of the FROM keyword
+	 * @returns {string|null} The object name, or null if not found
+	 */
+	_extractObjectNameAfterFROM(text, fromIndex) {
+		const objectNameStart = this._skipWhitespace(text, fromIndex + "FROM".length);
+		return text.slice(objectNameStart).match(/^([A-Za-z_][A-Za-z0-9_]*)\b/)?.[1] ?? null;
+	}
+
+	/**
 	 * Extracts the root SObject name from a SOQL query by parsing the FROM clause.
 	 * Properly handles parentheses depth and quoted strings to avoid false matches.
 	 * @private
@@ -631,9 +665,7 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 				continue;
 			}
 			if (depth === 0 && this._matchesWord(text, index, "FROM")) {
-				const objectNameStart = this._skipWhitespace(text, index + "FROM".length);
-				const match = text.slice(objectNameStart).match(/^([A-Za-z_][A-Za-z0-9_]*)\b/);
-				return match?.[1] ?? null;
+				return this._extractObjectNameAfterFROM(text, index);
 			}
 		}
 		return null;

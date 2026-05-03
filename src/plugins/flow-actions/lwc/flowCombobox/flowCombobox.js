@@ -1092,6 +1092,39 @@ export default class FlowCombobox extends LightningElement {
 		return this.template.querySelector('[data-id="resource-input"]');
 	}
 
+	/** Dispatches fieldblur event when the field loses focus. */
+	_dispatchFieldBlur() {
+		this.dispatchEvent(
+			new CustomEvent("fieldblur", {
+				bubbles: true,
+				composed: true,
+				detail: { name: this.name }
+			})
+		);
+	}
+
+	/** Commits a literal choice selection when the field blurs. */
+	_commitBlurLiteralChoices() {
+		if (!this.allowsLiteralChoices || this._draftTextValue === null) return;
+		const matchingLiteralOption = this._findLiteralOptionByText(this._draftTextValue);
+		if (matchingLiteralOption) {
+			this._emitSelection(matchingLiteralOption);
+		} else if (this._draftTextValue !== "") {
+			if (this.inputType === "picklist") {
+				this._emitFieldChange(this._draftTextValue, this.fieldDataType);
+			} else {
+				this._draftTextValue = null;
+			}
+		}
+	}
+
+	/** Commits raw text input when the field blurs. */
+	_commitBlurRawInput() {
+		if (this.allowsLiteralChoices || !this.allowsRawInputValue || this._draftTextValue === null || this._suppressTextCommitAfterSelection) return;
+		this._value = this._draftTextValue;
+		this._emitFieldChange(this._draftTextValue, this.fieldDataType);
+	}
+
 	/** Applies custom validity to the native resource input. */
 	_setInputCustomValidity(message, report = true) {
 		const input = this._getResourceInput();
@@ -1437,19 +1470,10 @@ export default class FlowCombobox extends LightningElement {
 
 		if (event.key === "ArrowDown") {
 			event.preventDefault();
-			const currentIndex = options.findIndex((o) => o.key === this._focusedOptionKey);
-			const nextIndex = currentIndex < options.length - 1 ? currentIndex + 1 : 0;
-			this._focusedOptionKey = options[nextIndex].key;
-			this._scrollFocusedOptionIntoView();
+			this._focusNextOption(options);
 		} else if (event.key === "ArrowUp") {
 			event.preventDefault();
-			const currentIndex = options.findIndex((o) => o.key === this._focusedOptionKey);
-			if (currentIndex <= 0) {
-				this._focusedOptionKey = null;
-			} else {
-				this._focusedOptionKey = options[currentIndex - 1].key;
-				this._scrollFocusedOptionIntoView();
-			}
+			this._focusPrevOption(options);
 		} else if (event.key === "Enter" && this._focusedOptionKey) {
 			event.preventDefault();
 			const focusedOption = options.find((o) => o.key === this._focusedOptionKey);
@@ -1469,6 +1493,25 @@ export default class FlowCombobox extends LightningElement {
 	_scrollFocusedOptionIntoView() {
 		// Runs after next render via renderedCallback
 		this._pendingScrollFocusedOption = true;
+	}
+
+	/** Moves focus to the next dropdown option (or wraps to first). */
+	_focusNextOption(options) {
+		const currentIndex = options.findIndex((o) => o.key === this._focusedOptionKey);
+		const nextIndex = currentIndex < options.length - 1 ? currentIndex + 1 : 0;
+		this._focusedOptionKey = options[nextIndex].key;
+		this._scrollFocusedOptionIntoView();
+	}
+
+	/** Moves focus to the previous dropdown option (or clears focus if at start). */
+	_focusPrevOption(options) {
+		const currentIndex = options.findIndex((o) => o.key === this._focusedOptionKey);
+		if (currentIndex <= 0) {
+			this._focusedOptionKey = null;
+		} else {
+			this._focusedOptionKey = options[currentIndex - 1].key;
+			this._scrollFocusedOptionIntoView();
+		}
 	}
 
 	/**
@@ -1555,53 +1598,17 @@ export default class FlowCombobox extends LightningElement {
 		if (this._isReferenceText(nextTextValue) && (await this._commitTypedReference(nextTextValue))) {
 			this._setResourcePickerOpen(false);
 			this._syncRenderedInputValue();
-			this.dispatchEvent(
-				new CustomEvent("fieldblur", {
-					bubbles: true,
-					composed: true,
-					detail: {
-						name: this.name
-					}
-				})
-			);
+			this._dispatchFieldBlur();
 			return;
 		}
 
-		if (this.allowsLiteralChoices && this._draftTextValue !== null) {
-			const matchingLiteralOption = this._findLiteralOptionByText(this._draftTextValue);
+		this._commitBlurLiteralChoices();
 
-			if (matchingLiteralOption) {
-				this._emitSelection(matchingLiteralOption);
-			} else if (this._draftTextValue !== "") {
-				if (this.inputType === "picklist") {
-					this._emitFieldChange(this._draftTextValue, this.fieldDataType);
-				} else {
-					this._draftTextValue = null;
-				}
-			}
-		}
-
-		if (
-			!this.allowsLiteralChoices &&
-			this.allowsRawInputValue &&
-			this._draftTextValue !== null &&
-			!this._suppressTextCommitAfterSelection
-		) {
-			this._value = this._draftTextValue;
-			this._emitFieldChange(this._draftTextValue, this.fieldDataType);
-		}
+		this._commitBlurRawInput();
 
 		this._setResourcePickerOpen(false);
 		this._syncRenderedInputValue();
-		this.dispatchEvent(
-			new CustomEvent("fieldblur", {
-				bubbles: true,
-				composed: true,
-				detail: {
-					name: this.name
-				}
-			})
-		);
+		this._dispatchFieldBlur();
 	}
 
 	/**
