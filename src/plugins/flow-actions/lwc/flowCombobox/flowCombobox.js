@@ -1,398 +1,24 @@
 import { LightningElement, api, wire } from "lwc";
 import { getObjectInfos } from "lightning/uiObjectInfoApi";
+import {
+	readCollection,
+	buildResourceOption,
+	readFieldOptions,
+	readActionOutputOptions,
+	toReferenceValue,
+	normalizeDataType as normalizeFlowDataType,
+	RESOURCE_COLLECTIONS,
+	STANDARD_RESOURCE_OPTIONS
+} from "c/flowUtils";
 
 const MAX_RELATIONSHIP_DEPTH = 5;
 const INVALID_RESOURCE_REFERENCE_MESSAGE = "Enter a valid Flow resource reference.";
 
-function normalizeTextValue(value) {
-	if (value === undefined || value === null) {
-		return "";
-	}
-
-	if (Array.isArray(value)) {
-		return value.join(", ");
-	}
-
-	return String(value);
-}
-
-function normalizeComparableValue(value) {
-	if (value === undefined || value === null) {
-		return "";
-	}
-
-	return String(value).trim().toLowerCase();
-}
-
-function normalizeDataType(dataType) {
-	const normalized = String(dataType ?? "")
-		.trim()
-		.toLowerCase();
-
-	if (
-		["string", "text", "textarea", "picklist", "multipicklist", "id", "email", "phone", "url"].includes(normalized)
-	) {
-		return "String";
-	}
-
-	if (["datetime", "date/time"].includes(normalized)) {
-		return "DateTime";
-	}
-
-	if (normalized === "date") {
-		return "Date";
-	}
-
-	if (normalized === "time") {
-		return "Time";
-	}
-
-	if (normalized === "boolean") {
-		return "Boolean";
-	}
-
-	if (["decimal", "double", "currency", "integer", "int", "long", "number", "percent"].includes(normalized)) {
-		return "Decimal";
-	}
-
-	if (["sobject", "record", "apex"].includes(normalized)) {
-		return "SObject";
-	}
-
-	return dataType ?? null;
-}
-
-function isCompatibleDataType(resourceDataType, fieldDataType) {
-	const source = normalizeDataType(resourceDataType);
-	const target = normalizeDataType(fieldDataType);
-
-	return !source || !target || source === target;
-}
-
-function isReference(valueDataType, value) {
-	return (
-		valueDataType === "reference" || (typeof value === "string" && value.startsWith("{!") && value.endsWith("}"))
-	);
-}
-
-function isReferenceText(value) {
-	const trimmed = typeof value === "string" ? value.trim() : "";
-	return /^\{![^}]+\}$/.test(trimmed);
-}
-
-function allowsRawInputValue(fieldDataType) {
-	return ["String", "Decimal", "Date", "DateTime", "Time"].includes(normalizeDataType(fieldDataType));
-}
-
-function normalizeReferenceName(value) {
-	if (typeof value !== "string") {
-		return null;
-	}
-
-	if (value.startsWith("{!") && value.endsWith("}")) {
-		return value.slice(2, -1);
-	}
-
-	return value;
-}
-
-function unwrapReferenceName(value) {
-	const trimmed = typeof value === "string" ? value.trim() : "";
-	if (!trimmed.startsWith("{!") || !trimmed.endsWith("}")) {
-		return null;
-	}
-	return normalizeReferenceName(trimmed);
-}
-
-function matchesResourceOption(resourceOption, query) {
-	const normalizedQuery = normalizeComparableValue(query);
-
-	if (!normalizedQuery) {
-		return true;
-	}
-
-	return [resourceOption.label, resourceOption.pillLabel, resourceOption.referenceName, resourceOption.displayLabel]
-		.filter(Boolean)
-		.some((candidate) => candidate.toLowerCase().includes(normalizedQuery));
-}
-
-function deriveCategoryKey(resourceOption) {
-	if (resourceOption.category) {
-		return resourceOption.category;
-	}
-
-	if (resourceOption.referenceName?.startsWith("$GlobalConstant.")) {
-		return "globalConstants";
-	}
-
-	if (resourceOption.objectType && resourceOption.isCollection) {
-		return "recordCollections";
-	}
-
-	if (resourceOption.objectType) {
-		return "recordVariables";
-	}
-
-	if (resourceOption.label?.startsWith("Formula:")) {
-		return "formulas";
-	}
-
-	if (resourceOption.label?.startsWith("Constant:")) {
-		return "constants";
-	}
-
-	return "variables";
-}
-
-function deriveGroupLabel(categoryKey) {
-	const labelByCategory = {
-		recordVariables: "Record Variables",
-		recordCollections: "Record Collections",
-		globalVariables: "Global Variables",
-		globalConstants: "Global Constants",
-		recordFields: "Record Fields",
-		actionOutputs: "Action Outputs",
-		variables: "Variables",
-		formulas: "Formulas",
-		constants: "Constants"
-	};
-
-	if (labelByCategory[categoryKey]) {
-		return labelByCategory[categoryKey];
-	}
-
-	if (typeof categoryKey === "string" && categoryKey) {
-		return categoryKey
-			.replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-			.replace(/[_-]+/g, " ")
-			.replace(/\b\w/g, (character) => character.toUpperCase());
-	}
-
-	return "Resources";
-}
-
-function deriveDisplayLabel(resourceOption) {
-	if (resourceOption.displayLabel) {
-		return resourceOption.displayLabel;
-	}
-
-	if (resourceOption.referenceName?.startsWith("$GlobalConstant.")) {
-		return resourceOption.label?.split(": ").slice(1).join(": ") || resourceOption.referenceName.split(".").pop();
-	}
-
-	return resourceOption.pillLabel ?? resourceOption.referenceName ?? resourceOption.label ?? "";
-}
-
-function deriveTooltip(resourceOption) {
-	return (
-		resourceOption.value ??
-		resourceOption.pillLabel ??
-		resourceOption.referenceName ??
-		deriveDisplayLabel(resourceOption)
-	);
-}
-
-function deriveIconName(resourceOption, categoryKey) {
-	if (resourceOption.iconName) {
-		return resourceOption.iconName;
-	}
-
-	if (resourceOption.dataType === "Boolean" || resourceOption.valueDataType === "Boolean") {
-		return "utility:toggle";
-	}
-
-	if (categoryKey === "recordVariables") {
-		return "utility:record_alt";
-	}
-
-	if (categoryKey === "recordCollections") {
-		return "utility:multi_picklist";
-	}
-
-	if (categoryKey === "recordFields") {
-		return "utility:text";
-	}
-
-	if (categoryKey === "formulas") {
-		return "utility:formula";
-	}
-
-	return "utility:text";
-}
-
-function normalizeLiteralOptionValue(inputType, optionValue) {
-	if (inputType === "boolean") {
-		return optionValue === true || optionValue === "true";
-	}
-
-	return optionValue;
-}
-
-function deriveLiteralIconName(inputType) {
-	if (inputType === "picklist") {
-		return "utility:picklist_type";
-	}
-
-	if (inputType === "boolean") {
-		return "utility:toggle";
-	}
-
-	return "utility:choice";
-}
-
-function matchesLiteralOptionByValue(option, value) {
-	return option.value === value || option.rawValue === value;
-}
-
-function matchesLiteralOptionByText(option, text) {
-	const normalizedText = normalizeComparableValue(text);
-
-	if (!normalizedText) {
-		return false;
-	}
-
-	return [option.displayLabel, option.rawValue, option.value]
-		.map((candidate) => normalizeComparableValue(candidate))
-		.filter(Boolean)
-		.includes(normalizedText);
-}
-
-function isChildResourceOption(resourceOption, parentOption) {
-	return (
-		resourceOption.parentReferenceName === parentOption.referenceName ||
-		(!!parentOption.referenceName && resourceOption.referenceName?.startsWith(`${parentOption.referenceName}.`))
-	);
-}
-
-function toReferenceValue(referenceName) {
-	return referenceName ? `{!${referenceName}}` : "";
-}
-
-function buildStandardResourceOption({ referenceName, displayLabel, dataType, objectType, parentReferenceName, isDrillable = false, iconName }) {
-	const category = referenceName.startsWith("$GlobalConstant.") ? "globalConstants" : "globalVariables";
-	const labelPrefix = category === "globalConstants" ? "Global Constant" : "Global Variable";
-	return {
-		label: `${labelPrefix}: ${displayLabel}`,
-		value: toReferenceValue(referenceName),
-		pillLabel: referenceName,
-		referenceName,
-		displayLabel,
-		dataType,
-		valueDataType: dataType,
-		objectType,
-		parentReferenceName,
-		isCollection: false,
-		isDrillable,
-		iconName,
-		category
-	};
-}
-
-const STANDARD_RESOURCE_OPTIONS = [
-	buildStandardResourceOption({ referenceName: "$GlobalConstant.False", displayLabel: "False", dataType: "Boolean" }),
-	buildStandardResourceOption({ referenceName: "$GlobalConstant.True", displayLabel: "True", dataType: "Boolean" }),
-	buildStandardResourceOption({ referenceName: "$GlobalConstant.EmptyString", displayLabel: "Blank Value (Empty String)", dataType: "String" }),
-	buildStandardResourceOption({ referenceName: "$Api", displayLabel: "API", dataType: "SObject", isDrillable: true, iconName: "utility:world" }),
-	buildStandardResourceOption({ referenceName: "$Api.Session_ID", displayLabel: "Session ID", dataType: "String", parentReferenceName: "$Api" }),
-	buildStandardResourceOption({ referenceName: "$Flow", displayLabel: "Running Flow Interview", dataType: "SObject", isDrillable: true, iconName: "utility:flow" }),
-	buildStandardResourceOption({ referenceName: "$Flow.FaultMessage", displayLabel: "Fault Message", dataType: "String", parentReferenceName: "$Flow" }),
-	buildStandardResourceOption({ referenceName: "$Flow.CurrentDate", displayLabel: "Current Date", dataType: "Date", parentReferenceName: "$Flow" }),
-	buildStandardResourceOption({ referenceName: "$Flow.CurrentDateTime", displayLabel: "Current Date/Time", dataType: "DateTime", parentReferenceName: "$Flow" }),
-	buildStandardResourceOption({ referenceName: "$Flow.InterviewStartTime", displayLabel: "Interview Start Time", dataType: "DateTime", parentReferenceName: "$Flow" }),
-	buildStandardResourceOption({ referenceName: "$Organization", displayLabel: "Running Org", dataType: "SObject", objectType: "Organization", isDrillable: true, iconName: "utility:company" }),
-	buildStandardResourceOption({ referenceName: "$User", displayLabel: "Running User", dataType: "SObject", objectType: "User", isDrillable: true, iconName: "utility:user" }),
-	buildStandardResourceOption({ referenceName: "$Profile", displayLabel: "Running User Profile", dataType: "SObject", objectType: "Profile", isDrillable: true, iconName: "utility:user" }),
-	buildStandardResourceOption({ referenceName: "$UserRole", displayLabel: "Running User Role", dataType: "SObject", objectType: "UserRole", isDrillable: true, iconName: "utility:user" }),
-	buildStandardResourceOption({ referenceName: "$System", displayLabel: "System", dataType: "SObject", isDrillable: true, iconName: "utility:world" }),
-	buildStandardResourceOption({ referenceName: "$System.OriginDateTime", displayLabel: "Origin Date/Time", dataType: "DateTime", parentReferenceName: "$System" })
-];
-
-function referenceNamesMatch(option, referenceName) {
-	return (
-		option?.value === toReferenceValue(referenceName) ||
-		option?.referenceName === referenceName ||
-		option?.pillLabel === referenceName
-	);
-}
-
-function normalizeObjectInfoFieldDataType(dataType) {
-	if (String(dataType ?? "").toLowerCase() === "reference") {
-		return "String";
-	}
-
-	return normalizeDataType(dataType);
-}
-
-function readObjectInfoResult(objectInfoResult) {
-	const result = objectInfoResult?.result ?? objectInfoResult;
-	return result?.fields ? result : null;
-}
-
-function readObjectInfoFields(objectInfo) {
-	const fields = objectInfo?.fields;
-	if (Array.isArray(fields)) {
-		return fields;
-	}
-
-	if (fields && typeof fields === "object") {
-		return Object.entries(fields).map(([apiName, field]) => ({ apiName, ...field }));
-	}
-
-	return [];
-}
-
-function readObjectInfoFieldName(field) {
-	return field?.apiName ?? field?.name ?? field?.fieldApiName ?? null;
-}
-
-function readObjectInfoRelationshipObjectTypes(field) {
-	return (field?.referenceToInfos ?? []).map((referenceToInfo) => referenceToInfo?.apiName).filter(Boolean);
-}
-
-function chooseRelationshipObjectType(objectTypes) {
-	if (!objectTypes?.length) {
-		return null;
-	}
-
-	if (objectTypes.includes("User")) {
-		return "User";
-	}
-
-	return objectTypes.find((objectType) => objectType !== "Group") ?? objectTypes[0];
-}
-
-function toDrilldownResource(option) {
-	const relationshipReferenceName = option.relationshipReferenceName ?? option.referenceName;
-	const relationshipObjectType = option.relationshipObjectType ?? option.objectType;
-
-	return {
-		...option,
-		value: toReferenceValue(relationshipReferenceName),
-		pillLabel: relationshipReferenceName,
-		referenceName: relationshipReferenceName,
-		objectType: relationshipObjectType,
-		relationshipDepth: option.relationshipDepth ?? 0,
-		isSelectable: false
-	};
-}
-
-function dedupeOptionsByReferenceName(options) {
-	const seen = new Set();
-	const result = [];
-
-	for (const option of options) {
-		const key = option?.referenceName ?? option?.value;
-		if (!key || seen.has(key)) {
-			continue;
-		}
-
-		seen.add(key);
-		result.push(option);
-	}
-
-	return result;
-}
-
+/**
+ * Combobox component for selecting Flow resources, field references, action outputs, and literal values.
+ * Supports hierarchical browsing of SObject field trees, type-aware filtering, and Flow expression validation.
+ * Emits `fieldchange` events when the selection changes and `fieldblur` when the field loses focus.
+ */
 export default class FlowCombobox extends LightningElement {
 	/** Field name included in emitted change events. */
 	@api name;
@@ -435,6 +61,12 @@ export default class FlowCombobox extends LightningElement {
 
 	/** Flow resources available for selection. */
 	@api resourceOptions = [];
+
+	/** Flow Builder context used to derive available resources. */
+	@api builderContext = {};
+
+	/** When defined (true/false), filters resources by collection compatibility. */
+	@api fieldIsCollection;
 
 	/** Generic type mapping name used for SObject pickers. */
 	@api typeName = null;
@@ -517,6 +149,477 @@ export default class FlowCombobox extends LightningElement {
 		this._setResourcePickerOpen(false);
 	}
 
+	// ── Private Utility Methods ────────────────────────────────────────────────
+
+	/**
+	 * Normalizes a value to a string, handling null, undefined, and arrays.
+	 * @private
+	 * @param {*} value - The value to normalize
+	 * @returns {string} Empty string for null/undefined, comma-joined for arrays, String() otherwise
+	 */
+	_normalizeTextValue(value) {
+		if (value === undefined || value === null) {
+			return "";
+		}
+		if (Array.isArray(value)) {
+			return value.join(", ");
+		}
+		return String(value);
+	}
+
+	/**
+	 * Normalizes a value to lowercase string for case-insensitive comparison.
+	 * @private
+	 * @param {*} value - The value to normalize
+	 * @returns {string} Trimmed and lowercased string representation
+	 */
+	_normalizeComparableValue(value) {
+		if (value === undefined || value === null) {
+			return "";
+		}
+		return String(value).trim().toLowerCase();
+	}
+
+	/**
+	 * Checks if a resource data type is compatible with the expected field data type.
+	 * Types are compatible if normalized to the same value (case-insensitive).
+	 * @private
+	 * @param {string} resourceDataType - The resource's data type
+	 * @param {string} fieldDataType - The field's expected data type
+	 * @returns {boolean} True if types are compatible or either is missing
+	 */
+	_isCompatibleDataType(resourceDataType, fieldDataType) {
+		const source = normalizeFlowDataType(resourceDataType);
+		const target = normalizeFlowDataType(fieldDataType);
+		return !source || !target || source === target;
+	}
+
+	/**
+	 * Checks if a value represents a Flow resource reference.
+	 * A reference either has valueDataType="reference" or is wrapped in {!...}.
+	 * @private
+	 * @param {string} valueDataType - The declared data type
+	 * @param {*} value - The value to check
+	 * @returns {boolean} True if value is a Flow reference
+	 */
+	_isReference(valueDataType, value) {
+		return (
+			valueDataType === "reference" ||
+			(typeof value === "string" && value.startsWith("{!") && value.endsWith("}"))
+		);
+	}
+
+	/**
+	 * Checks if a string is a valid Flow reference text ({!...}).
+	 * @private
+	 * @param {*} value - The value to check
+	 * @returns {boolean} True if value matches Flow reference syntax
+	 */
+	_isReferenceText(value) {
+		const trimmed = typeof value === "string" ? value.trim() : "";
+		return /^\{![^}]+\}$/.test(trimmed);
+	}
+
+	/**
+	 * Checks if a field data type allows raw literal input values.
+	 * Only String, Decimal, Date, DateTime, and Time types allow raw input.
+	 * @private
+	 * @param {string} fieldDataType - The field's data type
+	 * @returns {boolean} True if raw literal input is allowed
+	 */
+	_allowsRawInputValue(fieldDataType) {
+		return ["String", "Decimal", "Date", "DateTime", "Time"].includes(normalizeFlowDataType(fieldDataType));
+	}
+
+	/**
+	 * Extracts a reference name from a Flow reference string or returns the string as-is.
+	 * Handles {!referenceName} syntax by removing the delimiters.
+	 * @private
+	 * @param {*} value - The reference text or string
+	 * @returns {string|null} The extracted reference name, or null if not a string
+	 */
+	_normalizeReferenceName(value) {
+		if (typeof value !== "string") {
+			return null;
+		}
+		if (value.startsWith("{!") && value.endsWith("}")) {
+			return value.slice(2, -1);
+		}
+		return value;
+	}
+
+	/**
+	 * Unwraps a Flow reference string, returning only the reference name inside {!...}.
+	 * Returns null if the value is not a properly formatted reference.
+	 * @private
+	 * @param {*} value - The value to unwrap
+	 * @returns {string|null} The reference name without delimiters, or null if not a reference
+	 */
+	_unwrapReferenceName(value) {
+		const trimmed = typeof value === "string" ? value.trim() : "";
+		if (!trimmed.startsWith("{!") || !trimmed.endsWith("}")) {
+			return null;
+		}
+		return this._normalizeReferenceName(trimmed);
+	}
+
+	/**
+	 * Checks if a resource option matches a search query across multiple searchable fields.
+	 * @private
+	 * @param {Object} resourceOption - The option to check
+	 * @param {string} query - The search query
+	 * @returns {boolean} True if the option matches the query or query is empty
+	 */
+	_matchesResourceOption(resourceOption, query) {
+		const normalizedQuery = this._normalizeComparableValue(query);
+		if (!normalizedQuery) {
+			return true;
+		}
+		return [
+			resourceOption.label,
+			resourceOption.pillLabel,
+			resourceOption.referenceName,
+			resourceOption.displayLabel
+		]
+			.filter(Boolean)
+			.some((candidate) => candidate.toLowerCase().includes(normalizedQuery));
+	}
+
+	/**
+	 * Derives a category key for a resource option for grouping in the dropdown.
+	 * Uses option.category if provided, otherwise infers from option properties.
+	 * @private
+	 * @param {Object} resourceOption - The option to categorize
+	 * @returns {string} A category key for grouping (e.g., "variables", "recordFields", "formulas")
+	 */
+	_deriveCategoryKey(resourceOption) {
+		if (resourceOption.category) {
+			return resourceOption.category;
+		}
+		if (resourceOption.referenceName?.startsWith("$GlobalConstant.")) {
+			return "globalConstants";
+		}
+		if (resourceOption.objectType && resourceOption.isCollection) {
+			return "recordCollections";
+		}
+		if (resourceOption.objectType) {
+			return "recordVariables";
+		}
+		if (resourceOption.label?.startsWith("Formula:")) {
+			return "formulas";
+		}
+		if (resourceOption.label?.startsWith("Constant:")) {
+			return "constants";
+		}
+		return "variables";
+	}
+
+	/**
+	 * Derives a user-friendly group label from a category key.
+	 * Converts camelCase or snake_case to Title Case.
+	 * @private
+	 * @param {string} categoryKey - The category key
+	 * @returns {string} The display label for the category
+	 */
+	_deriveGroupLabel(categoryKey) {
+		const labelByCategory = {
+			recordVariables: "Record Variables",
+			recordCollections: "Record Collections",
+			globalVariables: "Global Variables",
+			globalConstants: "Global Constants",
+			recordFields: "Record Fields",
+			actionOutputs: "Action Outputs",
+			variables: "Variables",
+			formulas: "Formulas",
+			constants: "Constants"
+		};
+		if (labelByCategory[categoryKey]) {
+			return labelByCategory[categoryKey];
+		}
+		if (typeof categoryKey === "string" && categoryKey) {
+			return categoryKey
+				.replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+				.replace(/[_-]+/g, " ")
+				.replace(/\b\w/g, (character) => character.toUpperCase());
+		}
+		return "Resources";
+	}
+
+	/**
+	 * Derives a display label for a resource option, prioritizing more specific labels.
+	 * @private
+	 * @param {Object} resourceOption - The option
+	 * @returns {string} The display label
+	 */
+	_deriveDisplayLabel(resourceOption) {
+		if (resourceOption.displayLabel) {
+			return resourceOption.displayLabel;
+		}
+		if (resourceOption.referenceName?.startsWith("$GlobalConstant.")) {
+			return (
+				resourceOption.label?.split(": ").slice(1).join(": ") || resourceOption.referenceName.split(".").pop()
+			);
+		}
+		return resourceOption.pillLabel ?? resourceOption.referenceName ?? resourceOption.label ?? "";
+	}
+
+	/**
+	 * Derives a tooltip string for a resource option, prioritizing value or reference name.
+	 * @private
+	 * @param {Object} resourceOption - The option
+	 * @returns {string} Text suitable for a tooltip hover
+	 */
+	_deriveTooltip(resourceOption) {
+		return (
+			resourceOption.value ??
+			resourceOption.pillLabel ??
+			resourceOption.referenceName ??
+			this._deriveDisplayLabel(resourceOption)
+		);
+	}
+
+	/**
+	 * Derives an icon name for a resource option.
+	 * Uses option.iconName if provided, otherwise infers from data type.
+	 * @private
+	 * @param {Object} resourceOption - The option
+	 * @param {string} categoryKey - The category key for additional context
+	 * @returns {string} An icon name for display (e.g., "utility:toggle", "utility:world")
+	 */
+	_deriveIconName(resourceOption, categoryKey) {
+		if (resourceOption.iconName) {
+			return resourceOption.iconName;
+		}
+		if (resourceOption.dataType === "Boolean" || resourceOption.valueDataType === "Boolean") {
+			return "utility:toggle";
+		}
+		if (categoryKey === "recordVariables") {
+			return "utility:record_alt";
+		}
+		if (categoryKey === "recordCollections") {
+			return "utility:multi_picklist";
+		}
+		if (categoryKey === "recordFields") {
+			return "utility:text";
+		}
+		if (categoryKey === "formulas") {
+			return "utility:formula";
+		}
+		return "utility:text";
+	}
+
+	/**
+	 * Normalizes a literal option value for the given input type.
+	 * Converts boolean string values to actual booleans.
+	 * @private
+	 * @param {string} inputType - The input type (e.g., "text", "boolean", "picklist")
+	 * @param {*} optionValue - The option value to normalize
+	 * @returns {*} The normalized value
+	 */
+	_normalizeLiteralOptionValue(inputType, optionValue) {
+		if (inputType === "boolean") {
+			return optionValue === true || optionValue === "true";
+		}
+		return optionValue;
+	}
+
+	/**
+	 * Derives an icon name for a literal option based on the input type.
+	 * @private
+	 * @param {string} inputType - The input type (e.g., "text", "boolean", "picklist")
+	 * @returns {string} An icon name suitable for the input type
+	 */
+	_deriveLiteralIconName(inputType) {
+		if (inputType === "picklist") {
+			return "utility:picklist_type";
+		}
+		if (inputType === "boolean") {
+			return "utility:toggle";
+		}
+		return "utility:choice";
+	}
+
+	/**
+	 * Checks if a literal option matches a value by comparing value and rawValue.
+	 * @private
+	 * @param {Object} option - The literal option
+	 * @param {*} value - The value to match
+	 * @returns {boolean} True if the option matches the value
+	 */
+	_matchesLiteralOptionByValue(option, value) {
+		return option.value === value || option.rawValue === value;
+	}
+
+	/**
+	 * Checks if a literal option matches a search text across display fields.
+	 * @private
+	 * @param {Object} option - The literal option
+	 * @param {string} text - The search text
+	 * @returns {boolean} True if the option matches the text
+	 */
+	_matchesLiteralOptionByText(option, text) {
+		const normalizedText = this._normalizeComparableValue(text);
+		if (!normalizedText) {
+			return false;
+		}
+		return [option.displayLabel, option.rawValue, option.value]
+			.map((candidate) => this._normalizeComparableValue(candidate))
+			.filter(Boolean)
+			.includes(normalizedText);
+	}
+
+	/**
+	 * Checks if a resource option is a child property of a parent option.
+	 * Child options have a parentReferenceName or start with the parent's referenceName.
+	 * @private
+	 * @param {Object} resourceOption - The potentially child option
+	 * @param {Object} parentOption - The potential parent option
+	 * @returns {boolean} True if resourceOption is a child of parentOption
+	 */
+	_isChildResourceOption(resourceOption, parentOption) {
+		return (
+			resourceOption.parentReferenceName === parentOption.referenceName ||
+			(!!parentOption.referenceName && resourceOption.referenceName?.startsWith(`${parentOption.referenceName}.`))
+		);
+	}
+
+	/**
+	 * Checks if an option's reference name matches a given reference name.
+	 * Matches against value, referenceName, or pillLabel.
+	 * @private
+	 * @param {Object} option - The option to check
+	 * @param {string} referenceName - The reference name to match
+	 * @returns {boolean} True if the option matches the reference name
+	 */
+	_referenceNamesMatch(option, referenceName) {
+		return (
+			option?.value === toReferenceValue(referenceName) ||
+			option?.referenceName === referenceName ||
+			option?.pillLabel === referenceName
+		);
+	}
+
+	/**
+	 * Normalizes a data type from UI API object info.
+	 * Reference types are converted to String since Flow doesn't use UI API reference types.
+	 * @private
+	 * @param {string} dataType - The raw data type from UI API
+	 * @returns {string|null} The normalized Flow data type
+	 */
+	_normalizeObjectInfoFieldDataType(dataType) {
+		if (String(dataType ?? "").toLowerCase() === "reference") {
+			return "String";
+		}
+		return normalizeFlowDataType(dataType);
+	}
+
+	_readObjectInfoResult(objectInfoResult) {
+		const result = objectInfoResult?.result ?? objectInfoResult;
+		return result?.fields ? result : null;
+	}
+
+	_readObjectInfoFields(objectInfo) {
+		const fields = objectInfo?.fields;
+		if (Array.isArray(fields)) {
+			return fields;
+		}
+		if (fields && typeof fields === "object") {
+			return Object.entries(fields).map(([apiName, field]) => ({ apiName, ...field }));
+		}
+		return [];
+	}
+
+	_readObjectInfoFieldName(field) {
+		return field?.apiName ?? field?.name ?? field?.fieldApiName ?? null;
+	}
+
+	_readObjectInfoRelationshipObjectTypes(field) {
+		return (field?.referenceToInfos ?? []).map((referenceToInfo) => referenceToInfo?.apiName).filter(Boolean);
+	}
+
+	_chooseRelationshipObjectType(objectTypes) {
+		if (!objectTypes?.length) {
+			return null;
+		}
+		if (objectTypes.includes("User")) {
+			return "User";
+		}
+		return objectTypes.find((objectType) => objectType !== "Group") ?? objectTypes[0];
+	}
+
+	_toDrilldownResource(option) {
+		const relationshipReferenceName = option.relationshipReferenceName ?? option.referenceName;
+		const relationshipObjectType = option.relationshipObjectType ?? option.objectType;
+		return {
+			...option,
+			value: toReferenceValue(relationshipReferenceName),
+			pillLabel: relationshipReferenceName,
+			referenceName: relationshipReferenceName,
+			objectType: relationshipObjectType,
+			relationshipDepth: option.relationshipDepth ?? 0,
+			isSelectable: false
+		};
+	}
+
+	_dedupeOptionsByReferenceName(options) {
+		const seen = new Set();
+		const result = [];
+		for (const option of options) {
+			const key = option?.referenceName ?? option?.value;
+			if (!key || seen.has(key)) {
+				continue;
+			}
+			seen.add(key);
+			result.push(option);
+		}
+		return result;
+	}
+
+	_deriveBuilderContextOptions() {
+		const ctx = this.builderContext;
+		if (!ctx || !Object.keys(ctx).length) return [];
+		const options = [];
+		for (const collection of RESOURCE_COLLECTIONS) {
+			for (const resource of readCollection(ctx, collection.key)) {
+				const option = buildResourceOption(resource, collection);
+				if (!option) continue;
+				options.push(option, ...readFieldOptions(resource, option));
+			}
+		}
+		for (const action of readCollection(ctx, "actionCalls")) {
+			options.push(...readActionOutputOptions(action));
+		}
+		return options;
+	}
+
+	_isCandidateVisible(option) {
+		if (this.fieldIsCollection === undefined || this.fieldIsCollection === null) return true;
+		return this._isCompatibleWithField(option) || this._isDrillableForField(option);
+	}
+
+	_isCompatibleWithField(option) {
+		const resourceType = normalizeFlowDataType(option.dataType ?? option.valueDataType ?? option.type);
+		const fieldType = normalizeFlowDataType(this.fieldDataType);
+		const targetIsCollection = this.fieldIsCollection === true || this.fieldIsCollection === "true";
+		const resourceIsCollection = option.isCollection === true || option.isCollection === "true";
+		if (resourceIsCollection !== targetIsCollection) return false;
+		if (!fieldType) return false;
+		if (!resourceType) return option.category === "recordFields" && fieldType !== "SObject";
+		return resourceType === fieldType;
+	}
+
+	_isDrillableForField(option) {
+		const fieldType = normalizeFlowDataType(this.fieldDataType);
+		const targetIsCollection = this.fieldIsCollection === true || this.fieldIsCollection === "true";
+		const resourceType = normalizeFlowDataType(option.dataType ?? option.valueDataType);
+		const resourceIsCollection = option.isCollection === true || option.isCollection === "true";
+		return fieldType !== "SObject" && !targetIsCollection && resourceType === "SObject" && !resourceIsCollection;
+	}
+
+	_decorateCandidate(option) {
+		return this._isDrillableForField(option) ? { ...option, isDrillable: true, isSelectable: false } : option;
+	}
+
 	/**
 	 * Applies an internal validation message.
 	 * @param {string} error Validation message to display.
@@ -578,7 +681,7 @@ export default class FlowCombobox extends LightningElement {
 
 	/** Whether the input accepts raw text or number-like values. */
 	get allowsRawInputValue() {
-		return allowsRawInputValue(this.fieldDataType);
+		return this._allowsRawInputValue(this.fieldDataType);
 	}
 
 	/** Whether an excluded optional field has a default value to show. */
@@ -593,17 +696,21 @@ export default class FlowCombobox extends LightningElement {
 
 	/** Whether the current value is a Flow resource reference. */
 	get isReferenceValue() {
-		return isReference(this.valueDataType, this.value);
+		return this._isReference(this.valueDataType, this.value);
 	}
 
 	/** Current resource reference name without Flow expression braces. */
 	get selectedResourceName() {
-		return normalizeReferenceName(this.value);
+		return this._normalizeReferenceName(this.value);
 	}
 
 	/** Consumer-provided and standard Flow global resource options, deduplicated by referenceName. */
 	get _allResourceOptions() {
-		return dedupeOptionsByReferenceName([...(this.resourceOptions || []), ...STANDARD_RESOURCE_OPTIONS]);
+		return this._dedupeOptionsByReferenceName([
+			...(this.resourceOptions || []),
+			...this._deriveBuilderContextOptions(),
+			...STANDARD_RESOURCE_OPTIONS
+		]);
 	}
 
 	/** Static and dynamically loaded resource options that can be selected. */
@@ -616,11 +723,8 @@ export default class FlowCombobox extends LightningElement {
 
 	/** Currently selected resource option, if the value resolves to one. */
 	get selectedResource() {
-		return this.selectableResourceOptions.find(
-			(option) =>
-				option.value === this.value ||
-				option.referenceName === this.selectedResourceName ||
-				option.pillLabel === this.selectedResourceName
+		return this.selectableResourceOptions.find((option) =>
+			this._referenceNamesMatch(option, this.selectedResourceName)
 		);
 	}
 
@@ -639,15 +743,15 @@ export default class FlowCombobox extends LightningElement {
 			return null;
 		}
 
-		const categoryKey = deriveCategoryKey(selectedResource);
+		const categoryKey = this._deriveCategoryKey(selectedResource);
 
 		return {
 			...selectedResource,
 			categoryKey,
-			groupLabel: deriveGroupLabel(categoryKey),
-			displayLabel: deriveDisplayLabel(selectedResource),
-			tooltip: deriveTooltip(selectedResource),
-			iconName: deriveIconName(selectedResource, categoryKey)
+			groupLabel: this._deriveGroupLabel(categoryKey),
+			displayLabel: this._deriveDisplayLabel(selectedResource),
+			tooltip: this._deriveTooltip(selectedResource),
+			iconName: this._deriveIconName(selectedResource, categoryKey)
 		};
 	}
 
@@ -684,7 +788,7 @@ export default class FlowCombobox extends LightningElement {
 		}
 
 		return (this.options || []).map((option, index) => {
-			const value = normalizeLiteralOptionValue(this.inputType, option.value);
+			const value = this._normalizeLiteralOptionValue(this.inputType, option.value);
 
 			return {
 				key: `literal-${index}-${String(option.value)}`,
@@ -697,7 +801,7 @@ export default class FlowCombobox extends LightningElement {
 				rawValue: option.value,
 				value,
 				valueDataType: this.fieldDataType,
-				iconName: deriveLiteralIconName(this.inputType)
+				iconName: this._deriveLiteralIconName(this.inputType)
 			};
 		});
 	}
@@ -733,7 +837,7 @@ export default class FlowCombobox extends LightningElement {
 
 	/** Display label for the current drilldown parent resource. */
 	get drilldownResourceLabel() {
-		return deriveDisplayLabel(this._drilldownResource ?? {});
+		return this._deriveDisplayLabel(this._drilldownResource ?? {});
 	}
 
 	/** Resource options available at the current dropdown level. */
@@ -742,9 +846,12 @@ export default class FlowCombobox extends LightningElement {
 			return this._getChildResourceOptions(this._drilldownResource);
 		}
 
-		return this._allResourceOptions.filter(
-			(resourceOption) => !resourceOption.parentReferenceName && resourceOption.category !== "recordFields"
-		);
+		return this._allResourceOptions
+			.filter(
+				(resourceOption) => !resourceOption.parentReferenceName && resourceOption.category !== "recordFields"
+			)
+			.filter((resourceOption) => this._isCandidateVisible(resourceOption))
+			.map((resourceOption) => this._decorateCandidate(resourceOption));
 	}
 
 	/** Resource options visible after filtering by the current input text. */
@@ -752,9 +859,9 @@ export default class FlowCombobox extends LightningElement {
 		const query = this.displayTextValue;
 
 		return this.candidateResourceOptions
-			.filter((resourceOption) => matchesResourceOption(resourceOption, query))
+			.filter((resourceOption) => this._matchesResourceOption(resourceOption, query))
 			.map((resourceOption, index) => {
-				const categoryKey = deriveCategoryKey(resourceOption);
+				const categoryKey = this._deriveCategoryKey(resourceOption);
 				const key =
 					resourceOption.key ?? `resource-${resourceOption.referenceName ?? resourceOption.value ?? index}`;
 
@@ -763,10 +870,10 @@ export default class FlowCombobox extends LightningElement {
 					key,
 					optionType: "resource",
 					categoryKey,
-					groupLabel: deriveGroupLabel(categoryKey),
-					displayLabel: deriveDisplayLabel(resourceOption),
-					tooltip: deriveTooltip(resourceOption),
-					iconName: deriveIconName(resourceOption, categoryKey),
+					groupLabel: this._deriveGroupLabel(categoryKey),
+					displayLabel: this._deriveDisplayLabel(resourceOption),
+					tooltip: this._deriveTooltip(resourceOption),
+					iconName: this._deriveIconName(resourceOption, categoryKey),
 					valueDataType: "reference",
 					isDrillable: resourceOption.isDrillable ?? !!resourceOption.objectType,
 					isSelectable: resourceOption.isSelectable !== false,
@@ -784,7 +891,7 @@ export default class FlowCombobox extends LightningElement {
 		const query = this.displayTextValue;
 
 		return this.literalOptions
-			.filter((option) => matchesResourceOption(option, query))
+			.filter((option) => this._matchesResourceOption(option, query))
 			.map((option) => ({ ...option, isFocused: this._focusedOptionKey === option.key }));
 	}
 
@@ -858,7 +965,7 @@ export default class FlowCombobox extends LightningElement {
 
 	/** Current raw value normalized for text input display. */
 	get currentTextValue() {
-		return normalizeTextValue(this.value);
+		return this._normalizeTextValue(this.value);
 	}
 
 	/** Selected literal option, if the raw value matches one. */
@@ -867,7 +974,7 @@ export default class FlowCombobox extends LightningElement {
 			return null;
 		}
 
-		return this.literalOptions.find((option) => matchesLiteralOptionByValue(option, this.value)) ?? null;
+		return this.literalOptions.find((option) => this._matchesLiteralOptionByValue(option, this.value)) ?? null;
 	}
 
 	/** Text currently displayed in the editable input. */
@@ -898,10 +1005,10 @@ export default class FlowCombobox extends LightningElement {
 	/** Display value for the excluded-field default state. */
 	get defaultDisplayValue() {
 		const matchingDefaultLiteral = this.literalOptions.find((option) =>
-			matchesLiteralOptionByValue(option, this.defaultValue)
+			this._matchesLiteralOptionByValue(option, this.defaultValue)
 		);
 
-		return matchingDefaultLiteral?.displayLabel ?? normalizeTextValue(this.defaultValue);
+		return matchingDefaultLiteral?.displayLabel ?? this._normalizeTextValue(this.defaultValue);
 	}
 
 	/** Accessible label for the include toggle state. */
@@ -1024,14 +1131,14 @@ export default class FlowCombobox extends LightningElement {
 
 	/** Converts a raw resource option into the decorated selection shape. */
 	_toReferenceSelection(option) {
-		const categoryKey = deriveCategoryKey(option);
+		const categoryKey = this._deriveCategoryKey(option);
 		return {
 			...option,
 			categoryKey,
-			groupLabel: deriveGroupLabel(categoryKey),
-			displayLabel: deriveDisplayLabel(option),
-			tooltip: deriveTooltip(option),
-			iconName: deriveIconName(option, categoryKey),
+			groupLabel: this._deriveGroupLabel(categoryKey),
+			displayLabel: this._deriveDisplayLabel(option),
+			tooltip: this._deriveTooltip(option),
+			iconName: this._deriveIconName(option, categoryKey),
 			valueDataType: "reference",
 			isSelectable: option.isSelectable !== false
 		};
@@ -1039,7 +1146,7 @@ export default class FlowCombobox extends LightningElement {
 
 	/** Opens a child-resource drilldown level for a complex resource. */
 	_openDrilldown(option) {
-		this._drilldownResource = toDrilldownResource(option);
+		this._drilldownResource = this._toDrilldownResource(option);
 		this._draftTextValue = "";
 		this._focusedOptionKey = null;
 		this._suppressTextCommitAfterSelection = true;
@@ -1051,10 +1158,10 @@ export default class FlowCombobox extends LightningElement {
 	/** Gets statically provided and dynamically loaded child options for a parent. */
 	_getChildResourceOptions(parentOption) {
 		const staticOptions = this._allResourceOptions.filter((resourceOption) =>
-			isChildResourceOption(resourceOption, parentOption)
+			this._isChildResourceOption(resourceOption, parentOption)
 		);
 		const dynamicOptions = this._dynamicChildOptionsByParent[parentOption.referenceName] ?? [];
-		return dedupeOptionsByReferenceName([...staticOptions, ...dynamicOptions]);
+		return this._dedupeOptionsByReferenceName([...staticOptions, ...dynamicOptions]);
 	}
 
 	/** Loads and returns child field options for a parent resource. */
@@ -1126,7 +1233,7 @@ export default class FlowCombobox extends LightningElement {
 			return;
 		}
 
-		const objectInfo = readObjectInfoResult(objectInfoResult);
+		const objectInfo = this._readObjectInfoResult(objectInfoResult);
 		if (!objectInfo) {
 			this._objectInfoErrorsByApiName = {
 				...this._objectInfoErrorsByApiName,
@@ -1174,16 +1281,16 @@ export default class FlowCombobox extends LightningElement {
 
 	/** Converts UI API object metadata fields into resource picker options. */
 	_buildDynamicChildOptions(parentOption, objectInfo) {
-		return readObjectInfoFields(objectInfo)
+		return this._readObjectInfoFields(objectInfo)
 			.map((field) => {
-				const fieldName = readObjectInfoFieldName(field);
+				const fieldName = this._readObjectInfoFieldName(field);
 				if (!fieldName) {
 					return null;
 				}
 
 				const referenceName = `${parentOption.referenceName}.${fieldName}`;
-				const relationshipObjectTypes = readObjectInfoRelationshipObjectTypes(field);
-				const relationshipObjectType = chooseRelationshipObjectType(relationshipObjectTypes);
+				const relationshipObjectTypes = this._readObjectInfoRelationshipObjectTypes(field);
+				const relationshipObjectType = this._chooseRelationshipObjectType(relationshipObjectTypes);
 				const relationshipDepth = (parentOption.relationshipDepth ?? 0) + 1;
 				const relationshipReferenceName = field.relationshipName
 					? `${parentOption.referenceName}.${field.relationshipName}`
@@ -1192,7 +1299,7 @@ export default class FlowCombobox extends LightningElement {
 					!!relationshipReferenceName &&
 					!!relationshipObjectType &&
 					relationshipDepth <= MAX_RELATIONSHIP_DEPTH;
-				const dataType = normalizeObjectInfoFieldDataType(field.dataType);
+				const dataType = this._normalizeObjectInfoFieldDataType(field.dataType);
 
 				return {
 					label: `Field: ${field.label}`,
@@ -1216,21 +1323,23 @@ export default class FlowCombobox extends LightningElement {
 				};
 			})
 			.filter(Boolean)
-			.filter((option) => option.isDrillable || isCompatibleDataType(option.dataType, this.fieldDataType));
+			.filter((option) => option.isDrillable || this._isCompatibleDataType(option.dataType, this.fieldDataType));
 	}
 
 	/** Resolves typed Flow reference text into a selectable resource option. */
 	async _resolveTypedResourceOption(inputValue) {
-		const referenceName = unwrapReferenceName(inputValue);
+		const referenceName = this._unwrapReferenceName(inputValue);
 		if (!referenceName) {
 			return null;
 		}
 
-		const exactOption = this.selectableResourceOptions.find((option) => referenceNamesMatch(option, referenceName));
+		const exactOption = this.selectableResourceOptions.find((option) =>
+			this._referenceNamesMatch(option, referenceName)
+		);
 		if (
 			exactOption &&
 			exactOption.isSelectable !== false &&
-			isCompatibleDataType(exactOption.dataType ?? exactOption.valueDataType, this.fieldDataType)
+			this._isCompatibleDataType(exactOption.dataType ?? exactOption.valueDataType, this.fieldDataType)
 		) {
 			return this._toReferenceSelection(exactOption);
 		}
@@ -1240,12 +1349,12 @@ export default class FlowCombobox extends LightningElement {
 			return null;
 		}
 
-		const root = this._allResourceOptions.find((option) => referenceNamesMatch(option, parts[0]));
+		const root = this._allResourceOptions.find((option) => this._referenceNamesMatch(option, parts[0]));
 		if (!root?.objectType) {
 			return null;
 		}
 
-		let parentOption = toDrilldownResource(root);
+		let parentOption = this._toDrilldownResource(root);
 		let currentReferenceName = parts[0];
 
 		for (let index = 1; index < parts.length; index++) {
@@ -1267,7 +1376,7 @@ export default class FlowCombobox extends LightningElement {
 				if (
 					childOption.referenceName === referenceName &&
 					childOption.isSelectable !== false &&
-					isCompatibleDataType(childOption.dataType ?? childOption.valueDataType, this.fieldDataType)
+					this._isCompatibleDataType(childOption.dataType ?? childOption.valueDataType, this.fieldDataType)
 				) {
 					return this._toReferenceSelection(childOption);
 				}
@@ -1278,7 +1387,7 @@ export default class FlowCombobox extends LightningElement {
 				return null;
 			}
 
-			parentOption = toDrilldownResource(childOption);
+			parentOption = this._toDrilldownResource(childOption);
 			currentReferenceName = directReferenceName;
 		}
 
@@ -1287,7 +1396,7 @@ export default class FlowCombobox extends LightningElement {
 
 	/** Commits typed Flow reference text or marks it invalid. */
 	async _commitTypedReference(inputValue) {
-		if (!isReferenceText(inputValue)) {
+		if (!this._isReferenceText(inputValue)) {
 			return false;
 		}
 
@@ -1307,10 +1416,14 @@ export default class FlowCombobox extends LightningElement {
 
 	/** Finds a literal option by user-entered display text or value text. */
 	_findLiteralOptionByText(text) {
-		return this.literalOptions.find((option) => matchesLiteralOptionByText(option, text)) ?? null;
+		return this.literalOptions.find((option) => this._matchesLiteralOptionByText(option, text)) ?? null;
 	}
 
-	/** Handles keyboard navigation and selection inside the open dropdown. */
+	/**
+	 * Handles keyboard navigation within the resource dropdown.
+	 * Arrow keys move focus, Enter selects or drills down, Escape closes the dropdown.
+	 * @param {KeyboardEvent} event
+	 */
 	handleInputKeyDown(event) {
 		if (!this.showResourceDropdown) {
 			return;
@@ -1358,12 +1471,17 @@ export default class FlowCombobox extends LightningElement {
 		this._pendingScrollFocusedOption = true;
 	}
 
-	/** Opens the resource picker when the text input receives focus. */
+	/**
+	 * Opens the resource picker when the text input receives focus.
+	 */
 	handleTextFocus() {
 		this._setResourcePickerOpen(true);
 	}
 
-	/** Tracks text input edits and filters the open dropdown. */
+	/**
+	 * Tracks text input edits and filters the dropdown options by matching against the input text.
+	 * @param {InputEvent} event
+	 */
 	handleTextInput(event) {
 		if (this._pendingSelection && event.target.value !== this._pendingSelection.displayLabel) {
 			this._pendingSelection = null;
@@ -1376,7 +1494,11 @@ export default class FlowCombobox extends LightningElement {
 		this._setResourcePickerOpen(true);
 	}
 
-	/** Commits typed text, literal choices, or Flow references on change. */
+	/**
+	 * Commits typed text, literal choices, or Flow references when the input value changes.
+	 * Validates Flow reference syntax and applies the selection or error message accordingly.
+	 * @param {Event} event
+	 */
 	async handleTextChange(event) {
 		if (this._pendingSelection && event.target.value === this._pendingSelection.displayLabel) {
 			return;
@@ -1392,7 +1514,7 @@ export default class FlowCombobox extends LightningElement {
 		}
 
 		const nextTextValue = event.target.value;
-		if (isReferenceText(nextTextValue) && (await this._commitTypedReference(nextTextValue))) {
+		if (this._isReferenceText(nextTextValue) && (await this._commitTypedReference(nextTextValue))) {
 			return;
 		}
 
@@ -1423,10 +1545,14 @@ export default class FlowCombobox extends LightningElement {
 		}
 	}
 
-	/** Commits pending text and notifies the parent when the field loses focus. */
+	/**
+	 * Commits pending text input and closes the dropdown when the field loses focus.
+	 * Validates Flow references and emits fieldblur event.
+	 * @param {FocusEvent} event
+	 */
 	async handleBlur(event) {
 		const nextTextValue = this._draftTextValue ?? event.target.value;
-		if (isReferenceText(nextTextValue) && (await this._commitTypedReference(nextTextValue))) {
+		if (this._isReferenceText(nextTextValue) && (await this._commitTypedReference(nextTextValue))) {
 			this._setResourcePickerOpen(false);
 			this._syncRenderedInputValue();
 			this.dispatchEvent(
@@ -1478,7 +1604,9 @@ export default class FlowCombobox extends LightningElement {
 		);
 	}
 
-	/** Toggles the resource picker from the search icon button. */
+	/**
+	 * Toggles the resource picker dropdown open/closed from the trigger button.
+	 */
 	handleResourceTriggerClick() {
 		this._setResourcePickerOpen(!this._isResourcePickerOpen);
 		if (this._isResourcePickerOpen) {
@@ -1486,12 +1614,17 @@ export default class FlowCombobox extends LightningElement {
 		}
 	}
 
-	/** Prevents header mousedown from blurring the input before click handling. */
+	/**
+	 * Prevents mousedown on the dropdown header from blurring the input.
+	 * @param {MouseEvent} event
+	 */
 	handleDropdownHeaderMouseDown(event) {
 		event.preventDefault();
 	}
 
-	/** Navigates from a drilldown level back to the root resource list. */
+	/**
+	 * Navigates back to the root resource list from a drilldown level.
+	 */
 	handleDropdownHeaderClick() {
 		if (!this._drilldownResource) {
 			return;
@@ -1503,7 +1636,10 @@ export default class FlowCombobox extends LightningElement {
 		this._syncRenderedInputValue();
 	}
 
-	/** Handles option selection on mousedown to avoid blur races. */
+	/**
+	 * Handles mousedown on a resource option to select or drill down before blur can occur.
+	 * @param {MouseEvent} event
+	 */
 	handleResourceOptionMouseDown(event) {
 		event.preventDefault();
 		this._ignoreNextTextChange = true;
@@ -1511,14 +1647,20 @@ export default class FlowCombobox extends LightningElement {
 		this.handleResourceOptionClick(event);
 	}
 
-	/** Prevents chevron mousedown from selecting the parent option. */
+	/**
+	 * Prevents mousedown on the drilldown chevron from selecting the parent option.
+	 * @param {MouseEvent} event
+	 */
 	handleResourceOptionChevronMouseDown(event) {
 		event.preventDefault();
 		event.stopPropagation();
 		this._ignoreNextTextChange = true;
 	}
 
-	/** Opens drilldown for a resource option chevron. */
+	/**
+	 * Opens a drilldown level to browse child fields of a complex SObject resource.
+	 * @param {MouseEvent} event
+	 */
 	handleResourceOptionChevronClick(event) {
 		event.preventDefault();
 		event.stopPropagation();
@@ -1531,7 +1673,11 @@ export default class FlowCombobox extends LightningElement {
 		}
 	}
 
-	/** Selects a resource option or opens drilldown for complex resources. */
+	/**
+	 * Selects a resource option or opens drilldown for complex SObject resources.
+	 * Emits fieldchange event with the selected value.
+	 * @param {MouseEvent|CustomEvent} event
+	 */
 	handleResourceOptionClick(event) {
 		if (event.type === "click" && this._ignoreNextResourceClick) {
 			this._ignoreNextResourceClick = false;
@@ -1574,25 +1720,33 @@ export default class FlowCombobox extends LightningElement {
 		}
 	}
 
-	/** Switches from pill display into raw text editing mode. */
+	/**
+	 * Switches from pill display into raw text editing mode.
+	 */
 	handleSelectedResourceEdit() {
 		const rawValue = this.activeReferenceSelection?.value ?? this.value ?? "";
 		this._pendingSelection = null;
 		this._forceLiteralInput = true;
-		this._draftTextValue = normalizeTextValue(rawValue);
+		this._draftTextValue = this._normalizeTextValue(rawValue);
 		this._drilldownResource = null;
 		this._suppressTextCommitAfterSelection = false;
 		this._focusInputAfterRender = true;
 		this._setResourcePickerOpen(false);
 	}
 
-	/** Prevents pill remove mousedown from triggering edit mode or blur handling. */
+	/**
+	 * Prevents mousedown on the pill remove button from triggering edit mode or blur.
+	 * @param {MouseEvent} event
+	 */
 	handleSelectedResourceRemoveMouseDown(event) {
 		event.preventDefault();
 		event.stopPropagation();
 	}
 
-	/** Clears the selected pill and emits a null field value. */
+	/**
+	 * Clears the selected resource and emits a null field value.
+	 * @param {MouseEvent} event
+	 */
 	handleSelectedResourceRemove(event) {
 		event?.preventDefault();
 		event?.stopPropagation();
@@ -1607,7 +1761,10 @@ export default class FlowCombobox extends LightningElement {
 		this._emitFieldChange(null, this.fieldDataType);
 	}
 
-	/** Emits optional-field included state changes. */
+	/**
+	 * Emits fieldincludedchange event when an optional field's included state changes.
+	 * @param {Event} event
+	 */
 	handleIncludedChange(event) {
 		this.dispatchEvent(
 			new CustomEvent("fieldincludedchange", {
@@ -1621,7 +1778,9 @@ export default class FlowCombobox extends LightningElement {
 		);
 	}
 
-	/** Emits a request to create a new Flow resource. */
+	/**
+	 * Emits newresource event to request creation of a new Flow resource.
+	 */
 	handleNewResourceClick() {
 		this._setResourcePickerOpen(false);
 		this.dispatchEvent(new CustomEvent("newresource", { bubbles: true, composed: true }));
@@ -1652,7 +1811,10 @@ export default class FlowCombobox extends LightningElement {
 		return result;
 	}
 
-	/** Emits a Flow generic type mapping change for SObject field values. */
+	/**
+	 * Emits configuration_editor_generic_type_mapping_changed event when the SObject type selection changes.
+	 * @param {CustomEvent} event
+	 */
 	handleTypeMappingChange(event) {
 		this.dispatchEvent(
 			new CustomEvent("configuration_editor_generic_type_mapping_changed", {

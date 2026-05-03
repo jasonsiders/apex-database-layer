@@ -602,7 +602,9 @@ describe("c-flow-combobox", () => {
 		input.dispatchEvent(new CustomEvent("focus"));
 		await Promise.resolve();
 
-		const sectionTitles = [...element.shadowRoot.querySelectorAll(".resource-section-title")].map((s) => s.textContent);
+		const sectionTitles = [...element.shadowRoot.querySelectorAll(".resource-section-title")].map(
+			(s) => s.textContent
+		);
 		expect(sectionTitles).toEqual(expect.arrayContaining(["Record Variable"]));
 		const options = [...element.shadowRoot.querySelectorAll(".resource-option")].map((o) => o.textContent);
 		expect(options).toEqual(expect.arrayContaining([expect.stringContaining("record")]));
@@ -1253,5 +1255,103 @@ describe("c-flow-combobox", () => {
 		});
 		await Promise.resolve();
 		expect(element.shadowRoot.querySelector('[data-id="resource-input"]')).not.toBeNull();
+	});
+
+	it("derives resources from builderContext when provided", async () => {
+		const element = createComponent({
+			name: "myVar",
+			label: "My Variable",
+			fieldDataType: "String",
+			included: true,
+			builderContext: {
+				variables: [
+					{ name: "accountName", dataType: "String" },
+					{
+						name: "opp",
+						dataType: "SObject",
+						objectType: "Opportunity",
+						fields: [{ name: "Name", dataType: "String" }]
+					}
+				]
+			}
+		});
+		await Promise.resolve();
+
+		const textInput =
+			element.shadowRoot.querySelector('[data-id="resource-input"]') ??
+			element.shadowRoot.querySelector("lightning-input");
+		textInput.dispatchEvent(new CustomEvent("focus"));
+		await Promise.resolve();
+
+		const optionLabels = Array.from(element.shadowRoot.querySelectorAll(".resource-option")).map((el) =>
+			el.textContent.trim()
+		);
+		expect(optionLabels.join(" ")).toContain("accountName");
+		expect(optionLabels.join(" ")).toContain("opp");
+	});
+
+	it("filters derived resources by fieldDataType and fieldIsCollection", async () => {
+		const element = createComponent({
+			name: "myVar",
+			label: "My Variable",
+			fieldDataType: "String",
+			fieldIsCollection: false,
+			included: true,
+			builderContext: {
+				variables: [
+					{ name: "stringVar", dataType: "String" },
+					{ name: "dateVar", dataType: "Date" },
+					{ name: "stringCollection", dataType: "String", isCollection: true }
+				]
+			}
+		});
+		await Promise.resolve();
+
+		const textInput =
+			element.shadowRoot.querySelector('[data-id="resource-input"]') ??
+			element.shadowRoot.querySelector("lightning-input");
+		textInput.dispatchEvent(new CustomEvent("focus"));
+		await Promise.resolve();
+
+		const optionLabels = Array.from(element.shadowRoot.querySelectorAll(".resource-option")).map((el) =>
+			el.textContent.trim()
+		);
+		expect(optionLabels.join(" ")).toContain("stringVar");
+		expect(optionLabels.join(" ")).not.toContain("dateVar");
+		expect(optionLabels.join(" ")).not.toContain("stringCollection");
+	});
+
+	it("combines resourceOptions with derived resources from builderContext", async () => {
+		const element = createComponent({
+			name: "myVar",
+			label: "My Variable",
+			fieldDataType: "String",
+			included: true,
+			resourceOptions: [
+				{
+					label: "Manual Resource",
+					value: "{!manual}",
+					pillLabel: "manual",
+					referenceName: "manual",
+					dataType: "String"
+				}
+			],
+			builderContext: {
+				variables: [{ name: "flowVar", dataType: "String" }]
+			}
+		});
+		await Promise.resolve();
+
+		const textInput =
+			element.shadowRoot.querySelector('[data-id="resource-input"]') ??
+			element.shadowRoot.querySelector("lightning-input");
+		textInput.dispatchEvent(new CustomEvent("focus"));
+		await Promise.resolve();
+
+		const optionLabels = Array.from(element.shadowRoot.querySelectorAll(".resource-option")).map((el) =>
+			el.textContent.trim()
+		);
+		expect(optionLabels.join(" ")).toContain("flowVar");
+		expect(optionLabels.join(" ")).toContain("manual");
 	});
 });

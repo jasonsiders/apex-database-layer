@@ -31,9 +31,10 @@
 				label="Value"
 				name="textValue"
 				field-data-type={fieldDataType}
+				field-is-collection={fieldIsCollection}
 				onfieldchange={handleValueChange}
 				required
-				resource-options={filteredResourceOptions}
+				builder-context={builderContext}
 				value={textValue}
 			></c-flow-combobox>
 		</div>

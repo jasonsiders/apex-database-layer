@@ -34,63 +34,29 @@ describe("c-soql-bind-input", () => {
 		expect(element.shadowRoot.querySelector('[data-id="type"]').value).toBe("Text");
 	});
 
-	it("passes compatible scalar resources and record fields to the value combobox", async () => {
+	it("passes builderContext to the value combobox", async () => {
+		const builderContext = { variables: [{ name: "myVar", dataType: "String" }] };
 		const element = createComponent({
-			variable: { ...defaultVariable, typeName: "String", isCollection: false },
-			resourceOptions: [
-				{ referenceName: "accountName", value: "{!accountName}", dataType: "String" },
-				{ referenceName: "closeDate", value: "{!closeDate}", dataType: "Date" },
-				{ referenceName: "opp", value: "{!opp}", dataType: "SObject", objectType: "Opportunity" },
-				{ referenceName: "untypedRoot", value: "{!untypedRoot}" },
-				{
-					referenceName: "opp.Name",
-					value: "{!opp.Name}",
-					dataType: "String",
-					parentObjectType: "Opportunity",
-					category: "recordFields"
-				},
-				{
-					referenceName: "Get_Records.Name",
-					value: "{!Get_Records.Name}",
-					parentObjectType: "Account",
-					category: "recordFields"
-				}
-			]
+			variable: defaultVariable,
+			builderContext
 		});
 		await Promise.resolve();
 
 		const valueInput = element.shadowRoot.querySelector('[data-id="value"]');
-		expect(valueInput.fieldDataType).toBe("String");
-		expect(valueInput.resourceOptions.map((option) => option.referenceName)).toEqual([
-			"accountName",
-			"opp",
-			"opp.Name",
-			"Get_Records.Name"
-		]);
-		expect(valueInput.resourceOptions.find((option) => option.referenceName === "opp").isSelectable).toBe(false);
-		expect(valueInput.resourceOptions.find((option) => option.referenceName === "opp").isDrillable).toBe(true);
+		expect(valueInput.builderContext).toEqual(builderContext);
 	});
 
-	it("passes only SObject resources to the value combobox for record binds", async () => {
+	it("passes fieldDataType and fieldIsCollection to the value combobox based on selected type", async () => {
+		const builderContext = { variables: [] };
 		const element = createComponent({
-			variable: { ...defaultVariable, typeName: "SObject", isCollection: false },
-			resourceOptions: [
-				{ referenceName: "accountName", value: "{!accountName}", dataType: "String" },
-				{ referenceName: "opp", value: "{!opp}", dataType: "SObject", objectType: "Opportunity" },
-				{
-					referenceName: "opp.Name",
-					value: "{!opp.Name}",
-					dataType: "String",
-					parentObjectType: "Opportunity",
-					category: "recordFields"
-				}
-			]
+			variable: { ...defaultVariable, typeName: "SObject", isCollection: true },
+			builderContext
 		});
 		await Promise.resolve();
 
-		expect(element.shadowRoot.querySelector('[data-id="value"]').resourceOptions).toEqual([
-			expect.objectContaining({ referenceName: "opp" })
-		]);
+		const valueInput = element.shadowRoot.querySelector('[data-id="value"]');
+		expect(valueInput.fieldDataType).toBe("SObject");
+		expect(valueInput.fieldIsCollection).toBe(true);
 	});
 
 	it("emits change with updated key when key input changes", () => {

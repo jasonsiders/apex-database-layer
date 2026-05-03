@@ -410,137 +410,73 @@ describe("c-invocable-soql-property-editor", () => {
 		expect(element.shadowRoot.querySelectorAll("c-soql-bind-input")).toHaveLength(1);
 	});
 
-	it("derives bind resource options from Flow Builder context variables", async () => {
-		const element = createComponent({
-			builderContext: {
-				variables: [
-					{ name: "accountName", dataType: "String" },
-					{
-						name: "opp",
-						label: "opp",
-						dataType: "SObject",
-						objectType: "Opportunity",
-						fields: [
-							{ name: "Name", dataType: "String" },
-							{ name: "CloseDate", dataType: "Date" }
-						]
-					}
-				]
-			}
-		});
+	it("passes builderContext to bind input for resource derivation", async () => {
+		const builderContext = {
+			variables: [
+				{ name: "accountName", dataType: "String" },
+				{
+					name: "opp",
+					label: "opp",
+					dataType: "SObject",
+					objectType: "Opportunity",
+					fields: [
+						{ name: "Name", dataType: "String" },
+						{ name: "CloseDate", dataType: "Date" }
+					]
+				}
+			]
+		};
+		const element = createComponent({ builderContext });
 
 		getButtonByLabel(element, "Add Variable").click();
 		await Promise.resolve();
 
 		const bindInput = element.shadowRoot.querySelector("c-soql-bind-input");
-		expect(bindInput.resourceOptions).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					referenceName: "accountName",
-					value: "{!accountName}",
-					dataType: "String"
-				}),
-				expect.objectContaining({
-					referenceName: "opp",
-					value: "{!opp}",
-					dataType: "SObject",
-					objectType: "Opportunity"
-				}),
-				expect.objectContaining({
-					referenceName: "opp.Name",
-					value: "{!opp.Name}",
-					dataType: "String",
-					category: "recordFields",
-					parentReferenceName: "opp",
-					parentObjectType: "Opportunity"
-				})
-			])
-		);
+		expect(bindInput.builderContext).toEqual(builderContext);
 	});
 
-	it("passes weak Flow variable metadata through to the rendered bind combobox", async () => {
-		const element = createComponent({
-			builderContext: {
-				variables: [{ name: "accountName", label: "accountName" }],
-				recordVariables: [
-					{
-						name: "opp",
-						label: "opp",
-						objectType: "Opportunity",
-						fields: [{ name: "Name", dataType: "String" }]
-					}
-				]
-			}
-		});
+	it("passes builderContext through to flow combobox for resource derivation", async () => {
+		const builderContext = {
+			variables: [{ name: "accountName", label: "accountName" }],
+			recordVariables: [
+				{
+					name: "opp",
+					label: "opp",
+					objectType: "Opportunity",
+					fields: [{ name: "Name", dataType: "String" }]
+				}
+			]
+		};
+		const element = createComponent({ builderContext });
 
 		getButtonByLabel(element, "Add Variable").click();
-		await Promise.resolve();
 		await Promise.resolve();
 
 		const bindInput = element.shadowRoot.querySelector("c-soql-bind-input");
 		const valueCombobox = bindInput.shadowRoot.querySelector("c-flow-combobox");
-		expect(valueCombobox.resourceOptions).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					referenceName: "accountName",
-					dataType: "String"
-				}),
-				expect.objectContaining({
-					referenceName: "opp",
-					dataType: "SObject",
-					objectType: "Opportunity",
-					isDrillable: true,
-					isSelectable: false
-				}),
-				expect.objectContaining({
-					referenceName: "opp.Name",
-					value: "{!opp.Name}",
-					category: "recordFields",
-					parentReferenceName: "opp"
-				})
-			])
-		);
+		expect(valueCombobox.builderContext).toEqual(builderContext);
 	});
 
-	it("derives native Get Records outputs as SObject resources and keeps queried fields addressable", async () => {
-		const element = createComponent({
-			builderContext: {
-				variables: [{ name: "Get_Records", label: "Get Records" }],
-				recordLookups: [
-					{
-						name: "Get_Records",
-						label: "Get Records",
-						object: "Account",
-						getFirstRecordOnly: true,
-						queriedFields: ["Id", "Name"]
-					}
-				]
-			}
-		});
+	it("passes builderContext with recordLookups to bind input", async () => {
+		const builderContext = {
+			variables: [{ name: "Get_Records", label: "Get Records" }],
+			recordLookups: [
+				{
+					name: "Get_Records",
+					label: "Get Records",
+					object: "Account",
+					getFirstRecordOnly: true,
+					queriedFields: ["Id", "Name"]
+				}
+			]
+		};
+		const element = createComponent({ builderContext });
 
 		getButtonByLabel(element, "Add Variable").click();
 		await Promise.resolve();
 
 		const bindInput = element.shadowRoot.querySelector("c-soql-bind-input");
-		expect(bindInput.resourceOptions).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					referenceName: "Get_Records",
-					displayLabel: "Get Records",
-					dataType: "SObject",
-					objectType: "Account",
-					isCollection: false
-				}),
-				expect.objectContaining({
-					referenceName: "Get_Records.Name",
-					displayLabel: "Get Records.Name",
-					value: "{!Get_Records.Name}",
-					category: "recordFields",
-					parentReferenceName: "Get_Records",
-					parentObjectType: "Account"
-				})
-			])
-		);
+		expect(bindInput.builderContext).toEqual(builderContext);
 	});
 
 	it("updates a bind variable when a child emits change", () => {
