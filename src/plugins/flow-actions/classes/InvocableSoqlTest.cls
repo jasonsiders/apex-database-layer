@@ -46,7 +46,7 @@ private class InvocableSoqlTest {
 
 		InvocableSoql.Input input = InvocableSoqlTest.createInput(
 			QUERY_BY_NAME,
-			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', '"Acme"') }
+			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', 'Acme') }
 		);
 
 		Test.startTest();
@@ -74,7 +74,7 @@ private class InvocableSoqlTest {
 
 		InvocableSoql.Input input = InvocableSoqlTest.createInput(
 			QUERY_BY_NAME,
-			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', '"NoMatch"') }
+			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', 'NoMatch') }
 		);
 
 		Test.startTest();
@@ -113,8 +113,8 @@ private class InvocableSoqlTest {
 		InvocableSoql.Input input = InvocableSoqlTest.createInput(
 			QUERY_BY_NAME_AND_PHONE,
 			new List<Map<String, Object>>{
-				InvocableSoqlTest.createStringVariable('name', '"TestAccount"'),
-				InvocableSoqlTest.createStringVariable('phone', '"555-1234"')
+				InvocableSoqlTest.createStringVariable('name', 'TestAccount'),
+				InvocableSoqlTest.createStringVariable('phone', '555-1234')
 			}
 		);
 
@@ -133,7 +133,7 @@ private class InvocableSoqlTest {
 
 		InvocableSoql.Input input = InvocableSoqlTest.createInput(
 			QUERY_BY_NAME,
-			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', '"JsonAccount"') }
+			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', 'JsonAccount') }
 		);
 
 		Test.startTest();
@@ -150,7 +150,7 @@ private class InvocableSoqlTest {
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ acmeAccount });
 
 		List<Map<String, Object>> binds = new List<Map<String, Object>>{
-			InvocableSoqlTest.createStringVariable('name', '"Acme"')
+			InvocableSoqlTest.createStringVariable('name', 'Acme')
 		};
 		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(QUERY_BY_NAME, binds);
 		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(QUERY_BY_NAME, binds);
@@ -173,11 +173,11 @@ private class InvocableSoqlTest {
 
 		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(
 			QUERY_BY_NAME,
-			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', '"Acme"') }
+			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', 'Acme') }
 		);
 		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(
 			QUERY_BY_NAME,
-			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', '"Beta"') }
+			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', 'Beta') }
 		);
 
 		Test.startTest();
@@ -198,11 +198,11 @@ private class InvocableSoqlTest {
 
 		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(
 			QUERY_BY_NAME,
-			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', '"Acme"') }
+			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', 'Acme') }
 		);
 		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(
 			QUERY_BY_NAME,
-			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', '"NoMatch"') }
+			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', 'NoMatch') }
 		);
 
 		Test.startTest();
@@ -223,16 +223,16 @@ private class InvocableSoqlTest {
 		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(
 			QUERY_NESTED_WHERE,
 			new List<Map<String, Object>>{
-				InvocableSoqlTest.createStringVariable('name', '"Acme"'),
-				InvocableSoqlTest.createStringVariable('status', '"Active"'),
+				InvocableSoqlTest.createStringVariable('name', 'Acme'),
+				InvocableSoqlTest.createStringVariable('status', 'Active'),
 				InvocableSoqlTest.createBooleanVariable('active', true)
 			}
 		);
 		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(
 			QUERY_NESTED_WHERE,
 			new List<Map<String, Object>>{
-				InvocableSoqlTest.createStringVariable('name', '"Beta"'),
-				InvocableSoqlTest.createStringVariable('status', '"Active"'),
+				InvocableSoqlTest.createStringVariable('name', 'Beta'),
+				InvocableSoqlTest.createStringVariable('status', 'Active'),
 				InvocableSoqlTest.createBooleanVariable('active', true)
 			}
 		);
@@ -254,11 +254,11 @@ private class InvocableSoqlTest {
 
 		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(
 			QUERY_PARENT_FIELD,
-			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', '"Acme"') }
+			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', 'Acme') }
 		);
 		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(
 			QUERY_PARENT_FIELD,
-			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', '"Beta"') }
+			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', 'Beta') }
 		);
 
 		Test.startTest();
@@ -294,11 +294,11 @@ private class InvocableSoqlTest {
 
 		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(
 			QUERY_WITH_LITERAL,
-			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', '"Acme"') }
+			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', 'Acme') }
 		);
 		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(
 			QUERY_WITH_LITERAL,
-			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', '"Beta"') }
+			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', 'Beta') }
 		);
 
 		Test.startTest();
@@ -319,15 +319,15 @@ private class InvocableSoqlTest {
 		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(
 			QUERY_MULTIPLE_PIVOTS,
 			new List<Map<String, Object>>{
-				InvocableSoqlTest.createStringVariable('name', '"Acme"'),
-				InvocableSoqlTest.createStringVariable('phone', '"555-1234"')
+				InvocableSoqlTest.createStringVariable('name', 'Acme'),
+				InvocableSoqlTest.createStringVariable('phone', '555-1234')
 			}
 		);
 		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(
 			QUERY_MULTIPLE_PIVOTS,
 			new List<Map<String, Object>>{
-				InvocableSoqlTest.createStringVariable('name', '"Beta"'),
-				InvocableSoqlTest.createStringVariable('phone', '"555-5678"')
+				InvocableSoqlTest.createStringVariable('name', 'Beta'),
+				InvocableSoqlTest.createStringVariable('phone', '555-5678')
 			}
 		);
 
@@ -368,7 +368,7 @@ private class InvocableSoqlTest {
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ new Account(Name = 'Acme') });
 		InvocableSoql.Input input = InvocableSoqlTest.createInput(
 			QUERY_BY_NAME,
-			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', '"Acme"') }
+			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', 'Acme') }
 		);
 		Test.startTest();
 		InvocableSoql.invoke(new List<InvocableSoql.Input>{ input });
@@ -380,7 +380,7 @@ private class InvocableSoqlTest {
 	private static void shouldFireOneQueryForIdenticalBindValues() {
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ new Account(Name = 'Acme') });
 		List<Map<String, Object>> binds = new List<Map<String, Object>>{
-			InvocableSoqlTest.createStringVariable('name', '"Acme"')
+			InvocableSoqlTest.createStringVariable('name', 'Acme')
 		};
 		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(QUERY_BY_NAME, binds);
 		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(QUERY_BY_NAME, binds);
@@ -397,11 +397,11 @@ private class InvocableSoqlTest {
 			.withResults(new List<SObject>{ new Account(Name = 'Acme'), new Account(Name = 'Beta') });
 		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(
 			QUERY_BY_NAME,
-			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', '"Acme"') }
+			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', 'Acme') }
 		);
 		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(
 			QUERY_BY_NAME,
-			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', '"Beta"') }
+			new List<Map<String, Object>>{ InvocableSoqlTest.createStringVariable('name', 'Beta') }
 		);
 		Test.startTest();
 		InvocableSoql.invoke(new List<InvocableSoql.Input>{ input1, input2 });
@@ -421,16 +421,16 @@ private class InvocableSoqlTest {
 		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(
 			QUERY_NESTED_WHERE,
 			new List<Map<String, Object>>{
-				InvocableSoqlTest.createStringVariable('name', '"Acme"'),
-				InvocableSoqlTest.createStringVariable('status', '"Active"'),
+				InvocableSoqlTest.createStringVariable('name', 'Acme'),
+				InvocableSoqlTest.createStringVariable('status', 'Active'),
 				InvocableSoqlTest.createBooleanVariable('active', true)
 			}
 		);
 		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(
 			QUERY_NESTED_WHERE,
 			new List<Map<String, Object>>{
-				InvocableSoqlTest.createStringVariable('name', '"Beta"'),
-				InvocableSoqlTest.createStringVariable('status', '"Active"'),
+				InvocableSoqlTest.createStringVariable('name', 'Beta'),
+				InvocableSoqlTest.createStringVariable('status', 'Active'),
 				InvocableSoqlTest.createBooleanVariable('active', true)
 			}
 		);

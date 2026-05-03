@@ -182,7 +182,10 @@ global abstract inherited sharing class InvocableSoql {
 		 */
 		private Object convertFromTextTo(Type type) {
 			try {
-				return JSON.deserialize(this.textValue, type);
+				return (this.isCollection != true &&
+					'String' == this.typeName)
+					? this.textValue
+					: JSON.deserialize(this.textValue, type);
 			} catch (System.JsonException error) {
 				String msg = 'Invalid ' + type + ' value: ' + this.textValue + '\n' + error;
 				throw new System.IllegalArgumentException(msg);
