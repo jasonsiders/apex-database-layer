@@ -1,5 +1,13 @@
 import { LightningElement, api } from "lwc";
 import validateQuery from "@salesforce/apex/InvocableSoql.validateQuery";
+import {
+	DATA_TYPE_STRING,
+	readCollection,
+	buildResourceOption,
+	readFieldOptions,
+	readActionOutputOptions,
+	dedupeResourceOptions
+} from "./utils";
 
 const EVT_VALUE_CHANGED = "configuration_editor_input_value_changed";
 const EVT_VALUE_DELETED = "configuration_editor_input_value_deleted";
@@ -7,7 +15,6 @@ const EVT_GENERIC_TYPE_MAPPING_CHANGED = "configuration_editor_generic_type_mapp
 const INPUT_VAR_QUERY = "query";
 const INPUT_VAR_BINDS = "binds";
 const INPUT_VAR_BINDS_JSON = "bindsJson";
-const DATA_TYPE_STRING = "String";
 const BIND_KEY_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const INVALID_BIND_KEY_MESSAGE =
 	"Bind variable names can contain only letters, numbers, and underscores, and must start with a letter or underscore.";
@@ -32,221 +39,6 @@ const RESOURCE_COLLECTIONS = [
 ];
 
 export default class InvocableSoqlPropertyEditor extends LightningElement {
-	static STANDARD_RESOURCE_OPTIONS = [
-		this._standardResourceOption({
-			referenceName: "$GlobalConstant.False",
-			displayLabel: "False",
-			dataType: "Boolean"
-		}),
-		this._standardResourceOption({
-			referenceName: "$GlobalConstant.True",
-			displayLabel: "True",
-			dataType: "Boolean"
-		}),
-		this._standardResourceOption({
-			referenceName: "$GlobalConstant.EmptyString",
-			displayLabel: "Blank Value (Empty String)",
-			dataType: "String"
-		}),
-		this._standardResourceOption({
-			referenceName: "$Api",
-			displayLabel: "API",
-			dataType: "SObject",
-			isDrillable: true,
-			iconName: "utility:world"
-		}),
-		this._standardResourceOption({
-			referenceName: "$Api.Session_ID",
-			displayLabel: "Session ID",
-			dataType: "String",
-			parentReferenceName: "$Api"
-		}),
-		this._standardResourceOption({
-			referenceName: "$Flow",
-			displayLabel: "Running Flow Interview",
-			dataType: "SObject",
-			isDrillable: true,
-			iconName: "utility:flow"
-		}),
-		this._standardResourceOption({
-			referenceName: "$Flow.FaultMessage",
-			displayLabel: "Fault Message",
-			dataType: "String",
-			parentReferenceName: "$Flow"
-		}),
-		this._standardResourceOption({
-			referenceName: "$Flow.CurrentDate",
-			displayLabel: "Current Date",
-			dataType: "Date",
-			parentReferenceName: "$Flow"
-		}),
-		this._standardResourceOption({
-			referenceName: "$Flow.CurrentDateTime",
-			displayLabel: "Current Date/Time",
-			dataType: "DateTime",
-			parentReferenceName: "$Flow"
-		}),
-		this._standardResourceOption({
-			referenceName: "$Flow.InterviewStartTime",
-			displayLabel: "Interview Start Time",
-			dataType: "DateTime",
-			parentReferenceName: "$Flow"
-		}),
-		this._standardResourceOption({
-			referenceName: "$Organization",
-			displayLabel: "Running Org",
-			dataType: "SObject",
-			objectType: "Organization",
-			isDrillable: true,
-			iconName: "utility:company"
-		}),
-		this._standardResourceOption({
-			referenceName: "$User",
-			displayLabel: "Running User",
-			dataType: "SObject",
-			objectType: "User",
-			isDrillable: true,
-			iconName: "utility:user"
-		}),
-		this._standardResourceOption({
-			referenceName: "$Profile",
-			displayLabel: "Running User Profile",
-			dataType: "SObject",
-			objectType: "Profile",
-			isDrillable: true,
-			iconName: "utility:user"
-		}),
-		this._standardResourceOption({
-			referenceName: "$UserRole",
-			displayLabel: "Running User Role",
-			dataType: "SObject",
-			objectType: "UserRole",
-			isDrillable: true,
-			iconName: "utility:user"
-		}),
-		this._standardResourceOption({
-			referenceName: "$System",
-			displayLabel: "System",
-			dataType: "SObject",
-			isDrillable: true,
-			iconName: "utility:world"
-		}),
-		this._standardResourceOption({
-			referenceName: "$System.OriginDateTime",
-			displayLabel: "Origin Date/Time",
-			dataType: "DateTime",
-			parentReferenceName: "$System"
-		})
-	];
-
-	static _standardResourceOption({
-		referenceName,
-		displayLabel,
-		dataType,
-		objectType,
-		parentReferenceName,
-		isDrillable = false,
-		iconName
-	}) {
-		const category = referenceName.startsWith("$GlobalConstant.") ? "globalConstants" : "globalVariables";
-		const labelPrefix = category === "globalConstants" ? "Global Constant" : "Global Variable";
-		return {
-			label: `${labelPrefix}: ${displayLabel}`,
-			value: this._toReferenceValue(referenceName),
-			pillLabel: referenceName,
-			referenceName,
-			displayLabel,
-			dataType,
-			valueDataType: dataType,
-			objectType,
-			parentReferenceName,
-			isCollection: false,
-			isDrillable,
-			iconName,
-			category
-		};
-	}
-
-	static _asArray(value) {
-		return Array.isArray(value) ? value : [];
-	}
-
-	static _readCollection(builderContext, key) {
-		return this._asArray(builderContext?.[key] ?? builderContext?.resources?.[key] ?? builderContext?.flow?.[key]);
-	}
-
-	static _readName(resource) {
-		return resource?.name ?? resource?.apiName ?? resource?.fullName ?? resource?.developerName ?? null;
-	}
-
-	static _readLabel(resource, fallback) {
-		return resource?.label ?? resource?.masterLabel ?? resource?.displayName ?? fallback;
-	}
-
-	static _readObjectType(resource) {
-		const objectType =
-			resource?.objectType ??
-			resource?.objectTypeName ??
-			resource?.sobjectType ??
-			resource?.sObjectType ??
-			resource?.objectApiName ??
-			resource?.entityName ??
-			resource?.object ??
-			resource?.typeValue ??
-			null;
-		return typeof objectType === "string" ? objectType : null;
-	}
-
-	static _normalizeDataType(dataType, objectType) {
-		const normalized = String(dataType ?? "")
-			.trim()
-			.toLowerCase();
-
-		if (objectType || ["sobject", "record", "apex"].includes(normalized)) {
-			return "SObject";
-		}
-		if (
-			["string", "text", "textarea", "picklist", "multipicklist", "id", "email", "phone", "url"].includes(
-				normalized
-			)
-		) {
-			return "String";
-		}
-		if (["datetime", "date/time"].includes(normalized)) {
-			return "DateTime";
-		}
-		if (normalized === "date") {
-			return "Date";
-		}
-		if (normalized === "time") {
-			return "Time";
-		}
-		if (normalized === "boolean") {
-			return "Boolean";
-		}
-		if (["decimal", "double", "currency", "integer", "int", "long", "number"].includes(normalized)) {
-			return "Decimal";
-		}
-		return dataType ?? null;
-	}
-
-	static _readIsCollection(resource, defaultValue = false) {
-		if (resource?.isCollection !== undefined) {
-			return resource.isCollection === true || resource.isCollection === "true";
-		}
-		if (resource?.getFirstRecordOnly !== undefined) {
-			return resource.getFirstRecordOnly !== true && resource.getFirstRecordOnly !== "true";
-		}
-		if (String(resource?.dataType ?? "").endsWith("[]")) {
-			return true;
-		}
-		return defaultValue;
-	}
-
-	static _toReferenceValue(referenceName) {
-		return referenceName ? `{!${referenceName}}` : "";
-	}
-
 	static _maskQuotedText(query) {
 		const text = query || "";
 		let result = "";
@@ -294,153 +86,17 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 		return names;
 	}
 
-	static _hasFieldMetadata(resource) {
-		return [
-			resource?.fields,
-			resource?.fieldDefinitions,
-			resource?.properties,
-			resource?.queriedFields,
-			resource?.fieldNames,
-			resource?.objectInfo?.fields ? Object.values(resource.objectInfo.fields) : null
-		].some((source) => Array.isArray(source) && source.length > 0);
-	}
-
-	static _buildResourceOption(
-		resource,
-		{ category, labelPrefix, referenceName, dataType: defaultDataType, isCollection } = {}
-	) {
-		const name = referenceName ?? resource?.referenceName ?? this._readName(resource);
-		if (!name) {
-			return null;
+	static _validateBindKey(key, bindKeyCounts, referencedNames) {
+		if (!BIND_KEY_PATTERN.test(key)) {
+			return INVALID_BIND_KEY_MESSAGE;
 		}
-
-		const objectType = this._readObjectType(resource);
-		const rawDataType = resource?.dataType ?? resource?.valueDataType ?? resource?.type ?? defaultDataType;
-		const hasFields = this._hasFieldMetadata(resource);
-		const dataType = this._normalizeDataType(rawDataType, objectType || hasFields) ?? DATA_TYPE_STRING;
-		const displayLabel = this._readLabel(resource, name);
-		const label = resource?.label ?? (labelPrefix ? `${labelPrefix}: ${displayLabel}` : displayLabel);
-
-		return {
-			label,
-			value: resource?.value ?? this._toReferenceValue(name),
-			pillLabel: resource?.pillLabel ?? name,
-			referenceName: name,
-			displayLabel,
-			dataType,
-			valueDataType: dataType,
-			objectType,
-			isDrillable: dataType === "SObject" && hasFields,
-			isCollection: this._readIsCollection(resource, isCollection === true),
-			category: resource?.category ?? category
-		};
-	}
-
-	static _readFieldName(field) {
-		if (typeof field === "string") {
-			return field;
+		if (bindKeyCounts.get(key) > 1) {
+			return `Bind variable "${key}" ${DUPLICATE_BIND_ERROR_SUFFIX}`;
 		}
-		return field?.name ?? field?.apiName ?? field?.fieldApiName ?? field?.qualifiedApiName ?? null;
-	}
-
-	static _readFieldDataType(field) {
-		return typeof field === "string" ? null : (field?.dataType ?? field?.valueDataType ?? field?.type);
-	}
-
-	static _readFieldOptions(resource, parentOption) {
-		const fieldSources = [
-			resource?.fields,
-			resource?.fieldDefinitions,
-			resource?.properties,
-			resource?.queriedFields,
-			resource?.fieldNames,
-			resource?.objectInfo?.fields ? Object.values(resource.objectInfo.fields) : null
-		];
-		const fields = fieldSources.find((source) => Array.isArray(source)) ?? [];
-
-		return fields
-			.map((field) => {
-				const fieldName = this._readFieldName(field);
-				if (!fieldName) {
-					return null;
-				}
-
-				const referenceName = `${parentOption.referenceName}.${fieldName}`;
-				const displayLabel = `${parentOption.displayLabel}.${this._readLabel(field, fieldName)}`;
-				const dataType = this._normalizeDataType(this._readFieldDataType(field));
-				return {
-					label: `Field: ${displayLabel}`,
-					value: this._toReferenceValue(referenceName),
-					pillLabel: referenceName,
-					referenceName,
-					displayLabel,
-					dataType,
-					valueDataType: dataType,
-					objectType: null,
-					parentObjectType: parentOption.objectType,
-					parentReferenceName: parentOption.referenceName,
-					isCollection: this._readIsCollection(field),
-					category: "recordFields"
-				};
-			})
-			.filter(Boolean);
-	}
-
-	static _scoreResourceOption(option) {
-		return [
-			option?.dataType ? 1 : 0,
-			option?.objectType ? 1 : 0,
-			option?.category ? 1 : 0,
-			option?.parentObjectType ? 1 : 0
-		].reduce((sum, value) => sum + value, 0);
-	}
-
-	static _readActionOutputOptions(action) {
-		const actionName = this._readName(action);
-		if (!actionName) {
-			return [];
+		if (!referencedNames.has(key)) {
+			return `Bind variable "${key}" ${ORPHANED_BIND_ERROR_SUFFIX}`;
 		}
-
-		const outputs = this._asArray(action?.outputParameters ?? action?.outputVariables ?? action?.outputs);
-		return outputs
-			.map((output) => {
-				const outputName = this._readName(output);
-				if (!outputName) {
-					return null;
-				}
-
-				return this._buildResourceOption(output, {
-					category: "actionOutputs",
-					labelPrefix: "Action Output",
-					referenceName: `${actionName}.${outputName}`
-				});
-			})
-			.filter(Boolean);
-	}
-
-	static _dedupeResourceOptions(options) {
-		const indexesByKey = new Map();
-		const result = [];
-
-		for (const option of options) {
-			const key = option?.referenceName ?? option?.value;
-			if (!key) {
-				continue;
-			}
-
-			if (!indexesByKey.has(key)) {
-				indexesByKey.set(key, result.length);
-				result.push(option);
-				continue;
-			}
-
-			const existingIndex = indexesByKey.get(key);
-			if (this._scoreResourceOption(option) > this._scoreResourceOption(result[existingIndex])) {
-				result[existingIndex] = option;
-			}
-		}
-
-		return result;
+		return null;
 	}
 
 	/** Output variables supplied by Flow Builder for the selected action. */
@@ -535,10 +191,9 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 	}
 
 	get availableResourceOptions() {
-		this._availableResourceOptionsCache ??= InvocableSoqlPropertyEditor._dedupeResourceOptions([
+		this._availableResourceOptionsCache ??= dedupeResourceOptions([
 			...this._resourceOptions,
-			...this._deriveResourceOptions(),
-			...InvocableSoqlPropertyEditor.STANDARD_RESOURCE_OPTIONS
+			...this._deriveResourceOptions()
 		]);
 		return this._availableResourceOptionsCache;
 	}
@@ -665,19 +320,6 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 		}
 	}
 
-	static _validateBindKey(key, bindKeyCounts, referencedNames) {
-		if (!BIND_KEY_PATTERN.test(key)) {
-			return INVALID_BIND_KEY_MESSAGE;
-		}
-		if (bindKeyCounts.get(key) > 1) {
-			return `Bind variable "${key}" ${DUPLICATE_BIND_ERROR_SUFFIX}`;
-		}
-		if (!referencedNames.has(key)) {
-			return `Bind variable "${key}" ${ORPHANED_BIND_ERROR_SUFFIX}`;
-		}
-		return null;
-	}
-
 	_countBindKeys() {
 		const counts = new Map();
 		for (const bind of this._bindsDraft) {
@@ -788,18 +430,18 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 		const options = [];
 
 		for (const collection of RESOURCE_COLLECTIONS) {
-			for (const resource of InvocableSoqlPropertyEditor._readCollection(this._builderContext, collection.key)) {
-				const option = InvocableSoqlPropertyEditor._buildResourceOption(resource, collection);
+			for (const resource of readCollection(this._builderContext, collection.key)) {
+				const option = buildResourceOption(resource, collection);
 				if (!option) {
 					continue;
 				}
 
-				options.push(option, ...InvocableSoqlPropertyEditor._readFieldOptions(resource, option));
+				options.push(option, ...readFieldOptions(resource, option));
 			}
 		}
 
-		for (const action of InvocableSoqlPropertyEditor._readCollection(this._builderContext, "actionCalls")) {
-			options.push(...InvocableSoqlPropertyEditor._readActionOutputOptions(action));
+		for (const action of readCollection(this._builderContext, "actionCalls")) {
+			options.push(...readActionOutputOptions(action));
 		}
 
 		return options;

@@ -268,6 +268,45 @@ function toReferenceValue(referenceName) {
 	return referenceName ? `{!${referenceName}}` : "";
 }
 
+function buildStandardResourceOption({ referenceName, displayLabel, dataType, objectType, parentReferenceName, isDrillable = false, iconName }) {
+	const category = referenceName.startsWith("$GlobalConstant.") ? "globalConstants" : "globalVariables";
+	const labelPrefix = category === "globalConstants" ? "Global Constant" : "Global Variable";
+	return {
+		label: `${labelPrefix}: ${displayLabel}`,
+		value: toReferenceValue(referenceName),
+		pillLabel: referenceName,
+		referenceName,
+		displayLabel,
+		dataType,
+		valueDataType: dataType,
+		objectType,
+		parentReferenceName,
+		isCollection: false,
+		isDrillable,
+		iconName,
+		category
+	};
+}
+
+const STANDARD_RESOURCE_OPTIONS = [
+	buildStandardResourceOption({ referenceName: "$GlobalConstant.False", displayLabel: "False", dataType: "Boolean" }),
+	buildStandardResourceOption({ referenceName: "$GlobalConstant.True", displayLabel: "True", dataType: "Boolean" }),
+	buildStandardResourceOption({ referenceName: "$GlobalConstant.EmptyString", displayLabel: "Blank Value (Empty String)", dataType: "String" }),
+	buildStandardResourceOption({ referenceName: "$Api", displayLabel: "API", dataType: "SObject", isDrillable: true, iconName: "utility:world" }),
+	buildStandardResourceOption({ referenceName: "$Api.Session_ID", displayLabel: "Session ID", dataType: "String", parentReferenceName: "$Api" }),
+	buildStandardResourceOption({ referenceName: "$Flow", displayLabel: "Running Flow Interview", dataType: "SObject", isDrillable: true, iconName: "utility:flow" }),
+	buildStandardResourceOption({ referenceName: "$Flow.FaultMessage", displayLabel: "Fault Message", dataType: "String", parentReferenceName: "$Flow" }),
+	buildStandardResourceOption({ referenceName: "$Flow.CurrentDate", displayLabel: "Current Date", dataType: "Date", parentReferenceName: "$Flow" }),
+	buildStandardResourceOption({ referenceName: "$Flow.CurrentDateTime", displayLabel: "Current Date/Time", dataType: "DateTime", parentReferenceName: "$Flow" }),
+	buildStandardResourceOption({ referenceName: "$Flow.InterviewStartTime", displayLabel: "Interview Start Time", dataType: "DateTime", parentReferenceName: "$Flow" }),
+	buildStandardResourceOption({ referenceName: "$Organization", displayLabel: "Running Org", dataType: "SObject", objectType: "Organization", isDrillable: true, iconName: "utility:company" }),
+	buildStandardResourceOption({ referenceName: "$User", displayLabel: "Running User", dataType: "SObject", objectType: "User", isDrillable: true, iconName: "utility:user" }),
+	buildStandardResourceOption({ referenceName: "$Profile", displayLabel: "Running User Profile", dataType: "SObject", objectType: "Profile", isDrillable: true, iconName: "utility:user" }),
+	buildStandardResourceOption({ referenceName: "$UserRole", displayLabel: "Running User Role", dataType: "SObject", objectType: "UserRole", isDrillable: true, iconName: "utility:user" }),
+	buildStandardResourceOption({ referenceName: "$System", displayLabel: "System", dataType: "SObject", isDrillable: true, iconName: "utility:world" }),
+	buildStandardResourceOption({ referenceName: "$System.OriginDateTime", displayLabel: "Origin Date/Time", dataType: "DateTime", parentReferenceName: "$System" })
+];
+
 function referenceNamesMatch(option, referenceName) {
 	return (
 		option?.value === toReferenceValue(referenceName) ||
@@ -562,10 +601,15 @@ export default class FlowCombobox extends LightningElement {
 		return normalizeReferenceName(this.value);
 	}
 
+	/** Consumer-provided and standard Flow global resource options, deduplicated by referenceName. */
+	get _allResourceOptions() {
+		return dedupeOptionsByReferenceName([...(this.resourceOptions || []), ...STANDARD_RESOURCE_OPTIONS]);
+	}
+
 	/** Static and dynamically loaded resource options that can be selected. */
 	get selectableResourceOptions() {
 		return [
-			...(this.resourceOptions || []),
+			...this._allResourceOptions,
 			...Object.values(this._dynamicChildOptionsByParent).flatMap((options) => options)
 		];
 	}
@@ -698,7 +742,7 @@ export default class FlowCombobox extends LightningElement {
 			return this._getChildResourceOptions(this._drilldownResource);
 		}
 
-		return (this.resourceOptions || []).filter(
+		return this._allResourceOptions.filter(
 			(resourceOption) => !resourceOption.parentReferenceName && resourceOption.category !== "recordFields"
 		);
 	}
@@ -1006,7 +1050,7 @@ export default class FlowCombobox extends LightningElement {
 
 	/** Gets statically provided and dynamically loaded child options for a parent. */
 	_getChildResourceOptions(parentOption) {
-		const staticOptions = (this.resourceOptions || []).filter((resourceOption) =>
+		const staticOptions = this._allResourceOptions.filter((resourceOption) =>
 			isChildResourceOption(resourceOption, parentOption)
 		);
 		const dynamicOptions = this._dynamicChildOptionsByParent[parentOption.referenceName] ?? [];
@@ -1196,7 +1240,7 @@ export default class FlowCombobox extends LightningElement {
 			return null;
 		}
 
-		const root = this.resourceOptions.find((option) => referenceNamesMatch(option, parts[0]));
+		const root = this._allResourceOptions.find((option) => referenceNamesMatch(option, parts[0]));
 		if (!root?.objectType) {
 			return null;
 		}
