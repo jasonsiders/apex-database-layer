@@ -28,56 +28,20 @@ const TYPE_OPTIONS = TYPES.map(({ label }) => ({ label, value: label }));
  * @extends LightningElement
  */
 export default class SoqlBindInput extends LightningElement {
-	/** Zero-based row index used when emitting bind row changes. */
-	@api index;
-
-	/** Current bind variable definition for this row. */
-	@api variable = {};
-
 	/** Flow Builder context passed through to the value combobox. */
 	@api builderContext = {};
 
 	/** Validation message to display against the bind name input. */
 	@api errorMessage;
 
+	/** Zero-based row index used when emitting bind row changes. */
+	@api index;
+
+	/** Current bind variable definition for this row. */
+	@api variable = {};
+
 	/** Picklist options for bind variable type selection. */
 	typeOptions = TYPE_OPTIONS;
-
-	/**
-	 * Bind variable name extracted from the variable object.
-	 * @returns {string} The bind variable key, or empty string if not set
-	 */
-	get key() {
-		return this.variable?.key ?? "";
-	}
-
-	/**
-	 * Literal or Flow resource value assigned to the bind variable.
-	 * @returns {*} The bind variable value, or null if not set
-	 */
-	get textValue() {
-		return this.variable?.textValue ?? null;
-	}
-
-	/**
-	 * Selected bind type metadata including typeName and isCollection.
-	 * Defaults to Text type if current type selection is not found.
-	 * @returns {Object} Type object with label, typeName, and isCollection properties
-	 */
-	get selectedType() {
-		const { typeName, isCollection: selectedIsCollection } = this.variable ?? {};
-		return (
-			TYPES.find((t) => t.typeName === typeName && t.isCollection === (selectedIsCollection ?? false)) ?? TYPES[8]
-		);
-	}
-
-	/**
-	 * Label text for the combobox representing the selected bind type.
-	 * @returns {string} The type label (e.g., "Text", "Number (Collection)")
-	 */
-	get typeValue() {
-		return this.selectedType.label;
-	}
 
 	/**
 	 * Normalized data type used by the Flow resource picker component.
@@ -96,17 +60,39 @@ export default class SoqlBindInput extends LightningElement {
 	}
 
 	/**
-	 * Validates the bind variable name and optionally reports validity to the user.
-	 * Called by the parent editor and during user input to check for errors.
-	 * @param {string} [errorMessage=this.errorMessage] - Validation error message to display. Pass null to clear errors.
-	 * @param {Object} [options={}] - Configuration options
-	 * @param {boolean} [options.report=true] - If true, immediately report validity to trigger browser validation UI
-	 * @returns {boolean} True if validation passed (no error), false if validation failed
+	 * Bind variable name extracted from the variable object.
+	 * @returns {string} The bind variable key, or empty string if not set
 	 */
-	@api validate(errorMessage = this.errorMessage, { report = true } = {}) {
-		this.errorMessage = errorMessage ?? null;
-		this._applyKeyValidity(report);
-		return !this.errorMessage;
+	get key() {
+		return this.variable?.key ?? "";
+	}
+
+	/**
+	 * Selected bind type metadata including typeName and isCollection.
+	 * Defaults to Text type if current type selection is not found.
+	 * @returns {Object} Type object with label, typeName, and isCollection properties
+	 */
+	get selectedType() {
+		const { typeName, isCollection: selectedIsCollection } = this.variable ?? {};
+		return (
+			TYPES.find((t) => t.typeName === typeName && t.isCollection === (selectedIsCollection ?? false)) ?? TYPES[8]
+		);
+	}
+
+	/**
+	 * Literal or Flow resource value assigned to the bind variable.
+	 * @returns {*} The bind variable value, or null if not set
+	 */
+	get textValue() {
+		return this.variable?.textValue ?? null;
+	}
+
+	/**
+	 * Label text for the combobox representing the selected bind type.
+	 * @returns {string} The type label (e.g., "Text", "Number (Collection)")
+	 */
+	get typeValue() {
+		return this.selectedType.label;
 	}
 
 	/**
@@ -128,12 +114,11 @@ export default class SoqlBindInput extends LightningElement {
 	}
 
 	/**
-	 * Handles bind variable value changes from the resource combobox.
-	 * Notifies parent of the new value selection.
-	 * @param {CustomEvent} event - Custom change event with detail.value containing the selected Flow resource value
+	 * Requests removal of this bind variable row from the parent editor.
+	 * Dispatches a 'remove' event with the row's index.
 	 */
-	handleValueChange(event) {
-		this._emitChange({ textValue: event.detail.value });
+	handleRemove() {
+		this.dispatchEvent(new CustomEvent("remove", { detail: { index: this.index } }));
 	}
 
 	/**
@@ -149,11 +134,26 @@ export default class SoqlBindInput extends LightningElement {
 	}
 
 	/**
-	 * Requests removal of this bind variable row from the parent editor.
-	 * Dispatches a 'remove' event with the row's index.
+	 * Handles bind variable value changes from the resource combobox.
+	 * Notifies parent of the new value selection.
+	 * @param {CustomEvent} event - Custom change event with detail.value containing the selected Flow resource value
 	 */
-	handleRemove() {
-		this.dispatchEvent(new CustomEvent("remove", { detail: { index: this.index } }));
+	handleValueChange(event) {
+		this._emitChange({ textValue: event.detail.value });
+	}
+
+	/**
+	 * Validates the bind variable name and optionally reports validity to the user.
+	 * Called by the parent editor and during user input to check for errors.
+	 * @param {string} [errorMessage=this.errorMessage] - Validation error message to display. Pass null to clear errors.
+	 * @param {Object} [options={}] - Configuration options
+	 * @param {boolean} [options.report=true] - If true, immediately report validity to trigger browser validation UI
+	 * @returns {boolean} True if validation passed (no error), false if validation failed
+	 */
+	@api validate(errorMessage = this.errorMessage, { report = true } = {}) {
+		this.errorMessage = errorMessage ?? null;
+		this._applyKeyValidity(report);
+		return !this.errorMessage;
 	}
 
 	/**

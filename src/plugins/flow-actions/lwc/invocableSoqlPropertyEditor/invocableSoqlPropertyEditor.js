@@ -32,105 +32,10 @@ const OUTPUT_TYPE_MAPPINGS = ["U__allResults", "U__firstResult"];
  */
 export default class InvocableSoqlPropertyEditor extends LightningElement {
 	/**
-	 * Masks quoted string content to avoid matching keywords or bind references within string literals.
-	 * Preserves the position of text for accurate pattern matching.
-	 * @param {string} query SOQL query string
-	 * @returns {string} Query with quoted content replaced by spaces
-	 * @private
-	 */
-	_maskQuotedText(query) {
-		const text = query || "";
-		let result = "";
-		let quote = null;
-
-		for (let index = 0; index < text.length; index++) {
-			const char = text[index];
-
-			if (quote) {
-				result += " ";
-				if (char === "\\" && index + 1 < text.length) {
-					result += " ";
-					index++;
-				} else if (char === quote) {
-					quote = null;
-				}
-				continue;
-			}
-
-			if (char === "'" || char === '"') {
-				quote = char;
-				result += " ";
-				continue;
-			}
-
-			result += char;
-		}
-
-		return result;
-	}
-
-	/**
-	 * Extracts all bind variable reference names from a SOQL query.
-	 * Bind references are identified by the `:name` pattern outside of quoted strings.
-	 * @param {string} query SOQL query string
-	 * @returns {Set<string>} Set of bind variable names referenced in the query
-	 * @private
-	 */
-	_extractBindReferenceNames(query) {
-		const names = new Set();
-		const text = this._maskQuotedText(query);
-		const bindPattern = /:([A-Za-z_][A-Za-z0-9_]*)\b/g;
-		let match;
-
-		while ((match = bindPattern.exec(text)) !== null) {
-			if (text[match.index - 1] === ":") {
-				continue;
-			}
-			names.add(match[1]);
-		}
-
-		return names;
-	}
-
-	/**
-	 * Validates a bind variable key against naming rules and query usage.
-	 * @param {string} key Bind variable name to validate
-	 * @param {Map<string, number>} bindKeyCounts Count of each bind key (for duplicate detection)
-	 * @param {Set<string>} referencedNames Set of bind names referenced in the query
-	 * @returns {string|null} Validation error message, or null if valid
-	 * @private
-	 */
-	_validateBindKey(key, bindKeyCounts, referencedNames) {
-		if (!BIND_KEY_PATTERN.test(key)) {
-			return INVALID_BIND_KEY_MESSAGE;
-		}
-		if (bindKeyCounts.get(key) > 1) {
-			return `Bind variable "${key}" ${DUPLICATE_BIND_ERROR_SUFFIX}`;
-		}
-		if (!referencedNames.has(key)) {
-			return `Bind variable "${key}" ${ORPHANED_BIND_ERROR_SUFFIX}`;
-		}
-		return null;
-	}
-
-	/**
 	 * Output variables supplied by Flow Builder for the selected action.
 	 * Used to populate generic type mappings for output fields.
 	 */
 	@api outputVariables = [];
-
-	_builderContext = {};
-	_genericTypeMappings = [];
-	_inputVariables = [];
-	_queryDraft = "";
-	_queryError = null;
-	_querySuccess = null;
-	_queryInitialized = false;
-	_outputTypeValue = null;
-	_bindsDraft = [];
-	_bindsInitialized = false;
-	_bindValidationErrors = {};
-	_hasValidatedBinds = false;
 
 	/**
 	 * Flow Builder context exposed by the custom property editor contract.
@@ -174,6 +79,42 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 		this._initBinds();
 	}
 
+	/** Bind variables in draft state while the editor is open. */
+	_bindsDraft = [];
+
+	/** Guards against re-initialization if inputVariables is set more than once. */
+	_bindsInitialized = false;
+
+	/** Validation error messages keyed by bind row index. */
+	_bindValidationErrors = {};
+
+	/** Backing store for the builderContext @api property. */
+	_builderContext = {};
+
+	/** Backing store for the genericTypeMappings @api property. */
+	_genericTypeMappings = [];
+
+	/** Whether the parent has called validate() at least once, enabling live revalidation on edit. */
+	_hasValidatedBinds = false;
+
+	/** Backing store for the inputVariables @api property. */
+	_inputVariables = [];
+
+	/** SObject type extracted from the FROM clause and mirrored to the generic type mappings. */
+	_outputTypeValue = null;
+
+	/** SOQL query text currently in the editor. */
+	_queryDraft = "";
+
+	/** Apex-reported validation error message; null when valid. */
+	_queryError = null;
+
+	/** Guards against re-initialization if inputVariables is set more than once. */
+	_queryInitialized = false;
+
+	/** Success message shown after Apex validates the query; null until validated or if failed. */
+	_querySuccess = null;
+
 	/**
 	 * Bind variables with their validation errors, formatted for template rendering.
 	 * @returns {Array<Object>} Array of bind objects with variable, indexKey, and errorMessage properties
@@ -187,14 +128,6 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 	}
 
 	/**
-	 * Placeholder text for the SOQL query editor.
-	 * @returns {string} Example SOQL query
-	 */
-	get queryPlaceholder() {
-		return "ex., SELECT Id, Name FROM Account WHERE Id = :recordId...";
-	}
-
-	/**
 	 * CSS class for the query input form element, includes error styling if validation failed.
 	 * @returns {string} CSS class names
 	 */
@@ -203,11 +136,27 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 	}
 
 	/**
+	 * Whether the editor has any bind variables defined.
+	 * @returns {boolean} True if bind variables exist
+	 */
+	get hasBinds() {
+		return this._bindsDraft.length > 0;
+	}
+
+	/**
 	 * Current query validation error message from Apex, or null if valid.
 	 * @returns {string|null} Error message
 	 */
 	get queryError() {
 		return this._queryError;
+	}
+
+	/**
+	 * Placeholder text for the SOQL query editor.
+	 * @returns {string} Example SOQL query
+	 */
+	get queryPlaceholder() {
+		return "ex., SELECT Id, Name FROM Account WHERE Id = :recordId...";
 	}
 
 	/**
@@ -224,47 +173,6 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 	 */
 	get queryValue() {
 		return this._queryDraft;
-	}
-
-	/**
-	 * Whether the editor has any bind variables defined.
-	 * @returns {boolean} True if bind variables exist
-	 */
-	get hasBinds() {
-		return this._bindsDraft.length > 0;
-	}
-
-	/**
-	 * Validates the SOQL query through Apex.
-	 * @private
-	 * @returns {Promise<Array<{ key: string, errorString: string }>>} Query validation errors
-	 */
-	async _validateApexQuery() {
-		try {
-			const bindKeys = this._bindsDraft.map((b) => b.key);
-			await validateQuery({ queryToValidate: this._queryDraft, bindKeys });
-			this._queryError = null;
-			return [];
-		} catch (error) {
-			const fullMessage = error?.body?.message ?? "";
-			const errorString = fullMessage.split("\n")[0];
-			this._queryError = `Error: ${errorString}`;
-			return [{ key: INPUT_VAR_QUERY, errorString }];
-		}
-	}
-
-	/**
-	 * Validates bind metadata and the SOQL query through Apex.
-	 * @returns {Promise<Array<{ key: string, errorString: string }>>} Flow validation errors.
-	 */
-	@api async validate() {
-		this._hasValidatedBinds = true;
-		const bindErrors = this._validateBindReferences({ report: true });
-		if (bindErrors.length) {
-			this._queryError = null;
-			return bindErrors;
-		}
-		return this._validateApexQuery();
 	}
 
 	/**
@@ -340,6 +248,20 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 	}
 
 	/**
+	 * Validates bind metadata and the SOQL query through Apex.
+	 * @returns {Promise<Array<{ key: string, errorString: string }>>} Flow validation errors.
+	 */
+	@api async validate() {
+		this._hasValidatedBinds = true;
+		const bindErrors = this._validateBindReferences({ report: true });
+		if (bindErrors.length) {
+			this._queryError = null;
+			return bindErrors;
+		}
+		return this._validateApexQuery();
+	}
+
+	/**
 	 * Updates the bind variables list, notifies parent, and revalidates.
 	 * @private
 	 * @param {Array} updated - The updated bind variable array
@@ -351,87 +273,14 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 	}
 
 	/**
-	 * Loads the initial SOQL query from inputVariables, only runs once on first set.
+	 * Applies validation error messages to child soql-bind-input components.
 	 * @private
+	 * @param {boolean} report - If true, bind inputs will report validity to show browser validation UI
 	 */
-	_initQuery() {
-		if (!this._queryInitialized) {
-			this._queryDraft = this._readInputValue(this._inputVariables, INPUT_VAR_QUERY) ?? "";
-			this._queryInitialized = true;
-		}
-	}
-
-	/**
-	 * Loads the initial bind variables from inputVariables, only runs once on first set.
-	 * Supports both JSON (bindsJson) and array (binds) formats.
-	 * @private
-	 */
-	_initBinds() {
-		if (!this._bindsInitialized) {
-			const rawBinds =
-				this._readInputValue(this._inputVariables, INPUT_VAR_BINDS_JSON) ??
-				this._readInputValue(this._inputVariables, INPUT_VAR_BINDS);
-			this._bindsDraft = this._cloneBinds(rawBinds);
-			this._bindsInitialized = true;
-		}
-	}
-
-	/**
-	 * Syncs the editor textarea value and syntax highlighting after render.
-	 * Only updates if the textarea is not currently focused.
-	 * @private
-	 */
-	_syncEditorContent() {
-		const textarea = this.template.querySelector(".code-editor");
-		if (textarea && document.activeElement !== textarea) {
-			textarea.value = this.queryValue;
-			this._syncHighlight(this.queryValue);
-		}
-	}
-
-	/**
-	 * Creates a deep copy of bind variables, handling both JSON string and array formats.
-	 * @private
-	 * @param {Array|string} binds - Bind variables as array or JSON string
-	 * @returns {Array} Cloned bind variable array, or empty array if parsing fails
-	 */
-	_cloneBinds(binds) {
-		if (typeof binds === "string") {
-			try {
-				return this._cloneBinds(JSON.parse(binds));
-			} catch {
-				return [];
-			}
-		}
-		return Array.isArray(binds) ? binds.map((bind) => ({ ...bind })) : [];
-	}
-
-	/**
-	 * Re-validates bind variables if validation has already been run by parent.
-	 * Used to update validation errors as the user edits without reporting to browser.
-	 * @private
-	 */
-	_syncBindValidationStateAfterInput() {
-		if (this._hasValidatedBinds) {
-			this._validateBindReferences({ report: false });
-		}
-	}
-
-	/**
-	 * Counts occurrences of each bind key in the bind list.
-	 * Used to detect duplicate bind variable names.
-	 * @private
-	 * @returns {Map<string, number>} Map of bind key to occurrence count
-	 */
-	_countBindKeys() {
-		const counts = new Map();
-		for (const bind of this._bindsDraft) {
-			const key = String(bind?.key ?? "");
-			if (key && BIND_KEY_PATTERN.test(key)) {
-				counts.set(key, (counts.get(key) ?? 0) + 1);
-			}
-		}
-		return counts;
+	_applyBindValidationErrors(report) {
+		this.template.querySelectorAll("c-soql-bind-input").forEach((bindInput, index) => {
+			bindInput.validate?.(this._bindValidationErrors[index] ?? null, { report });
+		});
 	}
 
 	/**
@@ -456,28 +305,37 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 	}
 
 	/**
-	 * Validates bind names against query references and row-level naming rules.
-	 * @param {{ report?: boolean }} [options={}] Whether to report validity immediately.
-	 * @returns {Array<{ key: string, errorString: string }>} Flow validation errors.
+	 * Creates a deep copy of bind variables, handling both JSON string and array formats.
+	 * @private
+	 * @param {Array|string} binds - Bind variables as array or JSON string
+	 * @returns {Array} Cloned bind variable array, or empty array if parsing fails
 	 */
-	_validateBindReferences({ report = true } = {}) {
-		const referencedNames = this._extractBindReferenceNames(this._queryDraft);
-		const bindKeyCounts = this._countBindKeys();
-		const { errorsByIndex, errors } = this._buildBindErrors(referencedNames, bindKeyCounts);
-		this._bindValidationErrors = errorsByIndex;
-		this._applyBindValidationErrors(report);
-		return errors;
+	_cloneBinds(binds) {
+		if (typeof binds === "string") {
+			try {
+				return this._cloneBinds(JSON.parse(binds));
+			} catch {
+				return [];
+			}
+		}
+		return Array.isArray(binds) ? binds.map((bind) => ({ ...bind })) : [];
 	}
 
 	/**
-	 * Applies validation error messages to child soql-bind-input components.
+	 * Counts occurrences of each bind key in the bind list.
+	 * Used to detect duplicate bind variable names.
 	 * @private
-	 * @param {boolean} report - If true, bind inputs will report validity to show browser validation UI
+	 * @returns {Map<string, number>} Map of bind key to occurrence count
 	 */
-	_applyBindValidationErrors(report) {
-		this.template.querySelectorAll("c-soql-bind-input").forEach((bindInput, index) => {
-			bindInput.validate?.(this._bindValidationErrors[index] ?? null, { report });
-		});
+	_countBindKeys() {
+		const counts = new Map();
+		for (const bind of this._bindsDraft) {
+			const key = String(bind?.key ?? "");
+			if (key && BIND_KEY_PATTERN.test(key)) {
+				counts.set(key, (counts.get(key) ?? 0) + 1);
+			}
+		}
+		return counts;
 	}
 
 	/**
@@ -516,16 +374,6 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 	}
 
 	/**
-	 * Checks whether an input variable with the given name exists.
-	 * @private
-	 * @param {string} name - Input variable name to check
-	 * @returns {boolean} True if the variable exists
-	 */
-	_hasInputVariable(name) {
-		return this._inputVariables.some((inputVariable) => inputVariable.name === name);
-	}
-
-	/**
 	 * Notifies parent of generic type mapping changes (output object types).
 	 * Called when the FROM clause object is identified in the query.
 	 * @private
@@ -555,68 +403,26 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 	}
 
 	/**
-	 * Applies syntax highlighting to SOQL query text.
-	 * Highlights strings, bind references, functions, date functions, and keywords with CSS classes.
+	 * Extracts all bind variable reference names from a SOQL query.
+	 * Bind references are identified by the `:name` pattern outside of quoted strings.
+	 * @param {string} query SOQL query string
+	 * @returns {Set<string>} Set of bind variable names referenced in the query
 	 * @private
-	 * @param {string} text - SOQL query text to highlight
-	 * @returns {string} HTML with syntax highlighting spans
 	 */
-	_highlight(text) {
-		const escaped = this._escapeHtml(text);
-		return escaped.replace(
-			/("[^"]*")|(\{![^}]+\})|\b(COUNT_DISTINCT|COUNT|SUM|AVG|MIN|MAX|FORMAT|toLabel|convertCurrency|DISTANCE|GEOLOCATION|FIELDS|CALENDAR_YEAR|CALENDAR_MONTH|CALENDAR_QUARTER|DAY_IN_MONTH|DAY_IN_WEEK|DAY_IN_YEAR|DAY_ONLY|FISCAL_MONTH|FISCAL_QUARTER|FISCAL_YEAR|HOUR_IN_DAY|WEEK_IN_MONTH|WEEK_IN_YEAR)\b|\b(LAST_FISCAL_QUARTER|NEXT_FISCAL_QUARTER|THIS_FISCAL_QUARTER|LAST_FISCAL_YEAR|NEXT_FISCAL_YEAR|THIS_FISCAL_YEAR|LAST_N_DAYS|NEXT_N_DAYS|LAST_N_WEEKS|NEXT_N_WEEKS|LAST_N_MONTHS|NEXT_N_MONTHS|LAST_N_QUARTERS|NEXT_N_QUARTERS|LAST_N_YEARS|NEXT_N_YEARS|LAST_90_DAYS|NEXT_90_DAYS|LAST_QUARTER|LAST_MONTH|LAST_WEEK|LAST_YEAR|NEXT_QUARTER|NEXT_MONTH|NEXT_WEEK|NEXT_YEAR|THIS_QUARTER|THIS_MONTH|THIS_WEEK|THIS_YEAR|TODAY|YESTERDAY|TOMORROW)\b|\b(SELECT|FROM|WHERE|AND|OR|NOT|LIKE|IN|INCLUDES|EXCLUDES|AS|WITH|FOR|UPDATE|ORDER|BY|GROUP|HAVING|LIMIT|OFFSET|ASC|DESC|NULLS|FIRST|LAST|NULL|TRUE|FALSE|USING|SCOPE|TYPEOF|WHEN|THEN|ELSE|END|VIEW|REFERENCE|TRACKING|VIEWSTAT)\b/gi,
-			(match, str, bind, fn, dt) => {
-				if (str !== undefined) return `<span class="hl-str">${match}</span>`;
-				if (bind !== undefined) return `<span class="hl-bind">${match}</span>`;
-				if (fn !== undefined) return `<span class="hl-fn">${match}</span>`;
-				if (dt !== undefined) return `<span class="hl-dt">${match}</span>`;
-				return `<span class="hl-kw">${match}</span>`;
+	_extractBindReferenceNames(query) {
+		const names = new Set();
+		const text = this._maskQuotedText(query);
+		const bindPattern = /:([A-Za-z_][A-Za-z0-9_]*)\b/g;
+		let match;
+
+		while ((match = bindPattern.exec(text)) !== null) {
+			if (text[match.index - 1] === ":") {
+				continue;
 			}
-		);
-	}
-
-	/**
-	 * Reads a value from an array of input variables by name.
-	 * @private
-	 * @param {Array} inputVariables - Array of input variable objects
-	 * @param {string} name - Name of the variable to find
-	 * @returns {*} The variable's value, or null if not found
-	 */
-	_readInputValue(inputVariables, name) {
-		return (inputVariables ?? []).find((v) => v.name === name)?.value ?? null;
-	}
-
-	/**
-	 * Reads the current output type value from generic type mappings.
-	 * @private
-	 * @param {Array} genericTypeMappings - Generic type mapping objects
-	 * @returns {string|undefined} The output SObject type, or undefined if not found
-	 */
-	_readOutputTypeValue(genericTypeMappings) {
-		const mapping = (genericTypeMappings ?? []).find((m) => OUTPUT_TYPE_MAPPINGS.includes(m.typeName));
-		return mapping?.typeValue;
-	}
-
-	/**
-	 * Updates the syntax highlighting display element with highlighted query text.
-	 * @private
-	 * @param {string} text - SOQL query text to highlight
-	 */
-	_syncHighlight(text) {
-		const pre = this.template.querySelector(".code-highlight");
-		if (pre) {
-			pre.innerHTML = this._highlight(text) + "\n";
+			names.add(match[1]);
 		}
-	}
 
-	/**
-	 * Updates the query draft and notifies parent of changes.
-	 * @private
-	 * @param {string} value - The new query text
-	 */
-	_updateQuery(value) {
-		this._queryDraft = value || "";
-		this._dispatchChange(INPUT_VAR_QUERY, this._queryDraft || null, "String");
+		return names;
 	}
 
 	/**
@@ -672,6 +478,111 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 	}
 
 	/**
+	 * Checks whether an input variable with the given name exists.
+	 * @private
+	 * @param {string} name - Input variable name to check
+	 * @returns {boolean} True if the variable exists
+	 */
+	_hasInputVariable(name) {
+		return this._inputVariables.some((inputVariable) => inputVariable.name === name);
+	}
+
+	/**
+	 * Applies syntax highlighting to SOQL query text.
+	 * Highlights strings, bind references, functions, date functions, and keywords with CSS classes.
+	 * @private
+	 * @param {string} text - SOQL query text to highlight
+	 * @returns {string} HTML with syntax highlighting spans
+	 */
+	_highlight(text) {
+		const escaped = this._escapeHtml(text);
+		return escaped.replace(
+			/("[^"]*")|(\{![^}]+\})|\b(COUNT_DISTINCT|COUNT|SUM|AVG|MIN|MAX|FORMAT|toLabel|convertCurrency|DISTANCE|GEOLOCATION|FIELDS|CALENDAR_YEAR|CALENDAR_MONTH|CALENDAR_QUARTER|DAY_IN_MONTH|DAY_IN_WEEK|DAY_IN_YEAR|DAY_ONLY|FISCAL_MONTH|FISCAL_QUARTER|FISCAL_YEAR|HOUR_IN_DAY|WEEK_IN_MONTH|WEEK_IN_YEAR)\b|\b(LAST_FISCAL_QUARTER|NEXT_FISCAL_QUARTER|THIS_FISCAL_QUARTER|LAST_FISCAL_YEAR|NEXT_FISCAL_YEAR|THIS_FISCAL_YEAR|LAST_N_DAYS|NEXT_N_DAYS|LAST_N_WEEKS|NEXT_N_WEEKS|LAST_N_MONTHS|NEXT_N_MONTHS|LAST_N_QUARTERS|NEXT_N_QUARTERS|LAST_N_YEARS|NEXT_N_YEARS|LAST_90_DAYS|NEXT_90_DAYS|LAST_QUARTER|LAST_MONTH|LAST_WEEK|LAST_YEAR|NEXT_QUARTER|NEXT_MONTH|NEXT_WEEK|NEXT_YEAR|THIS_QUARTER|THIS_MONTH|THIS_WEEK|THIS_YEAR|TODAY|YESTERDAY|TOMORROW)\b|\b(SELECT|FROM|WHERE|AND|OR|NOT|LIKE|IN|INCLUDES|EXCLUDES|AS|WITH|FOR|UPDATE|ORDER|BY|GROUP|HAVING|LIMIT|OFFSET|ASC|DESC|NULLS|FIRST|LAST|NULL|TRUE|FALSE|USING|SCOPE|TYPEOF|WHEN|THEN|ELSE|END|VIEW|REFERENCE|TRACKING|VIEWSTAT)\b/gi,
+			(match, str, bind, fn, dt) => {
+				if (str !== undefined) return `<span class="hl-str">${match}</span>`;
+				if (bind !== undefined) return `<span class="hl-bind">${match}</span>`;
+				if (fn !== undefined) return `<span class="hl-fn">${match}</span>`;
+				if (dt !== undefined) return `<span class="hl-dt">${match}</span>`;
+				return `<span class="hl-kw">${match}</span>`;
+			}
+		);
+	}
+
+	/**
+	 * Loads the initial bind variables from inputVariables, only runs once on first set.
+	 * Supports both JSON (bindsJson) and array (binds) formats.
+	 * @private
+	 */
+	_initBinds() {
+		if (!this._bindsInitialized) {
+			const rawBinds =
+				this._readInputValue(this._inputVariables, INPUT_VAR_BINDS_JSON) ??
+				this._readInputValue(this._inputVariables, INPUT_VAR_BINDS);
+			this._bindsDraft = this._cloneBinds(rawBinds);
+			this._bindsInitialized = true;
+		}
+	}
+
+	/**
+	 * Loads the initial SOQL query from inputVariables, only runs once on first set.
+	 * @private
+	 */
+	_initQuery() {
+		if (!this._queryInitialized) {
+			this._queryDraft = this._readInputValue(this._inputVariables, INPUT_VAR_QUERY) ?? "";
+			this._queryInitialized = true;
+		}
+	}
+
+	/**
+	 * Checks if a character is part of a word (letter, digit, or underscore).
+	 * @private
+	 * @param {string} char - The character to test
+	 * @returns {boolean} True if the character is a word character
+	 */
+	_isWordChar(char) {
+		return /[A-Za-z0-9_]/.test(char || "");
+	}
+
+	/**
+	 * Masks quoted string content to avoid matching keywords or bind references within string literals.
+	 * Preserves the position of text for accurate pattern matching.
+	 * @param {string} query SOQL query string
+	 * @returns {string} Query with quoted content replaced by spaces
+	 * @private
+	 */
+	_maskQuotedText(query) {
+		const text = query || "";
+		let result = "";
+		let quote = null;
+
+		for (let index = 0; index < text.length; index++) {
+			const char = text[index];
+
+			if (quote) {
+				result += " ";
+				if (char === "\\" && index + 1 < text.length) {
+					result += " ";
+					index++;
+				} else if (char === quote) {
+					quote = null;
+				}
+				continue;
+			}
+
+			if (char === "'" || char === '"') {
+				quote = char;
+				result += " ";
+				continue;
+			}
+
+			result += char;
+		}
+
+		return result;
+	}
+
+	/**
 	 * Checks if a word boundary matches at a specific position in text.
 	 * Ensures the word is surrounded by non-word characters to avoid partial matches.
 	 * @private
@@ -689,28 +600,61 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 	}
 
 	/**
-	 * Checks if a character is part of a word (letter, digit, or underscore).
+	 * Reads a value from an array of input variables by name.
 	 * @private
-	 * @param {string} char - The character to test
-	 * @returns {boolean} True if the character is a word character
+	 * @param {Array} inputVariables - Array of input variable objects
+	 * @param {string} name - Name of the variable to find
+	 * @returns {*} The variable's value, or null if not found
 	 */
-	_isWordChar(char) {
-		return /[A-Za-z0-9_]/.test(char || "");
+	_readInputValue(inputVariables, name) {
+		return (inputVariables ?? []).find((v) => v.name === name)?.value ?? null;
 	}
 
 	/**
-	 * Advances an index past any whitespace characters.
+	 * Reads the current output type value from generic type mappings.
 	 * @private
-	 * @param {string} text - The text being scanned
-	 * @param {number} index - The starting index
-	 * @returns {number} The index of the first non-whitespace character
+	 * @param {Array} genericTypeMappings - Generic type mapping objects
+	 * @returns {string|undefined} The output SObject type, or undefined if not found
 	 */
-	_skipWhitespace(text, index) {
-		let nextIndex = index;
-		while (/\s/.test(text[nextIndex] || "")) {
-			nextIndex++;
+	_readOutputTypeValue(genericTypeMappings) {
+		const mapping = (genericTypeMappings ?? []).find((m) => OUTPUT_TYPE_MAPPINGS.includes(m.typeName));
+		return mapping?.typeValue;
+	}
+
+	/**
+	 * Re-validates bind variables if validation has already been run by parent.
+	 * Used to update validation errors as the user edits without reporting to browser.
+	 * @private
+	 */
+	_syncBindValidationStateAfterInput() {
+		if (this._hasValidatedBinds) {
+			this._validateBindReferences({ report: false });
 		}
-		return nextIndex;
+	}
+
+	/**
+	 * Syncs the editor textarea value and syntax highlighting after render.
+	 * Only updates if the textarea is not currently focused.
+	 * @private
+	 */
+	_syncEditorContent() {
+		const textarea = this.template.querySelector(".code-editor");
+		if (textarea && document.activeElement !== textarea) {
+			textarea.value = this.queryValue;
+			this._syncHighlight(this.queryValue);
+		}
+	}
+
+	/**
+	 * Updates the syntax highlighting display element with highlighted query text.
+	 * @private
+	 * @param {string} text - SOQL query text to highlight
+	 */
+	_syncHighlight(text) {
+		const pre = this.template.querySelector(".code-highlight");
+		if (pre) {
+			pre.innerHTML = this._highlight(text) + "\n";
+		}
 	}
 
 	/**
@@ -727,5 +671,85 @@ export default class InvocableSoqlPropertyEditor extends LightningElement {
 		for (const typeName of OUTPUT_TYPE_MAPPINGS) {
 			this._dispatchGenericTypeMapping(typeName, nextOutputTypeValue);
 		}
+	}
+
+	/**
+	 * Updates the query draft and notifies parent of changes.
+	 * @private
+	 * @param {string} value - The new query text
+	 */
+	_updateQuery(value) {
+		this._queryDraft = value || "";
+		this._dispatchChange(INPUT_VAR_QUERY, this._queryDraft || null, "String");
+	}
+
+	/**
+	 * Validates the SOQL query through Apex.
+	 * @private
+	 * @returns {Promise<Array<{ key: string, errorString: string }>>} Query validation errors
+	 */
+	async _validateApexQuery() {
+		try {
+			const bindKeys = this._bindsDraft.map((b) => b.key);
+			await validateQuery({ queryToValidate: this._queryDraft, bindKeys });
+			this._queryError = null;
+			return [];
+		} catch (error) {
+			const fullMessage = error?.body?.message ?? "";
+			// Soql.cls appends the offending query on a new line
+			const errorString = fullMessage.split("\n")[0];
+			this._queryError = `Error: ${errorString}`;
+			return [{ key: INPUT_VAR_QUERY, errorString }];
+		}
+	}
+
+	/**
+	 * Validates a bind variable key against naming rules and query usage.
+	 * @param {string} key Bind variable name to validate
+	 * @param {Map<string, number>} bindKeyCounts Count of each bind key (for duplicate detection)
+	 * @param {Set<string>} referencedNames Set of bind names referenced in the query
+	 * @returns {string|null} Validation error message, or null if valid
+	 * @private
+	 */
+	_validateBindKey(key, bindKeyCounts, referencedNames) {
+		if (!BIND_KEY_PATTERN.test(key)) {
+			return INVALID_BIND_KEY_MESSAGE;
+		}
+		if (bindKeyCounts.get(key) > 1) {
+			return `Bind variable "${key}" ${DUPLICATE_BIND_ERROR_SUFFIX}`;
+		}
+		if (!referencedNames.has(key)) {
+			return `Bind variable "${key}" ${ORPHANED_BIND_ERROR_SUFFIX}`;
+		}
+		return null;
+	}
+
+	/**
+	 * Validates bind names against query references and row-level naming rules.
+	 * @param {{ report?: boolean }} [options={}] Whether to report validity immediately.
+	 * @returns {Array<{ key: string, errorString: string }>} Flow validation errors.
+	 */
+	_validateBindReferences({ report = true } = {}) {
+		const referencedNames = this._extractBindReferenceNames(this._queryDraft);
+		const bindKeyCounts = this._countBindKeys();
+		const { errorsByIndex, errors } = this._buildBindErrors(referencedNames, bindKeyCounts);
+		this._bindValidationErrors = errorsByIndex;
+		this._applyBindValidationErrors(report);
+		return errors;
+	}
+
+	/**
+	 * Advances an index past any whitespace characters.
+	 * @private
+	 * @param {string} text - The text being scanned
+	 * @param {number} index - The starting index
+	 * @returns {number} The index of the first non-whitespace character
+	 */
+	_skipWhitespace(text, index) {
+		let nextIndex = index;
+		while (/\s/.test(text[nextIndex] || "")) {
+			nextIndex++;
+		}
+		return nextIndex;
 	}
 }

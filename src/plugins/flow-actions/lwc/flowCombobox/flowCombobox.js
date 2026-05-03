@@ -149,8 +149,6 @@ export default class FlowCombobox extends LightningElement {
 		this._setResourcePickerOpen(false);
 	}
 
-	// ── Private Utility Methods ────────────────────────────────────────────────
-
 	/**
 	 * Normalizes a value to a string, handling null, undefined, and arrays.
 	 * @private
@@ -1792,8 +1790,6 @@ export default class FlowCombobox extends LightningElement {
 		this._setResourcePickerOpen(false);
 		this.dispatchEvent(new CustomEvent("newresource", { bubbles: true, composed: true }));
 	}
-
-	// ── SObject type picker ────────────────────────────────────────────────────
 
 	/** Whether the SObject type picker should be shown. */
 	get showTypePicker() {
