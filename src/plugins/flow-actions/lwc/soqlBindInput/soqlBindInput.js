@@ -1,6 +1,7 @@
 import { LightningElement, api } from "lwc";
 import { normalizeDataType } from "c/flowUtils";
 
+/** List of types available for selection in the component **/
 const TYPES = [
 	{ label: "Boolean", typeName: "Boolean", isCollection: false },
 	{ label: "Boolean (Collection)", typeName: "Boolean", isCollection: true },
@@ -17,7 +18,6 @@ const TYPES = [
 	{ label: "Record", typeName: "SObject", isCollection: false },
 	{ label: "Record (Collection)", typeName: "SObject", isCollection: true }
 ];
-
 const TYPE_OPTIONS = TYPES.map(({ label }) => ({ label, value: label }));
 
 /**
@@ -104,6 +104,20 @@ export default class SoqlBindInput extends LightningElement {
 	}
 
 	/**
+	 * Validates the bind variable name and optionally reports validity to the user.
+	 * Called by the parent editor and during user input to check for errors.
+	 * @param {string} [errorMessage=this.errorMessage] - Validation error message to display. Pass null to clear errors.
+	 * @param {Object} [options={}] - Configuration options
+	 * @param {boolean} [options.report=true] - If true, immediately report validity to trigger browser validation UI
+	 * @returns {boolean} True if validation passed (no error), false if validation failed
+	 */
+	@api validate(errorMessage = this.errorMessage, { report = true } = {}) {
+		this.errorMessage = errorMessage ?? null;
+		this._applyKeyValidity(report);
+		return !this.errorMessage;
+	}
+
+	/**
 	 * Handles bind variable name input changes. Clears validation errors on edit
 	 * and notifies parent of the new name value.
 	 * @param {Event} event - Standard change event from the input element
@@ -140,20 +154,6 @@ export default class SoqlBindInput extends LightningElement {
 	 */
 	handleValueChange(event) {
 		this._emitChange({ textValue: event.detail.value });
-	}
-
-	/**
-	 * Validates the bind variable name and optionally reports validity to the user.
-	 * Called by the parent editor and during user input to check for errors.
-	 * @param {string} [errorMessage=this.errorMessage] - Validation error message to display. Pass null to clear errors.
-	 * @param {Object} [options={}] - Configuration options
-	 * @param {boolean} [options.report=true] - If true, immediately report validity to trigger browser validation UI
-	 * @returns {boolean} True if validation passed (no error), false if validation failed
-	 */
-	@api validate(errorMessage = this.errorMessage, { report = true } = {}) {
-		this.errorMessage = errorMessage ?? null;
-		this._applyKeyValidity(report);
-		return !this.errorMessage;
 	}
 
 	/**

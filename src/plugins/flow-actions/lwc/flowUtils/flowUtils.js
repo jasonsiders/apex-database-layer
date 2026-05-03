@@ -29,136 +29,6 @@ export function asArray(value) {
 }
 
 /**
- * Reads a resource collection from builder context, checking multiple possible locations.
- * @param {Object} builderContext - The Flow Builder context object
- * @param {string} key - The collection key to read (e.g., 'variables', 'recordVariables')
- * @returns {Array} The resource collection, or empty array if not found
- */
-export function readCollection(builderContext, key) {
-	return asArray(builderContext?.[key] ?? builderContext?.resources?.[key] ?? builderContext?.flow?.[key]);
-}
-
-/**
- * Extracts the name from a resource, checking multiple possible name properties.
- * @param {Object} resource - The resource object
- * @returns {string|null} The resource name, or null if not found
- */
-export function readName(resource) {
-	return resource?.name ?? resource?.apiName ?? resource?.fullName ?? resource?.developerName ?? null;
-}
-
-/**
- * Extracts a display label from a resource, checking multiple possible label properties.
- * @param {Object} resource - The resource object
- * @param {string} fallback - Fallback value if no label is found
- * @returns {string} The resource label, or fallback value
- */
-export function readLabel(resource, fallback) {
-	return resource?.label ?? resource?.masterLabel ?? resource?.displayName ?? fallback;
-}
-
-/**
- * Extracts the SObject type from a resource, checking multiple possible type properties.
- * @param {Object} resource - The resource object
- * @returns {string|null} The SObject type name, or null if not found or not a string
- */
-export function readObjectType(resource) {
-	const objectType =
-		resource?.objectType ??
-		resource?.objectTypeName ??
-		resource?.sobjectType ??
-		resource?.sObjectType ??
-		resource?.objectApiName ??
-		resource?.entityName ??
-		resource?.object ??
-		resource?.typeValue ??
-		null;
-	return typeof objectType === "string" ? objectType : null;
-}
-
-/**
- * Normalizes a raw data type string to a canonical Flow data type.
- * Maps various vendor and format variations to standard Flow types.
- * @param {string} dataType - The raw data type to normalize
- * @param {string} [objectType] - Optional SObject type; presence indicates SObject data type
- * @returns {string|null} Normalized data type (SObject, String, DateTime, Date, Time, Boolean, Decimal), or original value if no match
- */
-export function normalizeDataType(dataType, objectType) {
-	const normalized = String(dataType ?? "")
-		.trim()
-		.toLowerCase();
-
-	if (objectType || ["sobject", "record", "apex"].includes(normalized)) {
-		return "SObject";
-	}
-	if (
-		["string", "text", "textarea", "picklist", "multipicklist", "id", "email", "phone", "url"].includes(normalized)
-	) {
-		return "String";
-	}
-	if (["datetime", "date/time"].includes(normalized)) {
-		return "DateTime";
-	}
-	if (normalized === "date") {
-		return "Date";
-	}
-	if (normalized === "time") {
-		return "Time";
-	}
-	if (normalized === "boolean") {
-		return "Boolean";
-	}
-	if (["decimal", "double", "currency", "integer", "int", "long", "number", "percent"].includes(normalized)) {
-		return "Decimal";
-	}
-	return dataType ?? null;
-}
-
-/**
- * Determines whether a resource represents a collection, checking multiple possible properties.
- * @param {Object} resource - The resource object
- * @param {boolean} [defaultValue=false] - Default value if no collection indicator is found
- * @returns {boolean} Whether the resource is a collection
- */
-export function readIsCollection(resource, defaultValue = false) {
-	if (resource?.isCollection !== undefined) {
-		return resource.isCollection === true || resource.isCollection === "true";
-	}
-	if (resource?.getFirstRecordOnly !== undefined) {
-		return resource.getFirstRecordOnly !== true && resource.getFirstRecordOnly !== "true";
-	}
-	if (String(resource?.dataType ?? "").endsWith("[]")) {
-		return true;
-	}
-	return defaultValue;
-}
-
-/**
- * Wraps a reference name in Flow reference syntax.
- * @param {string} referenceName - The name to wrap as a reference
- * @returns {string} Flow reference syntax {!name}, or empty string if name is falsy
- */
-export function toReferenceValue(referenceName) {
-	return referenceName ? `{!${referenceName}}` : "";
-}
-
-/**
- * Checks whether a resource has field metadata that can be drilled into.
- * @param {Object} resource - The resource object
- * @returns {boolean} True if the resource has accessible field information
- */
-export function hasFieldMetadata(resource) {
-	return [
-		resource?.fields,
-		resource?.fieldDefinitions,
-		resource?.properties,
-		resource?.queriedFields,
-		resource?.fieldNames,
-		resource?.objectInfo?.fields ? Object.values(resource.objectInfo.fields) : null
-	].some((source) => Array.isArray(source) && source.length > 0);
-}
-
-/**
  * Builds a standardized option object from a Flow resource for use in selectors and dropdowns.
  * Extracts and normalizes metadata into a consistent format.
  * @param {Object} resource - The Flow resource to convert
@@ -202,15 +72,126 @@ export function buildResourceOption(
 }
 
 /**
- * Extracts the field name from a field object or string.
- * @param {Object|string} field - The field to extract name from
- * @returns {string|null} The field name, or null if not found
+ * Deduplicates resource options by reference name or value, keeping the option with the best metadata.
+ * When duplicates are found, the version with the higher score (more metadata) is retained.
+ * @param {Array} options - Array of option objects to deduplicate
+ * @returns {Array} Deduplicated array with the highest-scoring option for each unique reference
  */
-export function readFieldName(field) {
-	if (typeof field === "string") {
-		return field;
+export function dedupeResourceOptions(options) {
+	const indexesByKey = new Map();
+	const result = [];
+
+	for (const option of options) {
+		const key = option?.referenceName ?? option?.value;
+		if (!key) {
+			continue;
+		}
+
+		if (!indexesByKey.has(key)) {
+			indexesByKey.set(key, result.length);
+			result.push(option);
+			continue;
+		}
+
+		const existingIndex = indexesByKey.get(key);
+		if (scoreResourceOption(option) > scoreResourceOption(result[existingIndex])) {
+			result[existingIndex] = option;
+		}
 	}
-	return field?.name ?? field?.apiName ?? field?.fieldApiName ?? field?.qualifiedApiName ?? null;
+
+	return result;
+}
+
+/**
+ * Checks whether a resource has field metadata that can be drilled into.
+ * @param {Object} resource - The resource object
+ * @returns {boolean} True if the resource has accessible field information
+ */
+export function hasFieldMetadata(resource) {
+	return [
+		resource?.fields,
+		resource?.fieldDefinitions,
+		resource?.properties,
+		resource?.queriedFields,
+		resource?.fieldNames,
+		resource?.objectInfo?.fields ? Object.values(resource.objectInfo.fields) : null
+	].some((source) => Array.isArray(source) && source.length > 0);
+}
+
+/**
+ * Normalizes a raw data type string to a canonical Flow data type.
+ * Maps various vendor and format variations to standard Flow types.
+ * @param {string} dataType - The raw data type to normalize
+ * @param {string} [objectType] - Optional SObject type; presence indicates SObject data type
+ * @returns {string|null} Normalized data type (SObject, String, DateTime, Date, Time, Boolean, Decimal), or original value if no match
+ */
+export function normalizeDataType(dataType, objectType) {
+	const normalized = String(dataType ?? "")
+		.trim()
+		.toLowerCase();
+
+	if (objectType || ["sobject", "record", "apex"].includes(normalized)) {
+		return "SObject";
+	}
+	if (
+		["string", "text", "textarea", "picklist", "multipicklist", "id", "email", "phone", "url"].includes(normalized)
+	) {
+		return "String";
+	}
+	if (["datetime", "date/time"].includes(normalized)) {
+		return "DateTime";
+	}
+	if (normalized === "date") {
+		return "Date";
+	}
+	if (normalized === "time") {
+		return "Time";
+	}
+	if (normalized === "boolean") {
+		return "Boolean";
+	}
+	if (["decimal", "double", "currency", "integer", "int", "long", "number", "percent"].includes(normalized)) {
+		return "Decimal";
+	}
+	return dataType ?? null;
+}
+
+/**
+ * Builds standardized option objects for all output parameters of a Flow action.
+ * @param {Object} action - The Flow action containing output parameters
+ * @returns {Array} Array of action output option objects, empty if action has no name or outputs
+ */
+export function readActionOutputOptions(action) {
+	const actionName = readName(action);
+	if (!actionName) {
+		return [];
+	}
+
+	const outputs = asArray(action?.outputParameters ?? action?.outputVariables ?? action?.outputs);
+	return outputs
+		.map((output) => {
+			const outputName = readName(output);
+			if (!outputName) {
+				return null;
+			}
+
+			return buildResourceOption(output, {
+				category: "actionOutputs",
+				labelPrefix: "Action Output",
+				referenceName: `${actionName}.${outputName}`
+			});
+		})
+		.filter(Boolean);
+}
+
+/**
+ * Reads a resource collection from builder context, checking multiple possible locations.
+ * @param {Object} builderContext - The Flow Builder context object
+ * @param {string} key - The collection key to read (e.g., 'variables', 'recordVariables')
+ * @returns {Array} The resource collection, or empty array if not found
+ */
+export function readCollection(builderContext, key) {
+	return asArray(builderContext?.[key] ?? builderContext?.resources?.[key] ?? builderContext?.flow?.[key]);
 }
 
 /**
@@ -220,6 +201,18 @@ export function readFieldName(field) {
  */
 export function readFieldDataType(field) {
 	return typeof field === "string" ? null : (field?.dataType ?? field?.valueDataType ?? field?.type);
+}
+
+/**
+ * Extracts the field name from a field object or string.
+ * @param {Object|string} field - The field to extract name from
+ * @returns {string|null} The field name, or null if not found
+ */
+export function readFieldName(field) {
+	if (typeof field === "string") {
+		return field;
+	}
+	return field?.name ?? field?.apiName ?? field?.fieldApiName ?? field?.qualifiedApiName ?? null;
 }
 
 /**
@@ -269,6 +262,63 @@ export function readFieldOptions(resource, parentOption) {
 }
 
 /**
+ * Determines whether a resource represents a collection, checking multiple possible properties.
+ * @param {Object} resource - The resource object
+ * @param {boolean} [defaultValue=false] - Default value if no collection indicator is found
+ * @returns {boolean} Whether the resource is a collection
+ */
+export function readIsCollection(resource, defaultValue = false) {
+	if (resource?.isCollection !== undefined) {
+		return resource.isCollection === true || resource.isCollection === "true";
+	}
+	if (resource?.getFirstRecordOnly !== undefined) {
+		return resource.getFirstRecordOnly !== true && resource.getFirstRecordOnly !== "true";
+	}
+	if (String(resource?.dataType ?? "").endsWith("[]")) {
+		return true;
+	}
+	return defaultValue;
+}
+
+/**
+ * Extracts a display label from a resource, checking multiple possible label properties.
+ * @param {Object} resource - The resource object
+ * @param {string} fallback - Fallback value if no label is found
+ * @returns {string} The resource label, or fallback value
+ */
+export function readLabel(resource, fallback) {
+	return resource?.label ?? resource?.masterLabel ?? resource?.displayName ?? fallback;
+}
+
+/**
+ * Extracts the name from a resource, checking multiple possible name properties.
+ * @param {Object} resource - The resource object
+ * @returns {string|null} The resource name, or null if not found
+ */
+export function readName(resource) {
+	return resource?.name ?? resource?.apiName ?? resource?.fullName ?? resource?.developerName ?? null;
+}
+
+/**
+ * Extracts the SObject type from a resource, checking multiple possible type properties.
+ * @param {Object} resource - The resource object
+ * @returns {string|null} The SObject type name, or null if not found or not a string
+ */
+export function readObjectType(resource) {
+	const objectType =
+		resource?.objectType ??
+		resource?.objectTypeName ??
+		resource?.sobjectType ??
+		resource?.sObjectType ??
+		resource?.objectApiName ??
+		resource?.entityName ??
+		resource?.object ??
+		resource?.typeValue ??
+		null;
+	return typeof objectType === "string" ? objectType : null;
+}
+
+/**
  * Scores a resource option for metadata completeness.
  * Used by deduplication logic to prefer options with more metadata when merging duplicates.
  * @param {Object} option - The option to score
@@ -284,62 +334,12 @@ export function scoreResourceOption(option) {
 }
 
 /**
- * Builds standardized option objects for all output parameters of a Flow action.
- * @param {Object} action - The Flow action containing output parameters
- * @returns {Array} Array of action output option objects, empty if action has no name or outputs
+ * Wraps a reference name in Flow reference syntax.
+ * @param {string} referenceName - The name to wrap as a reference
+ * @returns {string} Flow reference syntax {!name}, or empty string if name is falsy
  */
-export function readActionOutputOptions(action) {
-	const actionName = readName(action);
-	if (!actionName) {
-		return [];
-	}
-
-	const outputs = asArray(action?.outputParameters ?? action?.outputVariables ?? action?.outputs);
-	return outputs
-		.map((output) => {
-			const outputName = readName(output);
-			if (!outputName) {
-				return null;
-			}
-
-			return buildResourceOption(output, {
-				category: "actionOutputs",
-				labelPrefix: "Action Output",
-				referenceName: `${actionName}.${outputName}`
-			});
-		})
-		.filter(Boolean);
-}
-
-/**
- * Deduplicates resource options by reference name or value, keeping the option with the best metadata.
- * When duplicates are found, the version with the higher score (more metadata) is retained.
- * @param {Array} options - Array of option objects to deduplicate
- * @returns {Array} Deduplicated array with the highest-scoring option for each unique reference
- */
-export function dedupeResourceOptions(options) {
-	const indexesByKey = new Map();
-	const result = [];
-
-	for (const option of options) {
-		const key = option?.referenceName ?? option?.value;
-		if (!key) {
-			continue;
-		}
-
-		if (!indexesByKey.has(key)) {
-			indexesByKey.set(key, result.length);
-			result.push(option);
-			continue;
-		}
-
-		const existingIndex = indexesByKey.get(key);
-		if (scoreResourceOption(option) > scoreResourceOption(result[existingIndex])) {
-			result[existingIndex] = option;
-		}
-	}
-
-	return result;
+export function toReferenceValue(referenceName) {
+	return referenceName ? `{!${referenceName}}` : "";
 }
 
 /**

@@ -69,7 +69,7 @@ describe("c-invocable-soql-property-editor", () => {
 		const element = createComponent({
 			inputVariables: [
 				{ name: "query", value: "SELECT Id FROM Account WHERE Id = :recordId", valueDataType: "String" },
-				{ name: "binds", value: binds, valueDataType: "Apex" }
+				{ name: "bindsJson", value: JSON.stringify(binds), valueDataType: "String" }
 			]
 		});
 		element.validate();
@@ -505,7 +505,7 @@ describe("c-invocable-soql-property-editor", () => {
 			{ key: "accountId", textValue: "", typeName: "String", isCollection: false }
 		];
 		const element = createComponent({
-			inputVariables: [{ name: "binds", value: initial, valueDataType: "Apex" }]
+			inputVariables: [{ name: "bindsJson", value: JSON.stringify(initial), valueDataType: "String" }]
 		});
 		const events = [];
 		element.addEventListener("configuration_editor_input_value_changed", (e) => events.push(e));
@@ -536,20 +536,4 @@ describe("c-invocable-soql-property-editor", () => {
 		expect(deletedEvents[0].detail).toEqual({ name: "bindsJson" });
 	});
 
-	it("deletes stale binds metadata when an existing flow still has the old binds input", () => {
-		const initial = [{ key: "recordId", textValue: "", typeName: "String", isCollection: false }];
-		const element = createComponent({
-			inputVariables: [{ name: "binds", value: initial, valueDataType: "Apex" }]
-		});
-		const deletedEvents = [];
-		element.addEventListener("configuration_editor_input_value_deleted", (e) => deletedEvents.push(e));
-
-		const bindInput = element.shadowRoot.querySelector("c-soql-bind-input");
-		bindInput.dispatchEvent(new CustomEvent("remove", { detail: { index: 0 } }));
-
-		expect(deletedEvents).toHaveLength(2);
-		expectFlowEventContract(deletedEvents[0]);
-		expectFlowEventContract(deletedEvents[1]);
-		expect(deletedEvents.map((event) => event.detail)).toEqual([{ name: "bindsJson" }, { name: "binds" }]);
-	});
 });
