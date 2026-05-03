@@ -5,7 +5,7 @@
  * To stay within SOQL governor limits when Flow processes a record collection, identical query templates
  * are grouped and their bind values are merged into a single IN-list query where possible.
  */
-@SuppressWarnings('PMD.AvoidGlobalModifier')
+@SuppressWarnings('PMD.AvoidGlobalModifier,PMD.CognitiveComplexity')
 global abstract inherited sharing class InvocableSoql {
 	/**
 	 * @description Invokes the SOQL query action with automatic bulkification for identical queries.
