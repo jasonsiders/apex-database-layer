@@ -31,8 +31,8 @@ describe("c-soql-property-editor", () => {
 	}
 
 	function expectSerializedBinds(event, expectedBinds) {
-		expect(event.detail.name).toBe("bindsJson");
-		expect(event.detail.newValueDataType).toBe("String");
+		expect(event.detail.name).toBe("binds");
+		expect(event.detail.newValueDataType).toBe("Apex");
 		expect(JSON.parse(event.detail.newValue)).toEqual(expectedBinds);
 	}
 
@@ -61,21 +61,21 @@ describe("c-soql-property-editor", () => {
 			inputVariables: [{ name: "query", value: "SELECT Id FROM Account", valueDataType: "String" }]
 		});
 		element.validate();
-		expect(validateQuery).toHaveBeenCalledWith({ queryToValidate: "SELECT Id FROM Account", bindKeys: [] });
+		expect(validateQuery).toHaveBeenCalledWith({ queryToValidate: "SELECT Id FROM Account", binds: [] });
 	});
 
-	it("validate() calls validateQuery with bind keys from current binds", () => {
+	it("validate() calls validateQuery with current binds", () => {
 		const binds = [{ key: "recordId", textValue: "", typeName: "String", isCollection: false }];
 		const element = createComponent({
 			inputVariables: [
 				{ name: "query", value: "SELECT Id FROM Account WHERE Id = :recordId", valueDataType: "String" },
-				{ name: "bindsJson", value: JSON.stringify(binds), valueDataType: "String" }
+				{ name: "binds", value: JSON.stringify(binds), valueDataType: "Apex" }
 			]
 		});
 		element.validate();
 		expect(validateQuery).toHaveBeenCalledWith({
 			queryToValidate: "SELECT Id FROM Account WHERE Id = :recordId",
-			bindKeys: ["recordId"]
+			binds
 		});
 	});
 
@@ -87,7 +87,7 @@ describe("c-soql-property-editor", () => {
 		const element = createComponent({
 			inputVariables: [
 				{ name: "query", value: "SELECT Id FROM Account WHERE Name = :name", valueDataType: "String" },
-				{ name: "bindsJson", value: JSON.stringify(binds), valueDataType: "String" }
+				{ name: "binds", value: JSON.stringify(binds), valueDataType: "Apex" }
 			]
 		});
 		await Promise.resolve();
@@ -101,7 +101,7 @@ describe("c-soql-property-editor", () => {
 		expect(validateQuery).not.toHaveBeenCalled();
 		expect(result).toEqual([
 			{
-				key: "bindsJson",
+				key: "binds",
 				errorString: 'Bind variable "foo" is not referenced by the query.'
 			}
 		]);
@@ -117,7 +117,7 @@ describe("c-soql-property-editor", () => {
 		const element = createComponent({
 			inputVariables: [
 				{ name: "query", value: "SELECT Id FROM Account WHERE Name = :name", valueDataType: "String" },
-				{ name: "bindsJson", value: JSON.stringify(binds), valueDataType: "String" }
+				{ name: "binds", value: JSON.stringify(binds), valueDataType: "Apex" }
 			]
 		});
 		await Promise.resolve();
@@ -136,11 +136,11 @@ describe("c-soql-property-editor", () => {
 		expect(validateQuery).not.toHaveBeenCalled();
 		expect(result).toEqual([
 			{
-				key: "bindsJson",
+				key: "binds",
 				errorString: 'Bind variable "name" is already defined.'
 			},
 			{
-				key: "bindsJson",
+				key: "binds",
 				errorString: 'Bind variable "name" is already defined.'
 			}
 		]);
@@ -153,7 +153,7 @@ describe("c-soql-property-editor", () => {
 		const element = createComponent({
 			inputVariables: [
 				{ name: "query", value: "SELECT Id FROM Account WHERE Name = :bad_key", valueDataType: "String" },
-				{ name: "bindsJson", value: JSON.stringify(binds), valueDataType: "String" }
+				{ name: "binds", value: JSON.stringify(binds), valueDataType: "Apex" }
 			]
 		});
 		await Promise.resolve();
@@ -168,7 +168,7 @@ describe("c-soql-property-editor", () => {
 		expect(validateQuery).not.toHaveBeenCalled();
 		expect(result).toEqual([
 			{
-				key: "bindsJson",
+				key: "binds",
 				errorString:
 					"Bind variable names can contain only letters, numbers, and underscores, and must start with a letter or underscore."
 			}
@@ -183,7 +183,7 @@ describe("c-soql-property-editor", () => {
 		const element = createComponent({
 			inputVariables: [
 				{ name: "query", value: "SELECT Id FROM Account WHERE Name = :name", valueDataType: "String" },
-				{ name: "bindsJson", value: JSON.stringify(binds), valueDataType: "String" }
+				{ name: "binds", value: JSON.stringify(binds), valueDataType: "Apex" }
 			]
 		});
 		await Promise.resolve();
@@ -205,7 +205,7 @@ describe("c-soql-property-editor", () => {
 		const element = createComponent({
 			inputVariables: [
 				{ name: "query", value: "SELECT Id FROM Account", valueDataType: "String" },
-				{ name: "bindsJson", value: JSON.stringify(binds), valueDataType: "String" }
+				{ name: "binds", value: JSON.stringify(binds), valueDataType: "Apex" }
 			]
 		});
 		await Promise.resolve();
@@ -225,7 +225,7 @@ describe("c-soql-property-editor", () => {
 		const element = createComponent({
 			inputVariables: [
 				{ name: "query", value: "SELECT Id FROM Account WHERE Name = ':foo'", valueDataType: "String" },
-				{ name: "bindsJson", value: JSON.stringify(binds), valueDataType: "String" }
+				{ name: "binds", value: JSON.stringify(binds), valueDataType: "Apex" }
 			]
 		});
 		await Promise.resolve();
@@ -245,7 +245,7 @@ describe("c-soql-property-editor", () => {
 		const element = createComponent({
 			inputVariables: [
 				{ name: "query", value: "SELECT Id FROM Account", valueDataType: "String" },
-				{ name: "bindsJson", value: JSON.stringify(binds), valueDataType: "String" }
+				{ name: "binds", value: JSON.stringify(binds), valueDataType: "Apex" }
 			]
 		});
 		await Promise.resolve();
@@ -410,6 +410,57 @@ describe("c-soql-property-editor", () => {
 		expect(element.shadowRoot.querySelectorAll("c-soql-bind-input")).toHaveLength(1);
 	});
 
+	it("normalizes typed collection bind values for editor display", async () => {
+		const initial = [{ key: "names", textValues: "{!accountNames}", typeName: "String", isCollection: true }];
+		const element = createComponent({
+			inputVariables: [{ name: "binds", value: JSON.stringify(initial), valueDataType: "Apex" }]
+		});
+		await Promise.resolve();
+
+		const bindInput = element.shadowRoot.querySelector("c-soql-bind-input");
+		expect(bindInput.variable.textValue).toBe("{!accountNames}");
+	});
+
+	it("dispatches collection references on the typed Apex field", () => {
+		const initial = [{ key: "names", textValue: "", typeName: "String", isCollection: true }];
+		const element = createComponent({
+			inputVariables: [{ name: "binds", value: JSON.stringify(initial), valueDataType: "Apex" }]
+		});
+		const events = [];
+		element.addEventListener("configuration_editor_input_value_changed", (e) => events.push(e));
+
+		const bindInput = element.shadowRoot.querySelector("c-soql-bind-input");
+		bindInput.dispatchEvent(
+			new CustomEvent("change", {
+				detail: { index: 0, patch: { textValue: "{!accountNames}" } }
+			})
+		);
+
+		expectSerializedBinds(events[0], [
+			{ key: "names", textValues: "{!accountNames}", typeName: "String", isCollection: true }
+		]);
+	});
+
+	it("dispatches literal collection JSON as an array on the typed Apex field", () => {
+		const initial = [{ key: "names", textValue: "", typeName: "String", isCollection: true }];
+		const element = createComponent({
+			inputVariables: [{ name: "binds", value: JSON.stringify(initial), valueDataType: "Apex" }]
+		});
+		const events = [];
+		element.addEventListener("configuration_editor_input_value_changed", (e) => events.push(e));
+
+		const bindInput = element.shadowRoot.querySelector("c-soql-bind-input");
+		bindInput.dispatchEvent(
+			new CustomEvent("change", {
+				detail: { index: 0, patch: { textValue: '["Acme","Beta"]' } }
+			})
+		);
+
+		expectSerializedBinds(events[0], [
+			{ key: "names", textValues: ["Acme", "Beta"], typeName: "String", isCollection: true }
+		]);
+	});
+
 	it("passes builderContext to bind input for resource derivation", async () => {
 		const builderContext = {
 			variables: [
@@ -482,7 +533,7 @@ describe("c-soql-property-editor", () => {
 	it("updates a bind variable when a child emits change", () => {
 		const initial = [{ key: "recordId", textValue: "", typeName: "String", isCollection: false }];
 		const element = createComponent({
-			inputVariables: [{ name: "bindsJson", value: JSON.stringify(initial), valueDataType: "String" }]
+			inputVariables: [{ name: "binds", value: JSON.stringify(initial), valueDataType: "Apex" }]
 		});
 		const events = [];
 		element.addEventListener("configuration_editor_input_value_changed", (e) => events.push(e));
@@ -505,7 +556,7 @@ describe("c-soql-property-editor", () => {
 			{ key: "accountId", textValue: "", typeName: "String", isCollection: false }
 		];
 		const element = createComponent({
-			inputVariables: [{ name: "bindsJson", value: JSON.stringify(initial), valueDataType: "String" }]
+			inputVariables: [{ name: "binds", value: JSON.stringify(initial), valueDataType: "Apex" }]
 		});
 		const events = [];
 		element.addEventListener("configuration_editor_input_value_changed", (e) => events.push(e));
@@ -520,10 +571,10 @@ describe("c-soql-property-editor", () => {
 		expect(element.shadowRoot.querySelectorAll("c-soql-bind-input")).toHaveLength(1);
 	});
 
-	it("dispatches configuration_editor_input_value_deleted for bindsJson when last bind is removed", () => {
+	it("dispatches configuration_editor_input_value_deleted for binds when last bind is removed", () => {
 		const initial = [{ key: "recordId", textValue: "", typeName: "String", isCollection: false }];
 		const element = createComponent({
-			inputVariables: [{ name: "bindsJson", value: JSON.stringify(initial), valueDataType: "String" }]
+			inputVariables: [{ name: "binds", value: JSON.stringify(initial), valueDataType: "Apex" }]
 		});
 		const deletedEvents = [];
 		element.addEventListener("configuration_editor_input_value_deleted", (e) => deletedEvents.push(e));
@@ -533,6 +584,6 @@ describe("c-soql-property-editor", () => {
 
 		expect(deletedEvents).toHaveLength(1);
 		expectFlowEventContract(deletedEvents[0]);
-		expect(deletedEvents[0].detail).toEqual({ name: "bindsJson" });
+		expect(deletedEvents[0].detail).toEqual({ name: "binds" });
 	});
 });

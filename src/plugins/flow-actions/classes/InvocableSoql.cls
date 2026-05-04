@@ -23,25 +23,14 @@ global abstract inherited sharing class InvocableSoql {
 	}
 
 	/**
-	 * @description Resolves bind variables from CPE JSON input.
-	 * @return List of configured bind variables
-	 */
-	private static List<InvocableSoql.BindVariable> deserialize(String bindsJson) {
-		return (List<InvocableSoql.BindVariable>) JSON.deserialize(
-			bindsJson ?? '[]',
-			List<InvocableSoql.BindVariable>.class
-		);
-	}
-
-	/**
 	 * @description Method used by the custom property editor to validate query inputs
 	 * @param queryToValidate The raw SOQL query to process
-	 * @param bindsJson JSON-serialized bind variables included in the invocable configuration
+	 * @param binds Bind variables included in the invocable configuration
 	 * @throws AuraHandledException if any Exception is thrown during query validation
 	 */
 	@AuraEnabled(cacheable=true)
-	global static void validateQuery(String queryToValidate, String bindsJson) {
-		new InvocableSoql.Validator().validate(queryToValidate, bindsJson);
+	global static void validateQuery(String queryToValidate, List<BindVariable> binds) {
+		new InvocableSoql.Validator().validate(queryToValidate, binds);
 	}
 
 	/**
@@ -49,10 +38,10 @@ global abstract inherited sharing class InvocableSoql {
 	 */
 	global class Input {
 		/**
-		 * @description JSON-serialized bind variables persisted by the custom property editor.
+		 * @description Bind variables configured by the custom property editor.
 		 */
-		@InvocableVariable(label='Bind Variables [JSON]')
-		global String bindsJson;
+		@InvocableVariable(label='Bind Variables')
+		global List<BindVariable> binds;
 		/**
 		 * @description The SOQL query string to execute.
 		 */
@@ -60,11 +49,11 @@ global abstract inherited sharing class InvocableSoql {
 		global String query;
 
 		/**
-		 * @description Converts the provided bindsJson payload to a list of BindVariable objects
-		 * @return Deserialized BindVariable objects to use in the query
+		 * @description Returns a non-null list of configured bind variables.
+		 * @return BindVariable objects to use in the query
 		 */
-		private List<InvocableSoql.BindVariable> getBinds() {
-			return InvocableSoql.deserialize(this.bindsJson);
+		private List<BindVariable> getBinds() {
+			return this.binds ?? new List<BindVariable>();
 		}
 	}
 
@@ -117,7 +106,7 @@ global abstract inherited sharing class InvocableSoql {
 		private Soql buildSoql(Input input) {
 			String query = input?.query;
 			Soql soql = DatabaseLayer.Soql.newQuery(query);
-			for (InvocableSoql.BindVariable var : input?.getBinds()) {
+			for (BindVariable var : input?.getBinds()) {
 				Soql.Binder bind = var?.toSoqlBinder();
 				soql?.addBind(bind);
 			}
@@ -141,84 +130,6 @@ global abstract inherited sharing class InvocableSoql {
 		private void setResults(List<SObject> results) {
 			this.allResults = results;
 			this.firstResult = results?.isEmpty() == false ? results?.get(0) : null;
-		}
-	}
-
-	/**
-	 * @description Private JSON DTO for bind variable configuration persisted by the custom property editor.
-	 */
-	@TestVisible
-	private class BindVariable {
-		/**
-		 * @description Bind variable name referenced by the SOQL query.
-		 */
-		public String key { get; set; }
-		/**
-		 * @description JSON-compatible text value persisted by the custom property editor.
-		 */
-		public String textValue { get; set; }
-		/**
-		 * @description Apex type name used to deserialize the text value.
-		 */
-		public String typeName { get; set; }
-		/**
-		 * @description Whether the bind value should deserialize as a List of the configured type.
-		 */
-		public Boolean isCollection { get; set; }
-
-		/**
-		 * @description Deserializes textValue into the given Apex type.
-		 * @param type The target Apex type to deserialize into
-		 * @return The deserialized object
-		 */
-		private Object convertFromTextTo(Type type) {
-			try {
-				return (this.isCollection != true &&
-					this.typeName == 'String')
-					? this.textValue
-					: JSON.deserialize(this.textValue, type);
-			} catch (System.JsonException error) {
-				String msg = 'Invalid ' + type + ' value: ' + this.textValue + '\n' + error;
-				throw new System.IllegalArgumentException(msg);
-			}
-		}
-
-		/**
-		 * @description Resolves the target Apex type, wrapping in List<> when isCollection is true.
-		 * @return The resolved Apex Type
-		 */
-		private Type determineType() {
-			String resolvedName = this.resolveTypeName();
-			Type type = Type.forName(resolvedName);
-			if (type == null) {
-				throw new System.TypeException('Invalid type: ' + resolvedName);
-			}
-			return type;
-		}
-
-		/**
-		 * @description Deserializes textValue into the Apex type described by typeName and isCollection.
-		 * @return The deserialized value as its resolved Apex type
-		 */
-		private Object getValue() {
-			Type type = this.determineType();
-			return this.convertFromTextTo(type);
-		}
-
-		/**
-		 * @description Builds the Apex type name string, prepending List<> when isCollection is true.
-		 * @return The resolved type name string
-		 */
-		private String resolveTypeName() {
-			return (this.isCollection == true) ? 'List<' + this.typeName + '>' : this.typeName;
-		}
-
-		/**
-		 * @description Converts the BindVariable to a formal Soql.Binder object
-		 * @return A Soql.Binder representation of the current object
-		 */
-		private Soql.Binder toSoqlBinder() {
-			return new Soql.Binder(this.key, this.getValue());
 		}
 	}
 
@@ -654,10 +565,9 @@ global abstract inherited sharing class InvocableSoql {
 		 * @throws AuraHandledException if any Exception is thrown during query validation in an Aura context
 		 * @throws Exception if any Exception is thrown during any other execution context
 		 */
-		public void validate(String queryString, String bindsJson) {
+		public void validate(String queryString, List<BindVariable> binds) {
 			try {
 				Soql soql = DatabaseLayer.Soql.newQuery(queryString);
-				List<InvocableSoql.BindVariable> binds = InvocableSoql.deserialize(bindsJson);
 				this.applyDummyBinds(soql, binds);
 				soql?.queryFirst();
 			} catch (Exception anyError) {
@@ -669,8 +579,8 @@ global abstract inherited sharing class InvocableSoql {
 		 * @description Applies null/empty bind variables to the given queries, for validation purposes
 		 * Attempting to assign 'null' to list variables (e.g., 'WHERE Id IN :vars') results in an exception.
 		 */
-		private void applyDummyBinds(Soql query, List<InvocableSoql.BindVariable> binds) {
-			for (InvocableSoql.BindVariable bind : binds) {
+		private void applyDummyBinds(Soql query, List<BindVariable> binds) {
+			for (BindVariable bind : binds ?? new List<BindVariable>()) {
 				Object dummyValue = (bind?.isCollection == true) ? new List<Object>{} : null;
 				query?.addBind(bind?.key, dummyValue);
 			}

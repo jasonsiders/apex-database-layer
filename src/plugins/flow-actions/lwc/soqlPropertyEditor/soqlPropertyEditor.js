@@ -11,8 +11,19 @@ const EVENTS = {
 };
 /** Flow action input variable names. */
 const INPUTS = {
-	binds: "bindsJson",
+	binds: "binds",
 	query: "query"
+};
+/** Flow data type used when dispatching Apex-defined bind variables. */
+const BIND_DATA_TYPE = "Apex";
+/** Typed Apex-defined BindVariable value fields by selected bind type. */
+const BIND_VALUE_FIELDS = {
+	Boolean: { collection: "booleanValues", scalar: "booleanValue" },
+	Date: { collection: "dateValues", scalar: "dateValue" },
+	Datetime: { collection: "datetimeValues", scalar: "datetimeValue" },
+	Decimal: { collection: "decimalValues", scalar: "decimalValue" },
+	String: { collection: "textValues", scalar: "textValue" },
+	Time: { collection: "timeValues", scalar: "timeValue" }
 };
 /** Error message displayed when a bind variable name is invalid. */
 const INVALID_BIND_KEY_MESSAGE =
@@ -301,7 +312,7 @@ export default class SoqlPropertyEditor extends LightningElement {
 				return [];
 			}
 		}
-		return Array.isArray(binds) ? binds.map((bind) => ({ ...bind })) : [];
+		return Array.isArray(binds) ? binds.map((bind) => this._normalizeBindForEditor(bind)) : [];
 	}
 
 	/**
@@ -327,8 +338,8 @@ export default class SoqlPropertyEditor extends LightningElement {
 	 * @param {Array} binds - The updated bind variables
 	 */
 	_dispatchBindsChange(binds) {
-		const value = binds.length ? JSON.stringify(binds) : null;
-		this._dispatchChange(INPUTS.binds, value, "String");
+		const value = binds.length ? JSON.stringify(this._toApexBinds(binds)) : null;
+		this._dispatchChange(INPUTS.binds, value, BIND_DATA_TYPE);
 	}
 
 	/**
@@ -575,6 +586,158 @@ export default class SoqlPropertyEditor extends LightningElement {
 	}
 
 	/**
+	 * Converts a user-entered scalar bind value to the matching Apex-defined property value.
+	 * Returns undefined when the value should remain in textValue for Apex fallback parsing.
+	 * @private
+	 * @param {string} typeName Selected Apex type name
+	 * @param {*} value User-entered value or Flow reference
+	 * @returns {*|undefined} Coerced value, null, or undefined for fallback
+	 */
+	_coerceScalarBindValue(typeName, value) {
+		if (this._isFlowReference(value)) {
+			return value;
+		}
+		if (typeName === "String") {
+			return value ?? "";
+		}
+		if (value === undefined || value === null || value === "") {
+			return null;
+		}
+
+		const text = String(value);
+		if (typeName === "Boolean") {
+			if (/^true$/i.test(text)) return true;
+			if (/^false$/i.test(text)) return false;
+			return undefined;
+		}
+		if (typeName === "Decimal") {
+			const numeric = Number(text);
+			return Number.isFinite(numeric) ? numeric : undefined;
+		}
+		if (["Date", "Datetime", "Time"].includes(typeName)) {
+			return text;
+		}
+		return undefined;
+	}
+
+	/**
+	 * Converts a collection bind value to the matching Apex-defined property value.
+	 * References are kept as Flow expressions; literal collections must be JSON arrays.
+	 * @private
+	 * @param {*} value User-entered value or Flow reference
+	 * @returns {Array|string|undefined} Array literal, Flow reference, or undefined for fallback
+	 */
+	_coerceCollectionBindValue(value) {
+		if (this._isFlowReference(value)) {
+			return value;
+		}
+		if (value === undefined || value === null || value === "") {
+			return [];
+		}
+		try {
+			const parsed = JSON.parse(value);
+			return Array.isArray(parsed) ? parsed : undefined;
+		} catch {
+			return undefined;
+		}
+	}
+
+	/**
+	 * Returns the BindVariable property that stores the current bind value.
+	 * @private
+	 * @param {string} typeName Selected Apex type name
+	 * @param {boolean} isCollection Whether the bind is a collection
+	 * @returns {string|undefined} BindVariable property name
+	 */
+	_getBindValueField(typeName, isCollection) {
+		const fields = BIND_VALUE_FIELDS[typeName];
+		return fields?.[isCollection ? "collection" : "scalar"];
+	}
+
+	/**
+	 * Detects complete Flow resource reference syntax.
+	 * @private
+	 * @param {*} value Value to test
+	 * @returns {boolean} True when value is a Flow reference expression
+	 */
+	_isFlowReference(value) {
+		return typeof value === "string" && value.startsWith("{!") && value.endsWith("}");
+	}
+
+	/**
+	 * Normalizes a BindVariable from Flow into the row shape used by the editor UI.
+	 * @private
+	 * @param {Object} bind BindVariable-like object from Flow
+	 * @returns {Object} Bind row state
+	 */
+	_normalizeBindForEditor(bind) {
+		const typeName = bind?.typeName ?? "String";
+		const isCollection = bind?.isCollection === true || bind?.isCollection === "true";
+		return {
+			...bind,
+			key: bind?.key ?? "",
+			typeName,
+			isCollection,
+			textValue: this._readBindDisplayValue(bind, typeName, isCollection)
+		};
+	}
+
+	/**
+	 * Reads the editable display value from either the generic text fallback or the typed Apex field.
+	 * @private
+	 * @param {Object} bind BindVariable-like object from Flow
+	 * @param {string} typeName Selected Apex type name
+	 * @param {boolean} isCollection Whether the bind is a collection
+	 * @returns {*} Value to pass to c-flow-combobox
+	 */
+	_readBindDisplayValue(bind, typeName, isCollection) {
+		const typedField = this._getBindValueField(typeName, isCollection);
+		const typedValue = bind?.[typedField];
+		if (typedValue !== undefined && typedValue !== null) {
+			return Array.isArray(typedValue) ? JSON.stringify(typedValue) : typedValue;
+		}
+		return bind?.textValue ?? "";
+	}
+
+	/**
+	 * Converts editor bind rows to Apex-defined BindVariable payloads for Flow Builder.
+	 * @private
+	 * @param {Array<Object>} binds Editor bind rows
+	 * @returns {Array<Object>} Apex-defined BindVariable payloads
+	 */
+	_toApexBinds(binds) {
+		return (binds ?? []).map((bind) => this._toApexBind(bind));
+	}
+
+	/**
+	 * Converts one editor bind row to an Apex-defined BindVariable payload.
+	 * @private
+	 * @param {Object} bind Editor bind row
+	 * @returns {Object} Apex-defined BindVariable payload
+	 */
+	_toApexBind(bind) {
+		const typeName = bind?.typeName ?? "String";
+		const isCollection = bind?.isCollection === true;
+		const value = bind?.textValue ?? "";
+		const typedField = this._getBindValueField(typeName, isCollection);
+		const typedValue = isCollection
+			? this._coerceCollectionBindValue(value)
+			: this._coerceScalarBindValue(typeName, value);
+		const output = {
+			key: bind?.key ?? "",
+			typeName,
+			isCollection
+		};
+
+		if (typedField && typedValue !== undefined) {
+			output[typedField] = typedValue;
+		} else {
+			output.textValue = value;
+		}
+		return output;
+	}
+
+	/**
 	 * Advances an index past any whitespace characters.
 	 * @private
 	 * @param {string} text - The text being scanned
@@ -657,8 +820,7 @@ export default class SoqlPropertyEditor extends LightningElement {
 	 */
 	async _validateApexQuery() {
 		try {
-			const bindKeys = this._bindsDraft.map((b) => b.key);
-			await validateQuery({ queryToValidate: this._queryDraft, bindKeys });
+			await validateQuery({ queryToValidate: this._queryDraft, binds: this._toApexBinds(this._bindsDraft) });
 			this._queryError = null;
 			return [];
 		} catch (error) {

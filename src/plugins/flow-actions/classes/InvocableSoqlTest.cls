@@ -18,16 +18,13 @@ private class InvocableSoqlTest {
 	private static void shouldReturnResultsForSingleInput() {
 		Account mockAccount = new Account(Name = 'Acme');
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ mockAccount });
-		InvocableSoql.BindVariable nameBind = new InvocableSoql.BindVariable();
+		BindVariable nameBind = new BindVariable();
 		nameBind.key = 'name';
 		nameBind.textValue = 'Acme';
 		nameBind.typeName = 'String';
 		nameBind.isCollection = false;
 
-		InvocableSoql.Input input = InvocableSoqlTest.createInput(
-			QUERY_BY_NAME,
-			new List<InvocableSoql.BindVariable>{ nameBind }
-		);
+		InvocableSoql.Input input = InvocableSoqlTest.createInput(QUERY_BY_NAME, new List<BindVariable>{ nameBind });
 
 		Test.startTest();
 		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(new List<InvocableSoql.Input>{ input });
@@ -51,16 +48,13 @@ private class InvocableSoqlTest {
 	@IsTest
 	private static void shouldReturnEmptyResultsWhenQueryReturnsNothing() {
 		MockSoql.setGlobalMock().withResults(new List<SObject>{});
-		InvocableSoql.BindVariable nameBind = new InvocableSoql.BindVariable();
+		BindVariable nameBind = new BindVariable();
 		nameBind.key = 'name';
 		nameBind.textValue = 'NoMatch';
 		nameBind.typeName = 'String';
 		nameBind.isCollection = false;
 
-		InvocableSoql.Input input = InvocableSoqlTest.createInput(
-			QUERY_BY_NAME,
-			new List<InvocableSoql.BindVariable>{ nameBind }
-		);
+		InvocableSoql.Input input = InvocableSoqlTest.createInput(QUERY_BY_NAME, new List<BindVariable>{ nameBind });
 
 		Test.startTest();
 		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(new List<InvocableSoql.Input>{ input });
@@ -94,12 +88,12 @@ private class InvocableSoqlTest {
 	private static void shouldApplyBindVariables() {
 		Account mockAccount = new Account(Name = 'TestAccount', Phone = '555-1234');
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ mockAccount });
-		InvocableSoql.BindVariable nameBind = new InvocableSoql.BindVariable();
+		BindVariable nameBind = new BindVariable();
 		nameBind.key = 'name';
 		nameBind.textValue = 'TestAccount';
 		nameBind.typeName = 'String';
 		nameBind.isCollection = false;
-		InvocableSoql.BindVariable phoneBind = new InvocableSoql.BindVariable();
+		BindVariable phoneBind = new BindVariable();
 		phoneBind.key = 'phone';
 		phoneBind.textValue = '555-1234';
 		phoneBind.typeName = 'String';
@@ -107,7 +101,7 @@ private class InvocableSoqlTest {
 
 		InvocableSoql.Input input = InvocableSoqlTest.createInput(
 			QUERY_BY_NAME_AND_PHONE,
-			new List<InvocableSoql.BindVariable>{ nameBind, phoneBind }
+			new List<BindVariable>{ nameBind, phoneBind }
 		);
 
 		Test.startTest();
@@ -122,16 +116,13 @@ private class InvocableSoqlTest {
 	private static void shouldApplySerializedBindVariables() {
 		Account mockAccount = new Account(Name = 'JsonAccount');
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ mockAccount });
-		InvocableSoql.BindVariable nameBind = new InvocableSoql.BindVariable();
+		BindVariable nameBind = new BindVariable();
 		nameBind.key = 'name';
 		nameBind.textValue = 'JsonAccount';
 		nameBind.typeName = 'String';
 		nameBind.isCollection = false;
 
-		InvocableSoql.Input input = InvocableSoqlTest.createInput(
-			QUERY_BY_NAME,
-			new List<InvocableSoql.BindVariable>{ nameBind }
-		);
+		InvocableSoql.Input input = InvocableSoqlTest.createInput(QUERY_BY_NAME, new List<BindVariable>{ nameBind });
 
 		Test.startTest();
 		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(new List<InvocableSoql.Input>{ input });
@@ -145,13 +136,13 @@ private class InvocableSoqlTest {
 	private static void shouldExecuteOnceForIdenticalBindValues() {
 		Account acmeAccount = new Account(Name = 'Acme');
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ acmeAccount });
-		InvocableSoql.BindVariable nameBind = new InvocableSoql.BindVariable();
+		BindVariable nameBind = new BindVariable();
 		nameBind.key = 'name';
 		nameBind.textValue = 'Acme';
 		nameBind.typeName = 'String';
 		nameBind.isCollection = false;
 
-		List<InvocableSoql.BindVariable> binds = new List<InvocableSoql.BindVariable>{ nameBind };
+		List<BindVariable> binds = new List<BindVariable>{ nameBind };
 		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(QUERY_BY_NAME, binds);
 		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(QUERY_BY_NAME, binds);
 
@@ -170,12 +161,12 @@ private class InvocableSoqlTest {
 		Account acmeAccount = new Account(Name = 'Acme');
 		Account betaAccount = new Account(Name = 'Beta');
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ acmeAccount, betaAccount });
-		InvocableSoql.BindVariable firstNameBind = new InvocableSoql.BindVariable();
+		BindVariable firstNameBind = new BindVariable();
 		firstNameBind.key = 'name';
 		firstNameBind.textValue = 'Acme';
 		firstNameBind.typeName = 'String';
 		firstNameBind.isCollection = false;
-		InvocableSoql.BindVariable secondNameBind = new InvocableSoql.BindVariable();
+		BindVariable secondNameBind = new BindVariable();
 		secondNameBind.key = 'name';
 		secondNameBind.textValue = 'Beta';
 		secondNameBind.typeName = 'String';
@@ -183,11 +174,11 @@ private class InvocableSoqlTest {
 
 		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(
 			QUERY_BY_NAME,
-			new List<InvocableSoql.BindVariable>{ firstNameBind }
+			new List<BindVariable>{ firstNameBind }
 		);
 		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(
 			QUERY_BY_NAME,
-			new List<InvocableSoql.BindVariable>{ secondNameBind }
+			new List<BindVariable>{ secondNameBind }
 		);
 
 		Test.startTest();
@@ -205,12 +196,12 @@ private class InvocableSoqlTest {
 	private static void shouldReturnEmptyResultsForUnmatchedBindValue() {
 		Account acmeAccount = new Account(Name = 'Acme');
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ acmeAccount });
-		InvocableSoql.BindVariable matchedNameBind = new InvocableSoql.BindVariable();
+		BindVariable matchedNameBind = new BindVariable();
 		matchedNameBind.key = 'name';
 		matchedNameBind.textValue = 'Acme';
 		matchedNameBind.typeName = 'String';
 		matchedNameBind.isCollection = false;
-		InvocableSoql.BindVariable unmatchedNameBind = new InvocableSoql.BindVariable();
+		BindVariable unmatchedNameBind = new BindVariable();
 		unmatchedNameBind.key = 'name';
 		unmatchedNameBind.textValue = 'NoMatch';
 		unmatchedNameBind.typeName = 'String';
@@ -218,11 +209,11 @@ private class InvocableSoqlTest {
 
 		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(
 			QUERY_BY_NAME,
-			new List<InvocableSoql.BindVariable>{ matchedNameBind }
+			new List<BindVariable>{ matchedNameBind }
 		);
 		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(
 			QUERY_BY_NAME,
-			new List<InvocableSoql.BindVariable>{ unmatchedNameBind }
+			new List<BindVariable>{ unmatchedNameBind }
 		);
 
 		Test.startTest();
@@ -239,32 +230,32 @@ private class InvocableSoqlTest {
 		Account account1 = new Account(Name = 'Acme');
 		Account account2 = new Account(Name = 'Beta');
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ account1, account2 });
-		InvocableSoql.BindVariable firstNameBind = new InvocableSoql.BindVariable();
+		BindVariable firstNameBind = new BindVariable();
 		firstNameBind.key = 'name';
 		firstNameBind.textValue = 'Acme';
 		firstNameBind.typeName = 'String';
 		firstNameBind.isCollection = false;
-		InvocableSoql.BindVariable firstStatusBind = new InvocableSoql.BindVariable();
+		BindVariable firstStatusBind = new BindVariable();
 		firstStatusBind.key = 'status';
 		firstStatusBind.textValue = 'Active';
 		firstStatusBind.typeName = 'String';
 		firstStatusBind.isCollection = false;
-		InvocableSoql.BindVariable firstActiveBind = new InvocableSoql.BindVariable();
+		BindVariable firstActiveBind = new BindVariable();
 		firstActiveBind.key = 'active';
 		firstActiveBind.textValue = String.valueOf(true);
 		firstActiveBind.typeName = 'Boolean';
 		firstActiveBind.isCollection = false;
-		InvocableSoql.BindVariable secondNameBind = new InvocableSoql.BindVariable();
+		BindVariable secondNameBind = new BindVariable();
 		secondNameBind.key = 'name';
 		secondNameBind.textValue = 'Beta';
 		secondNameBind.typeName = 'String';
 		secondNameBind.isCollection = false;
-		InvocableSoql.BindVariable secondStatusBind = new InvocableSoql.BindVariable();
+		BindVariable secondStatusBind = new BindVariable();
 		secondStatusBind.key = 'status';
 		secondStatusBind.textValue = 'Active';
 		secondStatusBind.typeName = 'String';
 		secondStatusBind.isCollection = false;
-		InvocableSoql.BindVariable secondActiveBind = new InvocableSoql.BindVariable();
+		BindVariable secondActiveBind = new BindVariable();
 		secondActiveBind.key = 'active';
 		secondActiveBind.textValue = String.valueOf(true);
 		secondActiveBind.typeName = 'Boolean';
@@ -272,11 +263,11 @@ private class InvocableSoqlTest {
 
 		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(
 			QUERY_NESTED_WHERE,
-			new List<InvocableSoql.BindVariable>{ firstNameBind, firstStatusBind, firstActiveBind }
+			new List<BindVariable>{ firstNameBind, firstStatusBind, firstActiveBind }
 		);
 		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(
 			QUERY_NESTED_WHERE,
-			new List<InvocableSoql.BindVariable>{ secondNameBind, secondStatusBind, secondActiveBind }
+			new List<BindVariable>{ secondNameBind, secondStatusBind, secondActiveBind }
 		);
 
 		Test.startTest();
@@ -293,12 +284,12 @@ private class InvocableSoqlTest {
 	private static void shouldFallbackToPerInputForParentFieldCondition() {
 		Account acmeAccount = new Account(Name = 'Acme');
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ acmeAccount });
-		InvocableSoql.BindVariable firstNameBind = new InvocableSoql.BindVariable();
+		BindVariable firstNameBind = new BindVariable();
 		firstNameBind.key = 'name';
 		firstNameBind.textValue = 'Acme';
 		firstNameBind.typeName = 'String';
 		firstNameBind.isCollection = false;
-		InvocableSoql.BindVariable secondNameBind = new InvocableSoql.BindVariable();
+		BindVariable secondNameBind = new BindVariable();
 		secondNameBind.key = 'name';
 		secondNameBind.textValue = 'Beta';
 		secondNameBind.typeName = 'String';
@@ -306,11 +297,11 @@ private class InvocableSoqlTest {
 
 		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(
 			QUERY_PARENT_FIELD,
-			new List<InvocableSoql.BindVariable>{ firstNameBind }
+			new List<BindVariable>{ firstNameBind }
 		);
 		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(
 			QUERY_PARENT_FIELD,
-			new List<InvocableSoql.BindVariable>{ secondNameBind }
+			new List<BindVariable>{ secondNameBind }
 		);
 
 		Test.startTest();
@@ -343,12 +334,12 @@ private class InvocableSoqlTest {
 		Account acmeAccount = new Account(Name = 'Acme', Phone = '555-1234');
 		Account betaAccount = new Account(Name = 'Beta', Phone = '555-1234');
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ acmeAccount, betaAccount });
-		InvocableSoql.BindVariable firstNameBind = new InvocableSoql.BindVariable();
+		BindVariable firstNameBind = new BindVariable();
 		firstNameBind.key = 'name';
 		firstNameBind.textValue = 'Acme';
 		firstNameBind.typeName = 'String';
 		firstNameBind.isCollection = false;
-		InvocableSoql.BindVariable secondNameBind = new InvocableSoql.BindVariable();
+		BindVariable secondNameBind = new BindVariable();
 		secondNameBind.key = 'name';
 		secondNameBind.textValue = 'Beta';
 		secondNameBind.typeName = 'String';
@@ -356,11 +347,11 @@ private class InvocableSoqlTest {
 
 		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(
 			QUERY_WITH_LITERAL,
-			new List<InvocableSoql.BindVariable>{ firstNameBind }
+			new List<BindVariable>{ firstNameBind }
 		);
 		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(
 			QUERY_WITH_LITERAL,
-			new List<InvocableSoql.BindVariable>{ secondNameBind }
+			new List<BindVariable>{ secondNameBind }
 		);
 
 		Test.startTest();
@@ -377,22 +368,22 @@ private class InvocableSoqlTest {
 		Account acmeAccount = new Account(Name = 'Acme', Phone = '555-1234');
 		Account betaAccount = new Account(Name = 'Beta', Phone = '555-5678');
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ acmeAccount, betaAccount });
-		InvocableSoql.BindVariable firstNameBind = new InvocableSoql.BindVariable();
+		BindVariable firstNameBind = new BindVariable();
 		firstNameBind.key = 'name';
 		firstNameBind.textValue = 'Acme';
 		firstNameBind.typeName = 'String';
 		firstNameBind.isCollection = false;
-		InvocableSoql.BindVariable firstPhoneBind = new InvocableSoql.BindVariable();
+		BindVariable firstPhoneBind = new BindVariable();
 		firstPhoneBind.key = 'phone';
 		firstPhoneBind.textValue = '555-1234';
 		firstPhoneBind.typeName = 'String';
 		firstPhoneBind.isCollection = false;
-		InvocableSoql.BindVariable secondNameBind = new InvocableSoql.BindVariable();
+		BindVariable secondNameBind = new BindVariable();
 		secondNameBind.key = 'name';
 		secondNameBind.textValue = 'Beta';
 		secondNameBind.typeName = 'String';
 		secondNameBind.isCollection = false;
-		InvocableSoql.BindVariable secondPhoneBind = new InvocableSoql.BindVariable();
+		BindVariable secondPhoneBind = new BindVariable();
 		secondPhoneBind.key = 'phone';
 		secondPhoneBind.textValue = '555-5678';
 		secondPhoneBind.typeName = 'String';
@@ -400,11 +391,11 @@ private class InvocableSoqlTest {
 
 		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(
 			QUERY_MULTIPLE_PIVOTS,
-			new List<InvocableSoql.BindVariable>{ firstNameBind, firstPhoneBind }
+			new List<BindVariable>{ firstNameBind, firstPhoneBind }
 		);
 		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(
 			QUERY_MULTIPLE_PIVOTS,
-			new List<InvocableSoql.BindVariable>{ secondNameBind, secondPhoneBind }
+			new List<BindVariable>{ secondNameBind, secondPhoneBind }
 		);
 
 		Test.startTest();
@@ -420,12 +411,12 @@ private class InvocableSoqlTest {
 	private static void shouldFallbackToPerInputForComparisonOperator() {
 		Account account = new Account(Name = 'Test', NumberOfEmployees = 100);
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ account });
-		InvocableSoql.BindVariable firstCountBind = new InvocableSoql.BindVariable();
+		BindVariable firstCountBind = new BindVariable();
 		firstCountBind.key = 'count';
 		firstCountBind.textValue = '50';
 		firstCountBind.typeName = 'String';
 		firstCountBind.isCollection = false;
-		InvocableSoql.BindVariable secondCountBind = new InvocableSoql.BindVariable();
+		BindVariable secondCountBind = new BindVariable();
 		secondCountBind.key = 'count';
 		secondCountBind.textValue = '150';
 		secondCountBind.typeName = 'String';
@@ -433,11 +424,11 @@ private class InvocableSoqlTest {
 
 		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(
 			QUERY_WITH_COMPARISON,
-			new List<InvocableSoql.BindVariable>{ firstCountBind }
+			new List<BindVariable>{ firstCountBind }
 		);
 		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(
 			QUERY_WITH_COMPARISON,
-			new List<InvocableSoql.BindVariable>{ secondCountBind }
+			new List<BindVariable>{ secondCountBind }
 		);
 
 		Test.startTest();
@@ -452,16 +443,13 @@ private class InvocableSoqlTest {
 	@IsTest
 	private static void shouldFireOneQueryForSingleInput() {
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ new Account(Name = 'Acme') });
-		InvocableSoql.BindVariable nameBind = new InvocableSoql.BindVariable();
+		BindVariable nameBind = new BindVariable();
 		nameBind.key = 'name';
 		nameBind.textValue = 'Acme';
 		nameBind.typeName = 'String';
 		nameBind.isCollection = false;
 
-		InvocableSoql.Input input = InvocableSoqlTest.createInput(
-			QUERY_BY_NAME,
-			new List<InvocableSoql.BindVariable>{ nameBind }
-		);
+		InvocableSoql.Input input = InvocableSoqlTest.createInput(QUERY_BY_NAME, new List<BindVariable>{ nameBind });
 		Test.startTest();
 		InvocableSoql.invoke(new List<InvocableSoql.Input>{ input });
 		Test.stopTest();
@@ -471,12 +459,12 @@ private class InvocableSoqlTest {
 	@IsTest
 	private static void shouldFireOneQueryForIdenticalBindValues() {
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ new Account(Name = 'Acme') });
-		InvocableSoql.BindVariable nameBind = new InvocableSoql.BindVariable();
+		BindVariable nameBind = new BindVariable();
 		nameBind.key = 'name';
 		nameBind.textValue = 'Acme';
 		nameBind.typeName = 'String';
 		nameBind.isCollection = false;
-		List<InvocableSoql.BindVariable> binds = new List<InvocableSoql.BindVariable>{ nameBind };
+		List<BindVariable> binds = new List<BindVariable>{ nameBind };
 		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(QUERY_BY_NAME, binds);
 		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(QUERY_BY_NAME, binds);
 		Test.startTest();
@@ -490,12 +478,12 @@ private class InvocableSoqlTest {
 	private static void shouldFireOneQueryForDifferentBindValuesViaInList() {
 		MockSoql.setGlobalMock()
 			.withResults(new List<SObject>{ new Account(Name = 'Acme'), new Account(Name = 'Beta') });
-		InvocableSoql.BindVariable firstNameBind = new InvocableSoql.BindVariable();
+		BindVariable firstNameBind = new BindVariable();
 		firstNameBind.key = 'name';
 		firstNameBind.textValue = 'Acme';
 		firstNameBind.typeName = 'String';
 		firstNameBind.isCollection = false;
-		InvocableSoql.BindVariable secondNameBind = new InvocableSoql.BindVariable();
+		BindVariable secondNameBind = new BindVariable();
 		secondNameBind.key = 'name';
 		secondNameBind.textValue = 'Beta';
 		secondNameBind.typeName = 'String';
@@ -503,11 +491,11 @@ private class InvocableSoqlTest {
 
 		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(
 			QUERY_BY_NAME,
-			new List<InvocableSoql.BindVariable>{ firstNameBind }
+			new List<BindVariable>{ firstNameBind }
 		);
 		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(
 			QUERY_BY_NAME,
-			new List<InvocableSoql.BindVariable>{ secondNameBind }
+			new List<BindVariable>{ secondNameBind }
 		);
 		Test.startTest();
 		InvocableSoql.invoke(new List<InvocableSoql.Input>{ input1, input2 });
@@ -524,32 +512,32 @@ private class InvocableSoqlTest {
 	private static void shouldFireOneQueryPerInputForFallbackGroup() {
 		MockSoql.setGlobalMock()
 			.withResults(new List<SObject>{ new Account(Name = 'Acme'), new Account(Name = 'Beta') });
-		InvocableSoql.BindVariable firstNameBind = new InvocableSoql.BindVariable();
+		BindVariable firstNameBind = new BindVariable();
 		firstNameBind.key = 'name';
 		firstNameBind.textValue = 'Acme';
 		firstNameBind.typeName = 'String';
 		firstNameBind.isCollection = false;
-		InvocableSoql.BindVariable firstStatusBind = new InvocableSoql.BindVariable();
+		BindVariable firstStatusBind = new BindVariable();
 		firstStatusBind.key = 'status';
 		firstStatusBind.textValue = 'Active';
 		firstStatusBind.typeName = 'String';
 		firstStatusBind.isCollection = false;
-		InvocableSoql.BindVariable firstActiveBind = new InvocableSoql.BindVariable();
+		BindVariable firstActiveBind = new BindVariable();
 		firstActiveBind.key = 'active';
 		firstActiveBind.textValue = String.valueOf(true);
 		firstActiveBind.typeName = 'Boolean';
 		firstActiveBind.isCollection = false;
-		InvocableSoql.BindVariable secondNameBind = new InvocableSoql.BindVariable();
+		BindVariable secondNameBind = new BindVariable();
 		secondNameBind.key = 'name';
 		secondNameBind.textValue = 'Beta';
 		secondNameBind.typeName = 'String';
 		secondNameBind.isCollection = false;
-		InvocableSoql.BindVariable secondStatusBind = new InvocableSoql.BindVariable();
+		BindVariable secondStatusBind = new BindVariable();
 		secondStatusBind.key = 'status';
 		secondStatusBind.textValue = 'Active';
 		secondStatusBind.typeName = 'String';
 		secondStatusBind.isCollection = false;
-		InvocableSoql.BindVariable secondActiveBind = new InvocableSoql.BindVariable();
+		BindVariable secondActiveBind = new BindVariable();
 		secondActiveBind.key = 'active';
 		secondActiveBind.textValue = String.valueOf(true);
 		secondActiveBind.typeName = 'Boolean';
@@ -557,11 +545,11 @@ private class InvocableSoqlTest {
 
 		InvocableSoql.Input input1 = InvocableSoqlTest.createInput(
 			QUERY_NESTED_WHERE,
-			new List<InvocableSoql.BindVariable>{ firstNameBind, firstStatusBind, firstActiveBind }
+			new List<BindVariable>{ firstNameBind, firstStatusBind, firstActiveBind }
 		);
 		InvocableSoql.Input input2 = InvocableSoqlTest.createInput(
 			QUERY_NESTED_WHERE,
-			new List<InvocableSoql.BindVariable>{ secondNameBind, secondStatusBind, secondActiveBind }
+			new List<BindVariable>{ secondNameBind, secondStatusBind, secondActiveBind }
 		);
 		Test.startTest();
 		InvocableSoql.invoke(new List<InvocableSoql.Input>{ input1, input2 });
@@ -592,16 +580,16 @@ private class InvocableSoqlTest {
 	private static void shouldValidateQueryWithBinds() {
 		DatabaseLayer.useRealData();
 		String query = 'SELECT Id FROM Account WHERE Name = :name';
-		InvocableSoql.BindVariable nameBind = new InvocableSoql.BindVariable();
+		BindVariable nameBind = new BindVariable();
 		nameBind.key = 'name';
 		nameBind.textValue = null;
 		nameBind.typeName = 'String';
 		nameBind.isCollection = false;
-		List<InvocableSoql.BindVariable> binds = new List<InvocableSoql.BindVariable>{ nameBind };
+		List<BindVariable> binds = new List<BindVariable>{ nameBind };
 
 		Test.startTest();
 		try {
-			InvocableSoql.validateQuery(query, JSON.serialize(binds));
+			InvocableSoql.validateQuery(query, binds);
 		} catch (Exception anyError) {
 			Assert.fail('Should not have thrown an exception');
 		}
@@ -629,16 +617,16 @@ private class InvocableSoqlTest {
 	private static void shouldThrowExceptionIfMissingBinds() {
 		DatabaseLayer.useRealData();
 		String query = 'SELECT Id FROM Account WHERE Name = :name';
-		InvocableSoql.BindVariable nameBind = new InvocableSoql.BindVariable();
+		BindVariable nameBind = new BindVariable();
 		nameBind.key = 'someOtherBind';
 		nameBind.textValue = null;
 		nameBind.typeName = 'String';
 		nameBind.isCollection = false;
-		List<InvocableSoql.BindVariable> binds = new List<InvocableSoql.BindVariable>{ nameBind };
+		List<BindVariable> binds = new List<BindVariable>{ nameBind };
 
 		Test.startTest();
 		try {
-			InvocableSoql.validateQuery(query, JSON.serialize(binds));
+			InvocableSoql.validateQuery(query, binds);
 			Assert.fail('Should have thrown an exception');
 		} catch (Exception anyError) {
 			// As expected...
@@ -647,7 +635,7 @@ private class InvocableSoqlTest {
 	}
 
 	@IsTest
-	private static void shouldHandleNullBindsJson() {
+	private static void shouldHandleNullBinds() {
 		MockSoql.setGlobalMock().withResults(new List<SObject>{ new Account(Name = 'Acme') });
 		InvocableSoql.Input input = new InvocableSoql.Input();
 		input.query = QUERY_NO_WHERE;
@@ -656,22 +644,118 @@ private class InvocableSoqlTest {
 		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(new List<InvocableSoql.Input>{ input });
 		Test.stopTest();
 
-		Assert.areEqual(1, outputs.size(), 'Should return 1 output when bindsJson is null');
+		Assert.areEqual(1, outputs.size(), 'Should return 1 output when binds is null');
+	}
+
+	@IsTest
+	private static void shouldResolveTypedScalarBindValues() {
+		Date dateValue = Date.newInstance(2026, 5, 3);
+		Datetime datetimeValue = Datetime.newInstance(2026, 5, 3, 12, 30, 0);
+		Time timeValue = Time.newInstance(12, 30, 0, 0);
+
+		BindVariable booleanBind = new BindVariable();
+		booleanBind.key = 'active';
+		booleanBind.booleanValue = true;
+		booleanBind.typeName = 'Boolean';
+		booleanBind.isCollection = false;
+		BindVariable dateBind = new BindVariable();
+		dateBind.key = 'closeDate';
+		dateBind.dateValue = dateValue;
+		dateBind.typeName = 'Date';
+		dateBind.isCollection = false;
+		BindVariable datetimeBind = new BindVariable();
+		datetimeBind.key = 'createdDate';
+		datetimeBind.datetimeValue = datetimeValue;
+		datetimeBind.typeName = 'Datetime';
+		datetimeBind.isCollection = false;
+		BindVariable decimalBind = new BindVariable();
+		decimalBind.key = 'amount';
+		decimalBind.decimalValue = 10.5;
+		decimalBind.typeName = 'Decimal';
+		decimalBind.isCollection = false;
+		BindVariable timeBind = new BindVariable();
+		timeBind.key = 'startTime';
+		timeBind.timeValue = timeValue;
+		timeBind.typeName = 'Time';
+		timeBind.isCollection = false;
+
+		Assert.areEqual(true, booleanBind.toSoqlBinder().getValue(), 'Boolean bind should use typed value');
+		Assert.areEqual(dateValue, dateBind.toSoqlBinder().getValue(), 'Date bind should use typed value');
+		Assert.areEqual(datetimeValue, datetimeBind.toSoqlBinder().getValue(), 'Datetime bind should use typed value');
+		Assert.areEqual(10.5, decimalBind.toSoqlBinder().getValue(), 'Decimal bind should use typed value');
+		Assert.areEqual(timeValue, timeBind.toSoqlBinder().getValue(), 'Time bind should use typed value');
+	}
+
+	@IsTest
+	private static void shouldResolveTypedCollectionBindValues() {
+		List<Boolean> booleanValues = new List<Boolean>{ true, false };
+		List<Date> dateValues = new List<Date>{ Date.newInstance(2026, 5, 3) };
+		List<Datetime> datetimeValues = new List<Datetime>{ Datetime.newInstance(2026, 5, 3, 12, 30, 0) };
+		List<Decimal> decimalValues = new List<Decimal>{ 10.5, 20.25 };
+		List<String> textValues = new List<String>{ 'Acme', 'Beta' };
+		List<Time> timeValues = new List<Time>{ Time.newInstance(12, 30, 0, 0) };
+
+		BindVariable booleanBind = new BindVariable();
+		booleanBind.key = 'active';
+		booleanBind.booleanValues = booleanValues;
+		booleanBind.typeName = 'Boolean';
+		booleanBind.isCollection = true;
+		BindVariable dateBind = new BindVariable();
+		dateBind.key = 'closeDates';
+		dateBind.dateValues = dateValues;
+		dateBind.typeName = 'Date';
+		dateBind.isCollection = true;
+		BindVariable datetimeBind = new BindVariable();
+		datetimeBind.key = 'createdDates';
+		datetimeBind.datetimeValues = datetimeValues;
+		datetimeBind.typeName = 'Datetime';
+		datetimeBind.isCollection = true;
+		BindVariable decimalBind = new BindVariable();
+		decimalBind.key = 'amounts';
+		decimalBind.decimalValues = decimalValues;
+		decimalBind.typeName = 'Decimal';
+		decimalBind.isCollection = true;
+		BindVariable textBind = new BindVariable();
+		textBind.key = 'names';
+		textBind.textValues = textValues;
+		textBind.typeName = 'String';
+		textBind.isCollection = true;
+		BindVariable timeBind = new BindVariable();
+		timeBind.key = 'startTimes';
+		timeBind.timeValues = timeValues;
+		timeBind.typeName = 'Time';
+		timeBind.isCollection = true;
+
+		Assert.areEqual(
+			booleanValues,
+			booleanBind.toSoqlBinder().getValue(),
+			'Boolean collection should use typed value'
+		);
+		Assert.areEqual(dateValues, dateBind.toSoqlBinder().getValue(), 'Date collection should use typed value');
+		Assert.areEqual(
+			datetimeValues,
+			datetimeBind.toSoqlBinder().getValue(),
+			'Datetime collection should use typed value'
+		);
+		Assert.areEqual(
+			decimalValues,
+			decimalBind.toSoqlBinder().getValue(),
+			'Decimal collection should use typed value'
+		);
+		Assert.areEqual(textValues, textBind.toSoqlBinder().getValue(), 'Text collection should use typed value');
+		Assert.areEqual(timeValues, timeBind.toSoqlBinder().getValue(), 'Time collection should use typed value');
 	}
 
 	@SuppressWarnings('PMD.EmptyCatchBlock')
 	@IsTest
 	private static void shouldThrowForUndeserializableBindValue() {
-		InvocableSoql.BindVariable nameBind = new InvocableSoql.BindVariable();
+		BindVariable nameBind = new BindVariable();
 		nameBind.key = 'name';
 		nameBind.textValue = 'NotABoolean';
 		nameBind.typeName = 'Boolean';
 		nameBind.isCollection = false;
 
-		InvocableSoql.Input input = InvocableSoqlTest.createInput(
-			QUERY_BY_NAME,
-			new List<InvocableSoql.BindVariable>{ nameBind }
-		);
+		InvocableSoql.Input input = InvocableSoqlTest.createInput(QUERY_BY_NAME, new List<BindVariable>{ nameBind });
 
 		Test.startTest();
 		try {
@@ -686,16 +770,13 @@ private class InvocableSoqlTest {
 	@SuppressWarnings('PMD.EmptyCatchBlock')
 	@IsTest
 	private static void shouldThrowForUnknownBindType() {
-		InvocableSoql.BindVariable nameBind = new InvocableSoql.BindVariable();
+		BindVariable nameBind = new BindVariable();
 		nameBind.key = 'name';
 		nameBind.textValue = 'Acme';
 		nameBind.typeName = 'UnknownType123';
 		nameBind.isCollection = false;
 
-		InvocableSoql.Input input = InvocableSoqlTest.createInput(
-			QUERY_BY_NAME,
-			new List<InvocableSoql.BindVariable>{ nameBind }
-		);
+		InvocableSoql.Input input = InvocableSoqlTest.createInput(QUERY_BY_NAME, new List<BindVariable>{ nameBind });
 
 		Test.startTest();
 		try {
@@ -707,10 +788,10 @@ private class InvocableSoqlTest {
 		Test.stopTest();
 	}
 
-	private static InvocableSoql.Input createInput(String query, List<InvocableSoql.BindVariable> binds) {
+	private static InvocableSoql.Input createInput(String query, List<BindVariable> binds) {
 		InvocableSoql.Input input = new InvocableSoql.Input();
 		input.query = query;
-		input.bindsJson = JSON.serialize(binds ?? new List<InvocableSoql.BindVariable>{});
+		input.binds = binds ?? new List<BindVariable>{};
 		return input;
 	}
 }
