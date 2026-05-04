@@ -56,15 +56,17 @@ describe("c-soql-property-editor", () => {
 		expect(element.shadowRoot.querySelector(".code-editor").value).toBe("SELECT Id FROM Account");
 	});
 
-	it("validate() calls validateQuery with the current query", () => {
+	it("validate() returns synchronous local validation results", () => {
 		const element = createComponent({
 			inputVariables: [{ name: "query", value: "SELECT Id FROM Account", valueDataType: "String" }]
 		});
-		element.validate();
-		expect(validateQuery).toHaveBeenCalledWith({ queryToValidate: "SELECT Id FROM Account", binds: [] });
+		const result = element.validate();
+		expect(Array.isArray(result)).toBe(true);
+		expect(result).toEqual([]);
+		expect(validateQuery).not.toHaveBeenCalled();
 	});
 
-	it("validate() calls validateQuery with bind metadata only", () => {
+	it("handleValidate() calls validateQuery with bind metadata only", async () => {
 		const binds = [{ key: "recordId", textValue: "", typeName: "String", isCollection: false }];
 		const element = createComponent({
 			inputVariables: [
@@ -72,14 +74,15 @@ describe("c-soql-property-editor", () => {
 				{ name: "binds", value: JSON.stringify(binds), valueDataType: "Apex" }
 			]
 		});
-		element.validate();
+		getButtonByLabel(element, "Validate").click();
+		await flushPromises();
 		expect(validateQuery).toHaveBeenCalledWith({
 			queryToValidate: "SELECT Id FROM Account WHERE Id = :recordId",
 			binds: [{ key: "recordId", typeName: "String", isCollection: false }]
 		});
 	});
 
-	it("validate() omits Flow reference values from collection bind payloads", () => {
+	it("handleValidate() omits Flow reference values from collection bind payloads", async () => {
 		const binds = [{ key: "names", textValues: "{!accountNames}", typeName: "String", isCollection: true }];
 		const element = createComponent({
 			inputVariables: [
@@ -88,7 +91,8 @@ describe("c-soql-property-editor", () => {
 			]
 		});
 
-		element.validate();
+		getButtonByLabel(element, "Validate").click();
+		await flushPromises();
 
 		expect(validateQuery).toHaveBeenCalledWith({
 			queryToValidate: "SELECT Id FROM Account WHERE Name IN :names",
@@ -279,20 +283,34 @@ describe("c-soql-property-editor", () => {
 		expect(setCustomValidity).toHaveBeenLastCalledWith("");
 	});
 
-	it("validate() returns [] when validateQuery does not throw", async () => {
+	it("validate() blocks save when the query references an undefined bind variable", async () => {
 		const element = createComponent({
-			inputVariables: [{ name: "query", value: "SELECT Id FROM Account", valueDataType: "String" }]
+			inputVariables: [
+				{ name: "query", value: "SELECT Id FROM Account WHERE Name = :name", valueDataType: "String" }
+			]
 		});
-		expect(await element.validate()).toEqual([]);
+		const result = element.validate();
+		await Promise.resolve();
+
+		expect(validateQuery).not.toHaveBeenCalled();
+		expect(result).toEqual([
+			{
+				key: "query",
+				errorString: 'Bind variable "name" is referenced by the query but is not defined.'
+			}
+		]);
+		const errorEl = element.shadowRoot.querySelector(".slds-form-element__help");
+		expect(errorEl.textContent).toBe('Error: Bind variable "name" is referenced by the query but is not defined.');
+		expect(element.shadowRoot.querySelector(".slds-has-error")).not.toBeNull();
 	});
 
-	it("validate() renders an inline SLDS error when validateQuery rejects", async () => {
+	it("handleValidate() renders an inline SLDS error when validateQuery rejects", async () => {
 		validateQuery.mockRejectedValueOnce({ body: { message: "Invalid query syntax" } });
 		const element = createComponent({
 			inputVariables: [{ name: "query", value: "SELECT FROM Account", valueDataType: "String" }]
 		});
-		await element.validate();
-		await Promise.resolve();
+		getButtonByLabel(element, "Validate").click();
+		await flushPromises();
 		const errorEl = element.shadowRoot.querySelector(".slds-form-element__help");
 		expect(errorEl).not.toBeNull();
 		expect(errorEl.textContent).toBe("Error: Invalid query syntax");
@@ -310,19 +328,35 @@ describe("c-soql-property-editor", () => {
 		expect(successEl.textContent).toBe("✓ Valid");
 	});
 
-	it("validate() clears the inline error when validateQuery resolves after a prior failure", async () => {
+	it("clears the inline success message when the query changes", async () => {
+		const element = createComponent({
+			inputVariables: [{ name: "query", value: "SELECT Id FROM Account", valueDataType: "String" }]
+		});
+		getButtonByLabel(element, "Validate").click();
+		await flushPromises();
+		expect(element.shadowRoot.querySelector(".slds-text-color_success")).not.toBeNull();
+
+		const textarea = element.shadowRoot.querySelector(".code-editor");
+		textarea.value = "SELECT Id FROM Contact";
+		textarea.dispatchEvent(new Event("input"));
+		await Promise.resolve();
+
+		expect(element.shadowRoot.querySelector(".slds-text-color_success")).toBeNull();
+	});
+
+	it("handleValidate() clears the inline error when validateQuery resolves after a prior failure", async () => {
 		validateQuery.mockRejectedValueOnce({ body: { message: "Bad query" } });
 		const element = createComponent({
 			inputVariables: [{ name: "query", value: "SELECT FROM Account", valueDataType: "String" }]
 		});
-		await element.validate();
-		await Promise.resolve();
+		getButtonByLabel(element, "Validate").click();
+		await flushPromises();
 		expect(element.shadowRoot.querySelector(".slds-form-element__help")).not.toBeNull();
 
-		await element.validate();
-		await Promise.resolve();
-		expect(element.shadowRoot.querySelector(".slds-form-element__help")).toBeNull();
+		getButtonByLabel(element, "Validate").click();
+		await flushPromises();
 		expect(element.shadowRoot.querySelector(".slds-has-error")).toBeNull();
+		expect(element.shadowRoot.querySelector(".slds-text-color_success")).not.toBeNull();
 	});
 
 	it("handleValidate() renders an inline SLDS error when validateQuery rejects", async () => {

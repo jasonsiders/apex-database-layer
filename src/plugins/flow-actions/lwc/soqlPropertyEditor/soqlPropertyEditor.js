@@ -237,22 +237,28 @@ export default class SoqlPropertyEditor extends LightningElement {
 	 * Validates the current query and binds, displays success or error message.
 	 */
 	async handleValidate() {
-		const errors = await this.validate();
-		this._querySuccess = errors.length ? null : "✓ Valid";
+		this._hasValidatedBinds = true;
+		const localErrors = this._validateLocalInputs({ report: true });
+		if (localErrors.length) {
+			this._querySuccess = null;
+			return localErrors;
+		}
+		const apexErrors = await this._validateApexQuery();
+		this._querySuccess = apexErrors.length ? null : "✓ Valid";
+		return apexErrors;
 	}
 
 	/**
-	 * Validates bind metadata and the SOQL query through Apex.
-	 * @returns {Promise<Array<{ key: string, errorString: string }>>} Flow validation errors.
+	 * Validates local input metadata for Flow Builder.
+	 * @returns {Array<{ key: string, errorString: string }>} Flow validation errors.
 	 */
-	@api async validate() {
+	@api validate() {
 		this._hasValidatedBinds = true;
-		const bindErrors = this._validateBindReferences({ report: true });
-		if (bindErrors.length) {
-			this._queryError = null;
-			return bindErrors;
+		const localErrors = this._validateLocalInputs({ report: true });
+		if (localErrors.length) {
+			this._querySuccess = null;
 		}
-		return this._validateApexQuery();
+		return localErrors;
 	}
 
 	/**
@@ -262,6 +268,8 @@ export default class SoqlPropertyEditor extends LightningElement {
 	 */
 	_applyBindsUpdate(updated) {
 		this._bindsDraft = updated;
+		this._querySuccess = null;
+		this._queryError = null;
 		this._dispatchBindsChange(updated);
 		this._syncBindValidationStateAfterInput();
 	}
@@ -721,7 +729,7 @@ export default class SoqlPropertyEditor extends LightningElement {
 	 */
 	_syncBindValidationStateAfterInput() {
 		if (this._hasValidatedBinds) {
-			this._validateBindReferences({ report: false });
+			this._validateLocalInputs({ report: false });
 		}
 	}
 
@@ -825,6 +833,8 @@ export default class SoqlPropertyEditor extends LightningElement {
 	 */
 	_updateQuery(value) {
 		this._queryDraft = value || "";
+		this._queryError = null;
+		this._querySuccess = null;
 		this._dispatchChange(INPUTS.query, this._queryDraft || null, "String");
 	}
 
@@ -883,5 +893,46 @@ export default class SoqlPropertyEditor extends LightningElement {
 		this._bindValidationErrors = errorsByIndex;
 		this._applyBindValidationErrors(report);
 		return errors;
+	}
+
+	/**
+	 * Validates all synchronous metadata rules that Flow Builder can use to block saving.
+	 * Apex query validation remains async and is only run from the explicit Validate button.
+	 * @param {{ report?: boolean }} [options={}] Whether to report child validity immediately.
+	 * @returns {Array<{ key: string, errorString: string }>} Flow validation errors.
+	 * @private
+	 */
+	_validateLocalInputs({ report = true } = {}) {
+		const bindErrors = this._validateBindReferences({ report });
+		if (bindErrors.length) {
+			this._queryError = null;
+			return bindErrors;
+		}
+
+		const missingBindErrors = this._validateMissingBindReferences();
+		if (missingBindErrors.length) {
+			this._queryError = `Error: ${missingBindErrors[0].errorString}`;
+			return missingBindErrors;
+		}
+
+		this._queryError = null;
+		return [];
+	}
+
+	/**
+	 * Validates that every bind reference in the query has a matching bind row.
+	 * @returns {Array<{ key: string, errorString: string }>} Query-level validation errors.
+	 * @private
+	 */
+	_validateMissingBindReferences() {
+		const referencedNames = this._extractBindReferenceNames(this._queryDraft);
+		const definedNames = new Set(this._bindsDraft.map((bind) => String(bind?.key ?? "")).filter(Boolean));
+
+		return [...referencedNames]
+			.filter((name) => !definedNames.has(name))
+			.map((name) => ({
+				key: INPUTS.query,
+				errorString: `Bind variable "${name}" is referenced by the query but is not defined.`
+			}));
 	}
 }
