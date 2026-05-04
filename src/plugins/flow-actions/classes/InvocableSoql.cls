@@ -60,21 +60,6 @@ global abstract inherited sharing class InvocableSoql {
 		global String query;
 
 		/**
-		 * @description Converts the list of bind variables into a map keyed by bind variable name.
-		 * @return Map of bind variable name to Soql.Binder
-		 */
-		private Map<String, Soql.Binder> getBindsByName() {
-			Map<String, Soql.Binder> results = new Map<String, Soql.Binder>{};
-			for (BindVariable bind : this.getBinds()) {
-				String key = bind?.key;
-				Object value = bind?.getValue();
-				Soql.Binder binder = new Soql.Binder(key, value);
-				results?.put(key, binder);
-			}
-			return results;
-		}
-
-		/**
 		 * @description Resolves bind variables from CPE JSON input.
 		 * @return List of configured bind variables
 		 */
@@ -152,8 +137,14 @@ global abstract inherited sharing class InvocableSoql {
 		 */
 		private Soql buildSoql(Input input) {
 			String query = input?.query;
-			Map<String, Soql.Binder> bindMap = input?.getBindsByName();
-			return DatabaseLayer.Soql.newQuery(query)?.addBind(bindMap)?.toSoql();
+			Soql soql = DatabaseLayer.Soql.newQuery(query);
+			for (InvocableSoql.BindVariable var : input?.getBinds()) {
+				String key = var?.key;
+				Object value = var?.getValue();
+				Soql.Binder bind = new Soql.Binder(key, value);
+				soql?.addBind(bind);
+			}
+			return soql;
 		}
 	}
 
@@ -278,9 +269,7 @@ global abstract inherited sharing class InvocableSoql {
 			List<Object> values = new List<Object>();
 			for (Integer index : indexes) {
 				Output output = this.outputs.get(index);
-				Soql.Binder binder = (Soql.Binder) output.soql?.binds?.get(bindVarName);
-				Object value = binder.getValue();
-				values.add(value);
+				values.add(output.soql?.binds?.get(bindVarName));
 			}
 			return values;
 		}
