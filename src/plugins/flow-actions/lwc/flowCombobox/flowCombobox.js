@@ -364,7 +364,7 @@ export default class FlowCombobox extends LightningElement {
 
 	/** Whether the current value is a Flow resource reference. */
 	get isReferenceValue() {
-		return this._isReference(this.valueDataType, this.value);
+		return this._isReference(this.value);
 	}
 
 	/** Literal dropdown options derived from configured choices. */
@@ -461,6 +461,10 @@ export default class FlowCombobox extends LightningElement {
 
 	/** Currently selected resource option, if the value resolves to one. */
 	get selectedResource() {
+		if (!this.isReferenceValue) {
+			return null;
+		}
+
 		return this.selectableResourceOptions.find((option) =>
 			this._referenceNamesMatch(option, this.selectedResourceName)
 		);
@@ -475,7 +479,7 @@ export default class FlowCombobox extends LightningElement {
 
 	/** Current resource reference name without Flow expression braces. */
 	get selectedResourceName() {
-		return this._normalizeReferenceName(this.value);
+		return this._unwrapReferenceName(this.value);
 	}
 
 	/** Whether to show the excluded-field default value control. */
@@ -646,7 +650,7 @@ export default class FlowCombobox extends LightningElement {
 	 */
 	async handleBlur(event) {
 		const nextTextValue = this._draftTextValue ?? event.target.value;
-		if (this._isReferenceText(nextTextValue) && (await this._commitTypedReference(nextTextValue))) {
+		if (this._startsReferenceText(nextTextValue) && (await this._commitTypedReference(nextTextValue))) {
 			this._setResourcePickerOpen(false);
 			this._syncRenderedInputValue();
 			this._dispatchFieldBlur();
@@ -885,7 +889,7 @@ export default class FlowCombobox extends LightningElement {
 		}
 
 		const nextTextValue = event.target.value;
-		if (this._isReferenceText(nextTextValue) && (await this._commitTypedReference(nextTextValue))) {
+		if (this._startsReferenceText(nextTextValue) && (await this._commitTypedReference(nextTextValue))) {
 			return;
 		}
 
@@ -1072,8 +1076,16 @@ export default class FlowCombobox extends LightningElement {
 
 	/** Commits typed Flow reference text or marks it invalid. */
 	async _commitTypedReference(inputValue) {
-		if (!this._isReferenceText(inputValue)) {
+		if (!this._startsReferenceText(inputValue)) {
 			return false;
+		}
+
+		if (!this._isReferenceText(inputValue)) {
+			this._draftTextValue = inputValue;
+			this._pendingSelection = null;
+			this._forceLiteralInput = true;
+			this._setInputCustomValidity(INVALID_RESOURCE_REFERENCE_MESSAGE);
+			return true;
 		}
 
 		const selectedOption = await this._resolveTypedResourceOption(inputValue);
@@ -1483,17 +1495,13 @@ export default class FlowCombobox extends LightningElement {
 
 	/**
 	 * Checks if a value represents a Flow resource reference.
-	 * A reference either has valueDataType="reference" or is wrapped in {!...}.
+	 * A reference must be wrapped in {!...}; bare values are always literals.
 	 * @private
-	 * @param {string} valueDataType - The declared data type
 	 * @param {*} value - The value to check
 	 * @returns {boolean} True if value is a Flow reference
 	 */
-	_isReference(valueDataType, value) {
-		return (
-			valueDataType === "reference" ||
-			(typeof value === "string" && value.startsWith("{!") && value.endsWith("}"))
-		);
+	_isReference(value) {
+		return this._isReferenceText(value);
 	}
 
 	/**
@@ -1505,6 +1513,17 @@ export default class FlowCombobox extends LightningElement {
 	_isReferenceText(value) {
 		const trimmed = typeof value === "string" ? value.trim() : "";
 		return /^\{![^}]+\}$/.test(trimmed);
+	}
+
+	/**
+	 * Checks whether the text is intended to be a Flow reference.
+	 * @private
+	 * @param {*} value - The value to check
+	 * @returns {boolean} True if the text starts with Flow reference syntax
+	 */
+	_startsReferenceText(value) {
+		const trimmed = typeof value === "string" ? value.trim() : "";
+		return trimmed.startsWith("{!");
 	}
 
 	/** Loads UI API SObject fields for a drilldown parent when they are not cached. */

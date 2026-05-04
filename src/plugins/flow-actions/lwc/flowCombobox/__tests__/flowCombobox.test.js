@@ -492,6 +492,68 @@ describe("c-flow-combobox", () => {
 		});
 	});
 
+	it("keeps raw text literal when it matches a resource name", async () => {
+		const element = createComponent({
+			name: "ownerName",
+			label: "Owner Name",
+			fieldDataType: "String",
+			included: true,
+			resourceOptions: [
+				{
+					label: "Variable: accountName",
+					value: "{!accountName}",
+					pillLabel: "accountName",
+					referenceName: "accountName",
+					dataType: "String"
+				}
+			]
+		});
+		const handler = jest.fn((event) => {
+			element.value = event.detail.value;
+			element.valueDataType = event.detail.valueDataType;
+		});
+		element.addEventListener("fieldchange", handler);
+
+		const input = getTextInput(element);
+		input.value = "accountName";
+		input.dispatchEvent(new Event("input"));
+		input.dispatchEvent(new Event("change"));
+		await Promise.resolve();
+
+		expect(handler).toHaveBeenCalledTimes(1);
+		expect(handler.mock.calls[0][0].detail).toEqual({
+			name: "ownerName",
+			value: "accountName",
+			valueDataType: "String"
+		});
+		expect(element.shadowRoot.querySelector(".selected-resource-pill")).toBeNull();
+		expect(getTextInput(element).value).toBe("accountName");
+	});
+
+	it("does not render a resource pill for a bare value even when valueDataType is reference", async () => {
+		const element = createComponent({
+			name: "ownerName",
+			label: "Owner Name",
+			fieldDataType: "String",
+			value: "accountName",
+			valueDataType: "reference",
+			included: true,
+			resourceOptions: [
+				{
+					label: "Variable: accountName",
+					value: "{!accountName}",
+					pillLabel: "accountName",
+					referenceName: "accountName",
+					dataType: "String"
+				}
+			]
+		});
+		await Promise.resolve();
+
+		expect(element.shadowRoot.querySelector(".selected-resource-pill")).toBeNull();
+		expect(getTextInput(element).value).toBe("accountName");
+	});
+
 	it("emits a raw number value for decimal inputs without selecting a resource", async () => {
 		const element = createComponent({
 			name: "employeeCount",
@@ -525,7 +587,7 @@ describe("c-flow-combobox", () => {
 		});
 	});
 
-	it("treats incomplete Flow reference text as a raw value", async () => {
+	it("sets custom validity when Flow reference text is incomplete", async () => {
 		const element = createComponent({
 			name: "ownerName",
 			label: "Owner Name",
@@ -546,18 +608,16 @@ describe("c-flow-combobox", () => {
 
 		const input = getTextInput(element);
 		const setCustomValidity = jest.spyOn(input, "setCustomValidity");
+		const reportValidity = jest.spyOn(input, "reportValidity");
 		input.value = "{!accountName";
 		input.dispatchEvent(new Event("input"));
 		input.dispatchEvent(new Event("change"));
 		await Promise.resolve();
 
-		expect(handler).toHaveBeenCalledTimes(1);
-		expect(handler.mock.calls[0][0].detail).toEqual({
-			name: "ownerName",
-			value: "{!accountName",
-			valueDataType: "String"
-		});
-		expect(setCustomValidity).not.toHaveBeenCalledWith("Enter a valid Flow resource reference.");
+		expect(handler).not.toHaveBeenCalled();
+		expect(setCustomValidity).toHaveBeenLastCalledWith("Enter a valid Flow resource reference.");
+		expect(reportValidity).toHaveBeenCalled();
+		expect(getTextInput(element).value).toBe("{!accountName");
 	});
 
 	it("shows an empty-state row when no resources match the current input", async () => {
