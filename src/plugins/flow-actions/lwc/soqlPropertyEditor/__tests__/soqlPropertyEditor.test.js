@@ -64,7 +64,7 @@ describe("c-soql-property-editor", () => {
 		expect(validateQuery).toHaveBeenCalledWith({ queryToValidate: "SELECT Id FROM Account", binds: [] });
 	});
 
-	it("validate() calls validateQuery with current binds", () => {
+	it("validate() calls validateQuery with bind metadata only", () => {
 		const binds = [{ key: "recordId", textValue: "", typeName: "String", isCollection: false }];
 		const element = createComponent({
 			inputVariables: [
@@ -75,7 +75,24 @@ describe("c-soql-property-editor", () => {
 		element.validate();
 		expect(validateQuery).toHaveBeenCalledWith({
 			queryToValidate: "SELECT Id FROM Account WHERE Id = :recordId",
-			binds
+			binds: [{ key: "recordId", typeName: "String", isCollection: false }]
+		});
+	});
+
+	it("validate() omits Flow reference values from collection bind payloads", () => {
+		const binds = [{ key: "names", textValues: "{!accountNames}", typeName: "String", isCollection: true }];
+		const element = createComponent({
+			inputVariables: [
+				{ name: "query", value: "SELECT Id FROM Account WHERE Name IN :names", valueDataType: "String" },
+				{ name: "binds", value: JSON.stringify(binds), valueDataType: "Apex" }
+			]
+		});
+
+		element.validate();
+
+		expect(validateQuery).toHaveBeenCalledWith({
+			queryToValidate: "SELECT Id FROM Account WHERE Name IN :names",
+			binds: [{ key: "names", typeName: "String", isCollection: true }]
 		});
 	});
 

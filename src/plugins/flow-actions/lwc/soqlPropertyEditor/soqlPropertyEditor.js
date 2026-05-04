@@ -700,44 +700,6 @@ export default class SoqlPropertyEditor extends LightningElement {
 	}
 
 	/**
-	 * Converts editor bind rows to Apex-defined BindVariable payloads for Flow Builder.
-	 * @private
-	 * @param {Array<Object>} binds Editor bind rows
-	 * @returns {Array<Object>} Apex-defined BindVariable payloads
-	 */
-	_toApexBinds(binds) {
-		return (binds ?? []).map((bind) => this._toApexBind(bind));
-	}
-
-	/**
-	 * Converts one editor bind row to an Apex-defined BindVariable payload.
-	 * @private
-	 * @param {Object} bind Editor bind row
-	 * @returns {Object} Apex-defined BindVariable payload
-	 */
-	_toApexBind(bind) {
-		const typeName = bind?.typeName ?? "String";
-		const isCollection = bind?.isCollection === true;
-		const value = bind?.textValue ?? "";
-		const typedField = this._getBindValueField(typeName, isCollection);
-		const typedValue = isCollection
-			? this._coerceCollectionBindValue(value)
-			: this._coerceScalarBindValue(typeName, value);
-		const output = {
-			key: bind?.key ?? "",
-			typeName,
-			isCollection
-		};
-
-		if (typedField && typedValue !== undefined) {
-			output[typedField] = typedValue;
-		} else {
-			output.textValue = value;
-		}
-		return output;
-	}
-
-	/**
 	 * Advances an index past any whitespace characters.
 	 * @private
 	 * @param {string} text - The text being scanned
@@ -804,6 +766,59 @@ export default class SoqlPropertyEditor extends LightningElement {
 	}
 
 	/**
+	 * Converts editor bind rows to Apex-defined BindVariable payloads for Flow Builder.
+	 * @private
+	 * @param {Array<Object>} binds Editor bind rows
+	 * @returns {Array<Object>} Apex-defined BindVariable payloads
+	 */
+	_toApexBinds(binds) {
+		return (binds ?? []).map((bind) => this._toApexBind(bind));
+	}
+
+	/**
+	 * Converts one editor bind row to an Apex-defined BindVariable payload.
+	 * @private
+	 * @param {Object} bind Editor bind row
+	 * @returns {Object} Apex-defined BindVariable payload
+	 */
+	_toApexBind(bind) {
+		const typeName = bind?.typeName ?? "String";
+		const isCollection = bind?.isCollection === true;
+		const value = bind?.textValue ?? "";
+		const typedField = this._getBindValueField(typeName, isCollection);
+		const typedValue = isCollection
+			? this._coerceCollectionBindValue(value)
+			: this._coerceScalarBindValue(typeName, value);
+		const output = {
+			key: bind?.key ?? "",
+			typeName,
+			isCollection
+		};
+
+		if (typedField && typedValue !== undefined) {
+			output[typedField] = typedValue;
+		} else {
+			output.textValue = value;
+		}
+		return output;
+	}
+
+	/**
+	 * Converts editor bind rows to the metadata-only payload needed for Apex query validation.
+	 * Runtime Flow references are intentionally omitted because LWC Apex calls cannot resolve them.
+	 * @private
+	 * @param {Array<Object>} binds Editor bind rows
+	 * @returns {Array<Object>} BindVariable metadata payloads
+	 */
+	_toValidationBinds(binds) {
+		return (binds ?? []).map((bind) => ({
+			key: bind?.key ?? "",
+			typeName: bind?.typeName ?? "String",
+			isCollection: bind?.isCollection === true
+		}));
+	}
+
+	/**
 	 * Updates the query draft and notifies parent of changes.
 	 * @private
 	 * @param {string} value - The new query text
@@ -820,7 +835,10 @@ export default class SoqlPropertyEditor extends LightningElement {
 	 */
 	async _validateApexQuery() {
 		try {
-			await validateQuery({ queryToValidate: this._queryDraft, binds: this._toApexBinds(this._bindsDraft) });
+			await validateQuery({
+				queryToValidate: this._queryDraft,
+				binds: this._toValidationBinds(this._bindsDraft)
+			});
 			this._queryError = null;
 			return [];
 		} catch (error) {
