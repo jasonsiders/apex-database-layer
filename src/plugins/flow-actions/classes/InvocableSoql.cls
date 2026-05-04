@@ -577,18 +577,6 @@ global abstract inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description Records the condition as the candidate, or disqualifies if a candidate already exists.
-		 * @param condition The eligible condition to record
-		 */
-		private void recordCandidate(Soql.Condition condition) {
-			if (this.candidate != null) {
-				this.disqualified = true;
-			} else {
-				this.candidate = condition;
-			}
-		}
-
-		/**
 		 * @description Scans all criteria and returns the single eligible pivot condition, or null.
 		 * @param criterion The list of WHERE criteria to evaluate
 		 * @return The pivot condition if exactly one eligible condition exists, otherwise null
@@ -616,6 +604,18 @@ global abstract inherited sharing class InvocableSoql {
 				return strValue?.startsWith(':') == true && condition.property?.contains('.') == false;
 			} else {
 				return false;
+			}
+		}
+
+		/**
+		 * @description Records the condition as the candidate, or disqualifies if a candidate already exists.
+		 * @param condition The eligible condition to record
+		 */
+		private void recordCandidate(Soql.Condition condition) {
+			if (this.candidate != null) {
+				this.disqualified = true;
+			} else {
+				this.candidate = condition;
 			}
 		}
 	}
