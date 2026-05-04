@@ -94,8 +94,8 @@ global inherited sharing class BindVariable {
 	 */
 	private Object convertFromTextTo(Type type) {
 		try {
-			return (this.isCollection != true &&
-				this.typeName == 'String')
+			// prettier-ignore
+			return (this.isCollection != true && this.typeName == 'String')
 				? this.textValue
 				: JSON.deserialize(this.textValue, type);
 		} catch (System.JsonException error) {
