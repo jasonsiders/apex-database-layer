@@ -23,25 +23,25 @@ global abstract inherited sharing class InvocableSoql {
 	}
 
 	/**
+	 * @description Resolves bind variables from CPE JSON input.
+	 * @return List of configured bind variables
+	 */
+	private static List<InvocableSoql.BindVariable> deserialize(String bindsJson) {
+		return (List<InvocableSoql.BindVariable>) JSON.deserialize(
+			bindsJson ?? '[]',
+			List<InvocableSoql.BindVariable>.class
+		);
+	}
+
+	/**
 	 * @description Method used by the custom property editor to validate query inputs
 	 * @param queryToValidate The raw SOQL query to process
-	 * @param bindKeys List of bind variables included in the invocable configuration, mapped to null values for validation purposes only
+	 * @param bindsJson JSON-serialized bind variables included in the invocable configuration
 	 * @throws AuraHandledException if any Exception is thrown during query validation
 	 */
 	@AuraEnabled(cacheable=true)
-	global static void validateQuery(String queryToValidate, List<String> bindKeys) {
-		try {
-			Soql soql = DatabaseLayer.Soql.newQuery(queryToValidate);
-			for (String bindKey : bindKeys ?? new List<String>{}) {
-				soql?.addBind(bindKey, null);
-			}
-			soql?.queryFirst();
-		} catch (Exception anyError) {
-			String msg = anyError?.getMessage();
-			Boolean shouldWrap = System.Request.getCurrent().getQuiddity() == System.Quiddity.AURA;
-			Exception toThrow = shouldWrap ? new AuraHandledException(msg) : anyError;
-			throw toThrow;
-		}
+	global static void validateQuery(String queryToValidate, String bindsJson) {
+		new InvocableSoql.Validator().validate(queryToValidate, bindsJson);
 	}
 
 	/**
@@ -60,14 +60,11 @@ global abstract inherited sharing class InvocableSoql {
 		global String query;
 
 		/**
-		 * @description Resolves bind variables from CPE JSON input.
-		 * @return List of configured bind variables
+		 * @description Converts the provided bindsJson payload to a list of BindVariable objects
+		 * @return Deserialized BindVariable objects to use in the query
 		 */
 		private List<InvocableSoql.BindVariable> getBinds() {
-			return (List<InvocableSoql.BindVariable>) JSON.deserialize(
-				this.bindsJson ?? '[]',
-				List<InvocableSoql.BindVariable>.class
-			);
+			return InvocableSoql.deserialize(this.bindsJson);
 		}
 	}
 
@@ -150,11 +147,24 @@ global abstract inherited sharing class InvocableSoql {
 	/**
 	 * @description Private JSON DTO for bind variable configuration persisted by the custom property editor.
 	 */
+	@TestVisible
 	private class BindVariable {
-		private String key;
-		private String textValue;
-		private String typeName;
-		private Boolean isCollection;
+		/**
+		 * @description Bind variable name referenced by the SOQL query.
+		 */
+		public String key { get; set; }
+		/**
+		 * @description JSON-compatible text value persisted by the custom property editor.
+		 */
+		public String textValue { get; set; }
+		/**
+		 * @description Apex type name used to deserialize the text value.
+		 */
+		public String typeName { get; set; }
+		/**
+		 * @description Whether the bind value should deserialize as a List of the configured type.
+		 */
+		public Boolean isCollection { get; set; }
 
 		/**
 		 * @description Deserializes textValue into the given Apex type.
@@ -163,8 +173,8 @@ global abstract inherited sharing class InvocableSoql {
 		 */
 		private Object convertFromTextTo(Type type) {
 			try {
-				return (this.isCollection != true &&
-					'String' == this.typeName)
+				return (this.isCollection == false ||
+					this.typeName != 'String')
 					? this.textValue
 					: JSON.deserialize(this.textValue, type);
 			} catch (System.JsonException error) {
@@ -518,10 +528,25 @@ global abstract inherited sharing class InvocableSoql {
 	 * @description Encapsulates the pivot condition and per-input bind values for IN-list execution.
 	 */
 	private class PivotContext {
+		/**
+		 * @description WHERE condition selected as the pivot for IN-list bulkification.
+		 */
 		private Soql.Condition condition;
+		/**
+		 * @description Name of the bind variable referenced by the pivot condition.
+		 */
 		private String bindName;
+		/**
+		 * @description Per-input bind values collected for the pivot bind variable.
+		 */
 		private List<Object> bindValues;
 
+		/**
+		 * @description Initializes context required to execute a bulkified IN-list query.
+		 * @param condition WHERE condition selected as the pivot
+		 * @param bindName Name of the bind variable referenced by the pivot condition
+		 * @param bindValues Per-input bind values for the pivot bind variable
+		 */
 		private PivotContext(Soql.Condition condition, String bindName, List<Object> bindValues) {
 			this.condition = condition;
 			this.bindName = bindName;
@@ -617,6 +642,48 @@ global abstract inherited sharing class InvocableSoql {
 			} else {
 				this.candidate = condition;
 			}
+		}
+	}
+
+	/**
+	 * @description Responsible for query validation logic from the custom property editor
+	 */
+	private class Validator {
+		/**
+		 * @description Constructs a query
+		 * @throws AuraHandledException if any Exception is thrown during query validation in an Aura context
+		 * @throws Exception if any Exception is thrown during any other execution context
+		 */
+		public void validate(String queryString, String bindsJson) {
+			try {
+				Soql soql = DatabaseLayer.Soql.newQuery(queryString);
+				List<InvocableSoql.BindVariable> binds = InvocableSoql.deserialize(bindsJson);
+				this.applyDummyBinds(soql, binds);
+				soql?.queryFirst();
+			} catch (Exception anyError) {
+				throw this.getException(anyError);
+			}
+		}
+
+		/**
+		 * @description Applies null/empty bind variables to the given queries, for validation purposes
+		 * Attempting to assign 'null' to list variables (e.g., 'WHERE Id IN :vars') results in an exception.
+		 */
+		private void applyDummyBinds(Soql query, List<InvocableSoql.BindVariable> binds) {
+			for (InvocableSoql.BindVariable bind : binds) {
+				Object dummyValue = (bind?.isCollection == true) ? new List<Object>{} : null;
+				query?.addBind(bind?.key, dummyValue);
+			}
+		}
+
+		/**
+		 * @description Wraps an Exception in an AuraHandledException if called from Aura
+		 * @return The proper Exception object, depending on the execution context
+		 */
+		private Exception getException(Exception originalError) {
+			String msg = originalError?.getMessage();
+			Boolean shouldWrap = System.Request.getCurrent().getQuiddity() == System.Quiddity.AURA;
+			return (shouldWrap) ? new AuraHandledException(msg) : originalError;
 		}
 	}
 }
