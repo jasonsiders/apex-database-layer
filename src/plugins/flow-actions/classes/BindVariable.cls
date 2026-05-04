@@ -80,6 +80,32 @@ global inherited sharing class BindVariable {
 	global Boolean isCollection { get; set; }
 
 	/**
+	 * @description Resolves the target Apex type, wrapping in List<> when isCollection is true.
+	 * @return The resolved Apex Type
+	 */
+	public Type getType() {
+		String resolvedName = this.resolveTypeName();
+		Type type = Type.forName(resolvedName);
+		if (type == null) {
+			throw new System.TypeException('Invalid type: ' + resolvedName);
+		}
+		return type;
+	}
+
+	/**
+	 * @description Resolves the bind value from typed Flow fields or text fallback.
+	 * @return The resolved bind value as its configured Apex type
+	 */
+	public Object getValue() {
+		Object typedValue = this.getTypedValue();
+		if (typedValue != null) {
+			return typedValue;
+		}
+		Type type = this.getType();
+		return this.convertFromTextTo(type);
+	}
+
+	/**
 	 * @description Converts the BindVariable to a formal Soql.Binder object.
 	 * @return A Soql.Binder representation of the current object
 	 */
@@ -105,33 +131,6 @@ global inherited sharing class BindVariable {
 	}
 
 	/**
-	 * @description Resolves the target Apex type, wrapping in List<> when isCollection is true.
-	 * @return The resolved Apex Type
-	 */
-	private Type determineType() {
-		String resolvedName = this.resolveTypeName();
-		Type type = Type.forName(resolvedName);
-		if (type == null) {
-			throw new System.TypeException('Invalid type: ' + resolvedName);
-		}
-		return type;
-	}
-
-	/**
-	 * @description Resolves the bind value from typed Flow fields or text fallback.
-	 * @return The resolved bind value as its configured Apex type
-	 */
-	private Object getValue() {
-		Object typedValue = this.getTypedValue();
-		if (typedValue != null) {
-			return typedValue;
-		}
-
-		Type type = this.determineType();
-		return this.convertFromTextTo(type);
-	}
-
-	/**
 	 * @description Resolves a collection value supplied by Flow.
 	 * @return The typed collection value, or null if no typed collection field is populated
 	 */
@@ -149,14 +148,11 @@ global inherited sharing class BindVariable {
 			when 'Decimal' {
 				return this.decimalValues;
 			}
-			when 'String' {
-				return this.textValues;
-			}
 			when 'Time' {
 				return this.timeValues;
 			}
 			when else {
-				return null;
+				return this.textValues;
 			}
 		}
 	}

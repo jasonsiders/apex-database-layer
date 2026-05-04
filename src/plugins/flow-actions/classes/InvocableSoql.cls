@@ -577,11 +577,10 @@ global abstract inherited sharing class InvocableSoql {
 
 		/**
 		 * @description Applies null/empty bind variables to the given queries, for validation purposes
-		 * Attempting to assign 'null' to list variables (e.g., 'WHERE Id IN :vars') results in an exception.
 		 */
 		private void applyDummyBinds(Soql query, List<BindVariable> binds) {
 			for (BindVariable bind : binds ?? new List<BindVariable>()) {
-				Object dummyValue = (bind?.isCollection == true) ? new List<Object>{} : null;
+				Object dummyValue = (bind?.isCollection == true) ? bind?.getType()?.newInstance() : null;
 				query?.addBind(bind?.key, dummyValue);
 			}
 		}

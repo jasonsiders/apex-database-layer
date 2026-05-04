@@ -591,7 +591,7 @@ private class InvocableSoqlTest {
 		try {
 			InvocableSoql.validateQuery(query, binds);
 		} catch (Exception anyError) {
-			Assert.fail('Should not have thrown an exception');
+			Assert.fail('Should not have thrown an exception: ' + anyError);
 		}
 		Test.stopTest();
 	}
