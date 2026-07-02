@@ -198,9 +198,8 @@ global class MockSoql extends Soql {
 		}
 
 		private void validateFetchArgsAreInBounds(Integer position, Integer count) {
-			// Should not attempt to fetch an index that doesn't exist:
 			Integer maxIndexToFetch = (position + count);
-			Integer upperBound = (this.records?.size() - 1);
+			Integer upperBound = this.records?.size();
 			if (maxIndexToFetch > upperBound) {
 				throw new Soql.InvalidParameterValueException('Fetch beyond bound detected: ' + maxIndexToFetch);
 			}
