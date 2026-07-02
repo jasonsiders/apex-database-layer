@@ -60,6 +60,20 @@ private class MockSoqlTest {
 	}
 
 	@IsTest
+	private static void shouldFetchAllRecordsFromCursor() {
+		MockSoql soql = (MockSoql) DatabaseLayer.Soql.newQuery(Account.SObjectType)?.addSelect(Account.Name);
+		List<Account> accounts = MockSoqlTest.initAccounts(NUM_ACCS);
+		soql?.setMock()?.withResults(accounts);
+
+		Test.startTest();
+		Soql.Cursor cursor = soql?.getCursor();
+		List<SObject> records = cursor?.fetch(0, NUM_ACCS);
+		Test.stopTest();
+
+		Assert.areEqual(NUM_ACCS, records?.size(), 'Should fetch all records from cursor');
+	}
+
+	@IsTest
 	private static void shouldHandleCursorFetchCallWithNegativePositionParameter() {
 		MockSoql soql = (MockSoql) DatabaseLayer.Soql.newQuery(Account.SObjectType)?.addSelect(Account.Name);
 		List<Account> accounts = MockSoqlTest.initAccounts(NUM_ACCS);
