@@ -644,6 +644,65 @@ private class SoqlParserTest {
 		);
 	}
 
+	@IsTest
+	private static void shouldRoundTripRelativeDateLiterals() {
+		DatabaseLayer.useMocks();
+		List<String> literals = new List<String>{
+			'YESTERDAY',
+			'TODAY',
+			'TOMORROW',
+			'LAST_WEEK',
+			'THIS_WEEK',
+			'NEXT_WEEK',
+			'LAST_MONTH',
+			'THIS_MONTH',
+			'NEXT_MONTH',
+			'LAST_90_DAYS',
+			'NEXT_90_DAYS',
+			'LAST_QUARTER',
+			'THIS_QUARTER',
+			'NEXT_QUARTER',
+			'LAST_YEAR',
+			'THIS_YEAR',
+			'NEXT_YEAR',
+			'LAST_FISCAL_QUARTER',
+			'THIS_FISCAL_QUARTER',
+			'NEXT_FISCAL_QUARTER',
+			'LAST_FISCAL_YEAR',
+			'THIS_FISCAL_YEAR',
+			'NEXT_FISCAL_YEAR',
+			'LAST_N_DAYS:30',
+			'NEXT_N_DAYS:30',
+			'N_DAYS_AGO:30',
+			'LAST_N_WEEKS:2',
+			'NEXT_N_WEEKS:2',
+			'N_WEEKS_AGO:2',
+			'LAST_N_MONTHS:3',
+			'NEXT_N_MONTHS:3',
+			'N_MONTHS_AGO:3',
+			'LAST_N_QUARTERS:2',
+			'NEXT_N_QUARTERS:2',
+			'N_QUARTERS_AGO:2',
+			'LAST_N_YEARS:1',
+			'NEXT_N_YEARS:1',
+			'N_YEARS_AGO:1',
+			'LAST_N_FISCAL_QUARTERS:2',
+			'NEXT_N_FISCAL_QUARTERS:2',
+			'N_FISCAL_QUARTERS_AGO:2',
+			'LAST_N_FISCAL_YEARS:1',
+			'NEXT_N_FISCAL_YEARS:1',
+			'N_FISCAL_YEARS_AGO:1'
+		};
+
+		Test.startTest();
+		for (String literal : literals) {
+			String queryStr = 'SELECT Id FROM Opportunity WHERE CloseDate = ' + literal;
+			String result = DatabaseLayer.newSoql(queryStr)?.toString();
+			Assert.areEqual(queryStr, result, 'Date literal was not preserved: ' + literal);
+		}
+		Test.stopTest();
+	}
+
 	@SuppressWarnings('PMD.EmptyCatchBlock')
 	@IsTest
 	private static void shouldThrowQueryExceptionOnParseFailure() {
