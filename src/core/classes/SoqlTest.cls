@@ -284,10 +284,105 @@ private class SoqlTest {
 		Set<String> userFields = SObjectType.User?.fields?.getMap()?.keySet();
 
 		Test.startTest();
-		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)?.selectAll()?.toSoql();
+		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
+			?.setAccessLevel(System.AccessLevel.SYSTEM_MODE)
+			?.selectAll()
+			?.toSoql();
 		Test.stopTest();
 
 		Assert.areEqual(userFields?.size(), soql?.selectClauses?.size(), 'Wrong # of SELECT clauses');
+	}
+
+	@IsTest
+	private static void shouldOmitInaccessibleFieldsFromSelectAll() {
+		Integer numAllFields = SObjectType.Account?.fields?.getMap()?.size();
+		User restrictedUser = SoqlTest.buildRestrictedUser();
+		Integer numUserModeFields;
+		Integer numSystemModeFields;
+
+		Test.startTest();
+		System.runAs(restrictedUser) {
+			numUserModeFields = DatabaseLayer.Soql.newQuery(Account.SObjectType)
+				?.selectAll()
+				?.toSoql()
+				?.selectClauses
+				?.size();
+			numSystemModeFields = DatabaseLayer.Soql.newQuery(Account.SObjectType)
+				?.setAccessLevel(System.AccessLevel.SYSTEM_MODE)
+				?.selectAll()
+				?.toSoql()
+				?.selectClauses
+				?.size();
+		}
+		Test.stopTest();
+
+		Assert.areEqual(numAllFields, numSystemModeFields, 'SYSTEM_MODE should select every field');
+		Assert.isTrue(numUserModeFields < numAllFields, 'USER_MODE should omit inaccessible fields');
+	}
+
+	@IsTest
+	private static void shouldSelectAllFieldsWhenAccessLevelIsSetAfterSelectAll() {
+		// selectAll() resolves its fields lazily, so the access level can be set in either order
+		Integer numAllFields = SObjectType.Account?.fields?.getMap()?.size();
+		User restrictedUser = SoqlTest.buildRestrictedUser();
+		Integer numFields;
+
+		Test.startTest();
+		System.runAs(restrictedUser) {
+			numFields = DatabaseLayer.Soql.newQuery(Account.SObjectType)
+				?.selectAll()
+				?.setAccessLevel(System.AccessLevel.SYSTEM_MODE)
+				?.toSoql()
+				?.selectClauses
+				?.size();
+		}
+		Test.stopTest();
+
+		Assert.areEqual(numAllFields, numFields, 'Wrong # of SELECT clauses');
+	}
+
+	@IsTest
+	private static void shouldNotQuoteRelativeDateLiterals() {
+		Soql soql = DatabaseLayer.Soql.newQuery(Opportunity.SObjectType)
+			?.addWhere(Opportunity.CloseDate, Soql.EQUALS, 'THIS_FISCAL_QUARTER')
+			?.toSoql();
+		String expected = 'SELECT Id FROM Opportunity WHERE CloseDate = THIS_FISCAL_QUARTER';
+
+		Test.startTest();
+		SoqlTest.validateQuery(soql, expected);
+		Test.stopTest();
+	}
+
+	@IsTest
+	private static void shouldNotQuoteParameterizedDateLiterals() {
+		Soql soql = DatabaseLayer.Soql.newQuery(Opportunity.SObjectType)
+			?.addWhere(Opportunity.CloseDate, Soql.EQUALS, 'NEXT_N_QUARTERS:2')
+			?.toSoql();
+		String expected = 'SELECT Id FROM Opportunity WHERE CloseDate = NEXT_N_QUARTERS:2';
+
+		Test.startTest();
+		SoqlTest.validateQuery(soql, expected);
+		Test.stopTest();
+	}
+
+	@IsTest
+	private static void shouldQuoteStringsThatResembleDateLiterals() {
+		// Only exact matches against the date literal grammar may bypass quoting
+		Map<String, String> valuesByExpected = new Map<String, String>{
+			'TODAYS_SPECIAL' => 'TODAYS_SPECIAL',
+			'LAST_N_DAYS' => 'LAST_N_DAYS',
+			'NEXT_N_QUARTERS:TWO' => 'NEXT_N_QUARTERS:TWO'
+		};
+
+		Test.startTest();
+		for (String value : valuesByExpected?.keySet()) {
+			Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)
+				?.addWhere(Account.Name, Soql.EQUALS, value)
+				?.toSoql();
+			String expected = 'SELECT Id FROM Account WHERE Name = \'' + valuesByExpected?.get(value) + '\'';
+			Assert.areEqual(expected, soql?.toString(), 'Did not quote a non-date-literal value');
+		}
+		Test.stopTest();
 	}
 
 	@IsTest
@@ -1629,6 +1724,24 @@ private class SoqlTest {
 	}
 
 	// **** HELPER **** //
+
+	private static User buildRestrictedUser() {
+		// Chatter Free grants no access to Account, so every one of its fields is inaccessible
+		Profile chatterFree = [SELECT Id FROM Profile WHERE Name = 'Chatter Free User' LIMIT 1];
+		User restrictedUser = new User(
+			Alias = 'restrict',
+			EmailEncodingKey = 'UTF-8',
+			Email = 'restricted@example.com.invalid',
+			LanguageLocaleKey = 'en_US',
+			LastName = 'Restricted',
+			LocaleSidKey = 'en_US',
+			ProfileId = chatterFree?.Id,
+			TimeZoneSidKey = 'America/New_York',
+			Username = 'restricted' + DateTime.now()?.getTime() + '@example.com.invalid'
+		);
+		insert restrictedUser;
+		return restrictedUser;
+	}
 
 	private static Object validateQuery(Soql soql, String expected) {
 		Assert.areEqual('"' + expected + '"', '"' + soql + '"', 'Unexpected SOQL output');

@@ -88,7 +88,7 @@ Resets the builder to its default state, clearing all previously set clauses and
 
 ### `selectAll`
 
-Selects all fields from the specified entity by querying the schema for all available fields.
+Selects all fields from the specified entity by querying the schema for all available fields. In `USER_MODE` (the default), fields the running user cannot read are omitted, since user-mode SOQL rejects the entire query rather than dropping inaccessible fields. In `SYSTEM_MODE`, every field is selected. The fields are resolved lazily, so `setAccessLevel` may be called before or after `selectAll`.
 
 - `Soql.Builder selectAll()`
 
