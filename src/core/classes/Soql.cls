@@ -638,16 +638,22 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		/**
-		 * @description Expands a pending {@link selectAll} into individual SELECT clauses. In user mode,
-		 * fields the running user cannot read are omitted, since user mode SOQL rejects the entire query
-		 * rather than dropping inaccessible fields from the results.
+		 * @description Expands a pending {@link selectAll} request, if one is outstanding.
 		 */
 		private void resolveSelectAll() {
-			if (this.selectAllPending != true) {
-				return;
+			if (this.selectAllPending == true) {
+				// Clear the flag first; addSelect() reads selectClauses, which would recurse back into here
+				this.selectAllPending = false;
+				this.expandSelectAll();
 			}
-			// Clear the flag first; addSelect() reads selectClauses, which would recurse back into here
-			this.selectAllPending = false;
+		}
+
+		/**
+		 * @description Adds each of the entity's fields to the SELECT clause. In user mode, fields the
+		 * running user cannot read are omitted, since user mode SOQL rejects the entire query rather
+		 * than dropping inaccessible fields from the results.
+		 */
+		private void expandSelectAll() {
 			Boolean isSystemMode = this.accessLevel == System.AccessLevel.SYSTEM_MODE;
 			for (SObjectField field : this.getAllFields()) {
 				if (isSystemMode || field?.getDescribe()?.isAccessible() == true) {
