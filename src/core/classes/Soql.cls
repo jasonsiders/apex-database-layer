@@ -638,7 +638,9 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		/**
-		 * @description Expands a pending {@link selectAll} into individual SELECT clauses.
+		 * @description Expands a pending {@link selectAll} into individual SELECT clauses. In user mode,
+		 * fields the running user cannot read are omitted, since user mode SOQL rejects the entire query
+		 * rather than dropping inaccessible fields from the results.
 		 */
 		private void resolveSelectAll() {
 			if (this.selectAllPending != true) {
@@ -646,26 +648,12 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			}
 			// Clear the flag first; addSelect() reads selectClauses, which would recurse back into here
 			this.selectAllPending = false;
-			for (SObjectField field : this.getSelectableFields()) {
-				this.addSelect(field);
-			}
-		}
-
-		/**
-		 * @description Returns the fields that {@link selectAll} should add. In user mode, fields the
-		 * running user cannot read are omitted, since user mode SOQL rejects the entire query rather
-		 * than dropping inaccessible fields from the results.
-		 * @return The fields eligible for selection
-		 */
-		private List<SObjectField> getSelectableFields() {
 			Boolean isSystemMode = this.accessLevel == System.AccessLevel.SYSTEM_MODE;
-			List<SObjectField> results = new List<SObjectField>();
 			for (SObjectField field : this.getAllFields()) {
 				if (isSystemMode || field?.getDescribe()?.isAccessible() == true) {
-					results?.add(field);
+					this.addSelect(field);
 				}
 			}
-			return results;
 		}
 
 		/**
