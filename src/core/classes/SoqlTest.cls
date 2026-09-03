@@ -297,7 +297,8 @@ private class SoqlTest {
 	private static void shouldOmitInaccessibleFieldsFromSelectAll() {
 		Integer numAllFields = SObjectType.Account?.fields?.getMap()?.size();
 		User restrictedUser = SoqlTest.buildRestrictedUser();
-		Integer numUserModeFields, numSystemModeFields;
+		Integer numUserModeFields;
+		Integer numSystemModeFields;
 
 		Test.startTest();
 		System.runAs(restrictedUser) {

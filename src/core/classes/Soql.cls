@@ -22,6 +22,13 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	// Other constants
 	private static final Soql.LogicType DEFAULT_LOGIC_TYPE = Soql.LogicType.ALL_CONDITIONS;
 	private static final String ID_REFERENCE = 'Id';
+	// Matches the SOQL date literal grammar: the fixed keywords, plus the parameterized <LITERAL>:<n> forms.
+	// See https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_select_dateformats.htm
+	private static final Pattern DATE_LITERAL_PATTERN = Pattern.compile(
+		'(?i)^(YESTERDAY|TODAY|TOMORROW|(LAST|THIS|NEXT)_(WEEK|MONTH|QUARTER|YEAR|FISCAL_QUARTER|FISCAL_YEAR)|' +
+			'(LAST|NEXT)_90_DAYS|(LAST_N|NEXT_N)_(DAYS|WEEKS|MONTHS|QUARTERS|YEARS|FISCAL_QUARTERS|FISCAL_YEARS):\\d+|' +
+			'N_(DAYS|WEEKS|MONTHS|QUARTERS|YEARS|FISCAL_QUARTERS|FISCAL_YEARS)_AGO:\\d+)$'
+	);
 
 	// Member Properties:
 	/**
@@ -484,9 +491,18 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		global Soql.Scope scope { get; protected set; }
 		/**
-		 * @description Set of SELECT clause field names.
+		 * @description Set of SELECT clause field names. Reading this resolves any pending
+		 * {@link selectAll} call, so callers always observe the fully expanded clause list.
 		 */
-		global Set<String> selectClauses { get; protected set; }
+		global Set<String> selectClauses {
+			get {
+				this.resolveSelectAll();
+				return this.resolvedSelectClauses;
+			}
+			protected set {
+				this.resolvedSelectClauses = value;
+			}
+		}
 		/**
 		 * @description Query usage type (FOR UPDATE, FOR VIEW, etc.).
 		 */
@@ -499,6 +515,9 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @description WITH clause for query hints (e.g., SECURITY_ENFORCED).
 		 */
 		global String withClause { get; protected set; }
+		// Backing state for selectClauses:
+		private transient Set<String> resolvedSelectClauses;
+		private transient Boolean selectAllPending = false;
 		// Read-only properties included for JSON output:
 		/**
 		 * @description Serializable representation of the access level.
@@ -578,6 +597,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			this.groupByClauses = new List<String>();
 			this.havingCriteria = new Soql.ConditionalLogic();
 			this.orderByClauses = new List<String>();
+			this.selectAllPending = false;
 			this.selectClauses = new Set<String>{ ID_REFERENCE };
 			this.whereCriteria = new Soql.ConditionalLogic();
 			return this;
@@ -612,19 +632,55 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @description Adds all fields of the object to the SELECT clause.
 		 * @return This Builder instance for method chaining
 		 */
-		@SuppressWarnings('PMD.EagerlyLoadedDescribeSObjectResult')
 		global Soql.Builder selectAll() {
+			this.selectAllPending = true;
+			return this;
+		}
+
+		/**
+		 * @description Expands a pending {@link selectAll} into individual SELECT clauses.
+		 */
+		private void resolveSelectAll() {
+			if (this.selectAllPending != true) {
+				return;
+			}
+			// Clear the flag first; addSelect() reads selectClauses, which would recurse back into here
+			this.selectAllPending = false;
+			for (SObjectField field : this.getSelectableFields()) {
+				this.addSelect(field);
+			}
+		}
+
+		/**
+		 * @description Returns the fields that {@link selectAll} should add. In user mode, fields the
+		 * running user cannot read are omitted, since user mode SOQL rejects the entire query rather
+		 * than dropping inaccessible fields from the results.
+		 * @return The fields eligible for selection
+		 */
+		private List<SObjectField> getSelectableFields() {
+			Boolean isSystemMode = this.accessLevel == System.AccessLevel.SYSTEM_MODE;
+			List<SObjectField> results = new List<SObjectField>();
+			for (SObjectField field : this.getAllFields()) {
+				if (isSystemMode || field?.getDescribe()?.isAccessible() == true) {
+					results?.add(field);
+				}
+			}
+			return results;
+		}
+
+		/**
+		 * @description Returns every field defined on the query's entity.
+		 * @return All fields on the entity, or an empty list if the entity cannot be described
+		 */
+		@SuppressWarnings('PMD.EagerlyLoadedDescribeSObjectResult')
+		private List<SObjectField> getAllFields() {
 			// Note: Not sure why this PMD rule is flagging; the describe is explicitly deferred
 			List<Schema.DescribeSObjectResult> describes = Schema.describeSObjects(
 				new List<String>{ this.entity },
 				Schema.SObjectDescribeOptions.DEFERRED
 			);
 			Schema.DescribeSObjectResult describe = describes?.isEmpty() == false ? describes?.get(0) : null;
-			List<SObjectField> allFields = describe?.fields?.getMap()?.values() ?? new List<SObjectField>();
-			for (SObjectField field : allFields) {
-				this.addSelect(field);
-			}
-			return this;
+			return describe?.fields?.getMap()?.values() ?? new List<SObjectField>();
 		}
 
 		/**
@@ -842,7 +898,8 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		global Soql.Builder deselectAll() {
 			// Remove all SELECT fields from the current query
-			this.selectClauses?.clear();
+			this.selectAllPending = false;
+			this.resolvedSelectClauses?.clear();
 			return this;
 		}
 
@@ -1376,16 +1433,18 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		private String processString(String value) {
-			// Allow special modifiers (bind variables, inner queries, & relative date operators) to pass through unmodified
-			for (String excludedModifier : new Set<String>{ 'LAST_N_DAYS', ':', '(' }) {
-				if (value?.startsWithIgnoreCase(excludedModifier)) {
-					return value;
-				}
+			// Allow special modifiers (bind variables, inner queries, & relative date literals) to pass through unmodified
+			if (value?.startsWith(':') == true || value?.startsWith('(') == true || this.isDateLiteral(value)) {
+				return value;
 			}
 			if (value != null && value.length() >= 19 && value.contains('T') && this.isValidDateTimePrefix(value)) {
 				return value;
 			}
 			return this.operator?.processStringValue(value);
+		}
+
+		private Boolean isDateLiteral(String value) {
+			return value != null && DATE_LITERAL_PATTERN.matcher(value)?.matches() == true;
 		}
 
 		private Boolean isValidDateTimePrefix(String value) {
