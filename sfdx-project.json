@@ -4,8 +4,8 @@
 			"path": "src/core",
 			"default": true,
 			"package": "apex-database-layer",
-			"versionName": "v4.0.2",
-			"versionNumber": "4.0.2.NEXT"
+			"versionName": "v4.0.3",
+			"versionNumber": "4.0.3.NEXT"
 		},
 		{
 			"versionName": "v1.1.0",
@@ -36,6 +36,7 @@
 		"plugin-nebula-logger@1.1.0-1": "04tDn0000011P8XIAU",
 		"apex-database-layer@4.0.0-3": "04tDn0000011P9LIAU",
 		"apex-database-layer@4.0.1-1": "04tDn0000011P9QIAU",
-		"apex-database-layer@4.0.2-1": "04tDn000000nHkhIAE"
+		"apex-database-layer@4.0.2-1": "04tDn000000nHkhIAE",
+		"apex-database-layer@4.0.3-1": "04tDn000000nHkrIAE"
 	}
 }
