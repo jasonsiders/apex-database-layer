@@ -453,6 +453,9 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	 * @description Abstract base class providing fluent interface for building SOQL queries.
 	 */
 	global abstract class Builder {
+		// Backing state for selectClauses:
+		private transient Set<String> resolvedSelectClauses;
+		private transient Boolean selectAllPending = false;
 		/**
 		 * @description The configured access level for the query execution.
 		 */
@@ -515,9 +518,6 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @description WITH clause for query hints (e.g., SECURITY_ENFORCED).
 		 */
 		global String withClause { get; protected set; }
-		// Backing state for selectClauses:
-		private transient Set<String> resolvedSelectClauses;
-		private transient Boolean selectAllPending = false;
 		// Read-only properties included for JSON output:
 		/**
 		 * @description Serializable representation of the access level.
