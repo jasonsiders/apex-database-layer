@@ -47,8 +47,12 @@ global class MockRecord {
 	global static Id initRecordId(SObjectType objectType) {
 		String prefix = objectType?.getDescribe(Schema.SObjectDescribeOptions.DEFERRED)?.getKeyPrefix();
 		String suffix = String.valueOf(MockRecord.numMockIds++);
-		String mid = 0?.toString()?.repeat(15 - suffix?.length());
-		return prefix + mid + suffix;
+		// Build a valid 15-char Id, then let the platform normalize it to the full 18-char form. Its
+		// case-insensitivity checksum is computed correctly this way; an all-numeric 18-char literal
+		// has no valid checksum and is rejected by strict parsers (Id.valueOf, JSON deserialization).
+		String mid = 0?.toString()?.repeat(15 - prefix?.length() - suffix?.length());
+		String fifteenCharId = prefix + mid + suffix;
+		return Id.valueOf(fifteenCharId);
 	}
 
 	// **** MEMBER **** //
