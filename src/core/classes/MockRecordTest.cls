@@ -150,6 +150,23 @@ private class MockRecordTest {
 	}
 
 	@IsTest
+	private static void shouldGenerateStrictlyValidIds() {
+		Test.startTest();
+		Id firstId = MockRecord.initRecordId(Account.SObjectType);
+		Id secondId = MockRecord.initRecordId(Account.SObjectType);
+		Test.stopTest();
+
+		// A generated Id must be unique and survive strict re-parsing; callers that serialize an Id
+		// and deserialize it back (e.g. casting an aggregate result) otherwise hit "malformed id"
+		String serialized = JSON.serialize(firstId);
+		Id roundTripped = (Id) JSON.deserialize(serialized, Id.class);
+		Assert.areEqual(18, String.valueOf(firstId)?.length(), 'Id should be the full 18-char form');
+		Assert.areEqual(Account.SObjectType, firstId?.getSObjectType(), 'Wrong key prefix');
+		Assert.areEqual(firstId, roundTripped, 'Id did not survive strict JSON parsing');
+		Assert.areNotEqual(firstId, secondId, 'Generated Ids were not unique');
+	}
+
+	@IsTest
 	private static void shouldUseUnderlyingSObjectForObjectMethods() {
 		MockRecord mock = new MockRecord(Account.SObjectType)?.withId();
 		Account account = (Account) mock?.toSObject();
