@@ -20,6 +20,7 @@ The `MockPermissions` class is only available in test contexts (`@IsTest`).
 - **Repeated calls have no extra effect.** Granting a permission twice, then revoking it once, leaves it revoked.
 - **Matching is case-insensitive**, like `FeatureManagement.checkPermission`.
 - **Blank permission names** always return `false`, even if granted.
+- **Users are matched by Id.** Users passed to `grant` or `revoke` must have an Id; insert them first. A grant to a user without an Id never matches.
 
 ## Methods
 
