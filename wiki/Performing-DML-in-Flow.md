@@ -16,20 +16,20 @@ Every input accepts a literal value or a flow resource. The resource picker work
 
 ### Inputs
 
-| Input                               | Type    | Default     | Description                                                                                                                                                |
-| ----------------------------------- | ------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Record / Record Collection          | SObject | (required)  | The records to insert.                                                                                                                                     |
-| Access Level                        | Text    | `USER_MODE` | `USER_MODE` enforces the running user's object permissions, field-level security, and sharing rules. `SYSTEM_MODE` ignores them.                           |
-| All or None                         | Boolean | `true`      | When `true`, any failure rolls back every record and fails the action. When `false`, valid records are inserted, and failures are reported in the results. |
-| Allow Duplicates                    | Boolean | `false`     | Save records that a duplicate rule would otherwise alert on.                                                                                               |
-| Allow Field Truncation              | Boolean | `false`     | Truncate text values that are too long for their field, instead of failing.                                                                                |
-| Assignment Rule ID                  | Text    |             | The ID of a specific Lead or Case assignment rule to run.                                                                                                  |
-| Locale Options                      | Text    |             | The language of any labels returned by the operation, ex: `en_US`.                                                                                         |
-| Run Duplicate Rules as Current User | Boolean | `false`     | Enforce the running user's sharing rules when duplicate rules look for duplicates.                                                                         |
-| Trigger Auto-Response Email         | Boolean | `false`     | Send auto-response emails for new Leads and Cases.                                                                                                         |
-| Trigger Other Email                 | Boolean | `false`     | Send email to recipients outside the org.                                                                                                                  |
-| Trigger User Email                  | Boolean | `false`     | Send email to users in the org, ex: when a Case or Task is assigned.                                                                                       |
-| Use Default Assignment Rule         | Boolean | `false`     | Run the default active assignment rule for Leads and Cases.                                                                                                |
+| Input                               | Type    | Default     | Description                                                                                                                                                           |
+| ----------------------------------- | ------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Record / Record Collection          | SObject | (required)  | The records to insert.                                                                                                                                                |
+| Access Level                        | Text    | `USER_MODE` | `USER_MODE` enforces the running user's object permissions, field-level security, and sharing rules. `SYSTEM_MODE` ignores them. Any other value runs in `USER_MODE`. |
+| All or None                         | Boolean | `true`      | When `true`, any failure rolls back every record and fails the action. When `false`, valid records are inserted, and failures are reported in the results.            |
+| Allow Duplicates                    | Boolean | `false`     | Save records that a duplicate rule would otherwise alert on.                                                                                                          |
+| Allow Field Truncation              | Boolean | `false`     | Truncate text values that are too long for their field, instead of failing.                                                                                           |
+| Assignment Rule ID                  | Text    |             | The ID of a specific Lead or Case assignment rule to run.                                                                                                             |
+| Locale Options                      | Text    |             | The language of any labels returned by the operation, ex: `en_US`.                                                                                                    |
+| Run Duplicate Rules as Current User | Boolean | `false`     | Enforce the running user's sharing rules when duplicate rules look for duplicates.                                                                                    |
+| Trigger Auto-Response Email         | Boolean | `false`     | Send auto-response emails for new Leads and Cases.                                                                                                                    |
+| Trigger Other Email                 | Boolean | `false`     | Send email to recipients outside the org.                                                                                                                             |
+| Trigger User Email                  | Boolean | `false`     | Send email to users in the org, ex: when a Case or Task is assigned.                                                                                                  |
+| Use Default Assignment Rule         | Boolean | `false`     | Run the default active assignment rule for Leads and Cases.                                                                                                           |
 
 ### Outputs
 
@@ -50,6 +50,8 @@ Every input accepts a literal value or a flow resource. The resource picker work
 
 ## Bulk Behavior
 
-When many flow interviews run the action at once (ex: a record-triggered flow on a 200-record update), interviews with the same settings share a single insert, which keeps the batch within DML limits.
+When many flow interviews run the action at once (ex: a record-triggered flow on a 200-record update), the action inserts every interview's records in a single DML operation, which keeps the batch within DML limits.
 
-With **All or None** set to `true`, one invalid record fails that shared insert, and every interview in it fails with it. When interviews must succeed or fail independently, set **All or None** to `false`, and check each **Result** for errors.
+One DML operation can only have one set of settings, so the **first** interview's settings apply to every interview in the batch. Use static values, not variables or formulas, for the access level, all-or-none, and DML option inputs, so that every interview has the same settings, and the action behaves the same way however the interviews are batched.
+
+With **All or None** set to `true`, one invalid record fails the shared insert, and every interview in the batch fails with it. When interviews must succeed or fail independently, set **All or None** to `false`, and check each **Result** for errors.
