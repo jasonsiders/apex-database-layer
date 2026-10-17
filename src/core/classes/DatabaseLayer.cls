@@ -9,6 +9,7 @@ global class DatabaseLayer {
 	private Cmdt currentCmdt;
 	private Dml currentDml;
 	private Duplicates currentDuplicates;
+	private Permissions currentPermissions;
 	private SoqlProvider currentSoql;
 
 	/**
@@ -18,6 +19,7 @@ global class DatabaseLayer {
 		this.currentCmdt = new Cmdt(this);
 		this.currentDml = new Dml(this);
 		this.currentDuplicates = new Duplicates(this);
+		this.currentPermissions = new Permissions(this);
 		this.currentSoql = new SoqlProvider(this);
 	}
 
@@ -79,13 +81,25 @@ global class DatabaseLayer {
 	}
 
 	/**
-	 * @description Switches both DML and SOQL providers to use mock implementations for testing.
+	 * @description Primary access point for custom permission checks. Returns the currently configured Permissions instance.
+	 * @return The current Permissions instance (real or mock based on configuration)
+	 */
+	@SuppressWarnings('PMD.PropertyNamingConventions')
+	global static Permissions Permissions {
+		get {
+			return INSTANCE?.currentPermissions;
+		}
+	}
+
+	/**
+	 * @description Switches the DML, SOQL, Duplicates, and Permissions providers to use mock implementations for testing.
 	 */
 	@TestVisible
 	private static void useMocks() {
 		DatabaseLayer.useMockDml();
 		DatabaseLayer.useMockSoql();
 		DatabaseLayer.useMockDuplicates();
+		DatabaseLayer.useMockPermissions();
 	}
 
 	/**
@@ -118,6 +132,16 @@ global class DatabaseLayer {
 	}
 
 	/**
+	 * @description Switches the Permissions provider to use mock implementation for testing.
+	 * @return The mock Permissions instance that was configured
+	 */
+	@TestVisible
+	private static MockPermissions useMockPermissions() {
+		INSTANCE.currentPermissions = new MockPermissions(INSTANCE);
+		return (MockPermissions) INSTANCE.currentPermissions;
+	}
+
+	/**
 	 * @description Switches the DML provider back to real database operations.
 	 * @return The real DML instance that was configured
 	 */
@@ -138,6 +162,16 @@ global class DatabaseLayer {
 	}
 
 	/**
+	 * @description Switches the Permissions provider back to real custom permission checks.
+	 * @return The real Permissions instance that was configured
+	 */
+	@TestVisible
+	private static Permissions useRealPermissions() {
+		INSTANCE.currentPermissions = new Permissions(INSTANCE);
+		return INSTANCE.currentPermissions;
+	}
+
+	/**
 	 * @description Switches the SOQL provider back to real database operations.
 	 * @return The SOQL provider configured for real operations
 	 */
@@ -147,12 +181,13 @@ global class DatabaseLayer {
 	}
 
 	/**
-	 * @description Switches both DML and SOQL providers back to real database operations.
+	 * @description Switches the DML, SOQL, Duplicates, and Permissions providers back to real operations.
 	 */
 	@TestVisible
 	private static void useRealData() {
 		DatabaseLayer.useRealDml();
 		DatabaseLayer.useRealDuplicates();
+		DatabaseLayer.useRealPermissions();
 		DatabaseLayer.useRealSoql();
 	}
 

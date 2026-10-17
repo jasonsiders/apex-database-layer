@@ -84,6 +84,42 @@ private class DatabaseLayerTest {
 	}
 
 	@IsTest
+	private static void shouldInitRealPermissionsObjectByDefault() {
+		Test.startTest();
+		Permissions result = DatabaseLayer.Permissions;
+		Test.stopTest();
+
+		Assert.isInstanceOfType(result, Permissions.class, 'Should be Permissions');
+		Assert.isNotInstanceOfType(result, MockPermissions.class, 'Should not be MockPermissions');
+	}
+
+	@IsTest
+	private static void shouldInitMockPermissionsObject() {
+		DatabaseLayer.useMocks();
+
+		Test.startTest();
+		Permissions result = DatabaseLayer.Permissions;
+		Test.stopTest();
+
+		Assert.isInstanceOfType(result, Permissions.class, 'Should be Permissions');
+		Assert.isInstanceOfType(result, MockPermissions.class, 'Should be MockPermissions');
+	}
+
+	@IsTest
+	private static void shouldSwitchToRealPermissionsObject() {
+		DatabaseLayer.useMocks();
+
+		Test.startTest();
+		// Now switch back to using real database objects
+		DatabaseLayer.useRealData();
+		Permissions result = DatabaseLayer.Permissions;
+		Test.stopTest();
+
+		Assert.isInstanceOfType(result, Permissions.class, 'Should be Permissions');
+		Assert.isNotInstanceOfType(result, MockPermissions.class, 'Should not be MockPermissions');
+	}
+
+	@IsTest
 	private static void shouldInitRealSoqlObjectByDefault() {
 		Test.startTest();
 		Soql result = DatabaseLayer.Soql?.newQuery(Account.SObjectType);
