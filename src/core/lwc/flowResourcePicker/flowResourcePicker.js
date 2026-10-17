@@ -18,6 +18,8 @@ const DESCRIBES = new Map();
 function describeObject(objectApiName) {
 	if (!DESCRIBES.has(objectApiName)) {
 		const request = describeObjectApex({ objectApiName });
+		// A failed describe is dropped, so the next request retries it
+		request.catch(() => DESCRIBES.delete(objectApiName));
 		DESCRIBES.set(objectApiName, request);
 	}
 	return DESCRIBES.get(objectApiName);
@@ -111,6 +113,7 @@ export default class FlowResourcePicker extends LightningElement {
 	_isEditing = false;
 	_isOpen = false;
 	_objectLabels = {};
+	_refreshId = 0;
 	_requestId = 0;
 	_sections = [];
 	_selection = null;
@@ -361,10 +364,8 @@ export default class FlowResourcePicker extends LightningElement {
 
 	/**
 	 * @description Clears the value
-	 * @param {Event} event Click on the pill's remove button
 	 */
-	handlePillRemove(event) {
-		event.stopPropagation();
+	handlePillRemove() {
 		this._selection = null;
 		this._text = "";
 		this._shouldFocus = true;
@@ -525,6 +526,7 @@ export default class FlowResourcePicker extends LightningElement {
 	 * @description Shows the current value: a pill for references, or text for literals.
 	 */
 	async _refreshSelection() {
+		const refreshId = ++this._refreshId;
 		const value = this._value;
 		const isBooleanLiteral = typeof value === "boolean" || /^(true|false)$/i.test(String(value));
 		const booleanPath =
@@ -534,7 +536,11 @@ export default class FlowResourcePicker extends LightningElement {
 		const isConstant = String(value).startsWith(GLOBAL_CONSTANT_PREFIX);
 		const path = this._valueDataType === REFERENCE || isConstant ? value : booleanPath;
 		this._text = path || value == null ? "" : String(value);
-		this._selection = path ? await this._resolveSelection(path) : null;
+		const selection = path ? await this._resolveSelection(path) : null;
+		// A slow describe can resolve after a newer value arrives; only the newest is shown
+		if (refreshId === this._refreshId) {
+			this._selection = selection;
+		}
 	}
 
 	/**

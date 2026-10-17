@@ -452,6 +452,44 @@ describe("c-flow-resource-picker", () => {
 		expect(optionLabels(element)).not.toContain("Current Item from Loop Loop Accounts");
 	});
 
+	it("retries a describe that failed", async () => {
+		const lookup = { getFirstRecordOnly: false, storeOutputAutomatically: true };
+		const recordLookups = [{ ...lookup, name: "Get_Opps", label: "Get Opps", object: "Opportunity" }];
+		const builderContext = { ...CONTEXT.builderContext, recordLookups };
+		describeObject.mockImplementation(() => Promise.reject(new Error("nope")));
+		const { element } = await render({ type: "SObject", isCollection: true, builderContext });
+
+		describeObject.mockImplementation(() =>
+			Promise.resolve({ label: "Opportunity", labelPlural: "Opportunities" })
+		);
+		element.builderContext = { ...builderContext };
+		await open(element);
+
+		expect(optionLabels(element)).toContain("Opportunities from Get Opps");
+	});
+
+	it("shows the latest value when an earlier one resolves late", async () => {
+		let resolveCase;
+		describeObject.mockImplementation(({ objectApiName }) => {
+			return objectApiName === "Case"
+				? new Promise((resolve) => {
+						resolveCase = resolve;
+					})
+				: Promise.resolve(DESCRIBES[objectApiName]);
+		});
+		const caseVar = { name: "caseVar", dataType: "SObject", objectType: "Case", isCollection: false };
+		const variables = [...CONTEXT.builderContext.variables, caseVar];
+		const builderContext = { ...CONTEXT.builderContext, variables };
+		const { element } = await render({ builderContext, value: "caseVar.Subject", valueDataType: "reference" });
+
+		element.value = "textVar";
+		await flush();
+		resolveCase({ apiName: "Case", fields: [{ apiName: "Subject", dataType: "STRING", label: "Subject" }] });
+		await flush();
+
+		expect(pillLabel(element)).toBe("textVar");
+	});
+
 	it("survives describe failures", async () => {
 		describeObject.mockImplementation(() => Promise.reject(new Error("nope")));
 		const { element } = await render({ builderContext: { ...CONTEXT.builderContext, recordLookups: [] } });
