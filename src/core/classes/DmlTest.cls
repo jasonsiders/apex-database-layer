@@ -62,6 +62,21 @@ private class DmlTest {
 	}
 
 	@IsTest
+	private static void shouldApplyDmlOptionsOnInsert() {
+		Account account = new Account(Name = 'x'.repeat(300));
+		Database.DmlOptions options = new Database.DmlOptions();
+		options.AllowFieldTruncation = true;
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doInsert(account, options, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+		Account saved = [SELECT Name FROM Account WHERE Id = :result.getId()];
+		Assert.areEqual(255, saved?.Name?.length(), 'Name was not truncated');
+	}
+
+	@IsTest
 	private static void shouldDoInsertWithAllOrNoneAndAccessLevel() {
 		Account account = DmlTest.initAccount();
 
@@ -225,6 +240,23 @@ private class DmlTest {
 		Test.stopTest();
 
 		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+	}
+
+	@IsTest
+	private static void shouldApplyDmlOptionsOnUpdate() {
+		Account account = DmlTest.initAccount();
+		insert account;
+		account.Name = 'x'.repeat(300);
+		Database.DmlOptions options = new Database.DmlOptions();
+		options.AllowFieldTruncation = true;
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doUpdate(account, options, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
+		Account saved = [SELECT Name FROM Account WHERE Id = :account.Id];
+		Assert.areEqual(255, saved?.Name?.length(), 'Name was not truncated');
 	}
 
 	@IsTest

@@ -1772,7 +1772,7 @@ global inherited sharing virtual class Dml {
 			} else if (this.isOperationImmediate == true) {
 				return Database.insertImmediate(this.records, this.accessLevel);
 			} else {
-				return Database.insert(this.records, this.allOrNone, this.accessLevel);
+				return Database.insert(this.records, this.options, this.accessLevel);
 			}
 		}
 
@@ -1790,7 +1790,7 @@ global inherited sharing virtual class Dml {
 			} else if (this.isOperationImmediate == true) {
 				return Database.updateImmediate(this.records, this.accessLevel);
 			} else {
-				return Database.update(this.records, this.allOrNone, this.accessLevel);
+				return Database.update(this.records, this.options, this.accessLevel);
 			}
 		}
 
