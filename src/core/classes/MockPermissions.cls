@@ -6,7 +6,6 @@
 @SuppressWarnings('PMD.AvoidGlobalModifier')
 @IsTest
 global class MockPermissions extends Permissions {
-	// Keys are lowercased, since the platform matches custom permission names case-insensitively
 	private static Map<String, Boolean> defaultStates = new Map<String, Boolean>{};
 	private static Map<String, Map<Id, Boolean>> userStates = new Map<String, Map<Id, Boolean>>{};
 
@@ -16,7 +15,7 @@ global class MockPermissions extends Permissions {
 	 * @param permissionName The API name of the custom permission
 	 */
 	global static void grant(String permissionName) {
-		User runningUser = MockPermissions.getRunningUser();
+		User runningUser = new User(Id = UserInfo.getUserId());
 		MockPermissions.grant(permissionName, runningUser);
 	}
 
@@ -51,7 +50,7 @@ global class MockPermissions extends Permissions {
 	 * @param permissionName The API name of the custom permission
 	 */
 	global static void revoke(String permissionName) {
-		User runningUser = MockPermissions.getRunningUser();
+		User runningUser = new User(Id = UserInfo.getUserId());
 		MockPermissions.revoke(permissionName, runningUser);
 	}
 
@@ -96,28 +95,19 @@ global class MockPermissions extends Permissions {
 	 * @return True if the permission was granted to the running user
 	 */
 	protected override Boolean checkPermission(String permissionName) {
-		String key = permissionName?.toLowerCase();
+		String key = MockPermissions.toKey(permissionName);
 		Id userId = UserInfo.getUserId();
-		Boolean defaultState = MockPermissions.defaultStates?.get(key) ?? false;
-		return MockPermissions.userStates?.get(key)?.get(userId) ?? defaultState;
+		return MockPermissions.userStates?.get(key)?.get(userId) ?? MockPermissions.defaultStates?.get(key) ?? false;
 	}
 
 	// **** PRIVATE **** //
-	/**
-	 * @description Returns a User record representing the running user.
-	 * @return A User with the running user's Id
-	 */
-	private static User getRunningUser() {
-		return new User(Id = UserInfo.getUserId());
-	}
-
 	/**
 	 * @description Sets a custom permission's state for all users, and clears any user-specific states.
 	 * @param permissionName The API name of the custom permission
 	 * @param isGranted Whether the permission is granted
 	 */
 	private static void setDefaultState(String permissionName, Boolean isGranted) {
-		String key = permissionName?.toLowerCase();
+		String key = MockPermissions.toKey(permissionName);
 		MockPermissions.defaultStates?.put(key, isGranted);
 		MockPermissions.userStates?.remove(key);
 	}
@@ -129,11 +119,20 @@ global class MockPermissions extends Permissions {
 	 * @param isGranted Whether the permission is granted
 	 */
 	private static void setUserStates(String permissionName, List<User> users, Boolean isGranted) {
-		String key = permissionName?.toLowerCase();
+		String key = MockPermissions.toKey(permissionName);
 		Map<Id, Boolean> states = MockPermissions.userStates?.get(key) ?? new Map<Id, Boolean>{};
 		for (User user : users) {
 			states?.put(user?.Id, isGranted);
 		}
 		MockPermissions.userStates?.put(key, states);
+	}
+
+	/**
+	 * @description Normalizes a permission name for use as a map key, since the platform matches names case-insensitively
+	 * @param permissionName The API name of the custom permission
+	 * @return The lowercased permission name
+	 */
+	private static String toKey(String permissionName) {
+		return permissionName?.toLowerCase();
 	}
 }

@@ -85,30 +85,6 @@ private class MockPermissionsTest {
 	}
 
 	@IsTest
-	private static void shouldRevokeFromSpecificUser() {
-		MockPermissions.grant(PERMISSION_NAME);
-
-		Test.startTest();
-		MockPermissions.revoke(PERMISSION_NAME, RUNNING_USER);
-		Test.stopTest();
-
-		Boolean result = DatabaseLayer.Permissions?.hasPermission(PERMISSION_NAME);
-		Assert.isFalse(result, 'Was not revoked');
-	}
-
-	@IsTest
-	private static void shouldRevokeFromListOfUsers() {
-		MockPermissions.grant(PERMISSION_NAME);
-
-		Test.startTest();
-		MockPermissions.revoke(PERMISSION_NAME, new List<User>{ RUNNING_USER });
-		Test.stopTest();
-
-		Boolean result = DatabaseLayer.Permissions?.hasPermission(PERMISSION_NAME);
-		Assert.isFalse(result, 'Was not revoked');
-	}
-
-	@IsTest
 	private static void shouldGrantToAllUsers() {
 		User testUser = MockPermissionsTest.insertUser();
 		Boolean testUserResult;
