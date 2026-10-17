@@ -50,6 +50,10 @@ function sectionLabels(element) {
 	return [...element.shadowRoot.querySelectorAll(".slds-listbox__option-header")].map((header) => header.textContent);
 }
 
+function pillLabel(element) {
+	return element.shadowRoot.querySelector(".slds-pill__label")?.textContent;
+}
+
 function option(element, label) {
 	return options(element).find((candidate) => candidate.dataset.label === label);
 }
@@ -154,7 +158,7 @@ describe("c-flow-resource-picker", () => {
 		await flush();
 
 		expect(lastChange(onChange)).toEqual({ name: "accessLevel", value: "textVar", valueDataType: "reference" });
-		expect(element.shadowRoot.querySelector("lightning-pill").label).toBe("textVar");
+		expect(pillLabel(element)).toBe("textVar");
 		expect(options(element)).toHaveLength(0);
 	});
 
@@ -193,7 +197,7 @@ describe("c-flow-resource-picker", () => {
 			value: "accountVar.Owner.Email",
 			valueDataType: "reference"
 		});
-		expect(element.shadowRoot.querySelector("lightning-pill").label).toBe("accountVar > Owner ID > Email");
+		expect(pillLabel(element)).toBe("accountVar > Owner ID > Email");
 	});
 
 	it("navigates back up through the breadcrumbs", async () => {
@@ -239,6 +243,32 @@ describe("c-flow-resource-picker", () => {
 		expect(lastChange(onChange)).toEqual({ name: "accessLevel", value: "boolVar", valueDataType: "reference" });
 	});
 
+	it("keeps a chosen resource when the input loses focus to its pill", async () => {
+		const { element, onChange } = await render();
+		await open(element);
+		await type(element, "textVar");
+		await press(element, "ArrowDown");
+		await press(element, "Enter");
+
+		// In the browser, swapping the input for a pill blurs it
+		await blur(element);
+
+		expect(onChange).toHaveBeenCalledTimes(1);
+		expect(pillLabel(element)).toBe("textVar");
+	});
+
+	it("discards an unfinished merge field when focus leaves", async () => {
+		const { element, onChange } = await render({ value: "textVar", valueDataType: "reference" });
+		element.shadowRoot.querySelector(".picker-pill-edit").click();
+		await flush();
+
+		await type(element, "{!accountVar.");
+		await blur(element);
+
+		expect(onChange).not.toHaveBeenCalled();
+		expect(pillLabel(element)).toBe("textVar");
+	});
+
 	it("drills when Enter is pressed on a container", async () => {
 		const { element } = await render();
 		await open(element);
@@ -258,7 +288,7 @@ describe("c-flow-resource-picker", () => {
 		await blur(element);
 		expect(lastChange(onChange)).toEqual({ name: "accessLevel", value: "textVar", valueDataType: "reference" });
 
-		element.shadowRoot.querySelector("lightning-pill").dispatchEvent(new CustomEvent("remove"));
+		element.shadowRoot.querySelector(".picker-pill-remove").click();
 		await flush();
 		expect(lastChange(onChange)).toEqual({ name: "accessLevel", value: null, valueDataType: null });
 
@@ -277,7 +307,30 @@ describe("c-flow-resource-picker", () => {
 		expect(lastChange(onChange)).toEqual({
 			name: "accessLevel",
 			value: "$GlobalConstant.True",
-			valueDataType: "reference"
+			valueDataType: "Boolean"
+		});
+	});
+
+	it("saves global constants with their own data type, as Flow Builder requires", async () => {
+		const { element, onChange } = await render();
+		await open(element);
+
+		option(element, "Blank Value (Empty String)").click();
+		await flush();
+		expect(lastChange(onChange)).toEqual({
+			name: "accessLevel",
+			value: "$GlobalConstant.EmptyString",
+			valueDataType: "String"
+		});
+
+		element.shadowRoot.querySelector(".picker-pill-edit").click();
+		await flush();
+		await type(element, "{!$GlobalConstant.False}");
+		await blur(element);
+		expect(lastChange(onChange)).toEqual({
+			name: "accessLevel",
+			value: "$GlobalConstant.False",
+			valueDataType: "Boolean"
 		});
 	});
 
@@ -304,34 +357,37 @@ describe("c-flow-resource-picker", () => {
 	it("shows existing references as pills, with resolved labels", async () => {
 		const { element } = await render({ value: "accountVar.Owner.Email", valueDataType: "reference" });
 
-		const pill = element.shadowRoot.querySelector("lightning-pill");
-		expect(pill.label).toBe("accountVar > Owner ID > Email");
-		expect(element.shadowRoot.querySelector("lightning-pill lightning-icon").iconName).toBe("utility:text");
+		expect(pillLabel(element)).toBe("accountVar > Owner ID > Email");
+		expect(element.shadowRoot.querySelector(".picker-pill lightning-icon").iconName).toBe("utility:text");
+		const remove = element.shadowRoot.querySelector(".picker-pill-remove");
+		expect(remove.alternativeText).toBe("Remove accountVar > Owner ID > Email");
 	});
 
 	it("shows boolean values as global constant pills", async () => {
 		const { element } = await render({ type: "Boolean", value: "$GlobalConstant.True", valueDataType: "Boolean" });
-		expect(element.shadowRoot.querySelector("lightning-pill").label).toBe("True");
+		expect(pillLabel(element)).toBe("True");
 
 		element.value = false;
 		await flush();
-		expect(element.shadowRoot.querySelector("lightning-pill").label).toBe("False");
+		expect(pillLabel(element)).toBe("False");
 	});
 
 	it("shows unknown references as-is", async () => {
 		const { element } = await render({ value: "deletedVar", valueDataType: "reference" });
 
-		expect(element.shadowRoot.querySelector("lightning-pill").label).toBe("deletedVar");
+		expect(pillLabel(element)).toBe("deletedVar");
 	});
 
 	it("edits a pill's reference when clicked", async () => {
 		const { element } = await render({ value: "accountVar.Owner.Email", valueDataType: "reference" });
 
-		element.shadowRoot.querySelector(".picker-pill").click();
+		element.shadowRoot.querySelector(".picker-pill-edit").click();
 		await flush();
 
 		expect(input(element).value).toBe("{!accountVar.Owner.Email}");
 		expect(optionLabels(element)).toEqual(["Email"]);
+		const icons = [...option(element, "Email").querySelectorAll("lightning-icon")].map((icon) => icon.iconName);
+		expect(icons).toContain("utility:check");
 	});
 
 	it("shows an error message", async () => {
@@ -347,7 +403,7 @@ describe("c-flow-resource-picker", () => {
 		expect(element.valueDataType).toBe("reference");
 		expect(element.builderContext).toEqual(CONTEXT.builderContext);
 
-		element.shadowRoot.querySelector(".picker-pill").click();
+		element.shadowRoot.querySelector(".picker-pill-edit").click();
 		await flush();
 		const mouseDown = new CustomEvent("mousedown", { cancelable: true });
 		element.shadowRoot.querySelector('[role="listbox"]').dispatchEvent(mouseDown);

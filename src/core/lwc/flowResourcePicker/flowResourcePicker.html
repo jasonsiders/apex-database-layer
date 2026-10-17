@@ -1,5 +1,12 @@
 <template>
 	<div class={formElementClass}>
+		<lightning-icon
+			lwc:if={labelIcon}
+			class="picker-label-icon"
+			icon-name={labelIcon}
+			size="xx-small"
+			alternative-text=""
+		></lightning-icon>
 		<label class="slds-form-element__label" for="combobox-input">
 			<abbr lwc:if={required} class="slds-required" title="required">*</abbr>{label}
 		</label>
@@ -9,14 +16,33 @@
 				<div class={comboboxClass} onfocusout={handleFocusOut}>
 					<div class="slds-combobox__form-element slds-input-has-icon slds-input-has-icon_right" role="none">
 						<template lwc:if={showPill}>
-							<div class="slds-input picker-pill" onclick={handlePillClick}>
-								<lightning-pill label={selection.pathLabel} onremove={handlePillRemove}>
-									<lightning-icon
-										icon-name={selection.icon}
-										size="x-small"
-										alternative-text=""
-									></lightning-icon>
-								</lightning-pill>
+							<div class="slds-input picker-pill">
+								<span class="slds-pill slds-pill_link">
+									<span class="slds-pill__icon_container">
+										<lightning-icon
+											icon-name={selection.icon}
+											size="x-small"
+											alternative-text=""
+										></lightning-icon>
+									</span>
+									<a
+										href="#"
+										role="button"
+										class="slds-pill__action picker-pill-edit"
+										title={selection.pathLabel}
+										onclick={handlePillClick}
+									>
+										<span class="slds-pill__label">{selection.pathLabel}</span>
+									</a>
+									<lightning-button-icon
+										class="slds-pill__remove picker-pill-remove"
+										icon-name="utility:close"
+										variant="bare"
+										size="small"
+										alternative-text={removeLabel}
+										onclick={handlePillRemove}
+									></lightning-button-icon>
+								</span>
 							</div>
 						</template>
 						<template lwc:else>
@@ -87,6 +113,14 @@
 											data-label={item.label}
 											onclick={handleOptionClick}
 										>
+											<span class="slds-media__figure slds-listbox__option-icon picker-check">
+												<lightning-icon
+													lwc:if={item.isCurrent}
+													icon-name="utility:check"
+													size="x-small"
+													alternative-text="Current value"
+												></lightning-icon>
+											</span>
 											<span class="slds-media__figure slds-listbox__option-icon">
 												<lightning-icon
 													icon-name={item.icon}

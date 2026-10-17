@@ -1,17 +1,17 @@
 <template>
-	<div class="slds-p-horizontal_small">
+	<div class="editor-section">
 		<lightning-radio-group
-			class="slds-m-bottom_medium"
 			label="How Many Records to Insert"
 			options={howManyOptions}
 			type="radio"
 			value={howMany}
 			onchange={handleHowManyChange}
 		></lightning-radio-group>
+	</div>
+	<div class="editor-section">
 		<h3 class="slds-text-heading_small slds-m-bottom_small">{recordsHeading}</h3>
 		<template lwc:if={isMultiple}>
 			<c-flow-resource-picker
-				class="slds-m-bottom_medium"
 				data-name="recordCollection"
 				name="recordCollection"
 				label="Record Collection"
@@ -28,7 +28,6 @@
 		</template>
 		<template lwc:else>
 			<c-flow-resource-picker
-				class="slds-m-bottom_medium"
 				data-name="record"
 				name="record"
 				label="Record"
@@ -42,6 +41,11 @@
 				onchange={handleRecordsChange}
 			></c-flow-resource-picker>
 		</template>
+		<p class="slds-text-body_regular slds-m-top_small">
+			Make sure that ID is blank. After the records are inserted, find their IDs in the action's Record outputs.
+		</p>
+	</div>
+	<div class="editor-section">
 		<h3 class="slds-text-heading_small slds-m-bottom_small">Set Input Values</h3>
 		<template for:each={settings} for:item="field">
 			<c-flow-resource-picker
@@ -50,6 +54,7 @@
 				data-name={field.name}
 				name={field.name}
 				label={field.label}
+				label-icon={field.labelIcon}
 				help-text={field.helpText}
 				type={field.type}
 				picklist-values={field.picklistValues}
@@ -61,7 +66,9 @@
 				onchange={handleInputChange}
 			></c-flow-resource-picker>
 		</template>
-		<h3 class="slds-text-heading_small slds-m-vertical_small">DML Options</h3>
+	</div>
+	<div class="editor-section">
+		<h3 class="slds-text-heading_small slds-m-bottom_small">DML Options</h3>
 		<template for:each={dmlOptions} for:item="field">
 			<c-flow-resource-picker
 				key={field.name}
@@ -69,6 +76,7 @@
 				data-name={field.name}
 				name={field.name}
 				label={field.label}
+				label-icon={field.labelIcon}
 				help-text={field.helpText}
 				type={field.type}
 				value={field.value}

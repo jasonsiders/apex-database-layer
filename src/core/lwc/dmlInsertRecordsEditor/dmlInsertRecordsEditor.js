@@ -6,6 +6,7 @@ const ACCESS_LEVELS = [
 ];
 const BOOLEAN_LITERALS = [true, false, "true", "false", "$GlobalConstant.True", "$GlobalConstant.False"];
 const GENERIC_TYPES = ["T__record", "T__recordCollection", "U__record", "U__recordCollection"];
+const LABEL_ICONS = { Boolean: "utility:toggle", String: "utility:text" };
 const HOW_MANY_OPTIONS = [
 	{ label: "One", value: "one" },
 	{ label: "Multiple", value: "multiple" }
@@ -216,9 +217,10 @@ export default class DmlInsertRecordsEditor extends LightningElement {
 			const input = this.values[definition.name];
 			return {
 				...definition,
+				errorMessage: this.errors[definition.name],
+				labelIcon: LABEL_ICONS[definition.type],
 				value: input?.value,
-				valueDataType: input?.valueDataType,
-				errorMessage: this.errors[definition.name]
+				valueDataType: input?.valueDataType
 			};
 		});
 	}

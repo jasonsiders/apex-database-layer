@@ -3,6 +3,7 @@ import describeObjectApex from "@salesforce/apex/FlowResourcePickerController.de
 import { filterSections, getChildSections, getRootSections, parseInput, resolveItem } from "c/flowResourceMenu";
 
 const BOOLEAN_CONSTANTS = { false: "$GlobalConstant.False", true: "$GlobalConstant.True" };
+const GLOBAL_CONSTANT_PREFIX = "$GlobalConstant.";
 const REFERENCE = "reference";
 const ROOT_LABEL = "All Resources";
 
@@ -23,6 +24,16 @@ function describeObject(objectApiName) {
 }
 
 /**
+ * @description The data type Flow Builder expects for a resource. Global constants keep their own type.
+ * @param {Object} item The chosen resource
+ * @returns {String} The constant's data type, or `reference`
+ */
+function toValueDataType(item) {
+	const isConstant = item.value.startsWith(GLOBAL_CONSTANT_PREFIX);
+	return isConstant ? item.dataType : REFERENCE;
+}
+
+/**
  * Flow Builder's resource picker, for Custom Property Editors: a combobox that searches the flow's resources, drills
  * into records, action outputs, and global variables, and accepts literal values. Fires `change` with
  * `{ name, value, valueDataType }`, where `valueDataType` is `reference` for resources.
@@ -34,6 +45,7 @@ export default class FlowResourcePicker extends LightningElement {
 	@api helpText;
 	@api isCollection = false;
 	@api label;
+	@api labelIcon;
 	@api name;
 	@api objectType;
 	@api picklistValues;
@@ -41,6 +53,7 @@ export default class FlowResourcePicker extends LightningElement {
 	@api required = false;
 
 	activeIndex = -1;
+	isDirty = false;
 	isEditing = false;
 	isOpen = false;
 	objectLabels = {};
@@ -143,6 +156,7 @@ export default class FlowResourcePicker extends LightningElement {
 					...item,
 					domId: `option-${index}`,
 					isActive: String(isActive),
+					isCurrent: item.value === this._value,
 					className:
 						"slds-media slds-media_center slds-listbox__option slds-listbox__option_plain" + activeClass
 				};
@@ -154,6 +168,10 @@ export default class FlowResourcePicker extends LightningElement {
 
 	get options() {
 		return this.sections.flatMap((section) => section.items);
+	}
+
+	get removeLabel() {
+		return `Remove ${this.selection?.pathLabel}`;
 	}
 
 	get showPill() {
@@ -198,6 +216,7 @@ export default class FlowResourcePicker extends LightningElement {
 	}
 
 	handleInput(event) {
+		this.isDirty = true;
 		this.text = event.target.value;
 		this.isOpen = true;
 		this.loadMenu();
@@ -228,7 +247,8 @@ export default class FlowResourcePicker extends LightningElement {
 		this.choose(item);
 	}
 
-	handlePillClick() {
+	handlePillClick(event) {
+		event.preventDefault();
 		this.isEditing = true;
 		this.text = `{!${this.selection.value}}`;
 		this._shouldFocus = true;
@@ -278,20 +298,13 @@ export default class FlowResourcePicker extends LightningElement {
 	}
 
 	/**
-	 * @description Saves the typed text as a reference (`{!path}`), a boolean constant, or a literal, then closes the menu.
+	 * @description Saves anything the user typed, then closes the menu.
 	 */
 	commitText() {
-		const parsed = parseInput(this.text);
-		const booleanConstant = this.type === "Boolean" ? BOOLEAN_CONSTANTS[this.text.trim().toLowerCase()] : null;
-		const referencePath = parsed.isComplete ? parsed.path : booleanConstant;
-		const hasText = this.text.trim() !== "";
-		if (referencePath) {
-			this.selectReference(referencePath);
-		} else if (hasText) {
-			this.emitChange(this.text, this.literalDataType());
-		} else if (this.isEditing || this._value != null) {
-			this.emitChange(null, null);
+		if (this.isDirty || this.isEditing) {
+			this.saveText();
 		}
+		this.isDirty = false;
 		this.isEditing = false;
 		this.close();
 	}
@@ -406,10 +419,29 @@ export default class FlowResourcePicker extends LightningElement {
 			this._valueDataType === "Boolean" && isBooleanLiteral
 				? BOOLEAN_CONSTANTS[String(value).toLowerCase()]
 				: null;
-		const isConstant = String(value).startsWith("$GlobalConstant.");
+		const isConstant = String(value).startsWith(GLOBAL_CONSTANT_PREFIX);
 		const path = this._valueDataType === REFERENCE || isConstant ? value : booleanPath;
 		this.text = path || value == null ? "" : String(value);
 		this.selection = path ? await this.resolveSelection(path) : null;
+	}
+
+	/**
+	 * @description Saves the typed text as a reference (`{!path}`), a boolean constant, or a literal. An unfinished
+	 * merge field (ex: `{!accountVar.`) is discarded, restoring the previous value.
+	 */
+	saveText() {
+		const parsed = parseInput(this.text);
+		const booleanConstant = this.type === "Boolean" ? BOOLEAN_CONSTANTS[this.text.trim().toLowerCase()] : null;
+		const referencePath = parsed.isComplete ? parsed.path : booleanConstant;
+		const isUnfinished = parsed.isReference && !parsed.isComplete;
+		const hasText = this.text.trim() !== "";
+		if (referencePath) {
+			this.selectReference(referencePath);
+		} else if (isUnfinished) {
+			this.refreshSelection();
+		} else {
+			this.emitChange(hasText ? this.text : null, hasText ? this.literalDataType() : null);
+		}
 	}
 
 	/**
@@ -434,8 +466,10 @@ export default class FlowResourcePicker extends LightningElement {
 		} else {
 			this.selection = item;
 			this.text = "";
-			this.emitChange(item.value, REFERENCE, item.objectType);
+			const valueDataType = toValueDataType(item);
+			this.emitChange(item.value, valueDataType, item.objectType);
 		}
+		this.isDirty = false;
 		this.isEditing = false;
 		this.close();
 	}
@@ -447,6 +481,7 @@ export default class FlowResourcePicker extends LightningElement {
 	async selectReference(path) {
 		this.text = "";
 		this.selection = await this.resolveSelection(path);
-		this.emitChange(path, REFERENCE, this.selection.objectType);
+		const valueDataType = toValueDataType(this.selection);
+		this.emitChange(path, valueDataType, this.selection.objectType);
 	}
 }
