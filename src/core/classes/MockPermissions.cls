@@ -81,6 +81,28 @@ global class MockPermissions extends Permissions {
 		MockPermissions.setDefaultState(permissionName, false);
 	}
 
+	// **** MEMBER **** //
+	/**
+	 * @description Constructor for MockPermissions. Access this via DatabaseLayer.Permissions after enabling mocks.
+	 * @param factory The DatabaseLayer factory instance
+	 */
+	public MockPermissions(DatabaseLayer factory) {
+		super(factory);
+	}
+
+	/**
+	 * @description Checks the running user's mocked state for a custom permission, falling back to the all-users state.
+	 * @param permissionName The API name of the custom permission
+	 * @return True if the permission was granted to the running user
+	 */
+	protected override Boolean checkPermission(String permissionName) {
+		String key = permissionName?.toLowerCase();
+		Id userId = UserInfo.getUserId();
+		Boolean defaultState = MockPermissions.defaultStates?.get(key) ?? false;
+		return MockPermissions.userStates?.get(key)?.get(userId) ?? defaultState;
+	}
+
+	// **** PRIVATE **** //
 	/**
 	 * @description Returns a User record representing the running user.
 	 * @return A User with the running user's Id
@@ -113,26 +135,5 @@ global class MockPermissions extends Permissions {
 			states?.put(user?.Id, isGranted);
 		}
 		MockPermissions.userStates?.put(key, states);
-	}
-
-	// **** MEMBER **** //
-	/**
-	 * @description Constructor for MockPermissions. Access this via DatabaseLayer.Permissions after enabling mocks.
-	 * @param factory The DatabaseLayer factory instance
-	 */
-	public MockPermissions(DatabaseLayer factory) {
-		super(factory);
-	}
-
-	/**
-	 * @description Checks the running user's mocked state for a custom permission, falling back to the all-users state.
-	 * @param permissionName The API name of the custom permission
-	 * @return True if the permission was granted to the running user
-	 */
-	protected override Boolean checkPermission(String permissionName) {
-		String key = permissionName?.toLowerCase();
-		Id userId = UserInfo.getUserId();
-		Boolean defaultState = MockPermissions.defaultStates?.get(key) ?? false;
-		return MockPermissions.userStates?.get(key)?.get(userId) ?? defaultState;
 	}
 }

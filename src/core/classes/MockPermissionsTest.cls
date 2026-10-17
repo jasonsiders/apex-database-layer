@@ -4,10 +4,12 @@ private class MockPermissionsTest {
 	private static final String PERMISSION_NAME = 'Some_Permission';
 	private static final User RUNNING_USER = new User(Id = UserInfo.getUserId());
 
+	static {
+		DatabaseLayer.useMocks();
+	}
+
 	@IsTest
 	private static void shouldNotHavePermissionUnlessGranted() {
-		DatabaseLayer.useMocks();
-
 		Test.startTest();
 		Boolean result = DatabaseLayer.Permissions?.hasPermission(PERMISSION_NAME);
 		Test.stopTest();
@@ -17,18 +19,16 @@ private class MockPermissionsTest {
 
 	@IsTest
 	private static void shouldGrantToRunningUser() {
-		DatabaseLayer.useMocks();
-
 		Test.startTest();
 		MockPermissions.grant(PERMISSION_NAME);
 		Test.stopTest();
 
-		Assert.isTrue(DatabaseLayer.Permissions?.hasPermission(PERMISSION_NAME), 'Running user was not granted');
+		Boolean result = DatabaseLayer.Permissions?.hasPermission(PERMISSION_NAME);
+		Assert.isTrue(result, 'Running user was not granted');
 	}
 
 	@IsTest
 	private static void shouldGrantToSpecificUser() {
-		DatabaseLayer.useMocks();
 		String otherPermissionName = 'Other_Permission';
 		User otherUser = (User) new MockRecord(User.SObjectType)?.withId()?.toSObject();
 
@@ -37,81 +37,79 @@ private class MockPermissionsTest {
 		MockPermissions.grant(otherPermissionName, otherUser);
 		Test.stopTest();
 
-		Assert.isTrue(DatabaseLayer.Permissions?.hasPermission(PERMISSION_NAME), 'Running user was not granted');
-		Assert.isFalse(
-			DatabaseLayer.Permissions?.hasPermission(otherPermissionName),
-			'Running user has a permission granted to another user'
-		);
+		Boolean result = DatabaseLayer.Permissions?.hasPermission(PERMISSION_NAME);
+		Boolean otherResult = DatabaseLayer.Permissions?.hasPermission(otherPermissionName);
+		Assert.isTrue(result, 'Running user was not granted');
+		Assert.isFalse(otherResult, 'Running user has a permission granted to another user');
 	}
 
 	@IsTest
 	private static void shouldGrantToListOfUsers() {
-		DatabaseLayer.useMocks();
 		User otherUser = (User) new MockRecord(User.SObjectType)?.withId()?.toSObject();
 
 		Test.startTest();
 		MockPermissions.grant(PERMISSION_NAME, new List<User>{ otherUser, RUNNING_USER });
 		Test.stopTest();
 
-		Assert.isTrue(DatabaseLayer.Permissions?.hasPermission(PERMISSION_NAME), 'Running user was not granted');
+		Boolean result = DatabaseLayer.Permissions?.hasPermission(PERMISSION_NAME);
+		Assert.isTrue(result, 'Running user was not granted');
 	}
 
 	@IsTest
 	private static void shouldGrantToUserRunningCode() {
-		DatabaseLayer.useMocks();
 		User testUser = MockPermissionsTest.insertUser();
-		Boolean result;
+		Boolean testUserResult;
 
 		Test.startTest();
 		MockPermissions.grant(PERMISSION_NAME, testUser);
 		System.runAs(testUser) {
-			result = DatabaseLayer.Permissions?.hasPermission(PERMISSION_NAME);
+			testUserResult = DatabaseLayer.Permissions?.hasPermission(PERMISSION_NAME);
 		}
 		Test.stopTest();
 
-		Assert.isTrue(result, 'User running code was not granted');
-		Assert.isFalse(DatabaseLayer.Permissions?.hasPermission(PERMISSION_NAME), 'Granted to the wrong user');
+		Boolean runningUserResult = DatabaseLayer.Permissions?.hasPermission(PERMISSION_NAME);
+		Assert.isTrue(testUserResult, 'User running code was not granted');
+		Assert.isFalse(runningUserResult, 'Granted to the wrong user');
 	}
 
 	@IsTest
 	private static void shouldRevokeFromRunningUser() {
-		DatabaseLayer.useMocks();
 		MockPermissions.grant(PERMISSION_NAME);
 
 		Test.startTest();
 		MockPermissions.revoke(PERMISSION_NAME);
 		Test.stopTest();
 
-		Assert.isFalse(DatabaseLayer.Permissions?.hasPermission(PERMISSION_NAME), 'Was not revoked');
+		Boolean result = DatabaseLayer.Permissions?.hasPermission(PERMISSION_NAME);
+		Assert.isFalse(result, 'Was not revoked');
 	}
 
 	@IsTest
 	private static void shouldRevokeFromSpecificUser() {
-		DatabaseLayer.useMocks();
 		MockPermissions.grant(PERMISSION_NAME);
 
 		Test.startTest();
 		MockPermissions.revoke(PERMISSION_NAME, RUNNING_USER);
 		Test.stopTest();
 
-		Assert.isFalse(DatabaseLayer.Permissions?.hasPermission(PERMISSION_NAME), 'Was not revoked');
+		Boolean result = DatabaseLayer.Permissions?.hasPermission(PERMISSION_NAME);
+		Assert.isFalse(result, 'Was not revoked');
 	}
 
 	@IsTest
 	private static void shouldRevokeFromListOfUsers() {
-		DatabaseLayer.useMocks();
 		MockPermissions.grant(PERMISSION_NAME);
 
 		Test.startTest();
 		MockPermissions.revoke(PERMISSION_NAME, new List<User>{ RUNNING_USER });
 		Test.stopTest();
 
-		Assert.isFalse(DatabaseLayer.Permissions?.hasPermission(PERMISSION_NAME), 'Was not revoked');
+		Boolean result = DatabaseLayer.Permissions?.hasPermission(PERMISSION_NAME);
+		Assert.isFalse(result, 'Was not revoked');
 	}
 
 	@IsTest
 	private static void shouldGrantToAllUsers() {
-		DatabaseLayer.useMocks();
 		User testUser = MockPermissionsTest.insertUser();
 		Boolean testUserResult;
 
@@ -122,122 +120,127 @@ private class MockPermissionsTest {
 		}
 		Test.stopTest();
 
-		Assert.isTrue(DatabaseLayer.Permissions?.hasPermission(PERMISSION_NAME), 'Running user was not granted');
+		Boolean runningUserResult = DatabaseLayer.Permissions?.hasPermission(PERMISSION_NAME);
+		Assert.isTrue(runningUserResult, 'Running user was not granted');
 		Assert.isTrue(testUserResult, 'Other user was not granted');
 	}
 
 	@IsTest
 	private static void shouldRevokeFromAllUsers() {
-		DatabaseLayer.useMocks();
 		MockPermissions.grantToAll(PERMISSION_NAME);
 
 		Test.startTest();
 		MockPermissions.revokeFromAll(PERMISSION_NAME);
 		Test.stopTest();
 
-		Assert.isFalse(DatabaseLayer.Permissions?.hasPermission(PERMISSION_NAME), 'Was not revoked');
+		Boolean result = DatabaseLayer.Permissions?.hasPermission(PERMISSION_NAME);
+		Assert.isFalse(result, 'Was not revoked');
 	}
 
 	@IsTest
 	private static void shouldRevokeFromUserAfterGrantToAll() {
-		DatabaseLayer.useMocks();
 		MockPermissions.grantToAll(PERMISSION_NAME);
 
 		Test.startTest();
 		MockPermissions.revoke(PERMISSION_NAME);
 		Test.stopTest();
 
-		Assert.isFalse(DatabaseLayer.Permissions?.hasPermission(PERMISSION_NAME), 'Most recent revoke should win');
+		Boolean result = DatabaseLayer.Permissions?.hasPermission(PERMISSION_NAME);
+		Assert.isFalse(result, 'Most recent revoke should win');
 	}
 
 	@IsTest
 	private static void shouldGrantToAllAfterUserRevoke() {
-		DatabaseLayer.useMocks();
 		MockPermissions.revoke(PERMISSION_NAME);
 
 		Test.startTest();
 		MockPermissions.grantToAll(PERMISSION_NAME);
 		Test.stopTest();
 
-		Assert.isTrue(DatabaseLayer.Permissions?.hasPermission(PERMISSION_NAME), 'Most recent grant should win');
+		Boolean result = DatabaseLayer.Permissions?.hasPermission(PERMISSION_NAME);
+		Assert.isTrue(result, 'Most recent grant should win');
 	}
 
 	@IsTest
 	private static void shouldRevokeFromAllAfterUserGrant() {
-		DatabaseLayer.useMocks();
 		MockPermissions.grant(PERMISSION_NAME);
 
 		Test.startTest();
 		MockPermissions.revokeFromAll(PERMISSION_NAME);
 		Test.stopTest();
 
-		Assert.isFalse(DatabaseLayer.Permissions?.hasPermission(PERMISSION_NAME), 'Most recent revoke should win');
+		Boolean result = DatabaseLayer.Permissions?.hasPermission(PERMISSION_NAME);
+		Assert.isFalse(result, 'Most recent revoke should win');
 	}
 
 	@IsTest
 	private static void shouldNotStackRepeatedGrants() {
-		DatabaseLayer.useMocks();
 		MockPermissions.grant(PERMISSION_NAME);
 
 		Test.startTest();
 		MockPermissions.grant(PERMISSION_NAME);
-		Assert.isTrue(DatabaseLayer.Permissions?.hasPermission(PERMISSION_NAME), 'Repeated grant was not a no-op');
+		Boolean grantedResult = DatabaseLayer.Permissions?.hasPermission(PERMISSION_NAME);
 		MockPermissions.revoke(PERMISSION_NAME);
 		Test.stopTest();
 
-		Assert.isFalse(DatabaseLayer.Permissions?.hasPermission(PERMISSION_NAME), 'One revoke should undo two grants');
+		Boolean revokedResult = DatabaseLayer.Permissions?.hasPermission(PERMISSION_NAME);
+		Assert.isTrue(grantedResult, 'Repeated grant was not a no-op');
+		Assert.isFalse(revokedResult, 'One revoke should undo two grants');
 	}
 
 	@IsTest
 	private static void shouldNotStackRepeatedRevokes() {
-		DatabaseLayer.useMocks();
 		MockPermissions.revoke(PERMISSION_NAME);
 
 		Test.startTest();
 		MockPermissions.revoke(PERMISSION_NAME);
-		Assert.isFalse(DatabaseLayer.Permissions?.hasPermission(PERMISSION_NAME), 'Repeated revoke was not a no-op');
+		Boolean revokedResult = DatabaseLayer.Permissions?.hasPermission(PERMISSION_NAME);
 		MockPermissions.grant(PERMISSION_NAME);
 		Test.stopTest();
 
-		Assert.isTrue(DatabaseLayer.Permissions?.hasPermission(PERMISSION_NAME), 'One grant should undo two revokes');
+		Boolean grantedResult = DatabaseLayer.Permissions?.hasPermission(PERMISSION_NAME);
+		Assert.isFalse(revokedResult, 'Repeated revoke was not a no-op');
+		Assert.isTrue(grantedResult, 'One grant should undo two revokes');
 	}
 
 	@IsTest
 	private static void shouldIgnoreCase() {
-		DatabaseLayer.useMocks();
-
 		Test.startTest();
 		MockPermissions.grant('SBQQ__Some_Permission');
 		Test.stopTest();
 
-		Assert.isTrue(DatabaseLayer.Permissions?.hasPermission('sbqq__some_permission'), 'Should ignore case');
+		Boolean result = DatabaseLayer.Permissions?.hasPermission('sbqq__some_permission');
+		Assert.isTrue(result, 'Should ignore case');
 	}
 
 	@IsTest
 	private static void shouldReturnFalseForBlankPermissionName() {
-		DatabaseLayer.useMocks();
-
 		Test.startTest();
 		MockPermissions.grantToAll('');
 		MockPermissions.grantToAll(null);
 		Test.stopTest();
 
-		Assert.isFalse(DatabaseLayer.Permissions?.hasPermission(''), 'Blank permission name should return false');
-		Assert.isFalse(DatabaseLayer.Permissions?.hasPermission(null), 'Null permission name should return false');
+		Boolean blankResult = DatabaseLayer.Permissions?.hasPermission('');
+		Boolean nullResult = DatabaseLayer.Permissions?.hasPermission(null);
+		Assert.isFalse(blankResult, 'Blank permission name should return false');
+		Assert.isFalse(nullResult, 'Null permission name should return false');
 	}
 
 	@IsTest
 	private static void shouldNotAffectRealPermissions() {
-		// Mocks were never enabled; DatabaseLayer.Permissions should check the real permission
+		DatabaseLayer.useRealPermissions();
+
 		Test.startTest();
 		MockPermissions.grant(PERMISSION_NAME);
 		Test.stopTest();
 
-		Assert.isFalse(DatabaseLayer.Permissions?.hasPermission(PERMISSION_NAME), 'Used a mock grant');
+		Boolean result = DatabaseLayer.Permissions?.hasPermission(PERMISSION_NAME);
+		Assert.isFalse(result, 'Used a mock grant');
 	}
 
 	// **** HELPER **** //
 	private static User insertUser() {
+		// System.runAs requires a user that exists in the database
 		String username = 'mock-permissions-' + Crypto.getRandomInteger() + '@apex-database-layer.com';
 		User testUser = new User(
 			Alias = 'mockperm',
