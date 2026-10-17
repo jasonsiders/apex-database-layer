@@ -25,6 +25,8 @@ const ELEMENT_TYPES = [
 const ICON_RECORD = "utility:record_alt";
 const ICON_RECORD_COLLECTION = "utility:record_collection";
 const SOBJECT = "SObject";
+// Shared, since creating a collator per comparison makes sorting large menus slow
+const LABEL_COLLATOR = new Intl.Collator(undefined, { sensitivity: "base" });
 const TYPE_ORDER = ["Boolean", "Currency", "Date", "DateTime", "Multipicklist", "Number", "Picklist", "String", "Time"];
 
 // UI API field data types that Flow treats as something other than text
@@ -286,12 +288,10 @@ export async function getChildSections(item, context, target, describeObject) {
  * @returns {Array} The matching sections, without any that end up empty
  */
 export function filterSections(sections, searchTerm) {
-	const term = searchTerm?.trim()?.toLowerCase();
-	const filtered = sections.map((section) => ({
-		...section,
-		items: section.items.filter((item) => matchesSearch(item, term))
-	}));
-	return term ? filtered.filter((section) => section.items.length) : sections;
+	const term = searchTerm?.trim()?.toLowerCase() ?? "";
+	return sections
+		.map((section) => ({ ...section, items: section.items.filter((item) => matchesSearch(item, term)) }))
+		.filter((section) => section.items.length);
 }
 
 /**
@@ -318,25 +318,47 @@ export async function resolveItem(path, context, describeObject) {
 }
 
 /**
+ * @description The icon Flow Builder shows for a data type.
+ * @param {String} dataType A Flow data type, ex: `Boolean`
+ * @returns {String} The icon's name; text for types without their own icon
+ */
+export function getTypeIcon(dataType) {
+	return TYPE_ICONS[dataType] ?? "utility:text";
+}
+
+/**
+ * @description Reads a boolean literal as the global constant Flow Builder saves it as, ex: `true` or "TRUE" as
+ * `$GlobalConstant.True`.
+ * @param {*} value A literal value, or a boolean global constant
+ * @returns {String} `$GlobalConstant.True` or `$GlobalConstant.False`, or null if the value isn't a boolean
+ */
+export function toBooleanConstant(value) {
+	const text = String(value).trim().toLowerCase();
+	const matches = (constant) => [constant.label, constant.value].some((name) => name.toLowerCase() === text);
+	const constant = GLOBAL_CONSTANTS.find((candidate) => candidate.dataType === "Boolean" && matches(candidate));
+	return constant?.value ?? null;
+}
+
+/**
  * @description Reads the picker's text: a partial or complete merge field, or a plain search term.
  * @param {String} text The text in the picker's input
- * @returns {Object} `{ isReference, isComplete, path }` for a complete merge field, else `{ isReference, isComplete, parentPath, searchTerm }`
+ * @returns {Object} `{ isReference, isComplete, path, parentPath, searchTerm }`, where `path` has no merge field braces,
+ * and a reference's last segment is its search term, ex: `{!accountVar.Na` searches `accountVar` for `Na`
  */
 export function parseInput(text) {
 	const trimmed = text?.trim() ?? "";
 	const isReference = trimmed.startsWith("{!");
 	const isComplete = isReference && trimmed.endsWith("}");
 	const body = isReference ? trimmed.slice(2) : trimmed;
-	const lastDot = isReference ? body.lastIndexOf(".") : -1;
-	const parsed = isComplete
-		? { isReference, isComplete, path: body.slice(0, -1) }
-		: {
-				isReference,
-				isComplete,
-				parentPath: body.slice(0, Math.max(lastDot, 0)),
-				searchTerm: body.slice(lastDot + 1)
-			};
-	return parsed;
+	const path = isComplete ? body.slice(0, -1) : body;
+	const lastDot = isReference ? path.lastIndexOf(".") : -1;
+	return {
+		isReference,
+		isComplete,
+		path,
+		parentPath: path.slice(0, Math.max(lastDot, 0)),
+		searchTerm: path.slice(lastDot + 1)
+	};
 }
 
 // **** PRIVATE **** //
@@ -516,7 +538,7 @@ function initGlobalItem(global) {
 function initItem(props) {
 	const isRecord = props.dataType === SOBJECT;
 	const recordIcon = props.isCollection ? ICON_RECORD_COLLECTION : ICON_RECORD;
-	const icon = isRecord ? recordIcon : (TYPE_ICONS[props.dataType] ?? "utility:text");
+	const icon = isRecord ? recordIcon : getTypeIcon(props.dataType);
 	return { icon, isCollection: false, isLiteral: false, drillType: null, pathLabel: props.label, ...props };
 }
 
@@ -841,7 +863,7 @@ function initTriggerItems(builderContext, context) {
  * @returns {Number} The sort order
  */
 function compareLabels(first, second) {
-	return first.label.localeCompare(second.label, undefined, { sensitivity: "base" });
+	return LABEL_COLLATOR.compare(first.label, second.label);
 }
 
 /**

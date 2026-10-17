@@ -1,20 +1,29 @@
 import { LightningElement, api } from "lwc";
+import { getTypeIcon, toBooleanConstant } from "c/flowResourceMenu";
 
 const ACCESS_LEVELS = [
 	{ label: "User Mode", value: "USER_MODE" },
 	{ label: "System Mode", value: "SYSTEM_MODE" }
 ];
-const BOOLEAN_LITERALS = [true, false, "true", "false", "$GlobalConstant.True", "$GlobalConstant.False"];
 const GENERIC_TYPES = ["T__record", "T__recordCollection", "U__record", "U__recordCollection"];
-const LABEL_ICONS = { Boolean: "utility:toggle", String: "utility:text" };
 const HOW_MANY_OPTIONS = [
 	{ label: "One", value: "one" },
 	{ label: "Multiple", value: "multiple" }
 ];
 const MULTIPLE = "multiple";
 const ONE = "one";
+const RECORDS_INPUTS = {
+	[MULTIPLE]: {
+		heading: "Insert Records from These Values",
+		label: "Record Collection",
+		name: "recordCollection",
+		noun: "record collection"
+	},
+	[ONE]: { heading: "Insert a Record from These Values", label: "Record", name: "record", noun: "record" }
+};
+const REFERENCE = "reference";
 
-// Mirrors InvocableDmlInsertRecords.Input
+// Mirrors InvocableDml.Input
 const SETTINGS = [
 	{
 		name: "accessLevel",
@@ -88,6 +97,7 @@ const DML_OPTIONS = [
 		helpText: "Run the default active assignment rule for Leads and Cases."
 	}
 ];
+const BOOLEAN_FIELDS = [...SETTINGS, ...DML_OPTIONS].filter((definition) => definition.type === "Boolean");
 
 /**
  * Custom Property Editor for the Insert Records action (`InvocableDmlInsertRecords`). Mirrors Flow Builder's
@@ -122,10 +132,6 @@ export default class DmlInsertRecordsEditor extends LightningElement {
 	_values = {};
 
 	// **** GETTERS **** //
-	get dmlOptions() {
-		return this._initFields(DML_OPTIONS);
-	}
-
 	get elementName() {
 		return this.elementInfo?.apiName;
 	}
@@ -143,21 +149,21 @@ export default class DmlInsertRecordsEditor extends LightningElement {
 	}
 
 	get records() {
-		const name = this.recordsName;
-		const input = this._values[name];
-		return { name, value: input?.value, valueDataType: input?.valueDataType, errorMessage: this._errors[name] };
+		const recordsInput = RECORDS_INPUTS[this._howMany];
+		const input = this._values[recordsInput.name];
+		return {
+			...recordsInput,
+			value: input?.value,
+			valueDataType: input?.valueDataType,
+			errorMessage: this._errors[recordsInput.name]
+		};
 	}
 
-	get recordsHeading() {
-		return this.isMultiple ? "Insert Records from These Values" : "Insert a Record from These Values";
-	}
-
-	get recordsName() {
-		return this.isMultiple ? "recordCollection" : "record";
-	}
-
-	get settings() {
-		return this._initFields(SETTINGS);
+	get sections() {
+		return [
+			{ heading: "Set Input Values", fields: this._initFields(SETTINGS) },
+			{ heading: "DML Options", fields: this._initFields(DML_OPTIONS) }
+		];
 	}
 
 	// **** API SETTERS **** //
@@ -195,7 +201,7 @@ export default class DmlInsertRecordsEditor extends LightningElement {
 	 * @param {CustomEvent} event Change on the radio group
 	 */
 	handleHowManyChange(event) {
-		const previousName = this.recordsName;
+		const previousName = this.records.name;
 		this._howMany = event.detail.value;
 		if (this._values[previousName]?.value != null) {
 			this._deleteInput(previousName);
@@ -273,7 +279,7 @@ export default class DmlInsertRecordsEditor extends LightningElement {
 			return {
 				...definition,
 				errorMessage: this._errors[definition.name],
-				labelIcon: LABEL_ICONS[definition.type],
+				labelIcon: getTypeIcon(definition.type),
 				value: input?.value,
 				valueDataType: input?.valueDataType
 			};
@@ -292,14 +298,22 @@ export default class DmlInsertRecordsEditor extends LightningElement {
 	}
 
 	/**
+	 * @description Whether an input holds a typed-in value, not a resource; only those can be checked before the flow runs
+	 * @param {Object} input A saved input value
+	 * @returns {Boolean} True for literals
+	 */
+	_isLiteral(input) {
+		return input?.value != null && input.valueDataType !== REFERENCE;
+	}
+
+	/**
 	 * @description Checks that a literal access level is one the action accepts.
 	 * @returns {Object} An error, or null
 	 */
 	_validateAccessLevel() {
 		const input = this._values.accessLevel;
-		const isLiteral = input?.value != null && input.valueDataType !== "reference";
-		const level = String(input?.value).toUpperCase();
-		const isValid = !isLiteral || ACCESS_LEVELS.some((option) => option.value === level);
+		const level = String(input?.value).trim().toUpperCase();
+		const isValid = !this._isLiteral(input) || ACCESS_LEVELS.some((option) => option.value === level);
 		return isValid ? null : { key: "accessLevel", errorString: "Enter USER_MODE or SYSTEM_MODE." };
 	}
 
@@ -308,14 +322,10 @@ export default class DmlInsertRecordsEditor extends LightningElement {
 	 * @returns {Array} An error for each invalid boolean input
 	 */
 	_validateBooleans() {
-		const booleans = [...SETTINGS, ...DML_OPTIONS].filter((definition) => definition.type === "Boolean");
-		return booleans
-			.filter((definition) => {
-				const input = this._values[definition.name];
-				const isLiteral = input?.value != null && input.valueDataType !== "reference";
-				return isLiteral && !BOOLEAN_LITERALS.includes(input.value);
-			})
-			.map((definition) => ({ key: definition.name, errorString: "Enter True or False." }));
+		return BOOLEAN_FIELDS.filter((definition) => {
+			const input = this._values[definition.name];
+			return this._isLiteral(input) && !toBooleanConstant(input.value);
+		}).map((definition) => ({ key: definition.name, errorString: "Enter True or False." }));
 	}
 
 	/**
@@ -323,8 +333,7 @@ export default class DmlInsertRecordsEditor extends LightningElement {
 	 * @returns {Object} An error, or null
 	 */
 	_validateRecords() {
-		const name = this.recordsName;
-		const label = this.isMultiple ? "record collection" : "record";
-		return this._values[name]?.value == null ? { key: name, errorString: `Select a ${label}.` } : null;
+		const { name, noun } = this.records;
+		return this._values[name]?.value == null ? { key: name, errorString: `Select a ${noun}.` } : null;
 	}
 }

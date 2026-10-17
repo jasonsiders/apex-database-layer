@@ -1,4 +1,12 @@
-import { filterSections, getChildSections, getRootSections, parseInput, resolveItem } from "c/flowResourceMenu";
+import {
+	filterSections,
+	getChildSections,
+	getRootSections,
+	getTypeIcon,
+	parseInput,
+	resolveItem,
+	toBooleanConstant
+} from "c/flowResourceMenu";
 import CONTEXT from "./data/context.json";
 import ACCOUNT from "./data/accountDescribe.json";
 import USER from "./data/userDescribe.json";
@@ -383,12 +391,14 @@ describe("c-flow-resource-menu", () => {
 			expect(parseInput("{!accountVar.Owner.Em")).toEqual({
 				isReference: true,
 				isComplete: false,
+				path: "accountVar.Owner.Em",
 				parentPath: "accountVar.Owner",
 				searchTerm: "Em"
 			});
 			expect(parseInput("{!acc")).toEqual({
 				isReference: true,
 				isComplete: false,
+				path: "acc",
 				parentPath: "",
 				searchTerm: "acc"
 			});
@@ -398,7 +408,9 @@ describe("c-flow-resource-menu", () => {
 			expect(parseInput(" {!accountVar.Name} ")).toEqual({
 				isReference: true,
 				isComplete: true,
-				path: "accountVar.Name"
+				path: "accountVar.Name",
+				parentPath: "accountVar",
+				searchTerm: "Name"
 			});
 		});
 
@@ -406,15 +418,39 @@ describe("c-flow-resource-menu", () => {
 			expect(parseInput("hello")).toEqual({
 				isReference: false,
 				isComplete: false,
+				path: "hello",
 				parentPath: "",
 				searchTerm: "hello"
 			});
 			expect(parseInput(undefined)).toEqual({
 				isReference: false,
 				isComplete: false,
+				path: "",
 				parentPath: "",
 				searchTerm: ""
 			});
+		});
+	});
+
+	describe("toBooleanConstant", () => {
+		it("reads booleans, boolean text, and boolean constants as Flow's global constants", () => {
+			expect(toBooleanConstant(true)).toBe("$GlobalConstant.True");
+			expect(toBooleanConstant(" FALSE ")).toBe("$GlobalConstant.False");
+			expect(toBooleanConstant("$GlobalConstant.True")).toBe("$GlobalConstant.True");
+		});
+
+		it("returns null for anything else", () => {
+			expect(toBooleanConstant("yes")).toBeNull();
+			expect(toBooleanConstant("constructor")).toBeNull();
+			expect(toBooleanConstant("$GlobalConstant.EmptyString")).toBeNull();
+			expect(toBooleanConstant(undefined)).toBeNull();
+		});
+	});
+
+	describe("getTypeIcon", () => {
+		it("returns each type's icon, and text for the rest", () => {
+			expect(getTypeIcon("Boolean")).toBe("utility:toggle");
+			expect(getTypeIcon("String")).toBe("utility:text");
 		});
 	});
 });

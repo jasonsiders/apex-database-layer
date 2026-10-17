@@ -9,87 +9,49 @@
 		></lightning-radio-group>
 	</div>
 	<div class="editor-section">
-		<h3 class="slds-text-heading_small slds-var-m-bottom_small">{recordsHeading}</h3>
-		<template lwc:if={isMultiple}>
-			<c-flow-resource-picker
-				data-name="recordCollection"
-				name="recordCollection"
-				label="Record Collection"
-				type="SObject"
-				is-collection
-				required
-				value={records.value}
-				value-data-type={records.valueDataType}
-				error-message={records.errorMessage}
-				builder-context={builderContext}
-				element-name={elementName}
-				automatic-output-variables={automaticOutputVariables}
-				onchange={handleRecordsChange}
-			></c-flow-resource-picker>
-		</template>
-		<template lwc:else>
-			<c-flow-resource-picker
-				data-name="record"
-				name="record"
-				label="Record"
-				type="SObject"
-				required
-				value={records.value}
-				value-data-type={records.valueDataType}
-				error-message={records.errorMessage}
-				builder-context={builderContext}
-				element-name={elementName}
-				automatic-output-variables={automaticOutputVariables}
-				onchange={handleRecordsChange}
-			></c-flow-resource-picker>
-		</template>
+		<h3 class="slds-text-heading_small slds-var-m-bottom_small">{records.heading}</h3>
+		<c-flow-resource-picker
+			data-name={records.name}
+			name={records.name}
+			label={records.label}
+			type="SObject"
+			is-collection={isMultiple}
+			required
+			value={records.value}
+			value-data-type={records.valueDataType}
+			error-message={records.errorMessage}
+			builder-context={builderContext}
+			element-name={elementName}
+			automatic-output-variables={automaticOutputVariables}
+			onchange={handleRecordsChange}
+		></c-flow-resource-picker>
 		<p class="slds-text-body_regular slds-var-m-top_small">
 			Make sure that ID is blank. After the records are inserted, find their IDs in the action's Record outputs.
 		</p>
 	</div>
-	<div class="editor-section">
-		<h3 class="slds-text-heading_small slds-var-m-bottom_small">Set Input Values</h3>
-		<template for:each={settings} for:item="field">
-			<c-flow-resource-picker
-				key={field.name}
-				class="slds-var-m-bottom_small"
-				data-name={field.name}
-				name={field.name}
-				label={field.label}
-				label-icon={field.labelIcon}
-				help-text={field.helpText}
-				type={field.type}
-				picklist-values={field.picklistValues}
-				value={field.value}
-				value-data-type={field.valueDataType}
-				error-message={field.errorMessage}
-				builder-context={builderContext}
-				element-name={elementName}
-				automatic-output-variables={automaticOutputVariables}
-				onchange={handleInputChange}
-			></c-flow-resource-picker>
-		</template>
-	</div>
-	<div class="editor-section">
-		<h3 class="slds-text-heading_small slds-var-m-bottom_small">DML Options</h3>
-		<template for:each={dmlOptions} for:item="field">
-			<c-flow-resource-picker
-				key={field.name}
-				class="slds-var-m-bottom_small"
-				data-name={field.name}
-				name={field.name}
-				label={field.label}
-				label-icon={field.labelIcon}
-				help-text={field.helpText}
-				type={field.type}
-				value={field.value}
-				value-data-type={field.valueDataType}
-				error-message={field.errorMessage}
-				builder-context={builderContext}
-				element-name={elementName}
-				automatic-output-variables={automaticOutputVariables}
-				onchange={handleInputChange}
-			></c-flow-resource-picker>
-		</template>
-	</div>
+	<template for:each={sections} for:item="section">
+		<div key={section.heading} class="editor-section">
+			<h3 class="slds-text-heading_small slds-var-m-bottom_small">{section.heading}</h3>
+			<template for:each={section.fields} for:item="field">
+				<c-flow-resource-picker
+					key={field.name}
+					class="slds-var-m-bottom_small"
+					data-name={field.name}
+					name={field.name}
+					label={field.label}
+					label-icon={field.labelIcon}
+					help-text={field.helpText}
+					type={field.type}
+					picklist-values={field.picklistValues}
+					value={field.value}
+					value-data-type={field.valueDataType}
+					error-message={field.errorMessage}
+					builder-context={builderContext}
+					element-name={elementName}
+					automatic-output-variables={automaticOutputVariables}
+					onchange={handleInputChange}
+				></c-flow-resource-picker>
+			</template>
+		</div>
+	</template>
 </template>

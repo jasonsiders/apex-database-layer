@@ -1,8 +1,14 @@
 import { LightningElement, api, wire } from "lwc";
 import { getObjectInfos } from "lightning/uiObjectInfoApi";
-import { filterSections, getChildSections, getRootSections, parseInput, resolveItem } from "c/flowResourceMenu";
+import {
+	filterSections,
+	getChildSections,
+	getRootSections,
+	parseInput,
+	resolveItem,
+	toBooleanConstant
+} from "c/flowResourceMenu";
 
-const BOOLEAN_CONSTANTS = { false: "$GlobalConstant.False", true: "$GlobalConstant.True" };
 const GLOBAL_CONSTANT_PREFIX = "$GlobalConstant.";
 const REFERENCE = "reference";
 const ROOT_LABEL = "All Resources";
@@ -472,11 +478,7 @@ export default class FlowResourcePicker extends LightningElement {
 	 */
 	async _loadMenu() {
 		const requestId = ++this._requestId;
-		const parsed = parseInput(this._text);
-		const path = parsed.isComplete ? parsed.path : `${parsed.parentPath}.${parsed.searchTerm}`;
-		const lastDot = path.lastIndexOf(".");
-		const parentPath = parsed.isReference ? path.slice(0, Math.max(lastDot, 0)) : "";
-		const searchTerm = parsed.isReference ? path.slice(lastDot + 1) : parsed.searchTerm;
+		const { parentPath, path, searchTerm } = parseInput(this._text);
 		const parent = parentPath ? await resolveItem(parentPath, this.context, this._describeObject) : null;
 		const sections = parent
 			? await getChildSections(parent, this.context, this.target, this._describeObject)
@@ -551,11 +553,7 @@ export default class FlowResourcePicker extends LightningElement {
 	async _refreshSelection() {
 		const refreshId = ++this._refreshId;
 		const value = this._value;
-		const isBooleanLiteral = typeof value === "boolean" || /^(true|false)$/i.test(String(value));
-		const booleanPath =
-			this._valueDataType === "Boolean" && isBooleanLiteral
-				? BOOLEAN_CONSTANTS[String(value).toLowerCase()]
-				: null;
+		const booleanPath = this._valueDataType === "Boolean" ? toBooleanConstant(value) : null;
 		const isConstant = String(value).startsWith(GLOBAL_CONSTANT_PREFIX);
 		const path = this._valueDataType === REFERENCE || isConstant ? value : booleanPath;
 		this._text = path || value == null ? "" : String(value);
@@ -572,7 +570,7 @@ export default class FlowResourcePicker extends LightningElement {
 	 */
 	_saveText() {
 		const parsed = parseInput(this._text);
-		const booleanConstant = this.type === "Boolean" ? BOOLEAN_CONSTANTS[this._text.trim().toLowerCase()] : null;
+		const booleanConstant = this.type === "Boolean" ? toBooleanConstant(this._text) : null;
 		const referencePath = parsed.isComplete ? parsed.path : booleanConstant;
 		const isUnfinished = parsed.isReference && !parsed.isComplete;
 		const hasText = this._text.trim() !== "";
