@@ -278,14 +278,22 @@ public inherited sharing class InvocableDmlInsertRecords {
 		private InvocableDmlInsertRecords.Input input;
 
 		/**
+		 * @description No-arg constructor, required for invocable variable classes.
+		 */
+		public Output() {
+			this.recordCollection = new List<SObject>();
+			this.resultCollection = new List<InvocableDmlResult>();
+		}
+
+		/**
 		 * @description Creates an output for the given input, before its records are inserted.
 		 * @param input The input this output reports on
 		 */
 		private Output(InvocableDmlInsertRecords.Input input) {
+			this();
 			this.input = input;
 			this.recordCollection = input?.getRecords();
 			this.record = this.recordCollection?.isEmpty() ? null : this.recordCollection?.get(0);
-			this.resultCollection = new List<InvocableDmlResult>();
 		}
 
 		/**

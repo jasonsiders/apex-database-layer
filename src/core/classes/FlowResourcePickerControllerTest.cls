@@ -3,18 +3,20 @@
 private class FlowResourcePickerControllerTest {
 	@IsTest
 	private static void shouldDescribeObject() {
+		Schema.DescribeSObjectResult contactDescribe = Contact.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED);
+
 		Test.startTest();
 		FlowResourcePickerController.ObjectDescribe describe = FlowResourcePickerController.describeObject('Contact');
 		Test.stopTest();
 
 		Assert.areEqual('Contact', describe?.apiName, 'Wrong apiName');
-		Assert.areEqual(Contact.SObjectType.getDescribe().getLabel(), describe?.label, 'Wrong label');
-		Assert.areEqual(Contact.SObjectType.getDescribe().getLabelPlural(), describe?.labelPlural, 'Wrong labelPlural');
+		Assert.areEqual(contactDescribe.getLabel(), describe?.label, 'Wrong label');
+		Assert.areEqual(contactDescribe.getLabelPlural(), describe?.labelPlural, 'Wrong labelPlural');
 		Map<String, FlowResourcePickerController.FieldDescribe> fields = new Map<String, FlowResourcePickerController.FieldDescribe>();
 		for (FlowResourcePickerController.FieldDescribe field : describe?.fields) {
 			fields.put(field?.apiName, field);
 		}
-		Assert.areEqual(Contact.SObjectType.getDescribe().fields.getMap().size(), fields.size(), 'Wrong # of fields');
+		Assert.areEqual(contactDescribe.fields.getMap().size(), fields.size(), 'Wrong # of fields');
 		FlowResourcePickerController.FieldDescribe lastName = fields.get('LastName');
 		Assert.areEqual(Contact.LastName.getDescribe().getLabel(), lastName?.label, 'Wrong field label');
 		Assert.areEqual('STRING', lastName?.dataType, 'Wrong field dataType');

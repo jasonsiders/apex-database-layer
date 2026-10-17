@@ -13,7 +13,11 @@ public with sharing class FlowResourcePickerController {
 	public static FlowResourcePickerController.ObjectDescribe describeObject(String objectApiName) {
 		try {
 			List<String> objectApiNames = new List<String>{ objectApiName };
-			Schema.DescribeSObjectResult describe = Schema.describeSObjects(objectApiNames)?.get(0);
+			Schema.DescribeSObjectResult describe = Schema.describeSObjects(
+					objectApiNames,
+					SObjectDescribeOptions.DEFERRED
+				)
+				?.get(0);
 			return new FlowResourcePickerController.ObjectDescribe(describe);
 		} catch (System.InvalidParameterValueException error) {
 			throw new System.AuraHandledException(error?.getMessage());
