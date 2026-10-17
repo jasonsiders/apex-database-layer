@@ -254,21 +254,6 @@ export default class DmlInsertRecordsEditor extends LightningElement {
 	}
 
 	/**
-	 * @description Types the action's generic inputs and outputs to the chosen object; skipped when the object isn't known
-	 * @param {Object} detail The records picker's change: `{ value, objectType }`
-	 */
-	_setGenericTypes(detail) {
-		const hasObject = detail.value != null && Boolean(detail.objectType);
-		const typeNames = hasObject ? GENERIC_TYPES : [];
-		typeNames.forEach((typeName) => {
-			this._dispatch("configuration_editor_generic_type_mapping_changed", {
-				typeName,
-				typeValue: detail.objectType
-			});
-		});
-	}
-
-	/**
 	 * @description Combines input definitions with their saved values and errors.
 	 * @param {Array} definitions The inputs to show
 	 * @returns {Array} The inputs, ready for `c-flow-resource-picker`
@@ -304,6 +289,21 @@ export default class DmlInsertRecordsEditor extends LightningElement {
 	 */
 	_isLiteral(input) {
 		return input?.value != null && input.valueDataType !== REFERENCE;
+	}
+
+	/**
+	 * @description Types the action's generic inputs and outputs to the chosen object; skipped when the object isn't known
+	 * @param {Object} detail The records picker's change: `{ value, objectType }`
+	 */
+	_setGenericTypes(detail) {
+		const hasObject = detail.value != null && Boolean(detail.objectType);
+		const typeNames = hasObject ? GENERIC_TYPES : [];
+		typeNames.forEach((typeName) => {
+			this._dispatch("configuration_editor_generic_type_mapping_changed", {
+				typeName,
+				typeValue: detail.objectType
+			});
+		});
 	}
 
 	/**

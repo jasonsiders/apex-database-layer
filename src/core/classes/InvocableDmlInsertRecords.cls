@@ -1,6 +1,6 @@
 /**
  * @description Flow action that inserts records via `DatabaseLayer.Dml`, exposing the access level, all-or-none
- * behavior, and every `Database.DmlOptions` setting.
+ * behavior, and every `Database.DmlOptions` setting
  */
 public inherited sharing class InvocableDmlInsertRecords extends InvocableDml {
 	// **** PUBLIC **** //

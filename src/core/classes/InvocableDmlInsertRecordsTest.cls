@@ -187,11 +187,11 @@ private class InvocableDmlInsertRecordsTest {
 	private static void shouldBulkifyInputs() {
 		DatabaseLayer.useMockDml();
 		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
-		List<InvocableDml.Input> inputs = new List<InvocableDml.Input>();
+		List<InvocableDml.Input> inputs = new List<InvocableDml.Input>{};
 		for (Account account : InvocableDmlInsertRecordsTest.initAccounts(TEST_SIZE)) {
 			InvocableDml.Input input = new InvocableDml.Input();
 			input.record = account;
-			inputs.add(input);
+			inputs?.add(input);
 		}
 
 		Test.startTest();
@@ -236,9 +236,10 @@ private class InvocableDmlInsertRecordsTest {
 
 	// **** HELPER **** //
 	private static List<Account> initAccounts(Integer numRecords) {
-		List<Account> accounts = new List<Account>();
+		List<Account> accounts = new List<Account>{};
 		for (Integer i = 0; i < numRecords; i++) {
-			accounts.add(new Account(Name = 'Test Account #' + i));
+			Account account = new Account(Name = 'Test Account #' + i);
+			accounts?.add(account);
 		}
 		return accounts;
 	}

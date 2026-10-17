@@ -1,12 +1,12 @@
 /**
  * @description Shared by the DML flow actions: their inputs, outputs, and bulk handling. Each action supplies its DML
- * operation, via `doDml`.
+ * operation, via `doDml`
  */
 public abstract inherited sharing class InvocableDml {
 	// **** PUBLIC **** //
 	/**
 	 * @description Flow bulkifies interviews into one call; they share one DML operation, so a bulk run can't exhaust
-	 * the DML statement limit. One operation can only have one set of settings, so the first input's apply to all.
+	 * the DML statement limit. One operation can only have one set of settings, so the first input's apply to all
 	 * @param inputs One input per flow interview
 	 * @return One output per input, in the same order
 	 */
@@ -176,10 +176,7 @@ public abstract inherited sharing class InvocableDml {
 		 * @return Every record in this input
 		 */
 		private List<SObject> getRecords() {
-			List<SObject> records = new List<SObject>{};
-			if (this.record != null) {
-				records?.add(this.record);
-			}
+			List<SObject> records = this.record == null ? new List<SObject>{} : new List<SObject>{ this.record };
 			records?.addAll(this.recordCollection ?? new List<SObject>{});
 			return records;
 		}

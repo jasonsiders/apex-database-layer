@@ -121,28 +121,6 @@ export default class FlowResourcePicker extends LightningElement {
 		}
 	}
 
-	// **** WIRED **** //
-	/**
-	 * @description Settles each pending describe; results arrive in the order their objects were requested. A failed
-	 * describe is forgotten, so the next request for it retries.
-	 * @param {Object} response The wire's `{ data, error }`
-	 */
-	@wire(getObjectInfos, { objectApiNames: "$_describeNames" })
-	wiredDescribes({ data, error }) {
-		this._describeNames?.forEach((objectApiName, index) => {
-			const response = data?.results?.[index];
-			const request = this._describes.get(objectApiName);
-			const isSuccess = response?.statusCode === 200;
-			const isFailure = Boolean(error) || (response != null && !isSuccess);
-			if (isSuccess) {
-				request?.resolve(response.result);
-			} else if (isFailure) {
-				this._describes.delete(objectApiName);
-				request?.reject(new Error(`Couldn't describe ${objectApiName}`));
-			}
-		});
-	}
-
 	// **** GETTERS **** //
 	get activeDescendant() {
 		return this._activeIndex >= 0 ? `option-${this._activeIndex}` : null;
@@ -282,6 +260,28 @@ export default class FlowResourcePicker extends LightningElement {
 	set valueDataType(value) {
 		this._valueDataType = value;
 		this._refreshSelection();
+	}
+
+	// **** WIRED **** //
+	/**
+	 * @description Settles each pending describe; results arrive in the order their objects were requested. A failed
+	 * describe is forgotten, so the next request for it retries.
+	 * @param {Object} response The wire's `{ data, error }`
+	 */
+	@wire(getObjectInfos, { objectApiNames: "$_describeNames" })
+	wiredDescribes({ data, error }) {
+		this._describeNames?.forEach((objectApiName, index) => {
+			const response = data?.results?.[index];
+			const request = this._describes.get(objectApiName);
+			const isSuccess = response?.statusCode === 200;
+			const isFailure = Boolean(error) || (response != null && !isSuccess);
+			if (isSuccess) {
+				request?.resolve(response.result);
+			} else if (isFailure) {
+				this._describes.delete(objectApiName);
+				request?.reject(new Error(`Couldn't describe ${objectApiName}`));
+			}
+		});
 	}
 
 	// **** HANDLERS **** //
