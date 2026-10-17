@@ -1,0 +1,71 @@
+{
+	"apiName": "Account",
+	"label": "Account",
+	"labelPlural": "Accounts",
+	"fields": [
+		{
+			"apiName": "Name",
+			"label": "Account Name",
+			"dataType": "STRING",
+			"referenceTo": [],
+			"relationshipName": null
+		},
+		{
+			"apiName": "IsDeleted",
+			"label": "Deleted",
+			"dataType": "BOOLEAN",
+			"referenceTo": [],
+			"relationshipName": null
+		},
+		{
+			"apiName": "AnnualRevenue",
+			"label": "Annual Revenue",
+			"dataType": "CURRENCY",
+			"referenceTo": [],
+			"relationshipName": null
+		},
+		{
+			"apiName": "CreatedDate",
+			"label": "Created Date",
+			"dataType": "DATETIME",
+			"referenceTo": [],
+			"relationshipName": null
+		},
+		{
+			"apiName": "LastActivityDate",
+			"label": "Last Activity",
+			"dataType": "DATE",
+			"referenceTo": [],
+			"relationshipName": null
+		},
+		{
+			"apiName": "NumberOfEmployees",
+			"label": "Employees",
+			"dataType": "INTEGER",
+			"referenceTo": [],
+			"relationshipName": null
+		},
+		{
+			"apiName": "Industry",
+			"label": "Industry",
+			"dataType": "PICKLIST",
+			"referenceTo": [],
+			"relationshipName": null
+		},
+		{ "apiName": "Id", "label": "Account ID", "dataType": "ID", "referenceTo": [], "relationshipName": null },
+		{
+			"apiName": "OwnerId",
+			"label": "Owner ID",
+			"dataType": "REFERENCE",
+			"referenceTo": ["User"],
+			"relationshipName": "Owner"
+		},
+		{
+			"apiName": "ParentId",
+			"label": "Parent Account ID",
+			"dataType": "REFERENCE",
+			"referenceTo": ["Account"],
+			"relationshipName": "Parent"
+		}
+	]
+}

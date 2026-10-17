@@ -1,0 +1,713 @@
+/**
+ * Builds the menus for `c-flow-resource-picker` from a Custom Property Editor's `builderContext`, mirroring the
+ * categories, order, icons, and drill-down of Flow Builder's own resource picker.
+ */
+const DRILL_GLOBAL = "global";
+const DRILL_OUTPUTS = "outputs";
+const DRILL_RECORD = "record";
+const ICON_RECORD = "utility:record_alt";
+const ICON_RECORD_COLLECTION = "utility:record_collection";
+const SOBJECT = "SObject";
+const TYPE_ORDER = ["Boolean", "Currency", "Date", "DateTime", "Multipicklist", "Number", "Picklist", "String", "Time"];
+
+// Schema.DisplayType names that Flow treats as something other than text
+const FLOW_TYPES_BY_DISPLAY_TYPE = {
+	BOOLEAN: "Boolean",
+	CURRENCY: "Currency",
+	DATE: "Date",
+	DATETIME: "DateTime",
+	DOUBLE: "Number",
+	INTEGER: "Number",
+	LONG: "Number",
+	MULTIPICKLIST: "Multipicklist",
+	PERCENT: "Number",
+	PICKLIST: "Picklist",
+	TIME: "Time"
+};
+
+// automaticOutputVariables report data types in lowercase
+const FLOW_TYPES_BY_OUTPUT_TYPE = {
+	apex: "Apex",
+	boolean: "Boolean",
+	currency: "Currency",
+	date: "Date",
+	datetime: "DateTime",
+	number: "Number",
+	sobject: SOBJECT,
+	string: "String"
+};
+
+const TYPE_ICONS = {
+	Boolean: "utility:toggle",
+	Currency: "utility:currency",
+	Date: "utility:event",
+	DateTime: "utility:date_time",
+	Multipicklist: "utility:multi_picklist",
+	Number: "utility:topic2",
+	Picklist: "utility:picklist_type",
+	Time: "utility:clock"
+};
+
+// shortcut: Flow Builder's $Api endpoints as of API v68.0; add new versions as they ship
+const API_VERSIONS = [25, 30, 40, 50, 60, 70, 80, 90, 100, 110, 111];
+for (let version = 120; version <= 680; version += 10) {
+	API_VERSIONS.push(version);
+}
+const API_FIELDS = API_VERSIONS.flatMap((version) => [
+	`Enterprise_Server_URL_${version}`,
+	`Partner_Server_URL_${version}`
+]);
+
+// Flow Builder lists a fixed set of fields for each global variable, by API name
+const GLOBAL_VARIABLES = [
+	{ value: "$Api", label: "API", icon: "utility:system_and_global_variable", fields: { String: API_FIELDS.sort() } },
+	{
+		value: "$Flow",
+		label: "Running Flow Interview",
+		icon: "utility:flow",
+		fields: {
+			Date: ["CurrentDate"],
+			DateTime: ["CurrentDateTime", "InterviewStartTime"],
+			String: ["CurrentRecord", "CurrentStage", "FaultMessage", "InterviewGuid"]
+		}
+	},
+	{
+		value: "$Organization",
+		label: "Running Org",
+		icon: "utility:company",
+		fields: {
+			Number: ["Latitude", "Longitude"],
+			Picklist: ["GeocodeAccuracy", "UiSkin"],
+			String: [
+				"Address",
+				"City",
+				"Country",
+				"Division",
+				"Fax",
+				"GoogleAppsDomain",
+				"Id",
+				"Name",
+				"Phone",
+				"PostalCode",
+				"State",
+				"Street"
+			]
+		}
+	},
+	{
+		value: "$User",
+		label: "Running User",
+		icon: "utility:user",
+		fields: {
+			Boolean: ["IsActive"],
+			Number: ["Latitude", "Longitude"],
+			Picklist: [
+				"EndDay",
+				"GeocodeAccuracy",
+				"LanguageLocaleKey",
+				"LocaleSidKey",
+				"StartDay",
+				"TimeZoneSidKey",
+				"UserType"
+			],
+			String: [
+				"Address",
+				"Alias",
+				"City",
+				"CommunityNickname",
+				"CompanyName",
+				"ContactId",
+				"Country",
+				"Department",
+				"Division",
+				"Email",
+				"EmployeeNumber",
+				"Extension",
+				"Fax",
+				"FederationIdentifier",
+				"FirstName",
+				"Id",
+				"LastName",
+				"ManagerId",
+				"MobilePhone",
+				"Phone",
+				"PostalCode",
+				"ProfileId",
+				"Signature",
+				"State",
+				"Street",
+				"Title",
+				"UITheme",
+				"UIThemeDisplayed",
+				"Username",
+				"UserRoleId"
+			]
+		}
+	},
+	{
+		value: "$Profile",
+		label: "Running User Profile",
+		icon: "utility:user_role",
+		fields: {
+			Boolean: ["ManageUsers"],
+			DateTime: ["CreatedDate", "LastModifiedDate"],
+			Picklist: ["UsageType", "UserType"],
+			String: ["CreatedById", "Description", "Id", "LastModifiedById", "Name"]
+		}
+	},
+	{
+		value: "$UserRole",
+		label: "Running User Role",
+		icon: "utility:user_role",
+		fields: {
+			Boolean: ["MayForecastManagerShare"],
+			DateTime: ["LastModifiedDate"],
+			Picklist: [
+				"CaseAccessForAccountOwner",
+				"ContactAccessForAccountOwner",
+				"OpportunityAccessForAccountOwner",
+				"PortalRole",
+				"PortalType"
+			],
+			String: ["DeveloperName", "Id", "LastModifiedById", "Name", "RollupDescription"]
+		}
+	},
+	{
+		value: "$System",
+		label: "System",
+		icon: "utility:system_and_global_variable",
+		fields: { DateTime: ["OriginDateTime"] }
+	}
+];
+
+const GLOBAL_CONSTANTS = [
+	{ value: "$GlobalConstant.False", label: "False", dataType: "Boolean" },
+	{ value: "$GlobalConstant.True", label: "True", dataType: "Boolean" },
+	{ value: "$GlobalConstant.EmptyString", label: "Blank Value (Empty String)", dataType: "String" }
+];
+
+/**
+ * @description Builds the top-level menu: every resource in the flow that fits the target input, or contains one that does.
+ * @param {Object} context `{ builderContext, automaticOutputVariables, objectLabels }`
+ * @param {Object} target The input being configured: `{ dataType, isCollection, objectType, picklistValues }`. Null includes everything.
+ * @returns {Array} Sections of `{ label, items }`, in Flow Builder's order
+ */
+export function getRootSections(context, target) {
+	const builderContext = context?.builderContext ?? {};
+	const variables = (builderContext.variables ?? []).map(initVariableItem);
+	const lookups = (builderContext.recordLookups ?? [])
+		.filter((lookup) => lookup.storeOutputAutomatically)
+		.map((lookup) => initLookupItem(lookup, context));
+	const records = variables.filter((item) => item.dataType === SOBJECT);
+	const sections = [
+		initSection("Picklist Values", (target?.picklistValues ?? []).map(initPicklistItem), false),
+		initSection("Quick Resources", initLoopItems(builderContext, [...variables, ...lookups], context)),
+		initSection("Action", initActionItems(builderContext, context)),
+		initSection("Get Records", lookups),
+		initSection(
+			"Choices",
+			(builderContext.choices ?? []).map((choice) => initTypedItem(choice.name, choice.dataType))
+		),
+		initSection(
+			"Constants",
+			(builderContext.constants ?? []).map((constant) => initTypedItem(constant.name, constant.dataType))
+		),
+		initSection(
+			"Formulas",
+			(builderContext.formulas ?? []).map((formula) => initTypedItem(formula.name, formula.dataType))
+		),
+		initSection(
+			"Record Collections",
+			records.filter((item) => item.isCollection)
+		),
+		initSection(
+			"Record Variables",
+			records.filter((item) => !item.isCollection)
+		),
+		initSection("Screen Components", initScreenItems(builderContext)),
+		initSection(
+			"Simple Variables",
+			variables.filter((item) => item.dataType !== SOBJECT)
+		),
+		initSection("Stages", (builderContext.stages ?? []).map(initStageItem)),
+		initSection("Text Templates", (builderContext.textTemplates ?? []).map(initTextTemplateItem)),
+		initSection(
+			"Global Constants",
+			GLOBAL_CONSTANTS.map((constant) => initItem(constant)),
+			false
+		),
+		initSection("Global Variables", GLOBAL_VARIABLES.map(initGlobalItem), false)
+	];
+	return applyTarget(sections, target, context);
+}
+
+/**
+ * @description Builds the menu for drilling into an item: a record's fields, an action's outputs, or a global variable's fields.
+ * @param {Object} item The item to drill into
+ * @param {Object} context `{ builderContext, automaticOutputVariables, objectLabels }`
+ * @param {Object} target The input being configured. Null includes everything.
+ * @param {Function} describeObject Resolves an object's describe, given its API name
+ * @returns {Promise<Array>} Sections of `{ label, items }`
+ */
+export async function getChildSections(item, context, target, describeObject) {
+	const loaders = {
+		[DRILL_GLOBAL]: getGlobalSections,
+		[DRILL_OUTPUTS]: getOutputSections,
+		[DRILL_RECORD]: getRecordSections
+	};
+	const loader = loaders[item?.drillType];
+	const sections = loader ? await loader(item, context, describeObject) : [];
+	return applyTarget(sections, target, context);
+}
+
+/**
+ * @description Narrows a menu to items whose label or value contains the search term.
+ * @param {Array} sections The menu to filter
+ * @param {String} searchTerm Case-insensitive text to look for
+ * @returns {Array} The matching sections, without any that end up empty
+ */
+export function filterSections(sections, searchTerm) {
+	const term = searchTerm?.trim()?.toLowerCase();
+	const filtered = sections.map((section) => ({
+		...section,
+		items: section.items.filter((item) => matchesSearch(item, term))
+	}));
+	return term ? filtered.filter((section) => section.items.length) : sections;
+}
+
+/**
+ * @description Finds the item for a reference, walking through each step of a drilled path.
+ * @param {String} path A reference, without merge field braces, ex: `accountVar.Owner.Email`
+ * @param {Object} context `{ builderContext, automaticOutputVariables, objectLabels }`
+ * @param {Function} describeObject Resolves an object's describe, given its API name
+ * @returns {Promise<Object>} The matching item, or null if the reference doesn't exist
+ */
+export async function resolveItem(path, context, describeObject) {
+	let sections = getRootSections(context, null);
+	let item = null;
+	let value = "";
+	for (const segment of path?.split(".") ?? []) {
+		value = value ? `${value}.${segment}` : segment;
+		const match = findItem(sections, value);
+		if (match) {
+			item = match;
+			// eslint-disable-next-line no-await-in-loop
+			sections = await getChildSections(match, context, null, describeObject);
+		}
+	}
+	return item?.value === path ? item : null;
+}
+
+/**
+ * @description Reads the picker's text: a partial or complete merge field, or a plain search term.
+ * @param {String} text The text in the picker's input
+ * @returns {Object} `{ isReference, isComplete, path }` for a complete merge field, else `{ isReference, isComplete, parentPath, searchTerm }`
+ */
+export function parseInput(text) {
+	const trimmed = text?.trim() ?? "";
+	const isReference = trimmed.startsWith("{!");
+	const isComplete = isReference && trimmed.endsWith("}");
+	const body = isReference ? trimmed.slice(2) : trimmed;
+	const lastDot = isReference ? body.lastIndexOf(".") : -1;
+	const parsed = isComplete
+		? { isReference, isComplete, path: body.slice(0, -1) }
+		: {
+				isReference,
+				isComplete,
+				parentPath: body.slice(0, Math.max(lastDot, 0)),
+				searchTerm: body.slice(lastDot + 1)
+			};
+	return parsed;
+}
+
+// **** PRIVATE **** //
+/**
+ * @description Marks each item as selectable and/or drillable for the target, dropping items that are neither.
+ * @param {Array} sections The sections to evaluate
+ * @param {Object} target The input being configured. Null includes everything.
+ * @param {Object} context Used to look up action outputs
+ * @returns {Array} The sections with at least one remaining item
+ */
+function applyTarget(sections, target, context) {
+	return sections
+		.map((section) => ({
+			...section,
+			items: section.items
+				.map((item) => ({
+					...item,
+					isSelectable: isAssignable(item, target),
+					isDrillable: canDrill(item, target, context)
+				}))
+				.filter((item) => item.isSelectable || item.isDrillable)
+		}))
+		.filter((section) => section.items.length);
+}
+
+/**
+ * @description Whether an item could contain something the target accepts.
+ * @param {Object} item The item to evaluate
+ * @param {Object} target The input being configured
+ * @param {Object} context Used to look up action outputs
+ * @returns {Boolean} True if drilling into the item could find a match
+ */
+function canDrill(item, target, context) {
+	const isRecordTarget = target?.dataType === SOBJECT;
+	const checks = {
+		[DRILL_GLOBAL]: () => findGlobal(item.value).items.some((field) => isAssignable(field, target)),
+		[DRILL_OUTPUTS]: () =>
+			initOutputItems(item, context).some(
+				(output) => isAssignable(output, target) || canDrill(output, target, context)
+			),
+		[DRILL_RECORD]: () => !item.isCollection && !isRecordTarget
+	};
+	return checks[item.drillType]?.() ?? false;
+}
+
+/**
+ * @description Finds the item with the given value.
+ * @param {Array} sections The sections to search
+ * @param {String} value The value to find
+ * @returns {Object} The matching item, if any
+ */
+function findItem(sections, value) {
+	return sections.flatMap((section) => section.items).find((item) => item.value === value);
+}
+
+/**
+ * @description Finds a global variable's definition, with its fields as items.
+ * @param {String} value The global variable, ex: `$User`
+ * @returns {Object} `{ label, items }`
+ */
+function findGlobal(value) {
+	const global = GLOBAL_VARIABLES.find((candidate) => candidate.value === value);
+	const items = Object.entries(global.fields).flatMap(([dataType, names]) =>
+		names.map((name) =>
+			initItem({ value: `${value}.${name}`, label: name, pathLabel: `${value} > ${name}`, dataType })
+		)
+	);
+	return { label: global.label, items };
+}
+
+/**
+ * @description Lists a global variable's fields.
+ * @param {Object} item The global variable's item
+ * @returns {Array} One section, labeled for the global variable
+ */
+function getGlobalSections(item) {
+	const global = findGlobal(item.value);
+	return [initSection(global.label, global.items, false)];
+}
+
+/**
+ * @description Lists an action's automatically stored outputs.
+ * @param {Object} item The action's item
+ * @param {Object} context Used to look up action outputs
+ * @returns {Array} One "Outputs" section
+ */
+function getOutputSections(item, context) {
+	return [initSection("Outputs", initOutputItems(item, context), false)];
+}
+
+/**
+ * @description Lists a record's relationship fields, then its other fields, sorted by type and label like Flow Builder.
+ * @param {Object} item The record's item
+ * @param {Object} context Unused; matches the other loaders' signature
+ * @param {Function} describeObject Resolves an object's describe, given its API name
+ * @returns {Promise<Array>} "Relationship Fields" and "Record Fields" sections
+ */
+async function getRecordSections(item, context, describeObject) {
+	const describe = await describeObject(item.objectType).catch(() => null);
+	const fields = [...(describe?.fields ?? [])].sort(compareLabels);
+	const lookups = fields.filter((field) => field.relationshipName && field.referenceTo?.length);
+	const others = fields.filter((field) => !lookups.includes(field));
+	const relationships = lookups.map((field) => initRelationshipItem(field, item));
+	const lookupIds = lookups.map((field) => initFieldItem(field, item));
+	const recordFields = others.map((field) => initFieldItem(field, item)).sort(compareTypes);
+	return [
+		initSection("Relationship Fields", [...relationships, ...lookupIds], false),
+		initSection("Record Fields", recordFields, false)
+	];
+}
+
+/**
+ * @description Builds an item for each action with automatically stored outputs.
+ * @param {Object} builderContext The CPE's builder context
+ * @param {Object} context Used to look up action outputs
+ * @returns {Array} The action items
+ */
+function initActionItems(builderContext, context) {
+	return (builderContext.actionCalls ?? [])
+		.filter((action) => action.storeOutputAutomatically && context?.automaticOutputVariables?.[action.name])
+		.map((action) =>
+			initItem({
+				value: action.name,
+				label: `Outputs from ${action.label}`,
+				icon: "utility:fallback",
+				drillType: DRILL_OUTPUTS
+			})
+		);
+}
+
+/**
+ * @description Builds an item for an object field.
+ * @param {Object} field The field's describe
+ * @param {Object} parent The record the field belongs to
+ * @returns {Object} The field's item
+ */
+function initFieldItem(field, parent) {
+	const dataType = FLOW_TYPES_BY_DISPLAY_TYPE[field.dataType] ?? "String";
+	const value = `${parent.value}.${field.apiName}`;
+	return initItem({ value, label: field.label, pathLabel: `${parent.pathLabel} > ${field.label}`, dataType });
+}
+
+/**
+ * @description Builds a global variable's item.
+ * @param {Object} global The global variable's definition
+ * @returns {Object} The global variable's item
+ */
+function initGlobalItem(global) {
+	return initItem({
+		value: global.value,
+		label: global.label,
+		pathLabel: global.value,
+		icon: global.icon,
+		drillType: DRILL_GLOBAL
+	});
+}
+
+/**
+ * @description Applies defaults to an item, deriving its icon from its data type.
+ * @param {Object} props The item's properties
+ * @returns {Object} The item
+ */
+function initItem(props) {
+	const isRecord = props.dataType === SOBJECT;
+	const recordIcon = props.isCollection ? ICON_RECORD_COLLECTION : ICON_RECORD;
+	const icon = isRecord ? recordIcon : (TYPE_ICONS[props.dataType] ?? "utility:text");
+	return { icon, isCollection: false, isLiteral: false, drillType: null, pathLabel: props.label, ...props };
+}
+
+/**
+ * @description Builds the "Current Item from Loop" item for each loop that stores its current item automatically.
+ * @param {Object} builderContext The CPE's builder context
+ * @param {Array} collections Items the loops may iterate over
+ * @param {Object} context Used to look up action outputs
+ * @returns {Array} The loop items
+ */
+function initLoopItems(builderContext, collections, context) {
+	return (builderContext.loops ?? [])
+		.filter((loop) => !loop.assignNextValueToReference)
+		.map((loop) => {
+			const collection =
+				collections.find((item) => item.value === loop.collectionReference) ??
+				resolveOutput(loop.collectionReference, context);
+			const isRecord = collection?.dataType === SOBJECT;
+			return initItem({
+				value: loop.name,
+				label: `Current Item from Loop ${loop.label}`,
+				dataType: collection?.dataType,
+				objectType: collection?.objectType,
+				drillType: isRecord ? DRILL_RECORD : null
+			});
+		});
+}
+
+/**
+ * @description Builds the item for a Get Records element that stores its output automatically.
+ * @param {Object} lookup The Get Records element
+ * @param {Object} context Supplies the object's labels, once known
+ * @returns {Object} The lookup's item
+ */
+function initLookupItem(lookup, context) {
+	const isCollection = !lookup.getFirstRecordOnly;
+	const labels = context?.objectLabels?.[lookup.object];
+	const objectLabel = (isCollection ? labels?.labelPlural : labels?.label) ?? lookup.object;
+	return initItem({
+		value: lookup.name,
+		label: `${objectLabel} from ${lookup.label}`,
+		dataType: SOBJECT,
+		objectType: lookup.object,
+		isCollection,
+		drillType: DRILL_RECORD
+	});
+}
+
+/**
+ * @description Builds the items for an action's outputs, records first.
+ * @param {Object} action The action's item
+ * @param {Object} context Used to look up action outputs
+ * @returns {Array} The output items
+ */
+function initOutputItems(action, context) {
+	const outputs = context?.automaticOutputVariables?.[action.value] ?? [];
+	return outputs
+		.map((output) => {
+			const dataType = FLOW_TYPES_BY_OUTPUT_TYPE[output.dataType] ?? "String";
+			return initItem({
+				value: `${action.value}.${output.name}`,
+				label: output.label ?? output.name,
+				pathLabel: `${action.pathLabel} > ${output.label ?? output.name}`,
+				dataType,
+				objectType: output.sobjectType,
+				isCollection: output.maxOccurs > 1,
+				drillType: dataType === SOBJECT ? DRILL_RECORD : null
+			});
+		})
+		.sort(
+			(first, second) =>
+				Number(second.dataType === SOBJECT) - Number(first.dataType === SOBJECT) || compareLabels(first, second)
+		);
+}
+
+/**
+ * @description Builds a literal item for a picklist value.
+ * @param {Object} picklistValue `{ label, value }`
+ * @returns {Object} The picklist value's item
+ */
+function initPicklistItem(picklistValue) {
+	return initItem({ ...picklistValue, dataType: "String", icon: "utility:picklist_type", isLiteral: true });
+}
+
+/**
+ * @description Builds the item for a lookup relationship, which drills into the related record.
+ * @param {Object} field The lookup field's describe
+ * @param {Object} parent The record the field belongs to
+ * @returns {Object} The relationship's item
+ */
+function initRelationshipItem(field, parent) {
+	return initItem({
+		value: `${parent.value}.${field.relationshipName}`,
+		label: field.label,
+		pathLabel: `${parent.pathLabel} > ${field.label}`,
+		dataType: SOBJECT,
+		// shortcut: polymorphic lookups (ex: Owner on Case) drill into their first type; list each type if users need others
+		objectType: field.referenceTo[0],
+		drillType: DRILL_RECORD
+	});
+}
+
+/**
+ * @description Builds the items for screen components that store a value, including those nested in sections.
+ * @param {Object} builderContext The CPE's builder context
+ * @returns {Array} The screen component items
+ */
+function initScreenItems(builderContext) {
+	const flatten = (fields) => fields.flatMap((field) => [field, ...flatten(field.fields ?? [])]);
+	const fields = (builderContext.screens ?? []).flatMap((screen) => flatten(screen.fields ?? []));
+	return fields.filter((field) => field.dataType).map((field) => initTypedItem(field.name, field.dataType));
+}
+
+/**
+ * @description Wraps items in a section, sorted by label unless Flow Builder uses a fixed order.
+ * @param {String} label The section's label
+ * @param {Array} items The section's items
+ * @param {Boolean} isSorted Whether to sort the items by label
+ * @returns {Object} `{ label, items }`, with a unique key on each item
+ */
+function initSection(label, items, isSorted = true) {
+	const ordered = isSorted ? [...items].sort(compareLabels) : items;
+	return { label, items: ordered.map((item) => ({ ...item, key: `${label}:${item.value}` })) };
+}
+
+/**
+ * @description Builds a stage's item.
+ * @param {Object} stage The stage
+ * @returns {Object} The stage's item
+ */
+function initStageItem(stage) {
+	return initItem({ value: stage.name, label: stage.label, dataType: "String", icon: "utility:stage" });
+}
+
+/**
+ * @description Builds a text template's item.
+ * @param {Object} template The text template
+ * @returns {Object} The text template's item
+ */
+function initTextTemplateItem(template) {
+	return initItem({ value: template.name, label: template.name, dataType: "String", icon: "utility:text_template" });
+}
+
+/**
+ * @description Builds an item for a named resource of a given type.
+ * @param {String} name The resource's API name
+ * @param {String} dataType The resource's Flow data type
+ * @returns {Object} The resource's item
+ */
+function initTypedItem(name, dataType) {
+	return initItem({ value: name, label: name, dataType });
+}
+
+/**
+ * @description Builds a variable's item.
+ * @param {Object} variable The variable
+ * @returns {Object} The variable's item
+ */
+function initVariableItem(variable) {
+	const isRecord = variable.dataType === SOBJECT;
+	return initItem({
+		value: variable.name,
+		label: variable.name,
+		dataType: variable.dataType,
+		objectType: variable.objectType,
+		isCollection: Boolean(variable.isCollection),
+		drillType: isRecord ? DRILL_RECORD : null
+	});
+}
+
+/**
+ * @description Whether the target input accepts the item.
+ * @param {Object} item The item to evaluate
+ * @param {Object} target The input being configured. Null accepts everything.
+ * @returns {Boolean} True if the item can be selected
+ */
+function isAssignable(item, target) {
+	const isRecordTarget = target?.dataType === SOBJECT;
+	const matchesObject = !target?.objectType || item.objectType === target.objectType;
+	const matchesRecord =
+		item.dataType === SOBJECT && item.isCollection === Boolean(target?.isCollection) && matchesObject;
+	const isScalar = Boolean(item.dataType) && !item.isCollection && ![SOBJECT, "Apex"].includes(item.dataType);
+	const matchesScalar = isScalar && (target?.dataType === "String" || item.dataType === target?.dataType);
+	return !target || (isRecordTarget ? matchesRecord : matchesScalar);
+}
+
+/**
+ * @description Whether an item's label or value contains the search term.
+ * @param {Object} item The item to evaluate
+ * @param {String} term Lowercase search term
+ * @returns {Boolean} True if the item matches
+ */
+function matchesSearch(item, term) {
+	return `${item.label}\n${item.value}`.toLowerCase().includes(term);
+}
+
+/**
+ * @description Finds the action output that a reference like `Action_Name.outputName` points to.
+ * @param {String} reference The reference to resolve
+ * @param {Object} context Used to look up action outputs
+ * @returns {Object} The output's item, if any
+ */
+function resolveOutput(reference, context) {
+	const [actionName] = reference?.split(".") ?? [];
+	const action = initItem({ value: actionName, label: actionName });
+	return initOutputItems(action, context).find((output) => output.value === reference);
+}
+
+/**
+ * @description Orders items alphabetically by label, ignoring case.
+ * @param {Object} first An item or field
+ * @param {Object} second Another item or field
+ * @returns {Number} The sort order
+ */
+function compareLabels(first, second) {
+	return first.label.localeCompare(second.label, undefined, { sensitivity: "base" });
+}
+
+/**
+ * @description Orders items by data type, then by label, like Flow Builder's field lists.
+ * @param {Object} first An item
+ * @param {Object} second Another item
+ * @returns {Number} The sort order
+ */
+function compareTypes(first, second) {
+	return TYPE_ORDER.indexOf(first.dataType) - TYPE_ORDER.indexOf(second.dataType) || compareLabels(first, second);
+}

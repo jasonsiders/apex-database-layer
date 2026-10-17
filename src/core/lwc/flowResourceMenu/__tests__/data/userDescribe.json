@@ -1,0 +1,22 @@
+{
+	"apiName": "User",
+	"label": "User",
+	"labelPlural": "Users",
+	"fields": [
+		{ "apiName": "Email", "label": "Email", "dataType": "EMAIL", "referenceTo": [], "relationshipName": null },
+		{
+			"apiName": "IsActive",
+			"label": "Active",
+			"dataType": "BOOLEAN",
+			"referenceTo": [],
+			"relationshipName": null
+		},
+		{
+			"apiName": "ManagerId",
+			"label": "Manager ID",
+			"dataType": "REFERENCE",
+			"referenceTo": ["User"],
+			"relationshipName": "Manager"
+		}
+	]
+}

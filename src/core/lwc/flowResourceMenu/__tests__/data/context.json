@@ -1,0 +1,151 @@
+{
+	"builderContext": {
+		"actionCalls": [
+			{
+				"name": "Insert_Spike",
+				"label": "Insert Spike",
+				"actionName": "SpikeInsert",
+				"actionType": "apex",
+				"storeOutputAutomatically": true
+			}
+		],
+		"choices": [
+			{
+				"name": "choiceA",
+				"dataType": "String",
+				"choiceText": "Choice A"
+			}
+		],
+		"constants": [
+			{
+				"name": "constText",
+				"dataType": "String"
+			}
+		],
+		"formulas": [
+			{
+				"name": "formulaBool",
+				"dataType": "Boolean"
+			}
+		],
+		"loops": [
+			{
+				"name": "Loop_Accounts",
+				"label": "Loop Accounts",
+				"collectionReference": "Get_Accounts",
+				"assignNextValueToReference": null
+			}
+		],
+		"recordLookups": [
+			{
+				"name": "Get_Accounts",
+				"label": "Get Accounts",
+				"object": "Account",
+				"getFirstRecordOnly": false,
+				"storeOutputAutomatically": true
+			}
+		],
+		"screens": [
+			{
+				"name": "Screen_One",
+				"fields": [
+					{
+						"name": "nameInput",
+						"dataType": "String",
+						"fieldType": "InputField",
+						"fields": []
+					},
+					{
+						"name": "agreeBox",
+						"dataType": "Boolean",
+						"fieldType": "InputField",
+						"fields": []
+					},
+					{
+						"name": "displayText",
+						"fieldType": "DisplayText",
+						"fields": []
+					}
+				]
+			}
+		],
+		"stages": [
+			{
+				"name": "stageOne",
+				"label": "Stage One"
+			}
+		],
+		"start": {},
+		"textTemplates": [
+			{
+				"name": "tmplText"
+			}
+		],
+		"variables": [
+			{
+				"name": "accountsVar",
+				"dataType": "SObject",
+				"objectType": "Account",
+				"isCollection": true
+			},
+			{
+				"name": "accountVar",
+				"dataType": "SObject",
+				"objectType": "Account",
+				"isCollection": false
+			},
+			{
+				"name": "boolVar",
+				"dataType": "Boolean",
+				"objectType": null,
+				"isCollection": false
+			},
+			{
+				"name": "contactVar",
+				"dataType": "SObject",
+				"objectType": "Contact",
+				"isCollection": false
+			},
+			{
+				"name": "textCollectionVar",
+				"dataType": "String",
+				"objectType": null,
+				"isCollection": true
+			},
+			{
+				"name": "textVar",
+				"dataType": "String",
+				"objectType": null,
+				"isCollection": false
+			}
+		]
+	},
+	"automaticOutputVariables": {
+		"Insert_Spike": [
+			{
+				"name": "message",
+				"label": "Message",
+				"dataType": "string",
+				"sobjectType": null,
+				"maxOccurs": 1,
+				"apexClass": null
+			},
+			{
+				"name": "record",
+				"label": "Record",
+				"dataType": "sobject",
+				"sobjectType": "Account",
+				"maxOccurs": 1,
+				"apexClass": null
+			},
+			{
+				"name": "recordCollection",
+				"label": "Record Collection",
+				"dataType": "sobject",
+				"sobjectType": "Account",
+				"maxOccurs": 2000,
+				"apexClass": null
+			}
+		]
+	}
+}
