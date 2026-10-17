@@ -1,0 +1,16 @@
+.picker-header {
+	padding: 0.5rem 0.75rem;
+	background: var(--slds-g-color-neutral-base-95, #f3f3f3);
+}
+
+.picker-help {
+	margin-left: 0.25rem;
+}
+
+.picker-pill {
+	display: flex;
+	align-items: center;
+	cursor: pointer;
+	min-height: 2rem;
+	padding-left: 0.25rem;
+}

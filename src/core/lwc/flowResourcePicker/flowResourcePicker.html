@@ -1,0 +1,124 @@
+<template>
+	<div class={formElementClass}>
+		<label class="slds-form-element__label" for="combobox-input">
+			<abbr lwc:if={required} class="slds-required" title="required">*</abbr>{label}
+		</label>
+		<lightning-helptext lwc:if={helpText} class="picker-help" content={helpText}></lightning-helptext>
+		<div class="slds-form-element__control">
+			<div class="slds-combobox_container">
+				<div class={comboboxClass} onfocusout={handleFocusOut}>
+					<div class="slds-combobox__form-element slds-input-has-icon slds-input-has-icon_right" role="none">
+						<template lwc:if={showPill}>
+							<div class="slds-input picker-pill" onclick={handlePillClick}>
+								<lightning-pill label={selection.pathLabel} onremove={handlePillRemove}>
+									<lightning-icon
+										icon-name={selection.icon}
+										size="x-small"
+										alternative-text=""
+									></lightning-icon>
+								</lightning-pill>
+							</div>
+						</template>
+						<template lwc:else>
+							<input
+								id="combobox-input"
+								class="slds-input slds-combobox__input"
+								type="text"
+								role="combobox"
+								autocomplete="off"
+								aria-autocomplete="list"
+								aria-controls="listbox"
+								aria-describedby="error-message"
+								aria-expanded={expanded}
+								aria-activedescendant={activeDescendant}
+								placeholder={placeholder}
+								value={text}
+								onfocus={handleFocus}
+								oninput={handleInput}
+								onkeydown={handleKeyDown}
+							/>
+							<lightning-icon
+								class="slds-input__icon slds-input__icon_right"
+								icon-name="utility:search"
+								size="x-small"
+								alternative-text=""
+							></lightning-icon>
+						</template>
+					</div>
+					<div
+						lwc:if={isOpen}
+						id="listbox"
+						class="slds-dropdown slds-dropdown_length-10 slds-dropdown_fluid"
+						role="listbox"
+						aria-label={label}
+						onmousedown={handleListMouseDown}
+					>
+						<div class="picker-header slds-text-body_small">
+							<lightning-breadcrumbs lwc:if={hasCrumbs}>
+								<template for:each={crumbs} for:item="crumb">
+									<lightning-breadcrumb
+										key={crumb.index}
+										data-index={crumb.index}
+										label={crumb.label}
+										onclick={handleCrumbClick}
+									></lightning-breadcrumb>
+								</template>
+							</lightning-breadcrumbs>
+							<template lwc:else>All Resources</template>
+						</div>
+						<ul lwc:if={hasOptions} class="slds-listbox slds-listbox_vertical" role="presentation">
+							<template for:each={menu} for:item="section">
+								<li key={section.label} role="presentation" class="slds-listbox__item">
+									<div
+										class="slds-media slds-listbox__option slds-listbox__option_plain"
+										role="presentation"
+									>
+										<h3 class="slds-listbox__option-header" role="presentation">{section.label}</h3>
+									</div>
+								</li>
+								<template for:each={section.items} for:item="item">
+									<li key={item.key} role="presentation" class="slds-listbox__item">
+										<div
+											id={item.domId}
+											class={item.className}
+											role="option"
+											aria-selected={item.isActive}
+											data-key={item.key}
+											data-label={item.label}
+											onclick={handleOptionClick}
+										>
+											<span class="slds-media__figure slds-listbox__option-icon">
+												<lightning-icon
+													icon-name={item.icon}
+													size="x-small"
+													alternative-text=""
+												></lightning-icon>
+											</span>
+											<span class="slds-media__body">
+												<span class="slds-truncate" title={item.label}>{item.label}</span>
+											</span>
+											<span
+												lwc:if={item.isDrillable}
+												class="slds-media__figure slds-media__figure_reverse"
+											>
+												<lightning-icon
+													icon-name="utility:chevronright"
+													size="x-small"
+													alternative-text=""
+												></lightning-icon>
+											</span>
+										</div>
+									</li>
+								</template>
+							</template>
+						</ul>
+						<p lwc:else class="picker-empty slds-p-around_small slds-text-align_center">
+							We couldn't find any matching resources, but you can enter a value.
+						</p>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div lwc:if={errorMessage} id="error-message" class="slds-form-element__help">{errorMessage}</div>
+	</div>
+</template>
