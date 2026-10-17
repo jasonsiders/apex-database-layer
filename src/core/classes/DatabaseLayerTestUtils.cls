@@ -33,6 +33,10 @@ global class DatabaseLayerTestUtils {
 	 */
 	public class PreAndPostProcessorSpy {
 		/**
+		 * @description The most recent DML request passed to the pre-processing method.
+		 */
+		public Dml.Request lastDmlRequest { get; private set; }
+		/**
 		 * @description Number of times the pre-processing method was called.
 		 */
 		public Integer numPreCalls { get; private set; }
@@ -63,6 +67,7 @@ global class DatabaseLayerTestUtils {
 		public void processPreDml(Dml.Request request) {
 			// Should be able to serialize the Dml.Request object:
 			JSON.serialize(request, true);
+			DatabaseLayerTestUtils.DmlPluginSpy.lastDmlRequest = request;
 			DatabaseLayerTestUtils.DmlPluginSpy.numPreCalls += 1;
 		}
 
