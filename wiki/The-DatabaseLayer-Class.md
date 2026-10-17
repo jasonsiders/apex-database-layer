@@ -1,6 +1,6 @@
 The `DatabaseLayer` class serves as a centralized access point for all DML and SOQL operations within the application. It simplifies and standardizes how database interactions are performed and tested.
 
-It abstracts direct access to the Salesforce database by exposing the static properties `DatabaseLayer.Dml`, `DatabaseLayer.Soql`, `DatabaseLayer.Cmdt`, and `DatabaseLayer.Duplicates`. Callers can use these properties to perform operations without tightly coupling their logic to platform-specific implementations.
+It abstracts direct access to the Salesforce database by exposing the static properties `DatabaseLayer.Dml`, `DatabaseLayer.Soql`, `DatabaseLayer.Cmdt`, `DatabaseLayer.Duplicates`, and `DatabaseLayer.Permissions`. Callers can use these properties to perform operations without tightly coupling their logic to platform-specific implementations.
 
 Acting as a pseudo-namespace, the class organizes all database-related logic under a single, consistent API, promoting separation of concerns and reducing duplication across the codebase.
 
@@ -69,6 +69,11 @@ Assert.areEqual(0, Limits.getDmlStatements(), 'Used real DML');
       <td>Duplicates</td>
       <td>Returns the current <code>Duplicates</code> instance. For normal database operations, this is a <a href="./The-Duplicates-Class">Duplicates</a> object. For mock database operations, this is a <a href="./The-MockDuplicates-Class">MockDuplicates</a> object.</td>
     </tr>
+    <tr>
+      <td>Permissions</td>
+      <td>Permissions</td>
+      <td>Returns the current <code>Permissions</code> instance. For normal operations, this is a <a href="./The-Permissions-Class">Permissions</a> object. For mock operations, this is a <a href="./The-MockPermissions-Class">MockPermissions</a> object.</td>
+    </tr>
   </tbody>
 </table>
 
@@ -78,7 +83,7 @@ Assert.areEqual(0, Limits.getDmlStatements(), 'Used real DML');
 
 ### `useMocks`
 
-Configures the framework to use Mock DML, Mock SOQL, and Mock Duplicates operations, instead of interacting with the actual Salesforce database. Once this is called, `DatabaseLayer.Dml` will return a `MockDml` object; `Database.Soql.newQuery` will return a `MockSoql` object; `DatabaseLayer.Duplicates` will return a `MockDuplicates` object. This static method is only visible in the `@IsTest` context.
+Configures the framework to use Mock DML, Mock SOQL, Mock Duplicates, and Mock Permissions operations, instead of interacting with the actual Salesforce database. Once this is called, `DatabaseLayer.Dml` will return a `MockDml` object; `Database.Soql.newQuery` will return a `MockSoql` object; `DatabaseLayer.Duplicates` will return a `MockDuplicates` object; `DatabaseLayer.Permissions` will return a `MockPermissions` object. This static method is only visible in the `@IsTest` context.
 
 - `static void useMocks()`
 
@@ -98,8 +103,8 @@ This static method is only visible in the `@IsTest` context.
 
 ### `useRealData`
 
-Configures the framework to use real DML, SOQL, and Duplicates operations that interact with the actual Salesforce database, instead of mocks.
-This is the default state of the application; there is no need to call it unless some variation of `DatabaseLayer.useMocks()` was called earlier in the transaction. Once this is called, `DatabaseLayer.Dml` will return a `Dml` object; `Database.Soql.newQuery` will return a `Soql` object; `DatabaseLayer.Duplicates` will return a `Duplicates` object.
+Configures the framework to use real DML, SOQL, Duplicates, and Permissions operations that interact with the actual Salesforce database, instead of mocks.
+This is the default state of the application; there is no need to call it unless some variation of `DatabaseLayer.useMocks()` was called earlier in the transaction. Once this is called, `DatabaseLayer.Dml` will return a `Dml` object; `Database.Soql.newQuery` will return a `Soql` object; `DatabaseLayer.Duplicates` will return a `Duplicates` object; `DatabaseLayer.Permissions` will return a `Permissions` object.
 
 This static method is only visible in the `@IsTest` context.
 
@@ -138,6 +143,21 @@ This static method is only visible in the `@IsTest` context.
 
 - `static Duplicates useRealDuplicates()`
 
+### `useMockPermissions`
+
+Configures the framework to use Mock Permissions operations, instead of checking the running user's actual custom permissions. Once this is called, `DatabaseLayer.Permissions` will return a `MockPermissions` object. This static method is only visible in the `@IsTest` context.
+
+- `static MockPermissions useMockPermissions()`
+
+### `useRealPermissions`
+
+Configures the framework to check the running user's actual custom permissions, instead of mocks.
+This is the default state of the application; there is no need to call it unless `DatabaseLayer.useMocks()` or `DatabaseLayer.useMockPermissions()` was called earlier in the transaction. Once this is called, `DatabaseLayer.Permissions` will return a `Permissions` object.
+
+This static method is only visible in the `@IsTest` context.
+
+- `static Permissions useRealPermissions()`
+
 ### `newSoql`
 
 Convenience method to create a new SOQL query from a raw query string. This method delegates to the current SOQL provider's `newQuery(String)` method, ensuring that the returned instance will be mock-aware when `DatabaseLayer.useMocks()` has been called.
@@ -145,12 +165,15 @@ Convenience method to create a new SOQL query from a raw query string. This meth
 - `static Soql newSoql(String queryString)`
 
 **Parameters:**
+
 - `queryString` (String): The raw SOQL query string to parse
 
 **Return Value:**
+
 - Soql: A configured SOQL instance with parsed query state
 
 **Example Usage:**
+
 ```apex
 // Parse an existing query string into a Soql object
 Soql query = DatabaseLayer.newSoql('SELECT Id, Name FROM Account WHERE Type != \'Internal\' LIMIT 200');

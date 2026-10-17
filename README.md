@@ -9,7 +9,7 @@ Apex Database Layer was designed to be feature-rich, yet easy to use, closely mi
 You get the following out of the box:
 
 - Support for all standard `Database` class DML & SOQL operations
-- Easily mock [DML operations](https://github.com/jasonsiders/apex-database-layer/wiki/Mocking-DML-Operations) and [SOQL queries](https://github.com/jasonsiders/apex-database-layer/wiki/Mocking-SOQL-Queries).
+- Easily mock [DML operations](https://github.com/jasonsiders/apex-database-layer/wiki/Mocking-DML-Operations), [SOQL queries](https://github.com/jasonsiders/apex-database-layer/wiki/Mocking-SOQL-Queries), and [custom permissions](https://github.com/jasonsiders/apex-database-layer/wiki/Mocking-Custom-Permissions).
 - A [Query framework](https://github.com/jasonsiders/apex-database-layer/wiki/The-Soql-Class) that enables strongly-typed, yet dynamic SOQL queries.
 - Easily [generate test records](https://github.com/jasonsiders/apex-database-layer/wiki/Generating-Test-Records) without using DML or SOQL.
 - [Switch between real & mock database operations](https://github.com/jasonsiders/apex-database-layer/wiki/The-DatabaseLayer-Class#useMocks) in Apex Tests, with a single line of code
