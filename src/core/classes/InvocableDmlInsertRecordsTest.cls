@@ -13,11 +13,11 @@ private class InvocableDmlInsertRecordsTest {
 	@IsTest
 	private static void shouldInsertRecordCollection() {
 		DatabaseLayer.useMockDml();
-		InvocableDmlInsertRecords.Input input = new InvocableDmlInsertRecords.Input();
+		InvocableDml.Input input = new InvocableDml.Input();
 		input.recordCollection = InvocableDmlInsertRecordsTest.initAccounts(3);
 
 		Test.startTest();
-		InvocableDmlInsertRecords.Output output = InvocableDmlInsertRecordsTest.invoke(input);
+		InvocableDml.Output output = InvocableDmlInsertRecordsTest.invoke(input);
 		Test.stopTest();
 
 		Assert.areEqual(3, output?.recordCollection?.size(), 'Wrong # of records');
@@ -38,11 +38,11 @@ private class InvocableDmlInsertRecordsTest {
 	@IsTest
 	private static void shouldInsertSingleRecord() {
 		DatabaseLayer.useMockDml();
-		InvocableDmlInsertRecords.Input input = new InvocableDmlInsertRecords.Input();
+		InvocableDml.Input input = new InvocableDml.Input();
 		input.record = InvocableDmlInsertRecordsTest.initAccounts(1)?.get(0);
 
 		Test.startTest();
-		InvocableDmlInsertRecords.Output output = InvocableDmlInsertRecordsTest.invoke(input);
+		InvocableDml.Output output = InvocableDmlInsertRecordsTest.invoke(input);
 		Test.stopTest();
 
 		Assert.isNotNull(output?.record?.Id, 'Record was not assigned an Id');
@@ -56,10 +56,10 @@ private class InvocableDmlInsertRecordsTest {
 	private static void shouldDoNothingWithoutRecords() {
 		DatabaseLayer.useMockDml();
 		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
-		InvocableDmlInsertRecords.Input input = new InvocableDmlInsertRecords.Input();
+		InvocableDml.Input input = new InvocableDml.Input();
 
 		Test.startTest();
-		InvocableDmlInsertRecords.Output output = InvocableDmlInsertRecordsTest.invoke(input);
+		InvocableDml.Output output = InvocableDmlInsertRecordsTest.invoke(input);
 		Test.stopTest();
 
 		Assert.areEqual(0, DatabaseLayerTestUtils.DmlPluginSpy?.numPreCalls, 'Performed DML without records');
@@ -71,13 +71,13 @@ private class InvocableDmlInsertRecordsTest {
 
 	@IsTest
 	private static void shouldReportErrorsWhenNotAllOrNone() {
-		InvocableDmlInsertRecords.Input input = new InvocableDmlInsertRecords.Input();
+		InvocableDml.Input input = new InvocableDml.Input();
 		input.allOrNone = false;
 		// Contact.LastName is required, so the 2nd record will fail:
 		input.recordCollection = new List<Contact>{ new Contact(LastName = 'Valid'), new Contact() };
 
 		Test.startTest();
-		InvocableDmlInsertRecords.Output output = InvocableDmlInsertRecordsTest.invoke(input);
+		InvocableDml.Output output = InvocableDmlInsertRecordsTest.invoke(input);
 		Test.stopTest();
 
 		InvocableDmlResult success = output?.resultCollection?.get(0);
@@ -97,7 +97,7 @@ private class InvocableDmlInsertRecordsTest {
 	private static void shouldThrowWhenAllOrNone() {
 		DatabaseLayer.useMockDml();
 		MockDml.shouldFail();
-		InvocableDmlInsertRecords.Input input = new InvocableDmlInsertRecords.Input();
+		InvocableDml.Input input = new InvocableDml.Input();
 		input.recordCollection = InvocableDmlInsertRecordsTest.initAccounts(1);
 
 		Test.startTest();
@@ -116,7 +116,7 @@ private class InvocableDmlInsertRecordsTest {
 	private static void shouldDefaultToUserModeAndAllOrNone() {
 		DatabaseLayer.useMockDml();
 		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
-		InvocableDmlInsertRecords.Input input = new InvocableDmlInsertRecords.Input();
+		InvocableDml.Input input = new InvocableDml.Input();
 		input.recordCollection = InvocableDmlInsertRecordsTest.initAccounts(1);
 
 		Test.startTest();
@@ -134,7 +134,7 @@ private class InvocableDmlInsertRecordsTest {
 		DatabaseLayer.useMockDml();
 		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
 		Id assignmentRuleId = MockRecord.initRecordId(Schema.SObjectType.AssignmentRule.getSObjectType());
-		InvocableDmlInsertRecords.Input input = new InvocableDmlInsertRecords.Input();
+		InvocableDml.Input input = new InvocableDml.Input();
 		input.recordCollection = InvocableDmlInsertRecordsTest.initAccounts(1);
 		input.accessLevel = 'system_mode';
 		input.allOrNone = false;
@@ -168,70 +168,65 @@ private class InvocableDmlInsertRecordsTest {
 	}
 
 	@IsTest
-	private static void shouldRejectInvalidAccessLevel() {
+	private static void shouldRunInvalidAccessLevelInUserMode() {
 		DatabaseLayer.useMockDml();
-		InvocableDmlInsertRecords.Input input = new InvocableDmlInsertRecords.Input();
+		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
+		InvocableDml.Input input = new InvocableDml.Input();
 		input.accessLevel = 'Not a real access level';
 		input.recordCollection = InvocableDmlInsertRecordsTest.initAccounts(1);
 
 		Test.startTest();
-		Exception caughtError;
-		try {
-			InvocableDmlInsertRecordsTest.invoke(input);
-		} catch (System.IllegalArgumentException error) {
-			caughtError = error;
-		}
+		InvocableDmlInsertRecordsTest.invoke(input);
 		Test.stopTest();
 
-		Assert.isNotNull(caughtError, 'Did not throw a System.IllegalArgumentException');
-		Assert.isTrue(caughtError?.getMessage()?.contains(input.accessLevel), 'Unhelpful error message');
+		Dml.Request request = DatabaseLayerTestUtils.DmlPluginSpy?.lastDmlRequest;
+		Assert.areEqual(System.AccessLevel.USER_MODE, request?.accessLevel, 'Wrong access level');
 	}
 
 	@IsTest
-	private static void shouldBulkifyInputsWithMatchingSettings() {
+	private static void shouldBulkifyInputs() {
 		DatabaseLayer.useMockDml();
 		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
-		List<InvocableDmlInsertRecords.Input> inputs = new List<InvocableDmlInsertRecords.Input>();
+		List<InvocableDml.Input> inputs = new List<InvocableDml.Input>();
 		for (Account account : InvocableDmlInsertRecordsTest.initAccounts(TEST_SIZE)) {
-			InvocableDmlInsertRecords.Input input = new InvocableDmlInsertRecords.Input();
+			InvocableDml.Input input = new InvocableDml.Input();
 			input.record = account;
 			inputs.add(input);
 		}
 
 		Test.startTest();
-		List<InvocableDmlInsertRecords.Output> outputs = InvocableDmlInsertRecords.invoke(inputs);
+		List<InvocableDml.Output> outputs = InvocableDmlInsertRecords.invoke(inputs);
 		Test.stopTest();
 
 		Assert.areEqual(1, DatabaseLayerTestUtils.DmlPluginSpy?.numPreCalls, 'Wrong # of DML operations');
 		Assert.areEqual(TEST_SIZE, outputs?.size(), 'Wrong # of outputs');
 		for (Integer i = 0; i < TEST_SIZE; i++) {
-			InvocableDmlInsertRecords.Output output = outputs?.get(i);
+			InvocableDml.Output output = outputs?.get(i);
 			Assert.areEqual(inputs?.get(i)?.record, output?.record, 'Output is out of order');
 			Assert.areEqual(output?.record?.Id, output?.result?.id, 'Result does not match its record');
 		}
 	}
 
 	@IsTest
-	private static void shouldSeparateInputsWithDifferentSettings() {
+	private static void shouldApplyFirstInputSettingsToAllInputs() {
 		DatabaseLayer.useMockDml();
 		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
-		InvocableDmlInsertRecords.Input userMode = new InvocableDmlInsertRecords.Input();
+		InvocableDml.Input userMode = new InvocableDml.Input();
 		userMode.recordCollection = InvocableDmlInsertRecordsTest.initAccounts(2);
-		InvocableDmlInsertRecords.Input systemMode = new InvocableDmlInsertRecords.Input();
+		InvocableDml.Input systemMode = new InvocableDml.Input();
 		systemMode.accessLevel = 'SYSTEM_MODE';
 		systemMode.recordCollection = InvocableDmlInsertRecordsTest.initAccounts(3);
-		List<InvocableDmlInsertRecords.Input> inputs = new List<InvocableDmlInsertRecords.Input>{
-			userMode,
-			systemMode
-		};
+		List<InvocableDml.Input> inputs = new List<InvocableDml.Input>{ userMode, systemMode };
 
 		Test.startTest();
-		List<InvocableDmlInsertRecords.Output> outputs = InvocableDmlInsertRecords.invoke(inputs);
+		List<InvocableDml.Output> outputs = InvocableDmlInsertRecords.invoke(inputs);
 		Test.stopTest();
 
-		Assert.areEqual(2, DatabaseLayerTestUtils.DmlPluginSpy?.numPreCalls, 'Wrong # of DML operations');
-		Assert.areEqual(2, outputs?.get(0)?.resultCollection?.size(), 'Wrong # of USER_MODE results');
-		Assert.areEqual(3, outputs?.get(1)?.resultCollection?.size(), 'Wrong # of SYSTEM_MODE results');
+		Dml.Request request = DatabaseLayerTestUtils.DmlPluginSpy?.lastDmlRequest;
+		Assert.areEqual(1, DatabaseLayerTestUtils.DmlPluginSpy?.numPreCalls, 'Wrong # of DML operations');
+		Assert.areEqual(System.AccessLevel.USER_MODE, request?.accessLevel, 'Did not use the first input settings');
+		Assert.areEqual(2, outputs?.get(0)?.resultCollection?.size(), 'Wrong # of results for the first input');
+		Assert.areEqual(3, outputs?.get(1)?.resultCollection?.size(), 'Wrong # of results for the second input');
 		Assert.areEqual(
 			outputs?.get(1)?.recordCollection?.get(2)?.Id,
 			outputs?.get(1)?.resultCollection?.get(2)?.id,
@@ -248,8 +243,8 @@ private class InvocableDmlInsertRecordsTest {
 		return accounts;
 	}
 
-	private static InvocableDmlInsertRecords.Output invoke(InvocableDmlInsertRecords.Input input) {
-		List<InvocableDmlInsertRecords.Input> inputs = new List<InvocableDmlInsertRecords.Input>{ input };
+	private static InvocableDml.Output invoke(InvocableDml.Input input) {
+		List<InvocableDml.Input> inputs = new List<InvocableDml.Input>{ input };
 		return InvocableDmlInsertRecords.invoke(inputs)?.get(0);
 	}
 }
