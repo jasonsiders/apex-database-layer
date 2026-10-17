@@ -9,7 +9,7 @@
 		></lightning-radio-group>
 	</div>
 	<div class="editor-section">
-		<h3 class="slds-text-heading_small slds-m-bottom_small">{recordsHeading}</h3>
+		<h3 class="slds-text-heading_small slds-var-m-bottom_small">{recordsHeading}</h3>
 		<template lwc:if={isMultiple}>
 			<c-flow-resource-picker
 				data-name="recordCollection"
@@ -43,16 +43,16 @@
 				onchange={handleRecordsChange}
 			></c-flow-resource-picker>
 		</template>
-		<p class="slds-text-body_regular slds-m-top_small">
+		<p class="slds-text-body_regular slds-var-m-top_small">
 			Make sure that ID is blank. After the records are inserted, find their IDs in the action's Record outputs.
 		</p>
 	</div>
 	<div class="editor-section">
-		<h3 class="slds-text-heading_small slds-m-bottom_small">Set Input Values</h3>
+		<h3 class="slds-text-heading_small slds-var-m-bottom_small">Set Input Values</h3>
 		<template for:each={settings} for:item="field">
 			<c-flow-resource-picker
 				key={field.name}
-				class="slds-m-bottom_small"
+				class="slds-var-m-bottom_small"
 				data-name={field.name}
 				name={field.name}
 				label={field.label}
@@ -71,11 +71,11 @@
 		</template>
 	</div>
 	<div class="editor-section">
-		<h3 class="slds-text-heading_small slds-m-bottom_small">DML Options</h3>
+		<h3 class="slds-text-heading_small slds-var-m-bottom_small">DML Options</h3>
 		<template for:each={dmlOptions} for:item="field">
 			<c-flow-resource-picker
 				key={field.name}
-				class="slds-m-bottom_small"
+				class="slds-var-m-bottom_small"
 				data-name={field.name}
 				name={field.name}
 				label={field.label}

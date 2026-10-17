@@ -102,20 +102,20 @@
 										<h3 class="slds-listbox__option-header" role="presentation">{section.label}</h3>
 									</div>
 								</li>
-								<template for:each={section.items} for:item="item">
-									<li key={item.key} role="presentation" class="slds-listbox__item">
+								<template for:each={section.items} for:item="option">
+									<li key={option.key} role="presentation" class="slds-listbox__item">
 										<div
-											id={item.domId}
-											class={item.className}
+											id={option.domId}
+											class={option.className}
 											role="option"
-											aria-selected={item.isActive}
-											data-key={item.key}
-											data-label={item.label}
+											aria-selected={option.isActive}
+											data-key={option.key}
+											data-label={option.label}
 											onclick={handleOptionClick}
 										>
 											<span class="slds-media__figure slds-listbox__option-icon picker-check">
 												<lightning-icon
-													lwc:if={item.isCurrent}
+													lwc:if={option.isCurrent}
 													icon-name="utility:check"
 													size="x-small"
 													alternative-text="Current value"
@@ -123,16 +123,16 @@
 											</span>
 											<span class="slds-media__figure slds-listbox__option-icon">
 												<lightning-icon
-													icon-name={item.icon}
+													icon-name={option.icon}
 													size="x-small"
 													alternative-text=""
 												></lightning-icon>
 											</span>
 											<span class="slds-media__body">
-												<span class="slds-truncate" title={item.label}>{item.label}</span>
+												<span class="slds-truncate" title={option.label}>{option.label}</span>
 											</span>
 											<span
-												lwc:if={item.isDrillable}
+												lwc:if={option.isDrillable}
 												class="slds-media__figure slds-media__figure_reverse"
 											>
 												<lightning-icon
@@ -146,7 +146,7 @@
 								</template>
 							</template>
 						</ul>
-						<p lwc:else class="picker-empty slds-p-around_small slds-text-align_center">
+						<p lwc:else class="picker-empty slds-var-p-around_small slds-text-align_center">
 							We couldn't find any matching resources, but you can enter a value.
 						</p>
 					</div>

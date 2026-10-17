@@ -428,7 +428,7 @@ function getOutputSections(item, context) {
 }
 
 /**
- * @description Lists a record's relationship fields, then its other fields, sorted by type and label like Flow Builder.
+ * @description Lists a record's fields; an object that can't be described (deleted, or no access) has none to drill into
  * @param {Object} item The record's item
  * @param {Object} context Unused; matches the other loaders' signature
  * @param {Function} describeObject Resolves an object's describe, given its API name
@@ -436,9 +436,20 @@ function getOutputSections(item, context) {
  */
 async function getRecordSections(item, context, describeObject) {
 	const describe = await describeObject(item.objectType).catch(() => null);
-	const fields = [...(describe?.fields ?? [])].sort(compareLabels);
-	const lookups = fields.filter((field) => field.relationshipName && field.referenceTo?.length);
-	const others = fields.filter((field) => !lookups.includes(field));
+	return initRecordSections(describe?.fields ?? [], item);
+}
+
+/**
+ * @description Lists lookups first, as drillable relationships and then as Ids, then the other fields by type and
+ * label, matching Flow Builder's order
+ * @param {Array} fields The object's field describes
+ * @param {Object} item The record's item
+ * @returns {Array} "Relationship Fields" and "Record Fields" sections
+ */
+function initRecordSections(fields, item) {
+	const sorted = [...fields].sort(compareLabels);
+	const lookups = sorted.filter((field) => field.relationshipName && field.referenceTo?.length);
+	const others = sorted.filter((field) => !lookups.includes(field));
 	const relationships = lookups.map((field) => initRelationshipItem(field, item));
 	const lookupIds = lookups.map((field) => initFieldItem(field, item));
 	const recordFields = others.map((field) => initFieldItem(field, item)).sort(compareTypes);
