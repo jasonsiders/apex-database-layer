@@ -1,0 +1,83 @@
+<template>
+	<div class="slds-p-horizontal_small">
+		<lightning-radio-group
+			class="slds-m-bottom_medium"
+			label="How Many Records to Insert"
+			options={howManyOptions}
+			type="radio"
+			value={howMany}
+			onchange={handleHowManyChange}
+		></lightning-radio-group>
+		<h3 class="slds-text-heading_small slds-m-bottom_small">{recordsHeading}</h3>
+		<template lwc:if={isMultiple}>
+			<c-flow-resource-picker
+				class="slds-m-bottom_medium"
+				data-name="recordCollection"
+				name="recordCollection"
+				label="Record Collection"
+				type="SObject"
+				is-collection
+				required
+				value={records.value}
+				value-data-type={records.valueDataType}
+				error-message={records.errorMessage}
+				builder-context={builderContext}
+				automatic-output-variables={automaticOutputVariables}
+				onchange={handleRecordsChange}
+			></c-flow-resource-picker>
+		</template>
+		<template lwc:else>
+			<c-flow-resource-picker
+				class="slds-m-bottom_medium"
+				data-name="record"
+				name="record"
+				label="Record"
+				type="SObject"
+				required
+				value={records.value}
+				value-data-type={records.valueDataType}
+				error-message={records.errorMessage}
+				builder-context={builderContext}
+				automatic-output-variables={automaticOutputVariables}
+				onchange={handleRecordsChange}
+			></c-flow-resource-picker>
+		</template>
+		<h3 class="slds-text-heading_small slds-m-bottom_small">Set Input Values</h3>
+		<template for:each={settings} for:item="field">
+			<c-flow-resource-picker
+				key={field.name}
+				class="slds-m-bottom_small"
+				data-name={field.name}
+				name={field.name}
+				label={field.label}
+				help-text={field.helpText}
+				type={field.type}
+				picklist-values={field.picklistValues}
+				value={field.value}
+				value-data-type={field.valueDataType}
+				error-message={field.errorMessage}
+				builder-context={builderContext}
+				automatic-output-variables={automaticOutputVariables}
+				onchange={handleInputChange}
+			></c-flow-resource-picker>
+		</template>
+		<h3 class="slds-text-heading_small slds-m-vertical_small">DML Options</h3>
+		<template for:each={dmlOptions} for:item="field">
+			<c-flow-resource-picker
+				key={field.name}
+				class="slds-m-bottom_small"
+				data-name={field.name}
+				name={field.name}
+				label={field.label}
+				help-text={field.helpText}
+				type={field.type}
+				value={field.value}
+				value-data-type={field.valueDataType}
+				error-message={field.errorMessage}
+				builder-context={builderContext}
+				automatic-output-variables={automaticOutputVariables}
+				onchange={handleInputChange}
+			></c-flow-resource-picker>
+		</template>
+	</div>
+</template>

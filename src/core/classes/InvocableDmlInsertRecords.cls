@@ -16,6 +16,7 @@ public inherited sharing class InvocableDmlInsertRecords {
 	 */
 	@InvocableMethod(
 		category='Database Layer'
+		configurationEditor='c-dml-insert-records-editor'
 		description='Insert one or more records, with control over the access level, partial success, and DML options.'
 		iconName='slds:standard:record_create'
 		label='Insert Records'

@@ -300,13 +300,16 @@ export default class FlowResourcePicker extends LightningElement {
 	 * @description Fires `change`, unless the value is unchanged.
 	 * @param {String} value The new value, or null to clear it
 	 * @param {String} valueDataType `reference`, the literal's data type, or null
+	 * @param {String} objectType For record references, the record's object
 	 */
-	emitChange(value, valueDataType) {
+	emitChange(value, valueDataType, objectType) {
 		const isUnchanged = value === this._value && valueDataType === this._valueDataType;
 		if (!isUnchanged) {
 			this._value = value;
 			this._valueDataType = valueDataType;
-			const detail = { name: this.name, value, valueDataType };
+			const detail = objectType
+				? { name: this.name, value, valueDataType, objectType }
+				: { name: this.name, value, valueDataType };
 			this.dispatchEvent(new CustomEvent("change", { detail }));
 		}
 	}
@@ -431,7 +434,7 @@ export default class FlowResourcePicker extends LightningElement {
 		} else {
 			this.selection = item;
 			this.text = "";
-			this.emitChange(item.value, REFERENCE);
+			this.emitChange(item.value, REFERENCE, item.objectType);
 		}
 		this.isEditing = false;
 		this.close();
@@ -442,8 +445,8 @@ export default class FlowResourcePicker extends LightningElement {
 	 * @param {String} path The reference path
 	 */
 	async selectReference(path) {
-		this.emitChange(path, REFERENCE);
 		this.text = "";
 		this.selection = await this.resolveSelection(path);
+		this.emitChange(path, REFERENCE, this.selection.objectType);
 	}
 }
