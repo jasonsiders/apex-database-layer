@@ -432,6 +432,26 @@ describe("c-flow-resource-picker", () => {
 		);
 	});
 
+	it("scopes resources to the element being edited, and labels the triggering record", async () => {
+		const start = {
+			...CONTEXT.builderContext.start,
+			object: "Account",
+			triggerType: "RecordAfterSave",
+			recordTriggerType: "Update"
+		};
+		const { element } = await render({
+			elementName: "Create_Native",
+			builderContext: { ...CONTEXT.builderContext, start }
+		});
+
+		await open(element);
+
+		expect(optionLabels(element)).toEqual(
+			expect.arrayContaining(["Triggering Account", "Prior Values of Triggering Account"])
+		);
+		expect(optionLabels(element)).not.toContain("Current Item from Loop Loop Accounts");
+	});
+
 	it("survives describe failures", async () => {
 		describeObject.mockImplementation(() => Promise.reject(new Error("nope")));
 		const { element } = await render({ builderContext: { ...CONTEXT.builderContext, recordLookups: [] } });

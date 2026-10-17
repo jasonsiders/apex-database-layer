@@ -146,6 +146,89 @@ describe("c-flow-resource-menu", () => {
 		});
 	});
 
+	describe("position in the flow", () => {
+		it("lists outputs only from elements that can run before the one being edited", () => {
+			const sections = labelsBySection(getRootSections({ ...context, elementName: "Create_Native" }, TEXT));
+
+			expect(sections.Action).toEqual(["Outputs from Insert Spike"]);
+			expect(sections["Quick Resources"]).toBeUndefined();
+			expect(sections["Screen Components"]).toBeUndefined();
+		});
+
+		it("lists a loop's current item, and the element's own outputs, inside the loop", () => {
+			const sections = labelsBySection(getRootSections({ ...context, elementName: "Insert_Spike" }, TEXT));
+
+			expect(sections["Quick Resources"]).toEqual(["Current Item from Loop Loop Accounts"]);
+			expect(sections.Action).toEqual(["Outputs from Insert Spike"]);
+		});
+
+		it("omits an element's own outputs when it can't run twice", () => {
+			const sections = labelsBySection(getRootSections({ ...context, elementName: "Get_Accounts" }, RECORDS));
+
+			expect(sections).toEqual({ "Record Collections": ["accountsVar"] });
+		});
+
+		it("follows scheduled paths, decision outcomes, and wait events", () => {
+			const builderContext = {
+				start: { scheduledPaths: [{ connector: { targetReference: "Act" } }] },
+				actionCalls: [
+					{
+						name: "Act",
+						label: "Act",
+						storeOutputAutomatically: true,
+						connector: { targetReference: "Decide" }
+					}
+				],
+				decisions: [{ name: "Decide", rules: [{ connector: { targetReference: "Hold" } }] }],
+				waits: [{ name: "Hold", waitEvents: [{ connector: { targetReference: "Target" } }] }],
+				recordCreates: [{ name: "Target" }]
+			};
+			const automaticOutputVariables = {
+				Act: [{ name: "message", label: "Message", dataType: "string", maxOccurs: 1 }]
+			};
+
+			const sections = getRootSections({ builderContext, automaticOutputVariables, elementName: "Target" }, TEXT);
+
+			expect(labelsBySection(sections).Action).toEqual(["Outputs from Act"]);
+		});
+
+		it("offers the triggering record, and its prior values, in record-triggered flows", () => {
+			const start = {
+				...context.builderContext.start,
+				object: "Account",
+				triggerType: "RecordAfterSave",
+				recordTriggerType: "CreateAndUpdate"
+			};
+			const builderContext = { ...context.builderContext, start };
+
+			const sections = getRootSections({ ...context, builderContext, elementName: "Create_Native" }, RECORD);
+
+			expect(labelsBySection(sections)["Quick Resources"]).toEqual([
+				"Triggering Account",
+				"Prior Values of Triggering Account"
+			]);
+			expect(findItem(sections, "$Record")).toMatchObject({
+				objectType: "Account",
+				icon: "utility:record_alt",
+				isSelectable: true
+			});
+		});
+
+		it("omits prior values when records are only created", async () => {
+			const start = { object: "Account", triggerType: "RecordAfterSave", recordTriggerType: "Create" };
+			const builderContext = { ...context.builderContext, start };
+
+			const sections = getRootSections({ ...context, builderContext, objectLabels: {} }, TEXT);
+
+			expect(labelsBySection(sections)["Quick Resources"]).toEqual([
+				"Triggering Account",
+				"Current Item from Loop Loop Accounts"
+			]);
+			const item = await resolveItem("$Record.Name", { ...context, builderContext }, describeObject);
+			expect(item).toMatchObject({ pathLabel: "$Record > Account Name" });
+		});
+	});
+
 	describe("getChildSections", () => {
 		it("lists a record's relationship fields, then its fields sorted by type and label", async () => {
 			const accountVar = findItem(getRootSections(context, TEXT), "accountVar");

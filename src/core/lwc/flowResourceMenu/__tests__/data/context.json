@@ -6,7 +6,10 @@
 				"label": "Insert Spike",
 				"actionName": "SpikeInsert",
 				"actionType": "apex",
-				"storeOutputAutomatically": true
+				"storeOutputAutomatically": true,
+				"connector": {
+					"targetReference": "Loop_Accounts"
+				}
 			}
 		],
 		"choices": [
@@ -33,7 +36,13 @@
 				"name": "Loop_Accounts",
 				"label": "Loop Accounts",
 				"collectionReference": "Get_Accounts",
-				"assignNextValueToReference": null
+				"assignNextValueToReference": null,
+				"nextValueConnector": {
+					"targetReference": "Insert_Spike"
+				},
+				"noMoreValuesConnector": {
+					"targetReference": "Create_Native"
+				}
 			}
 		],
 		"recordLookups": [
@@ -42,7 +51,10 @@
 				"label": "Get Accounts",
 				"object": "Account",
 				"getFirstRecordOnly": false,
-				"storeOutputAutomatically": true
+				"storeOutputAutomatically": true,
+				"connector": {
+					"targetReference": "Loop_Accounts"
+				}
 			}
 		],
 		"screens": [
@@ -66,7 +78,8 @@
 						"fieldType": "DisplayText",
 						"fields": []
 					}
-				]
+				],
+				"connector": null
 			}
 		],
 		"stages": [
@@ -75,7 +88,11 @@
 				"label": "Stage One"
 			}
 		],
-		"start": {},
+		"start": {
+			"connector": {
+				"targetReference": "Get_Accounts"
+			}
+		},
 		"textTemplates": [
 			{
 				"name": "tmplText"
@@ -117,6 +134,16 @@
 				"dataType": "String",
 				"objectType": null,
 				"isCollection": false
+			}
+		],
+		"recordCreates": [
+			{
+				"name": "Create_Native",
+				"label": "Create Native",
+				"inputReference": "accountVar",
+				"connector": {
+					"targetReference": "Screen_One"
+				}
 			}
 		]
 	},

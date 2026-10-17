@@ -5,6 +5,23 @@
 const DRILL_GLOBAL = "global";
 const DRILL_OUTPUTS = "outputs";
 const DRILL_RECORD = "record";
+const ELEMENT_TYPES = [
+	"actionCalls",
+	"apexPluginCalls",
+	"assignments",
+	"collectionProcessors",
+	"decisions",
+	"loops",
+	"recordCreates",
+	"recordDeletes",
+	"recordLookups",
+	"recordRollbacks",
+	"recordUpdates",
+	"screens",
+	"subflows",
+	"transforms",
+	"waits"
+];
 const ICON_RECORD = "utility:record_alt";
 const ICON_RECORD_COLLECTION = "utility:record_collection";
 const SOBJECT = "SObject";
@@ -194,15 +211,17 @@ const GLOBAL_CONSTANTS = [
  */
 export function getRootSections(context, target) {
 	const builderContext = context?.builderContext ?? {};
+	const scope = initScope(builderContext, context?.elementName);
 	const variables = (builderContext.variables ?? []).map(initVariableItem);
 	const lookups = (builderContext.recordLookups ?? [])
-		.filter((lookup) => lookup.storeOutputAutomatically)
+		.filter((lookup) => lookup.storeOutputAutomatically && scope.isUpstream(lookup.name))
 		.map((lookup) => initLookupItem(lookup, context));
+	const loops = initLoopItems(builderContext, [...variables, ...lookups], context, scope);
 	const records = variables.filter((item) => item.dataType === SOBJECT);
 	const sections = [
 		initSection("Picklist Values", (target?.picklistValues ?? []).map(initPicklistItem), false),
-		initSection("Quick Resources", initLoopItems(builderContext, [...variables, ...lookups], context)),
-		initSection("Action", initActionItems(builderContext, context)),
+		initSection("Quick Resources", [...initTriggerItems(builderContext, context), ...loops], false),
+		initSection("Action", initActionItems(builderContext, context, scope)),
 		initSection("Get Records", lookups),
 		initSection(
 			"Choices",
@@ -224,7 +243,7 @@ export function getRootSections(context, target) {
 			"Record Variables",
 			records.filter((item) => !item.isCollection)
 		),
-		initSection("Screen Components", initScreenItems(builderContext)),
+		initSection("Screen Components", initScreenItems(builderContext, scope)),
 		initSection(
 			"Simple Variables",
 			variables.filter((item) => item.dataType !== SOBJECT)
@@ -433,11 +452,13 @@ async function getRecordSections(item, context, describeObject) {
  * @description Builds an item for each action with automatically stored outputs.
  * @param {Object} builderContext The CPE's builder context
  * @param {Object} context Used to look up action outputs
+ * @param {Object} scope Which elements can run before the one being edited
  * @returns {Array} The action items
  */
-function initActionItems(builderContext, context) {
+function initActionItems(builderContext, context, scope) {
+	const hasOutputs = (action) => action.storeOutputAutomatically && context?.automaticOutputVariables?.[action.name];
 	return (builderContext.actionCalls ?? [])
-		.filter((action) => action.storeOutputAutomatically && context?.automaticOutputVariables?.[action.name])
+		.filter((action) => hasOutputs(action) && scope.isUpstream(action.name))
 		.map((action) =>
 			initItem({
 				value: action.name,
@@ -492,11 +513,12 @@ function initItem(props) {
  * @param {Object} builderContext The CPE's builder context
  * @param {Array} collections Items the loops may iterate over
  * @param {Object} context Used to look up action outputs
+ * @param {Object} scope Which loops contain the element being edited
  * @returns {Array} The loop items
  */
-function initLoopItems(builderContext, collections, context) {
+function initLoopItems(builderContext, collections, context, scope) {
 	return (builderContext.loops ?? [])
-		.filter((loop) => !loop.assignNextValueToReference)
+		.filter((loop) => !loop.assignNextValueToReference && scope.isInLoop(loop))
 		.map((loop) => {
 			const collection =
 				collections.find((item) => item.value === loop.collectionReference) ??
@@ -589,11 +611,13 @@ function initRelationshipItem(field, parent) {
 /**
  * @description Builds the items for screen components that store a value, including those nested in sections.
  * @param {Object} builderContext The CPE's builder context
+ * @param {Object} scope Which screens can run before the element being edited
  * @returns {Array} The screen component items
  */
-function initScreenItems(builderContext) {
+function initScreenItems(builderContext, scope) {
 	const flatten = (fields) => fields.flatMap((field) => [field, ...flatten(field.fields ?? [])]);
-	const fields = (builderContext.screens ?? []).flatMap((screen) => flatten(screen.fields ?? []));
+	const screens = (builderContext.screens ?? []).filter((screen) => scope.isUpstream(screen.name));
+	const fields = screens.flatMap((screen) => flatten(screen.fields ?? []));
 	return fields.filter((field) => field.dataType).map((field) => initTypedItem(field.name, field.dataType));
 }
 
@@ -690,6 +714,112 @@ function resolveOutput(reference, context) {
 	const [actionName] = reference?.split(".") ?? [];
 	const action = initItem({ value: actionName, label: actionName });
 	return initOutputItems(action, context).find((output) => output.value === reference);
+}
+
+/**
+ * @description Finds every element that can run before the target, by walking its connectors backwards.
+ * @param {Array} elements Every element in the flow
+ * @param {String} target The element's API name
+ * @returns {Set} The API names of elements that lead to the target; includes the target if it's in a loop
+ */
+function findSources(elements, target) {
+	const sourcesByTarget = new Map();
+	elements.forEach((element) => {
+		getTargets(element).forEach((next) =>
+			sourcesByTarget.set(next, [...(sourcesByTarget.get(next) ?? []), element.name])
+		);
+	});
+	const sources = new Set();
+	const queue = [target];
+	while (queue.length) {
+		const current = queue.shift();
+		const unseen = (sourcesByTarget.get(current) ?? []).filter((source) => !sources.has(source));
+		unseen.forEach((source) => sources.add(source));
+		queue.push(...unseen);
+	}
+	return sources;
+}
+
+/**
+ * @description Finds the elements in a loop's "For Each" path.
+ * @param {Array} elements Every element in the flow
+ * @param {Object} loop The loop
+ * @returns {Set} The API names of elements that run once per item
+ */
+function findLoopBody(elements, loop) {
+	const elementsByName = new Map(elements.map((element) => [element.name, element]));
+	const body = new Set();
+	const queue = [loop.nextValueConnector?.targetReference].filter(Boolean);
+	while (queue.length) {
+		const current = queue.shift();
+		if (current !== loop.name && !body.has(current)) {
+			body.add(current);
+			queue.push(...getTargets(elementsByName.get(current) ?? {}));
+		}
+	}
+	return body;
+}
+
+/**
+ * @description Lists the elements an element connects to, through any of its paths.
+ * @param {Object} element A flow element
+ * @returns {Array} The API names of the connected elements
+ */
+function getTargets(element) {
+	const connectors = [
+		element.connector,
+		element.defaultConnector,
+		element.faultConnector,
+		element.nextValueConnector,
+		element.noMoreValuesConnector,
+		...(element.rules ?? []).map((rule) => rule.connector),
+		...(element.scheduledPaths ?? []).map((path) => path.connector),
+		...(element.waitEvents ?? []).map((event) => event.connector)
+	];
+	return connectors.map((connector) => connector?.targetReference).filter(Boolean);
+}
+
+/**
+ * @description Works out which elements' outputs are available to the element being edited, like Flow Builder: only
+ * those that can run before it, and loop items only inside the loop. Unknown elements see everything.
+ * @param {Object} builderContext The CPE's builder context
+ * @param {String} elementName The API name of the element being edited
+ * @returns {Object} `{ isUpstream(name), isInLoop(loop) }`
+ */
+function initScope(builderContext, elementName) {
+	const elements = [builderContext.start ?? {}, ...ELEMENT_TYPES.flatMap((type) => builderContext[type] ?? [])];
+	const isKnown = Boolean(elementName) && elements.some((element) => element.name === elementName);
+	const sources = isKnown ? findSources(elements, elementName) : null;
+	return {
+		isInLoop: (loop) => !sources || findLoopBody(elements, loop).has(elementName),
+		isUpstream: (name) => !sources || sources.has(name)
+	};
+}
+
+/**
+ * @description Builds the items for a record-triggered flow's triggering record and, for updates, its prior values.
+ * @param {Object} builderContext The CPE's builder context
+ * @param {Object} context Supplies the object's label, once known
+ * @returns {Array} The `$Record` and `$Record__Prior` items, if the flow has a triggering record
+ */
+function initTriggerItems(builderContext, context) {
+	const start = builderContext.start ?? {};
+	const objectLabel = context?.objectLabels?.[start.object]?.label ?? start.object;
+	const hasPriorValues = ["CreateAndUpdate", "Update"].includes(start.recordTriggerType);
+	const triggers = [
+		{ value: "$Record", label: `Triggering ${objectLabel}` },
+		{ value: "$Record__Prior", label: `Prior Values of Triggering ${objectLabel}` }
+	];
+	const count = hasPriorValues ? 2 : 1;
+	return (start.object ? triggers.slice(0, count) : []).map((trigger) =>
+		initItem({
+			...trigger,
+			pathLabel: trigger.value,
+			dataType: SOBJECT,
+			objectType: start.object,
+			drillType: DRILL_RECORD
+		})
+	);
 }
 
 /**

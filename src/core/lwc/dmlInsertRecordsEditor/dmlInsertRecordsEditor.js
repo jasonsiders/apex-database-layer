@@ -135,6 +135,10 @@ export default class DmlInsertRecordsEditor extends LightningElement {
 		return this.initFields(DML_OPTIONS);
 	}
 
+	get elementName() {
+		return this.elementInfo?.apiName;
+	}
+
 	get isMultiple() {
 		return this.howMany === MULTIPLE;
 	}

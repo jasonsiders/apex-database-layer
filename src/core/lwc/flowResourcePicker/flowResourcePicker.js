@@ -41,6 +41,7 @@ function toValueDataType(item) {
 export default class FlowResourcePicker extends LightningElement {
 	@api automaticOutputVariables;
 	@api type = "String";
+	@api elementName;
 	@api errorMessage;
 	@api helpText;
 	@api isCollection = false;
@@ -114,6 +115,7 @@ export default class FlowResourcePicker extends LightningElement {
 		return {
 			automaticOutputVariables: this.automaticOutputVariables,
 			builderContext: this._builderContext,
+			elementName: this.elementName,
 			objectLabels: this.objectLabels
 		};
 	}
@@ -359,10 +361,13 @@ export default class FlowResourcePicker extends LightningElement {
 	}
 
 	/**
-	 * @description Fetches the labels of objects queried by Get Records elements, to label their outputs like Flow Builder.
+	 * @description Fetches the labels of the triggering object and of objects queried by Get Records elements, to label
+	 * their resources like Flow Builder.
 	 */
 	async loadObjectLabels() {
-		const objects = new Set((this._builderContext?.recordLookups ?? []).map((lookup) => lookup.object));
+		const lookupObjects = (this._builderContext?.recordLookups ?? []).map((lookup) => lookup.object);
+		const triggerObject = this._builderContext?.start?.object;
+		const objects = new Set([...lookupObjects, triggerObject].filter(Boolean));
 		const requests = [...objects].map((objectApiName) =>
 			describeObject(objectApiName)
 				.then((describe) => [objectApiName, { label: describe.label, labelPlural: describe.labelPlural }])
