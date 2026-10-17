@@ -209,7 +209,7 @@ const GLOBAL_CONSTANTS = [
  * @description Builds the top-level menu: every resource in the flow that fits the target input, or contains one that does.
  * @param {Object} context `{ builderContext, automaticOutputVariables, objectLabels }`
  * @param {Object} target The input being configured: `{ dataType, isCollection, objectType, picklistValues }`. Null includes everything.
- * @returns {Array} Sections of `{ label, items }`, in Flow Builder's order
+ * @returns {Array} Sections of `{ label, items, hasDivider }`, in Flow Builder's order
  */
 export function getRootSections(context, target) {
 	const builderContext = context?.builderContext ?? {};
@@ -222,7 +222,11 @@ export function getRootSections(context, target) {
 	const records = variables.filter((item) => item.dataType === SOBJECT);
 	const sections = [
 		initSection("Picklist Values", (target?.picklistValues ?? []).map(initPicklistItem), false),
-		initSection("Quick Resources", [...initTriggerItems(builderContext, context), ...loops], false),
+		// Flow Builder divides quick resources from the rest of the menu
+		{
+			...initSection("Quick Resources", [...initTriggerItems(builderContext, context), ...loops], false),
+			hasDivider: true
+		},
 		initSection("Action", initActionItems(builderContext, context, scope)),
 		initSection("Get Records", lookups),
 		initSection(
@@ -315,15 +319,6 @@ export async function resolveItem(path, context, describeObject) {
 		}
 	}
 	return item?.value === path ? item : null;
-}
-
-/**
- * @description The icon Flow Builder shows for a data type.
- * @param {String} dataType A Flow data type, ex: `Boolean`
- * @returns {String} The icon's name; text for types without their own icon
- */
-export function getTypeIcon(dataType) {
-	return TYPE_ICONS[dataType] ?? "utility:text";
 }
 
 /**
@@ -460,6 +455,15 @@ async function getRecordSections(item, context, describeObject) {
 	const describe = await describeObject(item.objectType).catch(() => null);
 	const fields = Object.values(describe?.fields ?? {});
 	return initRecordSections(fields, item);
+}
+
+/**
+ * @description The icon Flow Builder shows for a data type.
+ * @param {String} dataType A Flow data type, ex: `Boolean`
+ * @returns {String} The icon's name; text for types without their own icon
+ */
+function getTypeIcon(dataType) {
+	return TYPE_ICONS[dataType] ?? "utility:text";
 }
 
 /**

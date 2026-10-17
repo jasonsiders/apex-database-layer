@@ -152,7 +152,7 @@ export default class FlowResourcePicker extends LightningElement {
 
 	get formElementClass() {
 		const errorClass = this.errorMessage ? " slds-has-error" : "";
-		return "slds-form-element" + errorClass;
+		return "slds-form-element slds-col" + errorClass;
 	}
 
 	get hasCrumbs() {
@@ -184,7 +184,8 @@ export default class FlowResourcePicker extends LightningElement {
 					isActive: String(isActive),
 					isCurrent: item.value === this._value,
 					className:
-						"slds-media slds-media_center slds-listbox__option slds-listbox__option_plain" + activeClass
+						"slds-media slds-media_center slds-listbox__option slds-listbox__option_plain slds-var-p-horizontal_x-small" +
+						activeClass
 				};
 				index++;
 				return option;

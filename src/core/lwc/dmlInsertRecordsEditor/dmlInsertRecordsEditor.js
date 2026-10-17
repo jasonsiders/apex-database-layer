@@ -1,5 +1,5 @@
 import { LightningElement, api } from "lwc";
-import { getTypeIcon, toBooleanConstant } from "c/flowResourceMenu";
+import { toBooleanConstant } from "c/flowResourceMenu";
 
 const ACCESS_LEVELS = [
 	{ label: "User Mode", value: "USER_MODE" },
@@ -10,6 +10,8 @@ const HOW_MANY_OPTIONS = [
 	{ label: "One", value: "one" },
 	{ label: "Multiple", value: "multiple" }
 ];
+// Flow Builder's action inputs use these icons, not its resource menu's
+const LABEL_ICONS = { Boolean: "utility:crossfilter", String: "utility:text" };
 const MULTIPLE = "multiple";
 const ONE = "one";
 const RECORDS_INPUTS = {
@@ -264,7 +266,7 @@ export default class DmlInsertRecordsEditor extends LightningElement {
 			return {
 				...definition,
 				errorMessage: this._errors[definition.name],
-				labelIcon: getTypeIcon(definition.type),
+				labelIcon: LABEL_ICONS[definition.type],
 				value: input?.value,
 				valueDataType: input?.valueDataType
 			};

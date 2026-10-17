@@ -1,6 +1,7 @@
 <template>
 	<div class="editor-section">
 		<lightning-radio-group
+			class="slds-var-p-horizontal_xx-small slds-var-m-bottom_x-small"
 			label="How Many Records to Insert"
 			options={howManyOptions}
 			type="radio"
@@ -8,7 +9,7 @@
 			onchange={handleHowManyChange}
 		></lightning-radio-group>
 	</div>
-	<div class="editor-section">
+	<div class="editor-section slds-border_top">
 		<h3 class="slds-text-heading_small slds-var-m-bottom_small">{records.heading}</h3>
 		<c-flow-resource-picker
 			data-name={records.name}
@@ -30,12 +31,12 @@
 		</p>
 	</div>
 	<template for:each={sections} for:item="section">
-		<div key={section.heading} class="editor-section">
+		<div key={section.heading} class="editor-section slds-border_top">
 			<h3 class="slds-text-heading_small slds-var-m-bottom_small">{section.heading}</h3>
 			<template for:each={section.fields} for:item="field">
 				<c-flow-resource-picker
 					key={field.name}
-					class="slds-var-m-bottom_small"
+					class="slds-var-p-around_x-small slds-var-m-bottom_x-small slds-var-m-left_small"
 					data-name={field.name}
 					name={field.name}
 					label={field.label}

@@ -6,28 +6,39 @@
 	max-width: 23rem;
 }
 
+/* Spacing and colors below match Flow Builder's own resource menu */
+.slds-dropdown {
+	padding: 0;
+}
+
 .picker-check {
-	width: 0.75rem;
-	margin-right: 0.25rem;
+	width: 1.5rem;
+	margin-right: 0;
+}
+
+.picker-divider {
+	margin: 0.25rem;
+	border-top: 1px solid var(--slds-g-color-neutral-base-80, #c9c9c9);
 }
 
 .picker-header {
-	padding: 0.5rem 0.75rem;
-	background: var(--slds-g-color-neutral-base-95, #f3f3f3);
+	padding: 0.625rem 0.75rem 0.5rem;
+	border-bottom: 1px solid var(--slds-g-color-neutral-base-65, #a0a0a0);
+	background: var(--slds-g-color-neutral-base-90, #e5e5e5);
 }
 
-.picker-help {
-	margin-left: 0.25rem;
+.picker-icon {
+	margin-right: 0.5rem;
 }
 
-.picker-label-icon {
-	margin-right: 0.25rem;
+.picker-list {
+	padding-top: 0.5rem;
 }
 
 .picker-pill {
-	display: flex;
-	align-items: center;
 	cursor: pointer;
-	min-height: 2rem;
-	padding-left: 0.125rem;
+}
+
+.picker-section {
+	padding: 0.125rem 0.75rem 0;
 }

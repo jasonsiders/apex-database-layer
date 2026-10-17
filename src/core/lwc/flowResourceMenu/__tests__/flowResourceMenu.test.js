@@ -2,7 +2,6 @@ import {
 	filterSections,
 	getChildSections,
 	getRootSections,
-	getTypeIcon,
 	parseInput,
 	resolveItem,
 	toBooleanConstant
@@ -444,13 +443,6 @@ describe("c-flow-resource-menu", () => {
 			expect(toBooleanConstant("constructor")).toBeNull();
 			expect(toBooleanConstant("$GlobalConstant.EmptyString")).toBeNull();
 			expect(toBooleanConstant(undefined)).toBeNull();
-		});
-	});
-
-	describe("getTypeIcon", () => {
-		it("returns each type's icon, and text for the rest", () => {
-			expect(getTypeIcon("Boolean")).toBe("utility:toggle");
-			expect(getTypeIcon("String")).toBe("utility:text");
 		});
 	});
 });
