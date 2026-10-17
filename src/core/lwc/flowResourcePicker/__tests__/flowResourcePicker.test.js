@@ -1,13 +1,36 @@
 import { createElement } from "lwc";
 import FlowResourcePicker from "c/flowResourcePicker";
-import describeObject from "@salesforce/apex/FlowResourcePickerController.describeObject";
 import CONTEXT from "../../flowResourceMenu/__tests__/data/context.json";
 import ACCOUNT from "../../flowResourceMenu/__tests__/data/accountDescribe.json";
 import USER from "../../flowResourceMenu/__tests__/data/userDescribe.json";
 
-jest.mock("@salesforce/apex/FlowResourcePickerController.describeObject", () => ({ default: jest.fn() }), {
-	virtual: true
-});
+const mockDescribe = jest.fn();
+
+// Answers each picker separately, like Lightning Data Service, with mockDescribe's result for each object
+jest.mock("lightning/uiObjectInfoApi", () => ({
+	getObjectInfos: class {
+		constructor(dataCallback) {
+			this.dataCallback = dataCallback;
+		}
+
+		connect() {}
+
+		disconnect() {}
+
+		update({ objectApiNames }) {
+			// Like Lightning Data Service, waits until there are objects to describe
+			const requests = (objectApiNames ?? []).map((objectApiName) =>
+				mockDescribe(objectApiName).then(
+					(result) => ({ statusCode: 200, result }),
+					() => ({ statusCode: 404, result: [{ errorCode: "NOT_FOUND" }] })
+				)
+			);
+			if (objectApiNames) {
+				Promise.all(requests).then((results) => this.dataCallback({ data: { results } }));
+			}
+		}
+	}
+}));
 
 const DESCRIBES = { Account: ACCOUNT, User: USER };
 
@@ -88,7 +111,7 @@ function lastChange(onChange) {
 
 describe("c-flow-resource-picker", () => {
 	beforeEach(() => {
-		describeObject.mockImplementation(({ objectApiName }) => Promise.resolve(DESCRIBES[objectApiName]));
+		mockDescribe.mockImplementation((objectApiName) => Promise.resolve(DESCRIBES[objectApiName]));
 	});
 
 	afterEach(() => {
@@ -413,7 +436,7 @@ describe("c-flow-resource-picker", () => {
 
 	it("relabels Get Records outputs when labels arrive while the menu is open", async () => {
 		const lead = { label: "Lead", labelPlural: "Leads" };
-		describeObject.mockImplementation(({ objectApiName }) => {
+		mockDescribe.mockImplementation((objectApiName) => {
 			return objectApiName === "Lead" ? Promise.resolve(lead) : Promise.reject(new Error("nope"));
 		});
 		const { element } = await render({ type: "SObject", isCollection: true });
@@ -456,12 +479,10 @@ describe("c-flow-resource-picker", () => {
 		const lookup = { getFirstRecordOnly: false, storeOutputAutomatically: true };
 		const recordLookups = [{ ...lookup, name: "Get_Opps", label: "Get Opps", object: "Opportunity" }];
 		const builderContext = { ...CONTEXT.builderContext, recordLookups };
-		describeObject.mockImplementation(() => Promise.reject(new Error("nope")));
+		mockDescribe.mockImplementation(() => Promise.reject(new Error("nope")));
 		const { element } = await render({ type: "SObject", isCollection: true, builderContext });
 
-		describeObject.mockImplementation(() =>
-			Promise.resolve({ label: "Opportunity", labelPlural: "Opportunities" })
-		);
+		mockDescribe.mockImplementation(() => Promise.resolve({ label: "Opportunity", labelPlural: "Opportunities" }));
 		element.builderContext = { ...builderContext };
 		await open(element);
 
@@ -470,7 +491,7 @@ describe("c-flow-resource-picker", () => {
 
 	it("shows the latest value when an earlier one resolves late", async () => {
 		let resolveCase;
-		describeObject.mockImplementation(({ objectApiName }) => {
+		mockDescribe.mockImplementation((objectApiName) => {
 			return objectApiName === "Case"
 				? new Promise((resolve) => {
 						resolveCase = resolve;
@@ -484,14 +505,15 @@ describe("c-flow-resource-picker", () => {
 
 		element.value = "textVar";
 		await flush();
-		resolveCase({ apiName: "Case", fields: [{ apiName: "Subject", dataType: "STRING", label: "Subject" }] });
+		const subject = { apiName: "Subject", dataType: "String", label: "Subject", referenceToInfos: [] };
+		resolveCase({ apiName: "Case", fields: { Subject: subject } });
 		await flush();
 
 		expect(pillLabel(element)).toBe("textVar");
 	});
 
 	it("survives describe failures", async () => {
-		describeObject.mockImplementation(() => Promise.reject(new Error("nope")));
+		mockDescribe.mockImplementation(() => Promise.reject(new Error("nope")));
 		const { element } = await render({ builderContext: { ...CONTEXT.builderContext, recordLookups: [] } });
 		await open(element);
 

@@ -1,29 +1,11 @@
-import { LightningElement, api } from "lwc";
-import describeObjectApex from "@salesforce/apex/FlowResourcePickerController.describeObject";
+import { LightningElement, api, wire } from "lwc";
+import { getObjectInfos } from "lightning/uiObjectInfoApi";
 import { filterSections, getChildSections, getRootSections, parseInput, resolveItem } from "c/flowResourceMenu";
 
 const BOOLEAN_CONSTANTS = { false: "$GlobalConstant.False", true: "$GlobalConstant.True" };
 const GLOBAL_CONSTANT_PREFIX = "$GlobalConstant.";
 const REFERENCE = "reference";
 const ROOT_LABEL = "All Resources";
-
-// Shared by every picker on the page, so each object is described once
-const DESCRIBES = new Map();
-
-/**
- * @description Describes an object, reusing earlier requests for the same object.
- * @param {String} objectApiName The object to describe
- * @returns {Promise<Object>} The object's describe
- */
-function describeObject(objectApiName) {
-	if (!DESCRIBES.has(objectApiName)) {
-		const request = describeObjectApex({ objectApiName });
-		// A failed describe is dropped, so the next request retries it
-		request.catch(() => DESCRIBES.delete(objectApiName));
-		DESCRIBES.set(objectApiName, request);
-	}
-	return DESCRIBES.get(objectApiName);
-}
 
 /**
  * @description The data type Flow Builder expects for a resource. Global constants keep their own type.
@@ -109,6 +91,8 @@ export default class FlowResourcePicker extends LightningElement {
 
 	_activeIndex = -1;
 	_builderContext;
+	_describeNames;
+	_describes = new Map();
 	_isDirty = false;
 	_isEditing = false;
 	_isOpen = false;
@@ -129,6 +113,28 @@ export default class FlowResourcePicker extends LightningElement {
 			this._shouldFocus = false;
 			this.template.querySelector('input[role="combobox"]')?.focus();
 		}
+	}
+
+	// **** WIRED **** //
+	/**
+	 * @description Settles each pending describe; results arrive in the order their objects were requested. A failed
+	 * describe is forgotten, so the next request for it retries.
+	 * @param {Object} response The wire's `{ data, error }`
+	 */
+	@wire(getObjectInfos, { objectApiNames: "$_describeNames" })
+	wiredDescribes({ data, error }) {
+		this._describeNames?.forEach((objectApiName, index) => {
+			const response = data?.results?.[index];
+			const request = this._describes.get(objectApiName);
+			const isSuccess = response?.statusCode === 200;
+			const isFailure = Boolean(error) || (response != null && !isSuccess);
+			if (isSuccess) {
+				request?.resolve(response.result);
+			} else if (isFailure) {
+				this._describes.delete(objectApiName);
+				request?.reject(new Error(`Couldn't describe ${objectApiName}`));
+			}
+		});
 	}
 
 	// **** GETTERS **** //
@@ -374,6 +380,23 @@ export default class FlowResourcePicker extends LightningElement {
 
 	// **** PRIVATE **** //
 	/**
+	 * @description Describes an object on demand: adding it to the wire's objects fetches it, and Lightning Data Service
+	 * caches it across pickers. Objects are only ever appended, so results line up with them by position.
+	 * @param {String} objectApiName The object to describe
+	 * @returns {Promise<Object>} The object's UI API object info
+	 */
+	_describeObject = (objectApiName) => {
+		if (!this._describes.has(objectApiName)) {
+			const names = this._describeNames ?? [];
+			const isNew = !names.includes(objectApiName);
+			this._describes.set(objectApiName, Promise.withResolvers());
+			// A new array even when retrying, so the wire fetches again
+			this._describeNames = isNew ? [...names, objectApiName] : [...names];
+		}
+		return this._describes.get(objectApiName).promise;
+	};
+
+	/**
 	 * @description Selects a selectable item, or drills into a container.
 	 * @param {Object} item The chosen menu item
 	 */
@@ -454,9 +477,9 @@ export default class FlowResourcePicker extends LightningElement {
 		const lastDot = path.lastIndexOf(".");
 		const parentPath = parsed.isReference ? path.slice(0, Math.max(lastDot, 0)) : "";
 		const searchTerm = parsed.isReference ? path.slice(lastDot + 1) : parsed.searchTerm;
-		const parent = parentPath ? await resolveItem(parentPath, this.context, describeObject) : null;
+		const parent = parentPath ? await resolveItem(parentPath, this.context, this._describeObject) : null;
 		const sections = parent
-			? await getChildSections(parent, this.context, this.target, describeObject)
+			? await getChildSections(parent, this.context, this.target, this._describeObject)
 			: getRootSections(this.context, this.target);
 		// An unresolved parent (ex: "$GlobalConstant") searches the root for the whole path instead
 		const term = parent || !parentPath ? searchTerm : path;
@@ -476,7 +499,7 @@ export default class FlowResourcePicker extends LightningElement {
 		const triggerObject = this._builderContext?.start?.object;
 		const objects = new Set([...lookupObjects, triggerObject].filter(Boolean));
 		const requests = [...objects].map((objectApiName) =>
-			describeObject(objectApiName)
+			this._describeObject(objectApiName)
 				.then((describe) => [objectApiName, { label: describe.label, labelPlural: describe.labelPlural }])
 				// Without labels, outputs fall back to the object's API name, as the menu still works
 				.catch(() => null)
@@ -569,7 +592,7 @@ export default class FlowResourcePicker extends LightningElement {
 	 */
 	async _resolveSelection(path) {
 		// A deleted resource or inaccessible object still shows, as its raw path, so the user can replace it
-		const item = await resolveItem(path, this.context, describeObject).catch(() => null);
+		const item = await resolveItem(path, this.context, this._describeObject).catch(() => null);
 		return item ?? { value: path, pathLabel: path, icon: "utility:text" };
 	}
 

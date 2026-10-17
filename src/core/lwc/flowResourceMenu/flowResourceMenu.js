@@ -27,19 +27,19 @@ const ICON_RECORD_COLLECTION = "utility:record_collection";
 const SOBJECT = "SObject";
 const TYPE_ORDER = ["Boolean", "Currency", "Date", "DateTime", "Multipicklist", "Number", "Picklist", "String", "Time"];
 
-// Schema.DisplayType names that Flow treats as something other than text
-const FLOW_TYPES_BY_DISPLAY_TYPE = {
-	BOOLEAN: "Boolean",
-	CURRENCY: "Currency",
-	DATE: "Date",
-	DATETIME: "DateTime",
-	DOUBLE: "Number",
-	INTEGER: "Number",
-	LONG: "Number",
-	MULTIPICKLIST: "Multipicklist",
-	PERCENT: "Number",
-	PICKLIST: "Picklist",
-	TIME: "Time"
+// UI API field data types that Flow treats as something other than text
+const FLOW_TYPES_BY_FIELD_TYPE = {
+	Boolean: "Boolean",
+	Currency: "Currency",
+	Date: "Date",
+	DateTime: "DateTime",
+	Double: "Number",
+	Int: "Number",
+	Long: "Number",
+	MultiPicklist: "Multipicklist",
+	Percent: "Number",
+	Picklist: "Picklist",
+	Time: "Time"
 };
 
 // automaticOutputVariables report data types in lowercase
@@ -436,7 +436,8 @@ function getOutputSections(item, context) {
  */
 async function getRecordSections(item, context, describeObject) {
 	const describe = await describeObject(item.objectType).catch(() => null);
-	return initRecordSections(describe?.fields ?? [], item);
+	const fields = Object.values(describe?.fields ?? {});
+	return initRecordSections(fields, item);
 }
 
 /**
@@ -448,7 +449,7 @@ async function getRecordSections(item, context, describeObject) {
  */
 function initRecordSections(fields, item) {
 	const sorted = [...fields].sort(compareLabels);
-	const lookups = sorted.filter((field) => field.relationshipName && field.referenceTo?.length);
+	const lookups = sorted.filter((field) => field.relationshipName && field.referenceToInfos?.length);
 	const others = sorted.filter((field) => !lookups.includes(field));
 	const relationships = lookups.map((field) => initRelationshipItem(field, item));
 	const lookupIds = lookups.map((field) => initFieldItem(field, item));
@@ -487,7 +488,7 @@ function initActionItems(builderContext, context, scope) {
  * @returns {Object} The field's item
  */
 function initFieldItem(field, parent) {
-	const dataType = FLOW_TYPES_BY_DISPLAY_TYPE[field.dataType] ?? "String";
+	const dataType = FLOW_TYPES_BY_FIELD_TYPE[field.dataType] ?? "String";
 	const value = `${parent.value}.${field.apiName}`;
 	return initItem({ value, label: field.label, pathLabel: `${parent.pathLabel} > ${field.label}`, dataType });
 }
@@ -614,7 +615,7 @@ function initRelationshipItem(field, parent) {
 		pathLabel: `${parent.pathLabel} > ${field.label}`,
 		dataType: SOBJECT,
 		// shortcut: polymorphic lookups (ex: Owner on Case) drill into their first type; list each type if users need others
-		objectType: field.referenceTo[0],
+		objectType: field.referenceToInfos[0].apiName,
 		drillType: DRILL_RECORD
 	});
 }

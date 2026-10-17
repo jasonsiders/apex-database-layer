@@ -2,12 +2,6 @@ import { createElement } from "lwc";
 import DmlInsertRecordsEditor from "c/dmlInsertRecordsEditor";
 import CONTEXT from "../../flowResourceMenu/__tests__/data/context.json";
 
-jest.mock(
-	"@salesforce/apex/FlowResourcePickerController.describeObject",
-	() => ({ default: jest.fn(() => Promise.resolve({ label: "Account", labelPlural: "Accounts", fields: [] })) }),
-	{ virtual: true }
-);
-
 const OPTION_NAMES = [
 	"accessLevel",
 	"allOrNone",
