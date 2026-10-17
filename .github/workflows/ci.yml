@@ -179,3 +179,21 @@ jobs:
       - name: Post Authenticate Devhub
         if: ${{ always() }}
         run: rm -f server.key
+  run-lwc-tests:
+    name: Run LWC Tests
+    if: ${{ !github.event.pull_request.draft && !contains(github.actor, '[bot]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+      - name: Install Dependencies
+        # Skip husky's git hooks, which CI doesn't need
+        run: npm ci --ignore-scripts
+      - name: Run Tests
+        run: npm run test:unit
