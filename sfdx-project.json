@@ -4,8 +4,8 @@
 			"path": "src/core",
 			"default": true,
 			"package": "apex-database-layer",
-			"versionName": "v4.0.5",
-			"versionNumber": "4.0.5.NEXT"
+			"versionName": "v4.1.0",
+			"versionNumber": "4.1.0.NEXT"
 		},
 		{
 			"versionName": "v1.1.0",
@@ -39,6 +39,7 @@
 		"apex-database-layer@4.0.2-1": "04tDn000000nHkhIAE",
 		"apex-database-layer@4.0.3-1": "04tDn000000nHkrIAE",
 		"apex-database-layer@4.0.4-1": "04tDn000000nHl1IAE",
-		"apex-database-layer@4.0.5-1": "04tDn000000nHlLIAU"
+		"apex-database-layer@4.0.5-1": "04tDn000000nHlLIAU",
+		"apex-database-layer@4.1.0-1": "04tDn000000nHlQIAU"
 	}
 }
