@@ -1,6 +1,6 @@
 import { LightningElement, api, wire } from "lwc";
 import getMatchFields from "@salesforce/apex/InvocableDmlUpsertRecords.getMatchFields";
-import { REQUIRED_ERROR, toBooleanConstant } from "c/flowResourceMenu";
+import { REQUIRED_ERROR, compareLabels, toBooleanConstant } from "c/flowResourceMenu";
 
 const ACCESS_LEVELS = [
 	{ label: "User Mode", value: "USER_MODE" },
@@ -198,16 +198,8 @@ export default class DmlRecordsEditor extends LightningElement {
 		return this.elementInfo?.apiName;
 	}
 
-	get hasMatchField() {
-		return Boolean(this.action.hasMatchField);
-	}
-
 	get howMany() {
 		return this._howMany;
-	}
-
-	get howManyLabel() {
-		return this.action.howManyLabel;
 	}
 
 	get howManyOptions() {
@@ -224,7 +216,7 @@ export default class DmlRecordsEditor extends LightningElement {
 
 	get matchMode() {
 		const value = this._values[EXTERNAL_ID_FIELD]?.value;
-		const field = this._matchFields.find((candidate) => candidate.apiName === value);
+		const field = this._matchFields.find((candidate) => candidate.value === value);
 		const fieldMode = field?.isExternalId === false ? STANDARD_FIELD : EXTERNAL_ID;
 		// Until the user picks a mode, the saved field implies it
 		return this._matchMode ?? (value == null ? RECORD_ID : fieldMode);
@@ -233,7 +225,7 @@ export default class DmlRecordsEditor extends LightningElement {
 	get matchObjectType() {
 		const mapping = this.genericTypeMappings?.find((candidate) => candidate.typeName === GENERIC_TYPES[0]);
 		// Only Upsert Records matches on a field, so the other actions skip the Apex call
-		return this.hasMatchField ? (this._objectType ?? mapping?.typeValue) : undefined;
+		return this.action.hasMatchField ? (this._objectType ?? mapping?.typeValue) : undefined;
 	}
 
 	get records() {
@@ -296,13 +288,21 @@ export default class DmlRecordsEditor extends LightningElement {
 
 	// **** WIRED **** //
 	/**
-	 * @description Lists the fields Upsert Records can match on; an object Apex can't describe offers none, and the user
-	 * can still type a field
+	 * @description Lists the fields Upsert Records can match on, by API name like Flow Builder; an object Apex can't
+	 * describe offers none, and the user can still type a field
 	 * @param {Object} response The wire's `{ data, error }`
 	 */
 	@wire(getMatchFields, { objectApiName: "$matchObjectType" })
 	wiredMatchFields(response) {
-		this._matchFields = response?.data ?? [];
+		// shortcut: every field gets the text icon, as most external IDs are text; pass the field type for others
+		const options = (response?.data ?? []).map((field) => ({
+			label: field.apiName,
+			value: field.apiName,
+			description: field.label,
+			icon: "utility:text",
+			isExternalId: field.isExternalId
+		}));
+		this._matchFields = options.sort(compareLabels);
 	}
 
 	// **** HANDLERS **** //
@@ -350,7 +350,7 @@ export default class DmlRecordsEditor extends LightningElement {
 	handleRecordsChange(event) {
 		const { isCollection, objectType, value } = event.detail;
 		this._objectType = objectType ?? this._objectType;
-		if (!this.howManyLabel && value != null) {
+		if (!this.action.howManyLabel && value != null) {
 			this._setHowMany(isCollection ? MULTIPLE : ONE);
 		}
 		this._saveInput({ ...event.detail, name: RECORDS_INPUTS[this._howMany].name });
@@ -398,24 +398,10 @@ export default class DmlRecordsEditor extends LightningElement {
 	 * @returns {Object} The mode's field, ready for `c-flow-resource-picker`
 	 */
 	_initMatchField(mode) {
-		const input = this._values[EXTERNAL_ID_FIELD];
 		const isExternalId = mode.value === EXTERNAL_ID;
-		// shortcut: every field gets the text icon, as most external IDs are text; pass the field type for others
-		const picklistValues = this._matchFields
-			.filter((field) => field.isExternalId === isExternalId)
-			.map((field) => ({
-				label: field.apiName,
-				value: field.apiName,
-				description: field.label,
-				icon: "utility:text"
-			}))
-			.sort((a, b) => a.label.localeCompare(b.label));
-		return {
-			errorMessage: this._errors[EXTERNAL_ID_FIELD],
-			picklistValues,
-			value: input?.value,
-			valueDataType: input?.valueDataType
-		};
+		const [field] = this._initFields([{ name: EXTERNAL_ID_FIELD }]);
+		const picklistValues = this._matchFields.filter((option) => option.isExternalId === isExternalId);
+		return { ...field, picklistValues };
 	}
 
 	/**
@@ -515,7 +501,7 @@ export default class DmlRecordsEditor extends LightningElement {
 	 */
 	_validateMatchField() {
 		const isMissing =
-			this.hasMatchField && this.matchMode !== RECORD_ID && this._values[EXTERNAL_ID_FIELD]?.value == null;
+			this.action.hasMatchField && this.matchMode !== RECORD_ID && this._values[EXTERNAL_ID_FIELD]?.value == null;
 		return isMissing ? { key: EXTERNAL_ID_FIELD, errorString: REQUIRED_ERROR } : null;
 	}
 

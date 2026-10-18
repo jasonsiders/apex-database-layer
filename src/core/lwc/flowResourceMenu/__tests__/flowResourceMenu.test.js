@@ -153,6 +153,14 @@ describe("c-flow-resource-menu", () => {
 			expect(findItem(sections, "Loop_Outputs")).toMatchObject({ objectType: "Account", isSelectable: true });
 		});
 
+		it("lists only picklist values for a picklist-only input", () => {
+			const target = { ...TEXT, isPicklistOnly: true, picklistValues: [{ label: "Email", value: "Email" }] };
+
+			const sections = getRootSections(context, target);
+
+			expect(labelsBySection(sections)).toEqual({ "Picklist Values": ["Email"] });
+		});
+
 		it("handles an empty builder context", () => {
 			const sections = getRootSections({ builderContext: {}, automaticOutputVariables: {} }, TEXT);
 
@@ -322,6 +330,14 @@ describe("c-flow-resource-menu", () => {
 
 			expect(labelsBySection(sections)).toEqual({ "Running User": ["IsActive"] });
 			expect(sections[0].items[0]).toMatchObject({ value: "$User.IsActive", pathLabel: "$User > IsActive" });
+		});
+
+		it("lists nothing inside a resource for a picklist-only input", async () => {
+			const user = findItem(getRootSections(context, TEXT), "$User");
+
+			expect(await getChildSections(user, context, { ...TEXT, isPicklistOnly: true }, describeObject)).toEqual(
+				[]
+			);
 		});
 
 		it("lists every $Api endpoint", async () => {

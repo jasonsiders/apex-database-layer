@@ -215,58 +215,9 @@ const GLOBAL_CONSTANTS = [
  * @returns {Array} Sections of `{ label, items, hasDivider }`, in Flow Builder's order
  */
 export function getRootSections(context, target) {
-	const builderContext = context?.builderContext ?? {};
-	const scope = initScope(builderContext, context?.elementName);
-	const variables = (builderContext.variables ?? []).map(initVariableItem);
-	const lookups = (builderContext.recordLookups ?? [])
-		.filter((lookup) => lookup.storeOutputAutomatically && scope.isUpstream(lookup.name))
-		.map((lookup) => initLookupItem(lookup, context));
-	const loops = initLoopItems(builderContext, [...variables, ...lookups], context, scope);
-	const records = variables.filter((item) => item.dataType === SOBJECT);
 	const picklist = initSection("Picklist Values", (target?.picklistValues ?? []).map(initPicklistItem), false);
-	const resources = [
-		// Flow Builder divides quick resources from the rest of the menu
-		{
-			...initSection("Quick Resources", [...initTriggerItems(builderContext, context), ...loops], false),
-			hasDivider: true
-		},
-		initSection("Action", initActionItems(builderContext, context, scope)),
-		initSection("Get Records", lookups),
-		initSection(
-			"Choices",
-			(builderContext.choices ?? []).map((choice) => initTypedItem(choice.name, choice.dataType))
-		),
-		initSection(
-			"Constants",
-			(builderContext.constants ?? []).map((constant) => initTypedItem(constant.name, constant.dataType))
-		),
-		initSection(
-			"Formulas",
-			(builderContext.formulas ?? []).map((formula) => initTypedItem(formula.name, formula.dataType))
-		),
-		initSection(
-			"Record Collections",
-			records.filter((item) => item.isCollection)
-		),
-		initSection(
-			"Record Variables",
-			records.filter((item) => !item.isCollection)
-		),
-		initSection("Screen Components", initScreenItems(builderContext, scope)),
-		initSection(
-			"Simple Variables",
-			variables.filter((item) => item.dataType !== SOBJECT)
-		),
-		initSection("Stages", (builderContext.stages ?? []).map(initStageItem)),
-		initSection("Text Templates", (builderContext.textTemplates ?? []).map(initTextTemplateItem)),
-		initSection(
-			"Global Constants",
-			GLOBAL_CONSTANTS.map((constant) => initItem(constant)),
-			false
-		),
-		initSection("Global Variables", GLOBAL_VARIABLES.map(initGlobalItem), false)
-	];
-	const sections = target?.isPicklistOnly ? [picklist] : [picklist, ...resources];
+	// A picklist-only target skips building the resources it would discard
+	const sections = target?.isPicklistOnly ? [picklist] : [picklist, ...initResourceSections(context)];
 	return applyTarget(sections, target, context);
 }
 
@@ -358,6 +309,16 @@ export function parseInput(text) {
 		parentPath: path.slice(0, Math.max(lastDot, 0)),
 		searchTerm: path.slice(lastDot + 1)
 	};
+}
+
+/**
+ * @description Orders items alphabetically by label, ignoring case.
+ * @param {Object} first An item or field
+ * @param {Object} second Another item or field
+ * @returns {Number} The sort order
+ */
+export function compareLabels(first, second) {
+	return LABEL_COLLATOR.compare(first.label, second.label);
 }
 
 // **** PRIVATE **** //
@@ -643,6 +604,64 @@ function initRelationshipItem(field, parent) {
 }
 
 /**
+ * @description Builds the menu's resource sections: every resource in the flow, plus global constants and variables.
+ * @param {Object} context `{ builderContext, automaticOutputVariables, objectLabels }`
+ * @returns {Array} Sections of `{ label, items, hasDivider }`, in Flow Builder's order
+ */
+function initResourceSections(context) {
+	const builderContext = context?.builderContext ?? {};
+	const scope = initScope(builderContext, context?.elementName);
+	const variables = (builderContext.variables ?? []).map(initVariableItem);
+	const lookups = (builderContext.recordLookups ?? [])
+		.filter((lookup) => lookup.storeOutputAutomatically && scope.isUpstream(lookup.name))
+		.map((lookup) => initLookupItem(lookup, context));
+	const loops = initLoopItems(builderContext, [...variables, ...lookups], context, scope);
+	const records = variables.filter((item) => item.dataType === SOBJECT);
+	return [
+		// Flow Builder divides quick resources from the rest of the menu
+		{
+			...initSection("Quick Resources", [...initTriggerItems(builderContext, context), ...loops], false),
+			hasDivider: true
+		},
+		initSection("Action", initActionItems(builderContext, context, scope)),
+		initSection("Get Records", lookups),
+		initSection(
+			"Choices",
+			(builderContext.choices ?? []).map((choice) => initTypedItem(choice.name, choice.dataType))
+		),
+		initSection(
+			"Constants",
+			(builderContext.constants ?? []).map((constant) => initTypedItem(constant.name, constant.dataType))
+		),
+		initSection(
+			"Formulas",
+			(builderContext.formulas ?? []).map((formula) => initTypedItem(formula.name, formula.dataType))
+		),
+		initSection(
+			"Record Collections",
+			records.filter((item) => item.isCollection)
+		),
+		initSection(
+			"Record Variables",
+			records.filter((item) => !item.isCollection)
+		),
+		initSection("Screen Components", initScreenItems(builderContext, scope)),
+		initSection(
+			"Simple Variables",
+			variables.filter((item) => item.dataType !== SOBJECT)
+		),
+		initSection("Stages", (builderContext.stages ?? []).map(initStageItem)),
+		initSection("Text Templates", (builderContext.textTemplates ?? []).map(initTextTemplateItem)),
+		initSection(
+			"Global Constants",
+			GLOBAL_CONSTANTS.map((constant) => initItem(constant)),
+			false
+		),
+		initSection("Global Variables", GLOBAL_VARIABLES.map(initGlobalItem), false)
+	];
+}
+
+/**
  * @description Builds the items for screen components that store a value, including those nested in sections.
  * @param {Object} builderContext The CPE's builder context
  * @param {Object} scope Which screens can run before the element being edited
@@ -725,7 +744,9 @@ function isAssignable(item, target) {
 	const matchesRecord = item.dataType === SOBJECT && matchesShape && matchesObject;
 	const isScalar = Boolean(item.dataType) && !item.isCollection && ![SOBJECT, "Apex"].includes(item.dataType);
 	const matchesScalar = isScalar && (target?.dataType === "String" || item.dataType === target?.dataType);
-	return !target || (isRecordTarget ? matchesRecord : matchesScalar);
+	// Typing a merge field mustn't reach resources that a picklist-only target hides
+	const matchesMode = !target?.isPicklistOnly || Boolean(item.isLiteral);
+	return !target || (matchesMode && (isRecordTarget ? matchesRecord : matchesScalar));
 }
 
 /**
@@ -854,16 +875,6 @@ function initTriggerItems(builderContext, context) {
 			drillType: DRILL_RECORD
 		})
 	);
-}
-
-/**
- * @description Orders items alphabetically by label, ignoring case.
- * @param {Object} first An item or field
- * @param {Object} second Another item or field
- * @returns {Number} The sort order
- */
-function compareLabels(first, second) {
-	return LABEL_COLLATOR.compare(first.label, second.label);
 }
 
 /**

@@ -136,7 +136,7 @@ export default class FlowResourcePicker extends LightningElement {
 	}
 
 	get comboboxClass() {
-		const openClass = this._isOpen ? " slds-is-open" : "";
+		const openClass = this.isOpen ? " slds-is-open" : "";
 		return "slds-combobox slds-dropdown-trigger slds-dropdown-trigger_click" + openClass;
 	}
 
@@ -218,29 +218,29 @@ export default class FlowResourcePicker extends LightningElement {
 	 * @returns {Array} Sections of options, ready for the template
 	 */
 	get menu() {
+		// Field pickers list fields as SLDS entities, like Flow Builder's own
+		const typeClass = this.isPicklistOnly ? " slds-listbox__option_entity" : " picker-option";
 		let index = 0;
 		return this._sections.map((section) => ({
 			...section,
 			items: section.items.map((item) => {
 				const isActive = index === this._activeIndex;
 				const activeClass = isActive ? " slds-has-focus" : "";
-				// Field pickers list fields as SLDS entities, like Flow Builder's own
-				const typeClass = this.isPicklistOnly ? " slds-listbox__option_entity" : " picker-option";
-				const textClass = this.isPicklistOnly
-					? "slds-listbox__option-text slds-listbox__option-text_entity"
-					: "slds-truncate";
 				const option = {
 					...item,
 					domId: `option-${index}`,
 					isActive: String(isActive),
 					isCurrent: item.value === this._value,
-					className: "slds-media slds-media_center slds-listbox__option" + typeClass + activeClass,
-					textClass
+					className: "slds-media slds-media_center slds-listbox__option" + typeClass + activeClass
 				};
 				index++;
 				return option;
 			})
 		}));
+	}
+
+	get optionTextClass() {
+		return this.isPicklistOnly ? "slds-listbox__option-text slds-listbox__option-text_entity" : "slds-truncate";
 	}
 
 	get options() {

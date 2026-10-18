@@ -1,8 +1,8 @@
 <template>
-	<div lwc:if={howManyLabel} class="editor-section slds-border_top">
+	<div lwc:if={action.howManyLabel} class="editor-section slds-border_top">
 		<lightning-radio-group
 			class="slds-var-p-horizontal_xx-small slds-var-m-bottom_x-small"
-			label={howManyLabel}
+			label={action.howManyLabel}
 			options={howManyOptions}
 			type="radio"
 			value={howMany}
@@ -29,7 +29,7 @@
 		></c-flow-resource-picker>
 		<p class="slds-text-body_regular slds-var-m-top_medium">{records.hint}</p>
 	</div>
-	<div lwc:if={hasMatchField} class="editor-section slds-border_top">
+	<div lwc:if={action.hasMatchField} class="editor-section slds-border_top">
 		<h3 class="slds-text-heading_small slds-var-m-bottom_small">Update Existing Record</h3>
 		<p class="slds-text-body_regular slds-var-p-vertical_small">
 			At run time, the action uses the specified field to either insert a record or update an existing record.
@@ -66,9 +66,6 @@
 								value={mode.field.value}
 								value-data-type={mode.field.valueDataType}
 								error-message={mode.field.errorMessage}
-								builder-context={builderContext}
-								element-name={elementName}
-								automatic-output-variables={automaticOutputVariables}
 								onchange={handleMatchFieldChange}
 							></c-flow-resource-picker>
 						</div>
