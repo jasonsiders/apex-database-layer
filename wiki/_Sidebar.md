@@ -18,6 +18,8 @@
 - **Duplicates**
     - [Identifying Duplicates](./Identifying-Duplicates)
     - [Mocking Duplicate Rules](./Mocking-Duplicate-Rules)
+- **Permissions**
+    - [Mocking Custom Permissions](./Mocking-Custom-Permissions)
 - **Plugins**
     - [About The Plugin Framework](./The-Plugin-Framework)
     - [DatabaseLayerParameter\_\_mdt Parameters](./DatabaseLayerParameter__mdt)
@@ -63,6 +65,8 @@
     - [MockDuplicates.MatchResult](./The-MockDuplicates.MatchResult-Class)
     - [MockDuplicates.SaveBehavior](./The-MockDuplicates.SaveBehavior-Enum)
     - [MockDuplicates.Simulator](./The-MockDuplicates.Simulator-Interface)
+- [**Permissions**](./The-Permissions-Class)
+- [**MockPermissions**](./The-MockPermissions-Class)
 - [**MockSoql**](./The-MockSoql-Class)
     - [MockSoql.AggregateResult](./The-MockSoql.AggregateResult-Class)
     - [MockSoql.Simulator](./The-MockSoql.Simulator-Interface)
