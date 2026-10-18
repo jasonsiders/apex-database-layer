@@ -458,15 +458,6 @@ async function getRecordSections(item, context, describeObject) {
 }
 
 /**
- * @description The icon Flow Builder shows for a data type.
- * @param {String} dataType A Flow data type, ex: `Boolean`
- * @returns {String} The icon's name; text for types without their own icon
- */
-function getTypeIcon(dataType) {
-	return TYPE_ICONS[dataType] ?? "utility:text";
-}
-
-/**
  * @description Lists lookups first, as drillable relationships and then as Ids, then the other fields by type and
  * label, matching Flow Builder's order
  * @param {Array} fields The object's field describes
@@ -542,7 +533,8 @@ function initGlobalItem(global) {
 function initItem(props) {
 	const isRecord = props.dataType === SOBJECT;
 	const recordIcon = props.isCollection ? ICON_RECORD_COLLECTION : ICON_RECORD;
-	const icon = isRecord ? recordIcon : getTypeIcon(props.dataType);
+	const typeIcon = TYPE_ICONS[props.dataType] ?? "utility:text";
+	const icon = isRecord ? recordIcon : typeIcon;
 	return { icon, isCollection: false, isLiteral: false, drillType: null, pathLabel: props.label, ...props };
 }
 
