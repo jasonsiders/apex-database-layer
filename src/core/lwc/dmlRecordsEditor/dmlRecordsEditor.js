@@ -206,20 +206,20 @@ export default class DmlRecordsEditor extends LightningElement {
 		return HOW_MANY_OPTIONS;
 	}
 
-	get matchModes() {
-		const matchMode = this.matchMode;
-		return MATCH_MODES.map((mode) => {
-			const isChecked = mode.value === matchMode;
-			return { ...mode, isChecked, field: isChecked && mode.placeholder ? this._initMatchField(mode) : null };
-		});
-	}
-
 	get matchMode() {
 		const value = this._values[EXTERNAL_ID_FIELD]?.value;
 		const field = this._matchFields.find((candidate) => candidate.value === value);
 		const fieldMode = field?.isExternalId === false ? STANDARD_FIELD : EXTERNAL_ID;
 		// Until the user picks a mode, the saved field implies it
 		return this._matchMode ?? (value == null ? RECORD_ID : fieldMode);
+	}
+
+	get matchModes() {
+		const matchMode = this.matchMode;
+		return MATCH_MODES.map((mode) => {
+			const isChecked = mode.value === matchMode;
+			return { ...mode, isChecked, field: isChecked && mode.placeholder ? this._initMatchField(mode) : null };
+		});
 	}
 
 	get matchObjectType() {
