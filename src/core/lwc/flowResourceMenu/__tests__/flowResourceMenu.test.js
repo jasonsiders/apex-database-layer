@@ -84,6 +84,13 @@ describe("c-flow-resource-menu", () => {
 			expect(findItem(sections, "Insert_Spike")).toMatchObject({ isSelectable: false, isDrillable: true });
 		});
 
+		it("lists records of either shape for a record input that takes either", () => {
+			const sections = labelsBySection(getRootSections(context, { dataType: "SObject" }));
+
+			expect(sections["Record Collections"]).toEqual(["accountsVar"]);
+			expect(sections["Record Variables"]).toEqual(["accountVar", "contactVar"]);
+		});
+
 		it("lists record collections for a record collection input", () => {
 			const sections = getRootSections(context, RECORDS);
 

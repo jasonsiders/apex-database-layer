@@ -1,22 +1,23 @@
 <template>
-	<div class="editor-section">
+	<div lwc:if={howManyLabel} class="editor-section">
 		<lightning-radio-group
 			class="slds-var-p-horizontal_xx-small slds-var-m-bottom_x-small"
-			label="How Many Records to Insert"
+			label={howManyLabel}
 			options={howManyOptions}
 			type="radio"
 			value={howMany}
 			onchange={handleHowManyChange}
 		></lightning-radio-group>
 	</div>
-	<div class="editor-section slds-border_top">
+	<div class={records.sectionClass}>
 		<h3 class="slds-text-heading_small slds-var-m-bottom_small">{records.heading}</h3>
 		<c-flow-resource-picker
 			data-name={records.name}
 			name={records.name}
 			label={records.label}
 			type="SObject"
-			is-collection={isMultiple}
+			is-collection={records.isCollection}
+			placeholder="Search records..."
 			required
 			value={records.value}
 			value-data-type={records.valueDataType}
@@ -26,9 +27,7 @@
 			automatic-output-variables={automaticOutputVariables}
 			onchange={handleRecordsChange}
 		></c-flow-resource-picker>
-		<p class="slds-text-body_regular slds-var-m-top_small">
-			Make sure that ID is blank. After the records are inserted, find their IDs in the action's Record outputs.
-		</p>
+		<p class="slds-text-body_regular slds-var-m-top_medium">{records.hint}</p>
 	</div>
 	<template for:each={sections} for:item="section">
 		<div key={section.heading} class="editor-section slds-border_top">

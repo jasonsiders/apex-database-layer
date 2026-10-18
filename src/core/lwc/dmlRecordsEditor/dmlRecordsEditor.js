@@ -13,34 +13,37 @@ const HOW_MANY_OPTIONS = [
 const MULTIPLE = "multiple";
 const ONE = "one";
 const RECORDS_INPUTS = {
-	[MULTIPLE]: {
-		heading: "Insert Records from These Values",
-		label: "Record Collection",
-		name: "recordCollection",
-		noun: "record collection"
-	},
-	[ONE]: { heading: "Insert a Record from These Values", label: "Record", name: "record", noun: "record" }
+	[MULTIPLE]: { label: "Record Collection", name: "recordCollection" },
+	[ONE]: { label: "Record", name: "record" }
 };
 const REFERENCE = "reference";
 
-// Mirrors InvocableDml.Input
-const SETTINGS = [
-	{
-		name: "accessLevel",
-		label: "Access Level",
-		type: "String",
-		picklistValues: ACCESS_LEVELS,
-		helpText:
-			"USER_MODE (default) enforces the running user's object permissions, field-level security, and sharing rules. SYSTEM_MODE ignores them."
-	},
-	{
-		name: "allOrNone",
-		label: "All or None",
-		type: "Boolean",
-		helpText:
-			"When true (default), any failure rolls back every record and fails the action. When false, valid records are inserted, and failures are reported in the results."
-	}
-];
+// Mirror InvocableDml.Input
+const ACCESS_LEVEL = {
+	name: "accessLevel",
+	label: "Access Level",
+	type: "String",
+	picklistValues: ACCESS_LEVELS,
+	helpText:
+		"USER_MODE (default) enforces the running user's object permissions, field-level security, and sharing rules. SYSTEM_MODE ignores them."
+};
+const ALL_OR_NONE = {
+	name: "allOrNone",
+	label: "All or None",
+	type: "Boolean",
+	helpText:
+		"When true (default), any failure rolls back every record and fails the action. When false, valid records are processed, and failures are reported in the results."
+};
+const EXTERNAL_ID_FIELD = {
+	name: "externalIdField",
+	label: "External ID Field",
+	type: "String",
+	helpText:
+		'The API name of the external ID field that matches records to upsert, ex: "External_Id__c". When blank, records match on their ID.'
+};
+const SETTINGS = [ACCESS_LEVEL, ALL_OR_NONE];
+// Flow Builder's Update and Delete Records take either shape in one input
+const EITHER_RECORDS_LABEL = "Record or Record Collection";
 const DML_OPTIONS = [
 	{
 		name: "allowDuplicates",
@@ -97,12 +100,50 @@ const DML_OPTIONS = [
 		helpText: "Run the default active assignment rule for Leads and Cases."
 	}
 ];
+
+// Wording follows Flow Builder's Create, Update, and Delete Records elements
+const ID_HINT = "Flow requires record identifiers to successfully";
+const ACTIONS = {
+	InvocableDmlDeleteRecords: {
+		heading: "Select Record(s) to Delete",
+		hint: `${ID_HINT} delete records. Make sure the records include IDs.`,
+		settings: SETTINGS
+	},
+	InvocableDmlEmptyRecycleBin: {
+		heading: "Select Record(s) to Remove from the Recycle Bin",
+		hint: "Make sure the records include IDs, and are in the Recycle Bin. Removed records can't be restored.",
+		settings: []
+	},
+	InvocableDmlInsertRecords: {
+		headings: { [MULTIPLE]: "Insert Records from These Values", [ONE]: "Insert a Record from These Values" },
+		hint: "Make sure that ID is blank. After the records are inserted, find their IDs in the action's Record outputs.",
+		howManyLabel: "How Many Records to Insert",
+		settings: SETTINGS,
+		hasDmlOptions: true
+	},
+	InvocableDmlUndeleteRecords: {
+		heading: "Select Record(s) to Undelete",
+		hint: `${ID_HINT} undelete records. Make sure the records include IDs, and are in the Recycle Bin.`,
+		settings: SETTINGS
+	},
+	InvocableDmlUpdateRecords: {
+		heading: "Select Record(s) to Update",
+		hint: `${ID_HINT} update records. Make sure the records include IDs.`,
+		settings: SETTINGS,
+		hasDmlOptions: true
+	},
+	InvocableDmlUpsertRecords: {
+		heading: "Select Record(s) to Upsert",
+		hint: "Records that match an existing record's ID or external ID are updated, and the rest are inserted. Find new records' IDs in the action's Record outputs.",
+		settings: [...SETTINGS, EXTERNAL_ID_FIELD]
+	}
+};
 const BOOLEAN_FIELDS = [...SETTINGS, ...DML_OPTIONS].filter((definition) => definition.type === "Boolean");
 
 /**
- * Custom Property Editor for the Insert Records action (`InvocableDmlInsertRecords`). Mirrors Flow Builder's
- * Create Records element: one Records input that saves to `record` or `recordCollection`, and types the action's
- * generic inputs and outputs to the chosen object.
+ * Custom Property Editor for the record DML actions (`InvocableDml` subclasses), configured by the action being
+ * edited. Mirrors Flow Builder's Create, Update, and Delete Records elements: one records input that saves to `record`
+ * or `recordCollection`, and types the action's generic inputs and outputs to the chosen object.
  */
 export default class DmlRecordsEditor extends LightningElement {
 	/**
@@ -132,6 +173,10 @@ export default class DmlRecordsEditor extends LightningElement {
 	_values = {};
 
 	// **** GETTERS **** //
+	get action() {
+		return ACTIONS[this.elementInfo?.actionName] ?? ACTIONS.InvocableDmlInsertRecords;
+	}
+
 	get elementName() {
 		return this.elementInfo?.apiName;
 	}
@@ -140,19 +185,25 @@ export default class DmlRecordsEditor extends LightningElement {
 		return this._howMany;
 	}
 
+	get howManyLabel() {
+		return this.action.howManyLabel;
+	}
+
 	get howManyOptions() {
 		return HOW_MANY_OPTIONS;
 	}
 
-	get isMultiple() {
-		return this._howMany === MULTIPLE;
-	}
-
 	get records() {
+		const { heading, headings, hint, howManyLabel } = this.action;
 		const recordsInput = RECORDS_INPUTS[this._howMany];
 		const input = this._values[recordsInput.name];
 		return {
 			...recordsInput,
+			label: howManyLabel ? recordsInput.label : EITHER_RECORDS_LABEL,
+			heading: headings?.[this._howMany] ?? heading,
+			hint,
+			isCollection: howManyLabel ? this._howMany === MULTIPLE : undefined,
+			sectionClass: howManyLabel ? "editor-section slds-border_top" : "editor-section",
 			value: input?.value,
 			valueDataType: input?.valueDataType,
 			errorMessage: this._errors[recordsInput.name]
@@ -160,10 +211,11 @@ export default class DmlRecordsEditor extends LightningElement {
 	}
 
 	get sections() {
+		const { hasDmlOptions, settings } = this.action;
 		return [
-			{ heading: "Set Input Values", fields: this._initFields(SETTINGS) },
-			{ heading: "DML Options", fields: this._initFields(DML_OPTIONS) }
-		];
+			{ heading: "Set Input Values", fields: this._initFields(settings) },
+			{ heading: "DML Options", fields: this._initFields(hasDmlOptions ? DML_OPTIONS : []) }
+		].filter((section) => section.fields.length);
 	}
 
 	// **** API SETTERS **** //
@@ -197,15 +249,11 @@ export default class DmlRecordsEditor extends LightningElement {
 
 	// **** HANDLERS **** //
 	/**
-	 * @description Switches between One and Multiple, dropping the other input so the action only gets one
+	 * @description Switches between One and Multiple
 	 * @param {CustomEvent} event Change on the radio group
 	 */
 	handleHowManyChange(event) {
-		const previousName = this.records.name;
-		this._howMany = event.detail.value;
-		if (this._values[previousName]?.value != null) {
-			this._deleteInput(previousName);
-		}
+		this._setHowMany(event.detail.value);
 	}
 
 	/**
@@ -213,25 +261,20 @@ export default class DmlRecordsEditor extends LightningElement {
 	 * @param {CustomEvent} event Change on a picker: `{ name, value, valueDataType }`
 	 */
 	handleInputChange(event) {
-		const { name, value, valueDataType } = event.detail;
-		if (value == null) {
-			this._deleteInput(name);
-		} else {
-			this._dispatch("configuration_editor_input_value_changed", {
-				name,
-				newValue: value,
-				newValueDataType: valueDataType
-			});
-		}
+		this._saveInput(event.detail);
 	}
 
 	/**
-	 * @description Saves the records, then types every generic input and output to their object, which Flow
-	 * Builder needs before it can save the flow
-	 * @param {CustomEvent} event Change on the records picker: `{ name, value, valueDataType, objectType }`
+	 * @description Saves the records to the input matching their shape, then types every generic input and output to
+	 * their object, which Flow Builder needs before it can save the flow
+	 * @param {CustomEvent} event Change on the records picker: `{ name, value, valueDataType, objectType, isCollection }`
 	 */
 	handleRecordsChange(event) {
-		this.handleInputChange(event);
+		const { isCollection, value } = event.detail;
+		if (!this.howManyLabel && value != null) {
+			this._setHowMany(isCollection ? MULTIPLE : ONE);
+		}
+		this._saveInput({ ...event.detail, name: this.records.name });
 		this._setGenericTypes(event.detail);
 	}
 
@@ -291,6 +334,36 @@ export default class DmlRecordsEditor extends LightningElement {
 	}
 
 	/**
+	 * @description Saves a value to the action, or removes it when cleared.
+	 * @param {Object} detail `{ name, value, valueDataType }`
+	 */
+	_saveInput(detail) {
+		const { name, value, valueDataType } = detail;
+		if (value == null) {
+			this._deleteInput(name);
+		} else {
+			this._dispatch("configuration_editor_input_value_changed", {
+				name,
+				newValue: value,
+				newValueDataType: valueDataType
+			});
+		}
+	}
+
+	/**
+	 * @description Switches between one record and a collection, dropping the other input so the action only gets one.
+	 * @param {String} howMany `one` or `multiple`
+	 */
+	_setHowMany(howMany) {
+		const previousName = this.records.name;
+		const isChanged = howMany !== this._howMany;
+		this._howMany = howMany;
+		if (isChanged && this._values[previousName]?.value != null) {
+			this._deleteInput(previousName);
+		}
+	}
+
+	/**
 	 * @description Types the action's generic inputs and outputs to the chosen object; skipped when the object isn't known
 	 * @param {Object} detail The records picker's change: `{ value, objectType }`
 	 */
@@ -332,7 +405,8 @@ export default class DmlRecordsEditor extends LightningElement {
 	 * @returns {Object} An error, or null
 	 */
 	_validateRecords() {
-		const { name, noun } = this.records;
-		return this._values[name]?.value == null ? { key: name, errorString: `Select a ${noun}.` } : null;
+		const { name } = this.records;
+		// Flow Builder's own record inputs use this message
+		return this._values[name]?.value == null ? { key: name, errorString: "Enter a value." } : null;
 	}
 }

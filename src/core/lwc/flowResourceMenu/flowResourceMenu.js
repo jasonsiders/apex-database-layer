@@ -208,7 +208,7 @@ const GLOBAL_CONSTANTS = [
 /**
  * @description Builds the top-level menu: every resource in the flow that fits the target input, or contains one that does.
  * @param {Object} context `{ builderContext, automaticOutputVariables, objectLabels }`
- * @param {Object} target The input being configured: `{ dataType, isCollection, objectType, picklistValues }`. Null includes everything.
+ * @param {Object} target The input being configured: `{ dataType, isCollection, objectType, picklistValues }`. Null includes everything; a record target without `isCollection` takes either.
  * @returns {Array} Sections of `{ label, items, hasDivider }`, in Flow Builder's order
  */
 export function getRootSections(context, target) {
@@ -717,8 +717,8 @@ function initVariableItem(variable) {
 function isAssignable(item, target) {
 	const isRecordTarget = target?.dataType === SOBJECT;
 	const matchesObject = !target?.objectType || item.objectType === target.objectType;
-	const matchesRecord =
-		item.dataType === SOBJECT && item.isCollection === Boolean(target?.isCollection) && matchesObject;
+	const matchesShape = target?.isCollection == null || item.isCollection === target.isCollection;
+	const matchesRecord = item.dataType === SOBJECT && matchesShape && matchesObject;
 	const isScalar = Boolean(item.dataType) && !item.isCollection && ![SOBJECT, "Apex"].includes(item.dataType);
 	const matchesScalar = isScalar && (target?.dataType === "String" || item.dataType === target?.dataType);
 	return !target || (isRecordTarget ? matchesRecord : matchesScalar);

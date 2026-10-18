@@ -13,6 +13,7 @@ const GLOBAL_CONSTANT_PREFIX = "$GlobalConstant.";
 // Flow Builder's action inputs use these icons, not its resource menu's
 const LABEL_ICONS = { Boolean: "utility:crossfilter", String: "utility:text" };
 const REFERENCE = "reference";
+const REQUIRED_ERROR = "Enter a value.";
 const ROOT_LABEL = "All Resources";
 
 /**
@@ -52,10 +53,10 @@ export default class FlowResourcePicker extends LightningElement {
 	 */
 	@api helpText;
 	/**
-	 * @description Whether the input takes a collection; only applies to records
+	 * @description Whether the record input takes a collection; unset accepts either, like Flow Builder's Update Records
 	 * @type {Boolean}
 	 */
-	@api isCollection = false;
+	@api isCollection;
 	/**
 	 * @description The input's label
 	 * @type {String}
@@ -98,6 +99,7 @@ export default class FlowResourcePicker extends LightningElement {
 	_describes = new Map();
 	_isDirty = false;
 	_isEditing = false;
+	_isTouched = false;
 	_isOpen = false;
 	_objectLabels = {};
 	_refreshId = 0;
@@ -147,8 +149,14 @@ export default class FlowResourcePicker extends LightningElement {
 		return String(this._isOpen);
 	}
 
+	get error() {
+		// Like Flow Builder's own inputs, a required one flags itself once it's left empty
+		const isMissing = this.required && this._isTouched && this._value == null;
+		return this.errorMessage ?? (isMissing ? REQUIRED_ERROR : null);
+	}
+
 	get formElementClass() {
-		const errorClass = this.errorMessage ? " slds-has-error" : "";
+		const errorClass = this.error ? " slds-has-error" : "";
 		return "slds-form-element slds-col" + errorClass;
 	}
 
@@ -311,6 +319,7 @@ export default class FlowResourcePicker extends LightningElement {
 	handleFocusOut(event) {
 		const combobox = this.template.querySelector(".slds-combobox");
 		if (!combobox?.contains(event.relatedTarget)) {
+			this._isTouched = true;
 			this._commitText();
 		}
 	}
@@ -451,15 +460,16 @@ export default class FlowResourcePicker extends LightningElement {
 	 * @description Fires `change`, unless the value is unchanged.
 	 * @param {String} value The new value, or null to clear it
 	 * @param {String} valueDataType `reference`, the literal's data type, or null
-	 * @param {String} objectType For record references, the record's object
+	 * @param {Object} selection For references, the chosen item; records add its `objectType` and `isCollection`
 	 */
-	_emitChange(value, valueDataType, objectType) {
+	_emitChange(value, valueDataType, selection) {
 		const isUnchanged = value === this._value && valueDataType === this._valueDataType;
 		if (!isUnchanged) {
 			this._value = value;
 			this._valueDataType = valueDataType;
+			const { objectType, isCollection } = selection ?? {};
 			const detail = objectType
-				? { name: this.name, value, valueDataType, objectType }
+				? { name: this.name, value, valueDataType, objectType, isCollection }
 				: { name: this.name, value, valueDataType };
 			this.dispatchEvent(new CustomEvent("change", { detail }));
 		}
@@ -607,7 +617,7 @@ export default class FlowResourcePicker extends LightningElement {
 			this._selection = item;
 			this._text = "";
 			const valueDataType = toValueDataType(item);
-			this._emitChange(item.value, valueDataType, item.objectType);
+			this._emitChange(item.value, valueDataType, item);
 		}
 		this._isDirty = false;
 		this._isEditing = false;
@@ -622,6 +632,6 @@ export default class FlowResourcePicker extends LightningElement {
 		this._text = "";
 		this._selection = await this._resolveSelection(path);
 		const valueDataType = toValueDataType(this._selection);
-		this._emitChange(path, valueDataType, this._selection.objectType);
+		this._emitChange(path, valueDataType, this._selection);
 	}
 }

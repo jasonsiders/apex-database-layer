@@ -23,9 +23,10 @@ async function flush() {
 	}
 }
 
-async function render(inputVariables = []) {
+async function render(inputVariables = [], actionName = "InvocableDmlInsertRecords") {
 	const element = createElement("c-dml-records-editor", { is: DmlRecordsEditor });
 	Object.assign(element, {
+		elementInfo: { apiName: "Dml_Element", type: "Action", actionName },
 		inputVariables,
 		builderContext: CONTEXT.builderContext,
 		automaticOutputVariables: CONTEXT.automaticOutputVariables,
@@ -45,6 +46,14 @@ async function render(inputVariables = []) {
 
 function picker(element, name) {
 	return element.shadowRoot.querySelector(`c-flow-resource-picker[data-name="${name}"]`);
+}
+
+function pickerNames(element) {
+	return [...element.shadowRoot.querySelectorAll("c-flow-resource-picker")].map((child) => child.name);
+}
+
+function headings(element) {
+	return [...element.shadowRoot.querySelectorAll("h3")].map((heading) => heading.textContent);
 }
 
 function changePicker(element, name, detail) {
@@ -79,7 +88,7 @@ describe("c-dml-records-editor", () => {
 	it("tells each picker which element is being edited", async () => {
 		const { element } = await render();
 
-		element.elementInfo = { apiName: "Insert_Spike", type: "Action" };
+		element.elementInfo = { apiName: "Insert_Spike", type: "Action", actionName: "InvocableDmlInsertRecords" };
 		await flush();
 
 		const pickers = [...element.shadowRoot.querySelectorAll("c-flow-resource-picker")];
@@ -154,9 +163,9 @@ describe("c-dml-records-editor", () => {
 	it("requires records", async () => {
 		const { element } = await render();
 
-		expect(element.validate()).toEqual([{ key: "record", errorString: "Select a record." }]);
+		expect(element.validate()).toEqual([{ key: "record", errorString: "Enter a value." }]);
 		await flush();
-		expect(picker(element, "record").errorMessage).toBe("Select a record.");
+		expect(picker(element, "record").errorMessage).toBe("Enter a value.");
 	});
 
 	it("rejects literals the action can't use", async () => {
@@ -182,5 +191,57 @@ describe("c-dml-records-editor", () => {
 		]);
 
 		expect(element.validate()).toEqual([]);
+	});
+
+	it("takes one record or a collection in one input for the other actions, like Update and Delete Records", async () => {
+		const { element } = await render([], "InvocableDmlDeleteRecords");
+
+		expect(element.shadowRoot.querySelector("lightning-radio-group")).toBeNull();
+		expect(picker(element, "record")).toMatchObject({ label: "Record or Record Collection", required: true });
+		expect(picker(element, "record").isCollection).toBeUndefined();
+		expect(headings(element)).toEqual(["Select Record(s) to Delete", "Set Input Values"]);
+		expect(element.shadowRoot.querySelector("p").textContent).toContain("include IDs");
+		expect(pickerNames(element)).toEqual(["record", "accessLevel", "allOrNone"]);
+		expect(element.validate()).toEqual([{ key: "record", errorString: "Enter a value." }]);
+	});
+
+	it("saves the records to the input matching their shape, dropping the other input", async () => {
+		const { element, events } = await render(
+			[{ name: "record", value: "accountVar", valueDataType: "reference" }],
+			"InvocableDmlUpdateRecords"
+		);
+
+		changePicker(element, "record", {
+			value: "accountsVar",
+			valueDataType: "reference",
+			objectType: "Account",
+			isCollection: true
+		});
+		await flush();
+
+		expect(events.slice(0, 2)).toEqual([
+			{ type: "configuration_editor_input_value_deleted", detail: { name: "record" } },
+			{
+				type: "configuration_editor_input_value_changed",
+				detail: { name: "recordCollection", newValue: "accountsVar", newValueDataType: "reference" }
+			}
+		]);
+		expect(picker(element, "recordCollection")).not.toBeNull();
+	});
+
+	it("shows each action's own settings", async () => {
+		const settingsByAction = {
+			InvocableDmlEmptyRecycleBin: [],
+			InvocableDmlUndeleteRecords: ["accessLevel", "allOrNone"],
+			InvocableDmlUpdateRecords: OPTION_NAMES,
+			InvocableDmlUpsertRecords: ["accessLevel", "allOrNone", "externalIdField"]
+		};
+
+		for (const [actionName, settings] of Object.entries(settingsByAction)) {
+			// eslint-disable-next-line no-await-in-loop
+			const { element } = await render([], actionName);
+			expect(pickerNames(element)).toEqual(["record", ...settings]);
+			document.body.removeChild(element);
+		}
 	});
 });

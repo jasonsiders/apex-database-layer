@@ -185,6 +185,23 @@ describe("c-flow-resource-picker", () => {
 		expect(options(element)).toHaveLength(0);
 	});
 
+	it("takes records of either shape when isCollection is unset, and reports the chosen shape", async () => {
+		const { element, onChange } = await render({ name: "record", type: "SObject" });
+		await open(element);
+
+		expect(sectionLabels(element)).toEqual(expect.arrayContaining(["Record Collections", "Record Variables"]));
+		option(element, "accountsVar").click();
+		await flush();
+
+		expect(lastChange(onChange)).toEqual({
+			name: "record",
+			value: "accountsVar",
+			valueDataType: "reference",
+			objectType: "Account",
+			isCollection: true
+		});
+	});
+
 	it("selects a picklist value as a literal", async () => {
 		const picklistValues = [{ label: "System Mode", value: "SYSTEM_MODE" }];
 		const { element, onChange } = await render({ picklistValues });
@@ -411,6 +428,21 @@ describe("c-flow-resource-picker", () => {
 		expect(optionLabels(element)).toEqual(["Email"]);
 		const icons = [...option(element, "Email").querySelectorAll("lightning-icon")].map((icon) => icon.iconName);
 		expect(icons).toContain("utility:check");
+	});
+
+	it("flags a required input once it's left empty, like Flow Builder's own inputs", async () => {
+		const { element } = await render({ required: true });
+		const help = () => element.shadowRoot.querySelector(".slds-form-element__help")?.textContent;
+		expect(help()).toBeUndefined();
+
+		await open(element);
+		await blur(element);
+
+		expect(help()).toBe("Enter a value.");
+		element.value = "textVar";
+		element.valueDataType = "reference";
+		await flush();
+		expect(help()).toBeUndefined();
 	});
 
 	it("shows an error message", async () => {
