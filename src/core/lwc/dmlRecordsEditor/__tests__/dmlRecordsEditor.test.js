@@ -16,14 +16,14 @@ const OPTION_NAMES = [
 	"accessLevel",
 	"allOrNone",
 	"allowDuplicates",
-	"allowFieldTruncation",
+	"useDefaultAssignmentRule",
 	"assignmentRuleId",
-	"localeOptions",
-	"runDuplicateRulesAsCurrentUser",
+	"allowFieldTruncation",
+	"triggerUserEmail",
 	"triggerAutoResponseEmail",
 	"triggerOtherEmail",
-	"triggerUserEmail",
-	"useDefaultAssignmentRule"
+	"runDuplicateRulesAsCurrentUser",
+	"localeOptions"
 ];
 
 async function flush() {
@@ -110,6 +110,22 @@ describe("c-dml-records-editor", () => {
 		]);
 		expect(picker(element, "allOrNone").type).toBe("Boolean");
 		expect(picker(element, "localeOptions").type).toBe("String");
+	});
+
+	it("collapses every option into one DML Options section, most used first", async () => {
+		const { element } = await render();
+
+		const accordion = element.shadowRoot.querySelector("lightning-accordion");
+		const section = accordion.querySelector("lightning-accordion-section");
+		expect(accordion.allowMultipleSectionsOpen).toBe(true);
+		expect(accordion.activeSectionName).toBeUndefined();
+		expect(section.label).toBe("DML Options");
+		expect([...section.querySelectorAll("c-flow-resource-picker")].map((child) => child.name)).toEqual(
+			OPTION_NAMES
+		);
+		element.validate();
+		await flush();
+		expect(accordion.activeSectionName).toBeUndefined();
 	});
 
 	it("tells each picker which element is being edited", async () => {
@@ -222,6 +238,9 @@ describe("c-dml-records-editor", () => {
 			{ key: "accessLevel", errorString: "Enter USER_MODE or SYSTEM_MODE." },
 			{ key: "allOrNone", errorString: "Enter True or False." }
 		]);
+		await flush();
+		// A collapsed section would hide the errors
+		expect(element.shadowRoot.querySelector("lightning-accordion").activeSectionName).toBe("options");
 	});
 
 	it("ignores inputs the action doesn't show", async () => {
@@ -254,7 +273,7 @@ describe("c-dml-records-editor", () => {
 		expect(element.shadowRoot.querySelector("lightning-radio-group")).toBeNull();
 		expect(picker(element, "record")).toMatchObject({ label: "Record or Record Collection", required: true });
 		expect(picker(element, "record").isCollection).toBeUndefined();
-		expect(headings(element)).toEqual(["Select Record(s) to Delete", "Set Input Values"]);
+		expect(headings(element)).toEqual(["Select Record(s) to Delete"]);
 		expect(element.shadowRoot.querySelector("p").textContent).toContain("include IDs");
 		expect(pickerNames(element)).toEqual(["record", "accessLevel", "allOrNone"]);
 		expect(element.validate()).toEqual([{ key: "record", errorString: "Enter a value." }]);
@@ -296,6 +315,7 @@ describe("c-dml-records-editor", () => {
 			// eslint-disable-next-line no-await-in-loop
 			const { element } = await render([], actionName);
 			expect(pickerNames(element)).toEqual(["record", ...settings]);
+			expect(Boolean(element.shadowRoot.querySelector("lightning-accordion"))).toBe(settings.length > 0);
 			document.body.removeChild(element);
 		}
 	});

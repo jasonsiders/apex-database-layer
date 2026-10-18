@@ -15,6 +15,7 @@ const HOW_MANY_OPTIONS = [
 ];
 const MULTIPLE = "multiple";
 const ONE = "one";
+const OPTIONS_SECTION = "options";
 const RECORD_ID = "recordId";
 const STANDARD_FIELD = "standardField";
 // Wording follows Flow Builder's Create Records upsert
@@ -59,7 +60,9 @@ const ALL_OR_NONE = {
 const SETTINGS = [ACCESS_LEVEL, ALL_OR_NONE];
 // Flow Builder's Update and Delete Records take either shape in one input
 const EITHER_RECORDS_INPUT = { label: "Record or Record Collection", isCollection: undefined };
+// Most used first: the settings apply to every action, then duplicate rules and Lead/Case assignment come up most
 const DML_OPTIONS = [
+	...SETTINGS,
 	{
 		name: "allowDuplicates",
 		label: "Allow Duplicates",
@@ -67,10 +70,10 @@ const DML_OPTIONS = [
 		helpText: "Save records that a duplicate rule would otherwise alert on."
 	},
 	{
-		name: "allowFieldTruncation",
-		label: "Allow Field Truncation",
+		name: "useDefaultAssignmentRule",
+		label: "Use Default Assignment Rule",
 		type: "Boolean",
-		helpText: "Truncate text values that are too long for their field, instead of failing."
+		helpText: "Run the default active assignment rule for Leads and Cases."
 	},
 	{
 		name: "assignmentRuleId",
@@ -79,16 +82,16 @@ const DML_OPTIONS = [
 		helpText: "The Id of a specific Lead or Case assignment rule to run."
 	},
 	{
-		name: "localeOptions",
-		label: "Locale Options",
-		type: "String",
-		helpText: 'The language of any labels returned by the operation, ex: "en_US".'
+		name: "allowFieldTruncation",
+		label: "Allow Field Truncation",
+		type: "Boolean",
+		helpText: "Truncate text values that are too long for their field, instead of failing."
 	},
 	{
-		name: "runDuplicateRulesAsCurrentUser",
-		label: "Run Duplicate Rules as Current User",
+		name: "triggerUserEmail",
+		label: "Trigger User Email",
 		type: "Boolean",
-		helpText: "Enforce the running user's sharing rules when duplicate rules look for duplicates."
+		helpText: "Send email to users in the org, ex: when a Case or Task is assigned."
 	},
 	{
 		name: "triggerAutoResponseEmail",
@@ -103,16 +106,16 @@ const DML_OPTIONS = [
 		helpText: "Send email to recipients outside the org."
 	},
 	{
-		name: "triggerUserEmail",
-		label: "Trigger User Email",
+		name: "runDuplicateRulesAsCurrentUser",
+		label: "Run Duplicate Rules as Current User",
 		type: "Boolean",
-		helpText: "Send email to users in the org, ex: when a Case or Task is assigned."
+		helpText: "Enforce the running user's sharing rules when duplicate rules look for duplicates."
 	},
 	{
-		name: "useDefaultAssignmentRule",
-		label: "Use Default Assignment Rule",
-		type: "Boolean",
-		helpText: "Run the default active assignment rule for Leads and Cases."
+		name: "localeOptions",
+		label: "Locale Options",
+		type: "String",
+		helpText: 'The language of any labels returned by the operation, ex: "en_US".'
 	}
 ];
 
@@ -121,35 +124,33 @@ const ACTIONS = {
 	InvocableDmlDeleteRecords: {
 		heading: "Select Record(s) to Delete",
 		hint: "Flow requires record identifiers to successfully delete records. Make sure the records include IDs.",
-		settings: SETTINGS
+		options: SETTINGS
 	},
 	InvocableDmlEmptyRecycleBin: {
 		heading: "Select Record(s) to Remove from the Recycle Bin",
 		hint: "Make sure the records include IDs, and are in the Recycle Bin. Removed records can't be restored.",
-		settings: []
+		options: []
 	},
 	InvocableDmlInsertRecords: {
 		headings: { [MULTIPLE]: "Insert Records from These Values", [ONE]: "Insert a Record from These Values" },
 		hint: "Make sure that ID is blank. After the records are inserted, find their IDs in the action's Record outputs.",
 		howManyLabel: "How Many Records to Insert",
-		settings: SETTINGS,
-		hasDmlOptions: true
+		options: DML_OPTIONS
 	},
 	InvocableDmlUndeleteRecords: {
 		heading: "Select Record(s) to Undelete",
 		hint: "Flow requires record identifiers to successfully undelete records. Make sure the records include IDs, and are in the Recycle Bin.",
-		settings: SETTINGS
+		options: SETTINGS
 	},
 	InvocableDmlUpdateRecords: {
 		heading: "Select Record(s) to Update",
 		hint: "Flow requires record identifiers to successfully update records. Make sure the records include IDs.",
-		settings: SETTINGS,
-		hasDmlOptions: true
+		options: DML_OPTIONS
 	},
 	InvocableDmlUpsertRecords: {
 		heading: "Select Record(s) to Upsert",
 		hint: "After the records are upserted, find new records' IDs in the action's Record outputs.",
-		settings: SETTINGS,
+		options: SETTINGS,
 		hasMatchField: true
 	}
 };
@@ -187,6 +188,7 @@ export default class DmlRecordsEditor extends LightningElement {
 	_matchFields = [];
 	_matchMode;
 	_objectType;
+	_openSection;
 	_values = {};
 
 	// **** GETTERS **** //
@@ -228,6 +230,14 @@ export default class DmlRecordsEditor extends LightningElement {
 		return this.action.hasMatchField ? (this._objectType ?? mapping?.typeValue) : undefined;
 	}
 
+	get openSection() {
+		return this._openSection;
+	}
+
+	get options() {
+		return this._initFields(this.action.options);
+	}
+
 	get records() {
 		const { heading, headings, hint, howManyLabel } = this.action;
 		const recordsInput = RECORDS_INPUTS[this._howMany];
@@ -241,14 +251,6 @@ export default class DmlRecordsEditor extends LightningElement {
 			valueDataType: input?.valueDataType,
 			errorMessage: this._errors[recordsInput.name]
 		};
-	}
-
-	get sections() {
-		const { hasDmlOptions, settings } = this.action;
-		return [
-			{ heading: "Set Input Values", fields: this._initFields(settings) },
-			{ heading: "DML Options", fields: this._initFields(hasDmlOptions ? DML_OPTIONS : []) }
-		].filter((section) => section.fields.length);
 	}
 
 	// **** API SETTERS **** //
@@ -276,15 +278,12 @@ export default class DmlRecordsEditor extends LightningElement {
 	 */
 	@api
 	validate() {
-		const fields = this.sections.flatMap((section) => section.fields);
-		const checks = [
-			this._validateRecords(),
-			this._validateMatchField(),
-			this._validateAccessLevel(fields),
-			...this._validateBooleans(fields)
-		];
-		const errors = checks.filter(Boolean);
+		const fields = this.options;
+		const optionErrors = [this._validateAccessLevel(fields), ...this._validateBooleans(fields)].filter(Boolean);
+		const errors = [this._validateRecords(), this._validateMatchField(), ...optionErrors].filter(Boolean);
 		this._errors = Object.fromEntries(errors.map((error) => [error.key, error.errorString]));
+		// The options start collapsed, which would hide their errors
+		this._openSection = optionErrors.length ? OPTIONS_SECTION : this._openSection;
 		return errors;
 	}
 
