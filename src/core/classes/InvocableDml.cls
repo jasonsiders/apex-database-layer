@@ -15,7 +15,7 @@ public abstract inherited sharing class InvocableDml {
 		List<SObject> records = InvocableDml.collectRecords(outputs);
 		if (records?.isEmpty() == false) {
 			InvocableDml.Input settings = inputs?.get(0);
-			List<Database.SaveResult> results = this.doDml(records, settings);
+			List<InvocableDmlResult> results = this.doDml(records, settings);
 			InvocableDml.distributeResults(outputs, results);
 		}
 		return outputs;
@@ -28,11 +28,11 @@ public abstract inherited sharing class InvocableDml {
 	 * @param settings The input whose settings apply to the operation
 	 * @return The results, in record order
 	 */
-	protected abstract List<Database.SaveResult> doDml(List<SObject> records, InvocableDml.Input settings);
+	protected abstract List<InvocableDmlResult> doDml(List<SObject> records, InvocableDml.Input settings);
 
 	// **** PRIVATE **** //
 	/**
-	 * @description Pools every input's records, so they can be saved in one DML operation
+	 * @description Pools every input's records, so they can be processed in one DML operation
 	 * @param outputs One output per input
 	 * @return Every record, in output order
 	 */
@@ -49,8 +49,8 @@ public abstract inherited sharing class InvocableDml {
 	 * @param outputs Outputs whose records were pooled, in the order they were pooled
 	 * @param results The results of the pooled DML operation
 	 */
-	private static void distributeResults(List<InvocableDml.Output> outputs, List<Database.SaveResult> results) {
-		Iterator<Database.SaveResult> resultIterator = results?.iterator();
+	private static void distributeResults(List<InvocableDml.Output> outputs, List<InvocableDmlResult> results) {
+		Iterator<InvocableDmlResult> resultIterator = results?.iterator();
 		for (InvocableDml.Output output : outputs) {
 			output?.addResults(resultIterator);
 		}
@@ -82,7 +82,7 @@ public abstract inherited sharing class InvocableDml {
 		/** @description Defaults to true, matching DML statements, so failures aren't silently ignored **/
 		@InvocableVariable(
 			label='All or None'
-			description='When true (default), any failure rolls back every record and fails the action. When false, valid records are saved, and failures are reported in the results.'
+			description='When true (default), any failure rolls back every record and fails the action. When false, valid records are processed, and failures are reported in the results.'
 		)
 		public Boolean allOrNone;
 		/** @description Maps to Database.DmlOptions.DuplicateRuleHeader.AllowSave **/
@@ -103,6 +103,12 @@ public abstract inherited sharing class InvocableDml {
 			description='The Id of a specific Lead or Case assignment rule to run.'
 		)
 		public Id assignmentRuleId;
+		/** @description Text, not an SObjectField, since Flow can't pass one; upserts only **/
+		@InvocableVariable(
+			label='External ID Field'
+			description='The API name of the external ID field that matches records to upsert, ex: "External_Id__c". When blank, records match on their ID.'
+		)
+		public String externalIdField;
 		/** @description Maps to Database.DmlOptions.LocaleOptions **/
 		@InvocableVariable(
 			label='Locale Options'
@@ -144,6 +150,14 @@ public abstract inherited sharing class InvocableDml {
 		public Boolean useDefaultAssignmentRule;
 
 		/**
+		 * @description Defaults to true, matching DML statements
+		 * @return Whether any failure should roll back every record
+		 */
+		public Boolean toAllOrNone() {
+			return this.allOrNone ?? true;
+		}
+
+		/**
 		 * @description Anything but SYSTEM_MODE, including blank or invalid text, runs in the safer USER_MODE
 		 * @return The matching System.AccessLevel
 		 */
@@ -167,7 +181,7 @@ public abstract inherited sharing class InvocableDml {
 			options.EmailHeader.TriggerOtherEmail = this.triggerOtherEmail ?? false;
 			options.EmailHeader.TriggerUserEmail = this.triggerUserEmail ?? false;
 			options.LocaleOptions = this.localeOptions;
-			options.OptAllOrNone = this.allOrNone ?? true;
+			options.OptAllOrNone = this.toAllOrNone();
 			return options;
 		}
 
@@ -182,7 +196,7 @@ public abstract inherited sharing class InvocableDml {
 		}
 
 		/**
-		 * @description The output holds this input's records until they're saved
+		 * @description The output holds this input's records until they're processed
 		 * @return An output holding this input's records
 		 */
 		private InvocableDml.Output toOutput() {
@@ -193,17 +207,17 @@ public abstract inherited sharing class InvocableDml {
 
 	/** @description Single and collection variants of each output, so flows of either shape can use them directly **/
 	public class Output {
-		/** @description Lets single-record flows use the saved record without a collection **/
-		@InvocableVariable(label='Record' description='The saved record. For a collection, the first record.')
+		/** @description Lets single-record flows use the record without a collection **/
+		@InvocableVariable(label='Record' description='The processed record. For a collection, the first record.')
 		public SObject record;
-		/** @description Saved records, in input order, since Flow can't see Ids set on its inputs **/
-		@InvocableVariable(label='Record Collection' description='The saved records, in input order, with their Ids.')
+		/** @description Processed records, in input order, since Flow can't see Ids set on its inputs **/
+		@InvocableVariable(
+			label='Record Collection'
+			description='The processed records, in input order. Inserted and upserted records include their new IDs.'
+		)
 		public List<SObject> recordCollection;
 		/** @description Lets single-record flows check the outcome without a collection **/
-		@InvocableVariable(
-			label='Result'
-			description='The result of saving the record. For a collection, the first result.'
-		)
+		@InvocableVariable(label='Result' description='The result for the record. For a collection, the first result.')
 		public InvocableDmlResult result;
 		/** @description One result per record, in input order, for partial-success handling **/
 		@InvocableVariable(label='Result Collection' description='One result per record, in input order.')
@@ -216,7 +230,7 @@ public abstract inherited sharing class InvocableDml {
 		}
 
 		/**
-		 * @description Holds the input's records until they're saved; DML sets their Ids in place
+		 * @description Holds the input's records until they're processed; DML sets their Ids in place
 		 * @param records The input's records
 		 */
 		private Output(List<SObject> records) {
@@ -229,10 +243,9 @@ public abstract inherited sharing class InvocableDml {
 		 * @description Pooled results arrive in record order, so each output takes the next one per record
 		 * @param resultIterator Results for the whole DML operation, positioned at this output's first record
 		 */
-		private void addResults(Iterator<Database.SaveResult> resultIterator) {
+		private void addResults(Iterator<InvocableDmlResult> resultIterator) {
 			for (Integer i = 0; i < this.recordCollection?.size(); i++) {
-				Database.SaveResult saveResult = resultIterator?.next();
-				InvocableDmlResult result = new InvocableDmlResult(saveResult);
+				InvocableDmlResult result = resultIterator?.next();
 				this.resultCollection?.add(result);
 			}
 			this.result = this.resultCollection?.isEmpty() ? null : this.resultCollection?.get(0);
