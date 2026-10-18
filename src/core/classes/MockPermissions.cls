@@ -8,6 +8,11 @@
 global class MockPermissions extends Permissions {
 	private static Map<String, Boolean> defaultStates = new Map<String, Boolean>{};
 	private static Map<String, Map<Id, Boolean>> userStates = new Map<String, Map<Id, Boolean>>{};
+	private static User runningUser {
+		get {
+			return new User(Id = UserInfo.getUserId());
+		}
+	}
 
 	// **** STATIC **** //
 	/**
@@ -15,7 +20,6 @@ global class MockPermissions extends Permissions {
 	 * @param permissionName The API name of the custom permission
 	 */
 	global static void grant(String permissionName) {
-		User runningUser = new User(Id = UserInfo.getUserId());
 		MockPermissions.grant(permissionName, runningUser);
 	}
 
@@ -50,7 +54,6 @@ global class MockPermissions extends Permissions {
 	 * @param permissionName The API name of the custom permission
 	 */
 	global static void revoke(String permissionName) {
-		User runningUser = new User(Id = UserInfo.getUserId());
 		MockPermissions.revoke(permissionName, runningUser);
 	}
 
