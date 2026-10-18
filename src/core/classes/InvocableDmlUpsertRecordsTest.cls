@@ -72,6 +72,24 @@ private class InvocableDmlUpsertRecordsTest {
 		Assert.isTrue(MockDml.UPSERTED?.getRecords(Account.SObjectType)?.isEmpty(), 'Upserted on the wrong field');
 	}
 
+	@IsTest
+	private static void shouldListMatchFields() {
+		Test.startTest();
+		List<InvocableDmlUpsertRecords.MatchField> matchFields = InvocableDmlUpsertRecords.getMatchFields('Contact');
+		Test.stopTest();
+
+		Map<String, InvocableDmlUpsertRecords.MatchField> fieldsByName = new Map<String, InvocableDmlUpsertRecords.MatchField>{};
+		for (InvocableDmlUpsertRecords.MatchField matchField : matchFields) {
+			fieldsByName?.put(matchField?.apiName, matchField);
+		}
+		// Contact.Email is a standard ID lookup field in every org:
+		InvocableDmlUpsertRecords.MatchField email = fieldsByName?.get('Email');
+		Assert.areEqual(Contact.Email.getDescribe().getLabel(), email?.label, 'Wrong label for Email');
+		Assert.isFalse(email?.isExternalId, 'Email is not an external ID');
+		Assert.isFalse(fieldsByName?.containsKey('Id'), 'Listed Id, which the editor offers separately');
+		Assert.isFalse(fieldsByName?.containsKey('LastName'), 'Listed a field that upserts cannot match on');
+	}
+
 	// **** HELPER **** //
 	private static InvocableDml.Output invoke(InvocableDml.Input input) {
 		List<InvocableDml.Input> inputs = new List<InvocableDml.Input>{ input };

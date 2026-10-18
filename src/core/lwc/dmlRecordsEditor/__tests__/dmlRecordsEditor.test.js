@@ -1,6 +1,16 @@
 import { createElement } from "lwc";
 import DmlRecordsEditor from "c/dmlRecordsEditor";
+import getMatchFields from "@salesforce/apex/InvocableDmlUpsertRecords.getMatchFields";
 import CONTEXT from "../../flowResourceMenu/__tests__/data/context.json";
+
+jest.mock(
+	"@salesforce/apex/InvocableDmlUpsertRecords.getMatchFields",
+	() => {
+		const { createApexTestWireAdapter } = require("@salesforce/sfdx-lwc-jest");
+		return { default: createApexTestWireAdapter(jest.fn()) };
+	},
+	{ virtual: true }
+);
 
 const OPTION_NAMES = [
 	"accessLevel",
@@ -55,6 +65,23 @@ function pickerNames(element) {
 function headings(element) {
 	return [...element.shadowRoot.querySelectorAll("h3")].map((heading) => heading.textContent);
 }
+
+function radios(element) {
+	return [...element.shadowRoot.querySelectorAll("lightning-input")].filter((input) => input.type === "radio");
+}
+
+async function chooseMatchMode(element, label) {
+	radios(element)
+		.find((radio) => radio.label === label)
+		.dispatchEvent(new CustomEvent("change"));
+	await flush();
+}
+
+const MATCH_FIELDS = [
+	{ apiName: "Legacy_Id__c", label: "Legacy ID", isExternalId: true },
+	{ apiName: "Email", label: "Email", isExternalId: false },
+	{ apiName: "Erp_Id__c", label: "ERP ID", isExternalId: true }
+];
 
 function changePicker(element, name, detail) {
 	picker(element, name).dispatchEvent(new CustomEvent("change", { detail: { name, ...detail } }));
@@ -250,7 +277,7 @@ describe("c-dml-records-editor", () => {
 			InvocableDmlEmptyRecycleBin: [],
 			InvocableDmlUndeleteRecords: ["accessLevel", "allOrNone"],
 			InvocableDmlUpdateRecords: OPTION_NAMES,
-			InvocableDmlUpsertRecords: ["accessLevel", "allOrNone", "externalIdField"]
+			InvocableDmlUpsertRecords: ["accessLevel", "allOrNone"]
 		};
 
 		for (const [actionName, settings] of Object.entries(settingsByAction)) {
@@ -259,5 +286,76 @@ describe("c-dml-records-editor", () => {
 			expect(pickerNames(element)).toEqual(["record", ...settings]);
 			document.body.removeChild(element);
 		}
+	});
+
+	it("matches upserted records on their ID by default, or on a chosen field, like Flow Builder's upsert", async () => {
+		const { element, events } = await render([], "InvocableDmlUpsertRecords");
+		element.genericTypeMappings = [{ typeName: "T__record", typeValue: "Account" }];
+		await flush();
+		expect(getMatchFields.getLastConfig()).toEqual({ objectApiName: "Account" });
+		getMatchFields.emit(MATCH_FIELDS);
+		await flush();
+
+		expect(radios(element).map((radio) => [radio.label, radio.checked])).toEqual([
+			["Record ID", true],
+			["External ID", false],
+			["Standard Field", false]
+		]);
+		expect(picker(element, "externalIdField")).toBeNull();
+		expect(element.validate()).toEqual([{ key: "record", errorString: "Enter a value." }]);
+
+		await chooseMatchMode(element, "External ID");
+		const field = picker(element, "externalIdField");
+		expect(field).toMatchObject({
+			placeholder: "Search external ID fields...",
+			isPicklistOnly: true,
+			required: true
+		});
+		expect(field.picklistValues.map((option) => [option.label, option.description])).toEqual([
+			["Erp_Id__c", "ERP ID"],
+			["Legacy_Id__c", "Legacy ID"]
+		]);
+		expect(element.validate()).toContainEqual({ key: "externalIdField", errorString: "Enter a value." });
+
+		changePicker(element, "externalIdField", { value: "Erp_Id__c", valueDataType: "String" });
+		expect(events.at(-1)).toEqual({
+			type: "configuration_editor_input_value_changed",
+			detail: { name: "externalIdField", newValue: "Erp_Id__c", newValueDataType: "String" }
+		});
+	});
+
+	it("shows a saved standard field in its mode, and drops it for another mode", async () => {
+		const { element, events } = await render(
+			[{ name: "externalIdField", value: "Email", valueDataType: "String" }],
+			"InvocableDmlUpsertRecords"
+		);
+		changePicker(element, "record", { value: "contactVar", valueDataType: "reference", objectType: "Contact" });
+		await flush();
+		expect(getMatchFields.getLastConfig()).toEqual({ objectApiName: "Contact" });
+		getMatchFields.emit(MATCH_FIELDS);
+		await flush();
+
+		expect(radios(element).find((radio) => radio.checked).label).toBe("Standard Field");
+		expect(picker(element, "externalIdField")).toMatchObject({
+			value: "Email",
+			placeholder: "Search standard fields..."
+		});
+		expect(picker(element, "externalIdField").picklistValues.map((option) => option.value)).toEqual(["Email"]);
+
+		events.length = 0;
+		await chooseMatchMode(element, "Record ID");
+		expect(events).toEqual([
+			{ type: "configuration_editor_input_value_deleted", detail: { name: "externalIdField" } }
+		]);
+		expect(picker(element, "externalIdField")).toBeNull();
+	});
+
+	it("only looks up match fields for Upsert Records", async () => {
+		const { element } = await render([], "InvocableDmlUpdateRecords");
+		element.genericTypeMappings = [{ typeName: "T__record", typeValue: "Account" }];
+		await flush();
+
+		expect(radios(element)).toHaveLength(0);
+		expect(getMatchFields.getLastConfig()?.objectApiName).toBeUndefined();
 	});
 });

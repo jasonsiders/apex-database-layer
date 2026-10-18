@@ -202,6 +202,41 @@ describe("c-flow-resource-picker", () => {
 		});
 	});
 
+	it("lists only its picklist values in picklist-only mode, with a hidden label, like Flow Builder's field pickers", async () => {
+		const picklistValues = [
+			{ label: "Erp_Id__c", value: "Erp_Id__c", description: "ERP ID", icon: "utility:text" },
+			{ label: "Legacy_Id__c", value: "Legacy_Id__c", description: "Legacy ID", icon: "utility:text" }
+		];
+		const { element, onChange } = await render({
+			label: "External ID",
+			variant: "label-hidden",
+			isPicklistOnly: true,
+			picklistValues
+		});
+		expect(element.shadowRoot.querySelector("label .slds-assistive-text").textContent).toBe("External ID");
+		expect(element.shadowRoot.querySelector(".slds-grid > lightning-icon")).toBeNull();
+
+		await open(element);
+
+		expect(element.shadowRoot.querySelector(".picker-header")).toBeNull();
+		expect(sectionLabels(element)).toEqual([]);
+		expect(optionLabels(element)).toEqual(["Erp_Id__c", "Legacy_Id__c"]);
+		expect(options(element).map((candidate) => candidate.getAttribute("aria-selected"))).toEqual(["true", "false"]);
+		expect(element.shadowRoot.querySelector(".slds-listbox__option-meta").textContent).toBe("ERP ID");
+		option(element, "Legacy_Id__c").click();
+		await flush();
+		expect(lastChange(onChange)).toEqual({ name: "accessLevel", value: "Legacy_Id__c", valueDataType: "String" });
+	});
+
+	it("stays closed in picklist-only mode when there's nothing to pick", async () => {
+		const { element } = await render({ isPicklistOnly: true, picklistValues: [] });
+
+		await open(element);
+
+		expect(element.shadowRoot.querySelector('[role="listbox"]')).toBeNull();
+		expect(input(element).getAttribute("aria-expanded")).toBe("false");
+	});
+
 	it("selects a picklist value as a literal", async () => {
 		const picklistValues = [{ label: "System Mode", value: "SYSTEM_MODE" }];
 		const { element, onChange } = await render({ picklistValues });

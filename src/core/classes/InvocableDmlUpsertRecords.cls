@@ -20,6 +20,27 @@ public inherited sharing class InvocableDmlUpsertRecords extends InvocableDml {
 		return new InvocableDmlUpsertRecords()?.run(inputs);
 	}
 
+	/**
+	 * @description Lists the fields the action's editor offers to match records on, like Flow Builder's own upsert;
+	 * Apex, unlike UI API, can tell which standard fields are ID lookups
+	 * @param objectApiName The object to upsert, ex: "Account"
+	 * @return The object's accessible external ID fields and standard ID lookup fields, except Id
+	 */
+	@AuraEnabled(cacheable=true)
+	public static List<InvocableDmlUpsertRecords.MatchField> getMatchFields(String objectApiName) {
+		List<String> objectApiNames = new List<String>{ objectApiName };
+		List<DescribeSObjectResult> objects = Schema.describeSObjects(objectApiNames, SObjectDescribeOptions.DEFERRED);
+		List<InvocableDmlUpsertRecords.MatchField> matchFields = new List<InvocableDmlUpsertRecords.MatchField>{};
+		for (SObjectField field : objects?.get(0)?.fields?.getMap()?.values()) {
+			DescribeFieldResult describe = field?.getDescribe();
+			if (InvocableDmlUpsertRecords.isMatchable(describe)) {
+				InvocableDmlUpsertRecords.MatchField matchField = new InvocableDmlUpsertRecords.MatchField(describe);
+				matchFields?.add(matchField);
+			}
+		}
+		return matchFields;
+	}
+
 	// **** PROTECTED **** //
 	/**
 	 * @description Goes through DatabaseLayer.Dml, so plugins and MockDml apply to flows too
@@ -37,6 +58,20 @@ public inherited sharing class InvocableDmlUpsertRecords extends InvocableDml {
 	}
 
 	// **** PRIVATE **** //
+	/**
+	 * @description Upserts can match on external ID fields and standard ID lookup fields; Id is the default, so the
+	 * editor offers it separately
+	 * @param field The field to check
+	 * @return Whether the running user can upsert on the field
+	 */
+	private static Boolean isMatchable(DescribeFieldResult field) {
+		Boolean isStandardLookup =
+			field?.isIdLookup() == true &&
+			field?.isCustom() == false &&
+			field?.getName() != 'Id';
+		return field?.isAccessible() == true && (field?.isExternalId() == true || isStandardLookup);
+	}
+
 	/**
 	 * @description Flow passes the field by name; an unknown name throws, since upserting on Ids instead could duplicate
 	 * records
@@ -58,5 +93,29 @@ public inherited sharing class InvocableDmlUpsertRecords extends InvocableDml {
 			}
 		}
 		return field;
+	}
+
+	// **** INNER **** //
+	/** @description A field the editor offers to match records on **/
+	public class MatchField {
+		/** @description The editor lists fields by API name, like Flow Builder **/
+		@AuraEnabled
+		public String apiName;
+		/** @description Splits the editor's External ID and Standard Field lists **/
+		@AuraEnabled
+		public Boolean isExternalId;
+		/** @description Shown under the API name **/
+		@AuraEnabled
+		public String label;
+
+		/**
+		 * @description Copies the describe details the editor needs
+		 * @param field The field's describe
+		 */
+		private MatchField(DescribeFieldResult field) {
+			this.apiName = field?.getName();
+			this.isExternalId = field?.isExternalId();
+			this.label = field?.getLabel();
+		}
 	}
 }

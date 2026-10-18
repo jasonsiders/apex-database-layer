@@ -29,6 +29,54 @@
 		></c-flow-resource-picker>
 		<p class="slds-text-body_regular slds-var-m-top_medium">{records.hint}</p>
 	</div>
+	<div lwc:if={hasMatchField} class="editor-section slds-border_top">
+		<h3 class="slds-text-heading_small slds-var-m-bottom_small">Update Existing Record</h3>
+		<p class="slds-text-body_regular slds-var-p-vertical_small">
+			At run time, the action uses the specified field to either insert a record or update an existing record.
+		</p>
+		<fieldset class="slds-form-element slds-var-p-vertical_small">
+			<legend class="slds-form-element__legend slds-form-element__label">
+				Field to use to identify existing record
+			</legend>
+			<div class="slds-form-element__control">
+				<template for:each={matchModes} for:item="mode">
+					<div key={mode.value}>
+						<div class="slds-grid">
+							<lightning-input
+								type="radio"
+								class="slds-form-element"
+								name="matchMode"
+								label={mode.label}
+								value={mode.value}
+								checked={mode.isChecked}
+								onchange={handleMatchModeChange}
+							></lightning-input>
+							<lightning-helptext lwc:if={mode.helpText} content={mode.helpText}></lightning-helptext>
+						</div>
+						<div lwc:if={mode.field} class="slds-m-left_small slds-size_small">
+							<c-flow-resource-picker
+								data-name="externalIdField"
+								name="externalIdField"
+								label={mode.label}
+								variant="label-hidden"
+								is-picklist-only
+								required
+								placeholder={mode.placeholder}
+								picklist-values={mode.field.picklistValues}
+								value={mode.field.value}
+								value-data-type={mode.field.valueDataType}
+								error-message={mode.field.errorMessage}
+								builder-context={builderContext}
+								element-name={elementName}
+								automatic-output-variables={automaticOutputVariables}
+								onchange={handleMatchFieldChange}
+							></c-flow-resource-picker>
+						</div>
+					</div>
+				</template>
+			</div>
+		</fieldset>
+	</div>
 	<template for:each={sections} for:item="section">
 		<div key={section.heading} class="editor-section slds-border_top">
 			<h3 class="slds-text-heading_small slds-var-m-bottom_small">{section.heading}</h3>

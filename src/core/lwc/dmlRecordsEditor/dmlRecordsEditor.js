@@ -1,10 +1,13 @@
-import { LightningElement, api } from "lwc";
+import { LightningElement, api, wire } from "lwc";
 import { REQUIRED_ERROR, toBooleanConstant } from "c/flowResourceMenu";
+import getMatchFields from "@salesforce/apex/InvocableDmlUpsertRecords.getMatchFields";
 
 const ACCESS_LEVELS = [
 	{ label: "User Mode", value: "USER_MODE" },
 	{ label: "System Mode", value: "SYSTEM_MODE" }
 ];
+const EXTERNAL_ID = "externalId";
+const EXTERNAL_ID_FIELD = "externalIdField";
 const GENERIC_TYPES = ["T__record", "T__recordCollection", "U__record", "U__recordCollection"];
 const HOW_MANY_OPTIONS = [
 	{ label: "One", value: "one" },
@@ -12,6 +15,25 @@ const HOW_MANY_OPTIONS = [
 ];
 const MULTIPLE = "multiple";
 const ONE = "one";
+const RECORD_ID = "recordId";
+const STANDARD_FIELD = "standardField";
+// Wording follows Flow Builder's Create Records upsert
+const MATCH_MODES = [
+	{ label: "Record ID", value: RECORD_ID },
+	{
+		label: "External ID",
+		value: EXTERNAL_ID,
+		helpText: "Select the field to use as the external ID.",
+		placeholder: "Search external ID fields..."
+	},
+	{
+		label: "Standard Field",
+		value: STANDARD_FIELD,
+		helpText:
+			"Select a field with its idLookup property equal to true. For example, the Case Number field on the Case object. Only supported fields are available.",
+		placeholder: "Search standard fields..."
+	}
+];
 const RECORDS_INPUTS = {
 	[MULTIPLE]: { label: "Record Collection", name: "recordCollection", isCollection: true },
 	[ONE]: { label: "Record", name: "record", isCollection: false }
@@ -33,13 +55,6 @@ const ALL_OR_NONE = {
 	type: "Boolean",
 	helpText:
 		"When true (default), any failure rolls back every record and fails the action. When false, valid records are processed, and failures are reported in the results."
-};
-const EXTERNAL_ID_FIELD = {
-	name: "externalIdField",
-	label: "External ID Field",
-	type: "String",
-	helpText:
-		'The API name of the external ID field that matches records to upsert, ex: "External_Id__c". When blank, records match on their ID.'
 };
 const SETTINGS = [ACCESS_LEVEL, ALL_OR_NONE];
 // Flow Builder's Update and Delete Records take either shape in one input
@@ -133,8 +148,9 @@ const ACTIONS = {
 	},
 	InvocableDmlUpsertRecords: {
 		heading: "Select Record(s) to Upsert",
-		hint: "Records that match an existing record's ID or external ID are updated, and the rest are inserted. Find new records' IDs in the action's Record outputs.",
-		settings: [...SETTINGS, EXTERNAL_ID_FIELD]
+		hint: "After the records are upserted, find new records' IDs in the action's Record outputs.",
+		settings: SETTINGS,
+		hasMatchField: true
 	}
 };
 
@@ -160,7 +176,7 @@ export default class DmlRecordsEditor extends LightningElement {
 	 */
 	@api elementInfo;
 	/**
-	 * @description From Flow Builder: the action's generic object types; set via events, never read
+	 * @description From Flow Builder: the action's generic object types, which give the records' object
 	 * @type {Array}
 	 */
 	@api genericTypeMappings;
@@ -168,7 +184,12 @@ export default class DmlRecordsEditor extends LightningElement {
 	_errors = {};
 	_howMany = ONE;
 	_inputVariables = [];
+	_matchMode;
+	_objectType;
 	_values = {};
+
+	@wire(getMatchFields, { objectApiName: "$matchObjectType" })
+	_matchFields;
 
 	// **** GETTERS **** //
 	get action() {
@@ -177,6 +198,10 @@ export default class DmlRecordsEditor extends LightningElement {
 
 	get elementName() {
 		return this.elementInfo?.apiName;
+	}
+
+	get hasMatchField() {
+		return Boolean(this.action.hasMatchField);
 	}
 
 	get howMany() {
@@ -189,6 +214,28 @@ export default class DmlRecordsEditor extends LightningElement {
 
 	get howManyOptions() {
 		return HOW_MANY_OPTIONS;
+	}
+
+	get matchModes() {
+		const matchMode = this.matchMode;
+		return MATCH_MODES.map((mode) => {
+			const isChecked = mode.value === matchMode;
+			return { ...mode, isChecked, field: isChecked && mode.placeholder ? this._initMatchField(mode) : null };
+		});
+	}
+
+	get matchMode() {
+		const value = this._values[EXTERNAL_ID_FIELD]?.value;
+		const field = (this._matchFields?.data ?? []).find((candidate) => candidate.apiName === value);
+		const fieldMode = field?.isExternalId === false ? STANDARD_FIELD : EXTERNAL_ID;
+		// Until the user picks a mode, the saved field implies it
+		return this._matchMode ?? (value == null ? RECORD_ID : fieldMode);
+	}
+
+	get matchObjectType() {
+		const mapping = this.genericTypeMappings?.find((candidate) => candidate.typeName === GENERIC_TYPES[0]);
+		// Only Upsert Records matches on a field, so the other actions skip the Apex call
+		return this.hasMatchField ? (this._objectType ?? mapping?.typeValue) : undefined;
 	}
 
 	get records() {
@@ -238,7 +285,12 @@ export default class DmlRecordsEditor extends LightningElement {
 	@api
 	validate() {
 		const fields = this.sections.flatMap((section) => section.fields);
-		const checks = [this._validateRecords(), this._validateAccessLevel(fields), ...this._validateBooleans(fields)];
+		const checks = [
+			this._validateRecords(),
+			this._validateMatchField(),
+			this._validateAccessLevel(fields),
+			...this._validateBooleans(fields)
+		];
 		const errors = checks.filter(Boolean);
 		this._errors = Object.fromEntries(errors.map((error) => [error.key, error.errorString]));
 		return errors;
@@ -251,6 +303,26 @@ export default class DmlRecordsEditor extends LightningElement {
 	 */
 	handleHowManyChange(event) {
 		this._setHowMany(event.detail.value);
+	}
+
+	/**
+	 * @description Saves the field to match records on, keeping its mode if it's cleared
+	 * @param {CustomEvent} event Change on the match field picker
+	 */
+	handleMatchFieldChange(event) {
+		this._matchMode = this.matchMode;
+		this._saveInput(event.detail);
+	}
+
+	/**
+	 * @description Switches how records are matched, dropping a field chosen for another mode
+	 * @param {Event} event Change on a match mode radio button
+	 */
+	handleMatchModeChange(event) {
+		this._matchMode = event.target.value;
+		if (this._values[EXTERNAL_ID_FIELD]?.value != null) {
+			this._deleteInput(EXTERNAL_ID_FIELD);
+		}
 	}
 
 	/**
@@ -267,7 +339,8 @@ export default class DmlRecordsEditor extends LightningElement {
 	 * @param {CustomEvent} event Change on the records picker: `{ name, value, valueDataType, objectType, isCollection }`
 	 */
 	handleRecordsChange(event) {
-		const { isCollection, value } = event.detail;
+		const { isCollection, objectType, value } = event.detail;
+		this._objectType = objectType ?? this._objectType;
 		if (!this.howManyLabel && value != null) {
 			this._setHowMany(isCollection ? MULTIPLE : ONE);
 		}
@@ -308,6 +381,32 @@ export default class DmlRecordsEditor extends LightningElement {
 				valueDataType: input?.valueDataType
 			};
 		});
+	}
+
+	/**
+	 * @description Combines a match mode with its field's saved value, error, and the object's fields for that mode.
+	 * @param {Object} mode External ID or Standard Field
+	 * @returns {Object} The mode's field, ready for `c-flow-resource-picker`
+	 */
+	_initMatchField(mode) {
+		const input = this._values[EXTERNAL_ID_FIELD];
+		const isExternalId = mode.value === EXTERNAL_ID;
+		// shortcut: every field gets the text icon, as most external IDs are text; pass the field type for others
+		const picklistValues = (this._matchFields?.data ?? [])
+			.filter((field) => field.isExternalId === isExternalId)
+			.map((field) => ({
+				label: field.apiName,
+				value: field.apiName,
+				description: field.label,
+				icon: "utility:text"
+			}))
+			.sort((a, b) => a.label.localeCompare(b.label));
+		return {
+			errorMessage: this._errors[EXTERNAL_ID_FIELD],
+			picklistValues,
+			value: input?.value,
+			valueDataType: input?.valueDataType
+		};
 	}
 
 	/**
@@ -399,6 +498,16 @@ export default class DmlRecordsEditor extends LightningElement {
 		return fields
 			.filter((field) => field.type === "Boolean" && this._isLiteral(field) && !toBooleanConstant(field.value))
 			.map((field) => ({ key: field.name, errorString: "Enter True or False." }));
+	}
+
+	/**
+	 * @description Checks that a field was chosen, when records match on one.
+	 * @returns {Object} An error, or null
+	 */
+	_validateMatchField() {
+		const isMissing =
+			this.hasMatchField && this.matchMode !== RECORD_ID && this._values[EXTERNAL_ID_FIELD]?.value == null;
+		return isMissing ? { key: EXTERNAL_ID_FIELD, errorString: REQUIRED_ERROR } : null;
 	}
 
 	/**

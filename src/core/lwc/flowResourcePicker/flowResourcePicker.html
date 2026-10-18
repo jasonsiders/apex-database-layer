@@ -9,7 +9,8 @@
 		></lightning-icon>
 		<div class={formElementClass}>
 			<label class="slds-form-element__label" for="combobox-input">
-				<abbr lwc:if={required} class="slds-required" title="required">*</abbr> {label}
+				<abbr lwc:if={required} class="slds-required" title="required">*</abbr>
+				<span class={labelTextClass}>{label}</span>
 			</label>
 			<lightning-helptext lwc:if={helpText} content={helpText}></lightning-helptext>
 			<div class="slds-form-element__control">
@@ -77,12 +78,12 @@
 						<div
 							lwc:if={isOpen}
 							id="listbox"
-							class="slds-dropdown slds-dropdown_length-10 slds-dropdown_fluid slds-p-vertical_none"
+							class={dropdownClass}
 							role="listbox"
 							aria-label={label}
 							onmousedown={handleListMouseDown}
 						>
-							<div class="picker-header slds-text-body_small">
+							<div lwc:if={isResourceMenu} class="picker-header slds-text-body_small">
 								<lightning-breadcrumbs lwc:if={hasCrumbs}>
 									<template for:each={crumbs} for:item="crumb">
 										<lightning-breadcrumb
@@ -97,13 +98,8 @@
 							</div>
 							<template lwc:if={hasOptions}>
 								<template for:each={menu} for:item="section">
-									<ul
-										key={section.label}
-										class="slds-listbox slds-listbox_vertical picker-group"
-										role="group"
-										aria-label={section.label}
-									>
-										<li role="presentation" class="slds-listbox__item">
+									<ul key={section.label} class={groupClass} role="group" aria-label={section.label}>
+										<li lwc:if={isResourceMenu} role="presentation" class="slds-listbox__item">
 											<h3 class="slds-listbox__option-header picker-section" role="presentation">
 												{section.label}
 											</h3>
@@ -120,6 +116,7 @@
 													onclick={handleOptionClick}
 												>
 													<span
+														lwc:if={isResourceMenu}
 														class="slds-media__figure slds-listbox__option-icon slds-m-right_none"
 													>
 														<lightning-icon
@@ -134,13 +131,18 @@
 													>
 														<lightning-icon
 															icon-name={option.icon}
-															size="x-small"
+															size={iconSize}
 															alternative-text=""
 														></lightning-icon>
 													</span>
 													<span class="slds-media__body">
-														<span class="slds-truncate" title={option.label}
+														<span class={option.textClass} title={option.label}
 															>{option.label}</span
+														>
+														<span
+															lwc:if={option.description}
+															class="slds-listbox__option-meta slds-listbox__option-meta_entity"
+															>{option.description}</span
 														>
 													</span>
 													<span

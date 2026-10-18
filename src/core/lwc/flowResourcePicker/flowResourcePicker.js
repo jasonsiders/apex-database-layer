@@ -58,6 +58,11 @@ export default class FlowResourcePicker extends LightningElement {
 	 */
 	@api isCollection;
 	/**
+	 * @description Lists only the picklist values, without flow resources, like Flow Builder's field pickers
+	 * @type {Boolean}
+	 */
+	@api isPicklistOnly = false;
+	/**
 	 * @description The input's label
 	 * @type {String}
 	 */
@@ -73,7 +78,7 @@ export default class FlowResourcePicker extends LightningElement {
 	 */
 	@api objectType;
 	/**
-	 * @description Literal choices, listed first as "Picklist Values": `[{ label, value }]`
+	 * @description Literal choices, listed first as "Picklist Values": `[{ label, value, description?, icon? }]`
 	 * @type {Array}
 	 */
 	@api picklistValues;
@@ -92,6 +97,11 @@ export default class FlowResourcePicker extends LightningElement {
 	 * @type {String}
 	 */
 	@api type = "String";
+	/**
+	 * @description `label-hidden` keeps the label for screen readers only, beside any required asterisk
+	 * @type {String}
+	 */
+	@api variant;
 
 	_activeIndex = -1;
 	_builderContext;
@@ -145,8 +155,14 @@ export default class FlowResourcePicker extends LightningElement {
 		return [root, ...steps];
 	}
 
+	get dropdownClass() {
+		// Flow Builder's resource menu runs its header to the edges; its field pickers keep SLDS's padding
+		const paddingClass = this.isPicklistOnly ? "" : " slds-p-vertical_none";
+		return "slds-dropdown slds-dropdown_length-10 slds-dropdown_fluid" + paddingClass;
+	}
+
 	get expanded() {
-		return String(this._isOpen);
+		return String(this.isOpen);
 	}
 
 	get error() {
@@ -164,16 +180,33 @@ export default class FlowResourcePicker extends LightningElement {
 		return this._trail.length > 0;
 	}
 
+	get groupClass() {
+		return "slds-listbox slds-listbox_vertical" + (this.isPicklistOnly ? "" : " picker-group");
+	}
+
 	get hasOptions() {
 		return this._sections.length > 0;
 	}
 
+	get iconSize() {
+		return this.isPicklistOnly ? "xx-small" : "x-small";
+	}
+
+	get isLabelHidden() {
+		return this.variant === "label-hidden";
+	}
+
 	get isOpen() {
-		return this._isOpen;
+		// Like Flow Builder's field pickers, a picklist with nothing to offer stays closed
+		return this._isOpen && (this.hasOptions || !this.isPicklistOnly);
 	}
 
 	get labelIcon() {
-		return LABEL_ICONS[this.type];
+		return this.isLabelHidden ? null : LABEL_ICONS[this.type];
+	}
+
+	get labelTextClass() {
+		return this.isLabelHidden ? "slds-assistive-text" : "";
 	}
 
 	/**
@@ -187,12 +220,18 @@ export default class FlowResourcePicker extends LightningElement {
 			items: section.items.map((item) => {
 				const isActive = index === this._activeIndex;
 				const activeClass = isActive ? " slds-has-focus" : "";
+				// Field pickers list fields as SLDS entities, like Flow Builder's own
+				const typeClass = this.isPicklistOnly ? " slds-listbox__option_entity" : " picker-option";
+				const textClass = this.isPicklistOnly
+					? "slds-listbox__option-text slds-listbox__option-text_entity"
+					: "slds-truncate";
 				const option = {
 					...item,
 					domId: `option-${index}`,
 					isActive: String(isActive),
 					isCurrent: item.value === this._value,
-					className: "slds-media slds-media_center slds-listbox__option picker-option" + activeClass
+					className: "slds-media slds-media_center slds-listbox__option" + typeClass + activeClass,
+					textClass
 				};
 				index++;
 				return option;
@@ -212,6 +251,10 @@ export default class FlowResourcePicker extends LightningElement {
 		return this._selection;
 	}
 
+	get isResourceMenu() {
+		return !this.isPicklistOnly;
+	}
+
 	get showPill() {
 		return Boolean(this._selection) && !this._isEditing;
 	}
@@ -220,6 +263,7 @@ export default class FlowResourcePicker extends LightningElement {
 		return {
 			dataType: this.type,
 			isCollection: this.isCollection,
+			isPicklistOnly: this.isPicklistOnly,
 			objectType: this.objectType,
 			picklistValues: this.picklistValues
 		};
@@ -498,7 +542,8 @@ export default class FlowResourcePicker extends LightningElement {
 		if (requestId === this._requestId) {
 			this._sections = filterSections(sections, term);
 			this._trail = this._initTrail(parent);
-			this._activeIndex = -1;
+			// Flow Builder's field pickers highlight the first field; its resource menu highlights nothing
+			this._activeIndex = this.isPicklistOnly && this._sections.length > 0 ? 0 : -1;
 		}
 	}
 

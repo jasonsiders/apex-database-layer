@@ -211,7 +211,7 @@ const GLOBAL_CONSTANTS = [
 /**
  * @description Builds the top-level menu: every resource in the flow that fits the target input, or contains one that does.
  * @param {Object} context `{ builderContext, automaticOutputVariables, objectLabels }`
- * @param {Object} target The input being configured: `{ dataType, isCollection, objectType, picklistValues }`. Null includes everything; a record target without `isCollection` takes either.
+ * @param {Object} target The input being configured: `{ dataType, isCollection, isPicklistOnly, objectType, picklistValues }`. Null includes everything; a record target without `isCollection` takes either.
  * @returns {Array} Sections of `{ label, items, hasDivider }`, in Flow Builder's order
  */
 export function getRootSections(context, target) {
@@ -223,8 +223,8 @@ export function getRootSections(context, target) {
 		.map((lookup) => initLookupItem(lookup, context));
 	const loops = initLoopItems(builderContext, [...variables, ...lookups], context, scope);
 	const records = variables.filter((item) => item.dataType === SOBJECT);
-	const sections = [
-		initSection("Picklist Values", (target?.picklistValues ?? []).map(initPicklistItem), false),
+	const picklist = initSection("Picklist Values", (target?.picklistValues ?? []).map(initPicklistItem), false);
+	const resources = [
 		// Flow Builder divides quick resources from the rest of the menu
 		{
 			...initSection("Quick Resources", [...initTriggerItems(builderContext, context), ...loops], false),
@@ -266,6 +266,7 @@ export function getRootSections(context, target) {
 		),
 		initSection("Global Variables", GLOBAL_VARIABLES.map(initGlobalItem), false)
 	];
+	const sections = target?.isPicklistOnly ? [picklist] : [picklist, ...resources];
 	return applyTarget(sections, target, context);
 }
 
@@ -616,11 +617,11 @@ function initOutputItems(action, context) {
 
 /**
  * @description Builds a literal item for a picklist value.
- * @param {Object} picklistValue `{ label, value }`
+ * @param {Object} picklistValue `{ label, value }`, optionally with a `description` and `icon`
  * @returns {Object} The picklist value's item
  */
 function initPicklistItem(picklistValue) {
-	return initItem({ ...picklistValue, dataType: "String", icon: "utility:picklist_type", isLiteral: true });
+	return initItem({ icon: "utility:picklist_type", ...picklistValue, dataType: "String", isLiteral: true });
 }
 
 /**
