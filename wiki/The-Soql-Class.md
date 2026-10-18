@@ -46,7 +46,7 @@ Use `Soql.Builder` class's various builder methods to construct a SOQL query. Ea
 Soql accountQuery = DatabaseLayer.Soql.newQuery(Account.SObjectType)
   ?.addSelect(Account.Name)
   ?.addWhere(Account.Type, Soql.NOT_EQUALS, 'Internal')
-  ?.withSecurityEnforced()
+  ?.setAccessLevel(System.AccessLevel.USER_MODE)
   ?.addOrderBy(Account.CreatedDate, Soql.SortDirection.DESCENDING)
   ?.setRowLimit(200)
   ?.toSoql();

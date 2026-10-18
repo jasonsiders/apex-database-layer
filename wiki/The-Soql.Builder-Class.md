@@ -201,6 +201,8 @@ Explicitly casts the current `Soql.Builder` to a `Soql.Subquery` instance. Usefu
 
 ### `withSecurityEnforced`
 
-Enforces security in the query to ensure that the user has appropriate access to the queried records.
+> **Deprecated:** `WITH SECURITY_ENFORCED` is not supported in API v68.0+. This method now calls `setAccessLevel(System.AccessLevel.USER_MODE)` and no longer adds a `WITH` clause to the query. Call `setAccessLevel(System.AccessLevel.USER_MODE)` directly instead. This method will be removed in `v5.0.0`.
+
+Sets the query's access level to `USER_MODE`.
 
 - `Soql.Builder withSecurityEnforced()`

@@ -741,13 +741,15 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	private static void shouldSetWithSecurityEnforcedClause() {
-		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)?.withSecurityEnforced()?.setRowLimit(1)?.toSoql();
-		String expected = 'SELECT Id FROM User WITH SECURITY_ENFORCED LIMIT 1';
+	private static void shouldRouteWithSecurityEnforcedToUserMode() {
+		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
+			?.setAccessLevel(System.AccessLevel.SYSTEM_MODE)
+			?.withSecurityEnforced()
+			?.toSoql();
+		String queryString = soql?.toString();
 
-		Test.startTest();
-		SoqlTest.validateQuery(soql, expected);
-		Test.stopTest();
+		Assert.areEqual(System.AccessLevel.USER_MODE, soql?.accessLevel, 'Did not set access level');
+		Assert.areEqual('SELECT Id FROM User', queryString, 'Added a WITH clause');
 	}
 
 	@IsTest

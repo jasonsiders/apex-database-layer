@@ -3,13 +3,9 @@
 private class DmlTest {
 	// **** VARIABLES **** //
 	private static final LeadStatus CONVERTED_STATUS;
-	private static List<Database.DeleteResult> deleteCallbacksMade;
-	private static List<Database.SaveResult> saveCallbacksMade;
 
 	static {
 		CONVERTED_STATUS = DmlTest.getConvertedStatus();
-		deleteCallbacksMade = new List<Database.DeleteResult>();
-		saveCallbacksMade = new List<Database.SaveResult>();
 		// Custom metadata actually defined in the org should not interfere with this test:
 		MockCmdt.mock(DatabaseLayerParameter__mdt.SObjectType);
 	}
@@ -90,16 +86,13 @@ private class DmlTest {
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();
-		Database.SaveResult result = DatabaseLayer.Dml.doInsertAsync(account);
+		try {
+			DatabaseLayer.Dml.doInsertAsync(account);
+			Assert.fail('Did not throw a System.TypeException');
+		} catch (System.TypeException error) {
+			DmlTest.assertInvalidEntityType(error);
+		}
 		Test.stopTest();
-
-		// Note: This should fail, since Account isn't an external object.
-		// This doesn't seem to happen for updateAsync() or deleteAsync() - not sure why.
-		// Without defining a custom external object, not possible to test the happy path for this
-		Assert.areEqual(false, result?.isSuccess(), 'InsertAsync succeeded on non-external object');
-		Database.Error error = result?.getErrors()?.get(0) ?? null;
-		System.StatusCode expected = System.StatusCode.CANNOT_INSERT_UPDATE_ACTIVATE_ENTITY;
-		Assert.areEqual(expected, error?.getStatusCode(), 'Wrong Error Code');
 	}
 
 	@IsTest
@@ -107,52 +100,43 @@ private class DmlTest {
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();
-		Database.SaveResult result = DatabaseLayer.Dml.doInsertAsync(account, System.AccessLevel.SYSTEM_MODE);
+		try {
+			DatabaseLayer.Dml.doInsertAsync(account, System.AccessLevel.SYSTEM_MODE);
+			Assert.fail('Did not throw a System.TypeException');
+		} catch (System.TypeException error) {
+			DmlTest.assertInvalidEntityType(error);
+		}
 		Test.stopTest();
-
-		// Note: This should fail, since Account isn't an external object.
-		// This doesn't seem to happen for updateAsync() or deleteAsync() - not sure why.
-		// Without defining a custom external object, not possible to test the happy path for this
-		Assert.areEqual(false, result?.isSuccess(), 'InsertAsync succeeded on non-external object');
-		Database.Error error = result?.getErrors()?.get(0) ?? null;
-		System.StatusCode expected = System.StatusCode.CANNOT_INSERT_UPDATE_ACTIVATE_ENTITY;
-		Assert.areEqual(expected, error?.getStatusCode(), 'Wrong Error Code');
 	}
 
 	@IsTest
 	private static void shouldDoInsertAsyncWithCallback() {
 		Account account = DmlTest.initAccount();
-		DataSource.AsyncSaveCallback callback = new DmlTest.SaveCallback();
+		DataSource.AsyncSaveCallback callback = new Dml.EmptySaveCallback();
 
 		Test.startTest();
-		Database.SaveResult result = DatabaseLayer.Dml.doInsertAsync(account, callback);
+		try {
+			DatabaseLayer.Dml.doInsertAsync(account, callback);
+			Assert.fail('Did not throw a System.TypeException');
+		} catch (System.TypeException error) {
+			DmlTest.assertInvalidEntityType(error);
+		}
 		Test.stopTest();
-
-		// Note: This should fail, since Account isn't an external object.
-		// This doesn't seem to happen for updateAsync() or deleteAsync() - not sure why.
-		// Without defining a custom external object, not possible to test the happy path for this
-		Assert.areEqual(false, result?.isSuccess(), 'InsertAsync succeeded on non-external object');
-		Database.Error error = result?.getErrors()?.get(0) ?? null;
-		System.StatusCode expected = System.StatusCode.CANNOT_INSERT_UPDATE_ACTIVATE_ENTITY;
-		Assert.areEqual(expected, error?.getStatusCode(), 'Wrong Error Code');
 	}
 
 	@IsTest
 	private static void shouldDoInsertAsyncWithCallbackAndAccessLevel() {
 		Account account = DmlTest.initAccount();
-		DataSource.AsyncSaveCallback callback = new DmlTest.SaveCallback();
+		DataSource.AsyncSaveCallback callback = new Dml.EmptySaveCallback();
 
 		Test.startTest();
-		Database.SaveResult result = DatabaseLayer.Dml.doInsertAsync(account, callback, System.AccessLevel.SYSTEM_MODE);
+		try {
+			DatabaseLayer.Dml.doInsertAsync(account, callback, System.AccessLevel.SYSTEM_MODE);
+			Assert.fail('Did not throw a System.TypeException');
+		} catch (System.TypeException error) {
+			DmlTest.assertInvalidEntityType(error);
+		}
 		Test.stopTest();
-
-		// Note: This should fail, since Account isn't an external object.
-		// This doesn't seem to happen for updateAsync() or deleteAsync() - not sure why.
-		// Without defining a custom external object, not possible to test the happy path for this
-		Assert.areEqual(false, result?.isSuccess(), 'InsertAsync succeeded on non-external object');
-		Database.Error error = result?.getErrors()?.get(0) ?? null;
-		System.StatusCode expected = System.StatusCode.CANNOT_INSERT_UPDATE_ACTIVATE_ENTITY;
-		Assert.areEqual(expected, error?.getStatusCode(), 'Wrong Error Code');
 	}
 
 	@IsTest
@@ -160,10 +144,13 @@ private class DmlTest {
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();
-		Database.SaveResult result = DatabaseLayer.Dml.doInsertImmediate(account);
+		try {
+			DatabaseLayer.Dml.doInsertImmediate(account);
+			Assert.fail('Did not throw a System.TypeException');
+		} catch (System.TypeException error) {
+			DmlTest.assertInvalidEntityType(error);
+		}
 		Test.stopTest();
-
-		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
 	}
 
 	@IsTest
@@ -171,10 +158,13 @@ private class DmlTest {
 		Account account = DmlTest.initAccount();
 
 		Test.startTest();
-		Database.SaveResult result = DatabaseLayer.Dml.doInsertImmediate(account, System.AccessLevel.SYSTEM_MODE);
+		try {
+			DatabaseLayer.Dml.doInsertImmediate(account, System.AccessLevel.SYSTEM_MODE);
+			Assert.fail('Did not throw a System.TypeException');
+		} catch (System.TypeException error) {
+			DmlTest.assertInvalidEntityType(error);
+		}
 		Test.stopTest();
-
-		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
 	}
 
 	@IsTest
@@ -256,75 +246,87 @@ private class DmlTest {
 	@IsTest
 	private static void shouldDoUpdateAsync() {
 		Account account = DmlTest.initAccount();
-		insert account;
 
 		Test.startTest();
-		Database.SaveResult result = DatabaseLayer.Dml.doUpdateAsync(account);
+		try {
+			DatabaseLayer.Dml.doUpdateAsync(account);
+			Assert.fail('Did not throw a System.TypeException');
+		} catch (System.TypeException error) {
+			DmlTest.assertInvalidEntityType(error);
+		}
 		Test.stopTest();
-
-		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
 	}
 
 	@IsTest
 	private static void shouldDoUpdateAsyncWithAccessLevel() {
 		Account account = DmlTest.initAccount();
-		insert account;
 
 		Test.startTest();
-		Database.SaveResult result = DatabaseLayer.Dml.doUpdateAsync(account, System.AccessLevel.SYSTEM_MODE);
+		try {
+			DatabaseLayer.Dml.doUpdateAsync(account, System.AccessLevel.SYSTEM_MODE);
+			Assert.fail('Did not throw a System.TypeException');
+		} catch (System.TypeException error) {
+			DmlTest.assertInvalidEntityType(error);
+		}
 		Test.stopTest();
-
-		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
 	}
 
 	@IsTest
 	private static void shouldDoUpdateAsyncWithCallback() {
 		Account account = DmlTest.initAccount();
-		insert account;
-		DataSource.AsyncSaveCallback callback = new DmlTest.SaveCallback();
+		DataSource.AsyncSaveCallback callback = new Dml.EmptySaveCallback();
 
 		Test.startTest();
-		Database.SaveResult result = DatabaseLayer.Dml.doUpdateAsync(account, callback);
+		try {
+			DatabaseLayer.Dml.doUpdateAsync(account, callback);
+			Assert.fail('Did not throw a System.TypeException');
+		} catch (System.TypeException error) {
+			DmlTest.assertInvalidEntityType(error);
+		}
 		Test.stopTest();
-
-		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
 	}
 
 	@IsTest
 	private static void shouldDoUpdateAsyncWithCallbackAndAccessLevel() {
 		Account account = DmlTest.initAccount();
-		insert account;
-		DataSource.AsyncSaveCallback callback = new DmlTest.SaveCallback();
+		DataSource.AsyncSaveCallback callback = new Dml.EmptySaveCallback();
 
 		Test.startTest();
-		Database.SaveResult result = DatabaseLayer.Dml.doUpdateAsync(account, callback, System.AccessLevel.SYSTEM_MODE);
+		try {
+			DatabaseLayer.Dml.doUpdateAsync(account, callback, System.AccessLevel.SYSTEM_MODE);
+			Assert.fail('Did not throw a System.TypeException');
+		} catch (System.TypeException error) {
+			DmlTest.assertInvalidEntityType(error);
+		}
 		Test.stopTest();
-
-		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
 	}
 
 	@IsTest
 	private static void shouldDoUpdateImmediate() {
 		Account account = DmlTest.initAccount();
-		insert account;
 
 		Test.startTest();
-		Database.SaveResult result = DatabaseLayer.Dml.doUpdateImmediate(account);
+		try {
+			DatabaseLayer.Dml.doUpdateImmediate(account);
+			Assert.fail('Did not throw a System.TypeException');
+		} catch (System.TypeException error) {
+			DmlTest.assertInvalidEntityType(error);
+		}
 		Test.stopTest();
-
-		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
 	}
 
 	@IsTest
 	private static void shouldDoUpdateImmediateWithAccessLevel() {
 		Account account = DmlTest.initAccount();
-		insert account;
 
 		Test.startTest();
-		Database.SaveResult result = DatabaseLayer.Dml.doUpdateImmediate(account, System.AccessLevel.SYSTEM_MODE);
+		try {
+			DatabaseLayer.Dml.doUpdateImmediate(account, System.AccessLevel.SYSTEM_MODE);
+			Assert.fail('Did not throw a System.TypeException');
+		} catch (System.TypeException error) {
+			DmlTest.assertInvalidEntityType(error);
+		}
 		Test.stopTest();
-
-		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
 	}
 
 	@IsTest
@@ -523,79 +525,87 @@ private class DmlTest {
 	@IsTest
 	private static void shouldDoDeleteAsync() {
 		Account account = DmlTest.initAccount();
-		insert account;
 
 		Test.startTest();
-		Database.DeleteResult result = DatabaseLayer.Dml.doDeleteAsync(account);
+		try {
+			DatabaseLayer.Dml.doDeleteAsync(account);
+			Assert.fail('Did not throw a System.TypeException');
+		} catch (System.TypeException error) {
+			DmlTest.assertInvalidEntityType(error);
+		}
 		Test.stopTest();
-
-		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
 	}
 
 	@IsTest
 	private static void shouldDoDeleteAsyncWithAccessLevel() {
 		Account account = DmlTest.initAccount();
-		insert account;
 
 		Test.startTest();
-		Database.DeleteResult result = DatabaseLayer.Dml.doDeleteAsync(account, System.AccessLevel.SYSTEM_MODE);
+		try {
+			DatabaseLayer.Dml.doDeleteAsync(account, System.AccessLevel.SYSTEM_MODE);
+			Assert.fail('Did not throw a System.TypeException');
+		} catch (System.TypeException error) {
+			DmlTest.assertInvalidEntityType(error);
+		}
 		Test.stopTest();
-
-		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
 	}
 
 	@IsTest
 	private static void shouldDoDeleteAsyncWithCallback() {
 		Account account = DmlTest.initAccount();
-		insert account;
-		DataSource.AsyncDeleteCallback callback = new DmlTest.DeleteCallback();
+		DataSource.AsyncDeleteCallback callback = new Dml.EmptyDeleteCallback();
 
 		Test.startTest();
-		Database.DeleteResult result = DatabaseLayer.Dml.doDeleteAsync(account, callback);
+		try {
+			DatabaseLayer.Dml.doDeleteAsync(account, callback);
+			Assert.fail('Did not throw a System.TypeException');
+		} catch (System.TypeException error) {
+			DmlTest.assertInvalidEntityType(error);
+		}
 		Test.stopTest();
-
-		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
 	}
 
 	@IsTest
 	private static void shouldDoDeleteAsyncWithCallbackAndAccessLevel() {
 		Account account = DmlTest.initAccount();
-		insert account;
-		DataSource.AsyncDeleteCallback callback = new DmlTest.DeleteCallback();
+		DataSource.AsyncDeleteCallback callback = new Dml.EmptyDeleteCallback();
 
 		Test.startTest();
-		Database.DeleteResult result = DatabaseLayer.Dml.doDeleteAsync(
-			account,
-			callback,
-			System.AccessLevel.SYSTEM_MODE
-		);
+		try {
+			DatabaseLayer.Dml.doDeleteAsync(account, callback, System.AccessLevel.SYSTEM_MODE);
+			Assert.fail('Did not throw a System.TypeException');
+		} catch (System.TypeException error) {
+			DmlTest.assertInvalidEntityType(error);
+		}
 		Test.stopTest();
-
-		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
 	}
 
 	@IsTest
 	private static void shouldDoDeleteImmediate() {
 		Account account = DmlTest.initAccount();
-		insert account;
 
 		Test.startTest();
-		Database.DeleteResult result = DatabaseLayer.Dml.doDeleteImmediate(account);
+		try {
+			DatabaseLayer.Dml.doDeleteImmediate(account);
+			Assert.fail('Did not throw a System.TypeException');
+		} catch (System.TypeException error) {
+			DmlTest.assertInvalidEntityType(error);
+		}
 		Test.stopTest();
-
-		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
 	}
 
 	@IsTest
 	private static void shouldDoDeleteImmediateWithAccessLevel() {
 		Account account = DmlTest.initAccount();
-		insert account;
 
 		Test.startTest();
-		Database.DeleteResult result = DatabaseLayer.Dml.doDeleteImmediate(account, System.AccessLevel.SYSTEM_MODE);
+		try {
+			DatabaseLayer.Dml.doDeleteImmediate(account, System.AccessLevel.SYSTEM_MODE);
+			Assert.fail('Did not throw a System.TypeException');
+		} catch (System.TypeException error) {
+			DmlTest.assertInvalidEntityType(error);
+		}
 		Test.stopTest();
-
-		Assert.areEqual(true, result?.isSuccess(), 'DML failed: ' + result?.getErrors());
 	}
 
 	@IsTest
@@ -740,7 +750,9 @@ private class DmlTest {
 		Database.SaveResult result = DatabaseLayer.Dml.doPublish(event);
 		Test.stopTest();
 
-		Assert.areEqual(true, result?.isSuccess(), 'Publish failed');
+		// Only the platform can fire BatchApexErrorEvent; newer API versions enforce this,
+		// and this package has no platform events of its own to publish instead
+		Assert.areEqual(false, result?.isSuccess(), 'Published a platform-only event');
 	}
 
 	@IsTest
@@ -1005,6 +1017,15 @@ private class DmlTest {
 	}
 
 	// **** HELPER **** //
+	/**
+	 * @description In API v60.0+, async & immediate DML only accepts external objects, and this package doesn't include any
+	 * @param error The exception thrown by the async or immediate DML call
+	 */
+	private static void assertInvalidEntityType(System.TypeException error) {
+		Boolean isInvalidEntityType = error?.getMessage()?.contains('Invalid entity type');
+		Assert.isTrue(isInvalidEntityType, 'Unexpected error: ' + error);
+	}
+
 	private static LeadStatus getConvertedStatus() {
 		return [SELECT ApiName FROM LeadStatus WHERE IsConverted = TRUE LIMIT 1] ?? null;
 	}
@@ -1032,18 +1053,5 @@ private class DmlTest {
 		leadToConvert?.setLeadId(lead?.Id);
 		leadToConvert?.setConvertedStatus(CONVERTED_STATUS?.ApiName);
 		return leadToConvert;
-	}
-
-	// **** INNER **** //
-	private class DeleteCallback extends DataSource.AsyncDeleteCallback {
-		public override void processDelete(Database.DeleteResult result) {
-			DmlTest.deleteCallbacksMade?.add(result);
-		}
-	}
-
-	private class SaveCallback extends DataSource.AsyncSaveCallback {
-		public override void processSave(Database.SaveResult result) {
-			DmlTest.saveCallbacksMade?.add(result);
-		}
 	}
 }

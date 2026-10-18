@@ -515,7 +515,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		global Soql.ConditionalLogic whereCriteria { get; protected set; }
 		/**
-		 * @description WITH clause for query hints (e.g., SECURITY_ENFORCED).
+		 * @description WITH clause for query hints.
 		 */
 		global String withClause { get; protected set; }
 		// Read-only properties included for JSON output:
@@ -978,7 +978,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		/**
-		 * @description Set WITH clause to any value (generalizes withSecurityEnforced)
+		 * @description Set WITH clause to any value
 		 * @param value The WITH clause value
 		 * @return This Builder instance for method chaining
 		 */
@@ -1113,14 +1113,12 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 
 		// * WITH *
 		/**
-		 * @description Adds SECURITY_ENFORCED clause to the query and sets access level to SYSTEM_MODE.
+		 * @description Kept for backward compatibility, since WITH SECURITY_ENFORCED is not supported in API v68.0+
+		 * @deprecated Use `setAccessLevel(System.AccessLevel.USER_MODE)` instead; this method will be removed in v5.0.0
 		 * @return This Builder instance for method chaining
 		 */
 		global Soql.Builder withSecurityEnforced() {
-			this.withClause = 'SECURITY_ENFORCED';
-			// Note: Cannot use the WITH SECURITY_ENFORCED clause in queries using USER_MODE access level.
-			this.setAccessLevel(System.AccessLevel.SYSTEM_MODE);
-			return this;
+			return this.setAccessLevel(System.AccessLevel.USER_MODE);
 		}
 
 		// * GROUP BY *

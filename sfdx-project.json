@@ -28,7 +28,7 @@
 	"name": "apex-database-layer",
 	"namespace": "",
 	"sfdcLoginUrl": "https://login.salesforce.com",
-	"sourceApiVersion": "66.0",
+	"sourceApiVersion": "68.0",
 	"packageAliases": {
 		"apex-database-layer": "0HoDn000000kAONKA2",
 		"nebula-logger-unlocked@4.17.3": "04tg70000001IMHAA2",
