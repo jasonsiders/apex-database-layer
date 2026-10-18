@@ -199,6 +199,18 @@ describe("c-dml-records-editor", () => {
 		expect(picker(element, "record").errorMessage).toBeUndefined();
 	});
 
+	it("treats the blank inputs Flow Builder sends for a new action as unset", async () => {
+		const blank = (name) => ({ name, value: "", valueDataType: "" });
+		const inputVariables = ["record", "recordCollection", "externalIdField", ...OPTION_NAMES].map(blank);
+
+		const { element } = await render(inputVariables);
+		const upsert = await render(inputVariables, "InvocableDmlUpsertRecords");
+
+		expect(element.shadowRoot.querySelector("lightning-radio-group").value).toBe("one");
+		expect(element.validate()).toEqual([{ key: "record", errorString: "Enter a value." }]);
+		expect(radios(upsert.element).find((radio) => radio.checked).label).toBe("Record ID");
+	});
+
 	it("rejects literals the action can't use", async () => {
 		const { element } = await render([
 			{ name: "recordCollection", value: "accountsVar", valueDataType: "reference" },

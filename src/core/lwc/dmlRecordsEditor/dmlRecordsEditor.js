@@ -262,7 +262,9 @@ export default class DmlRecordsEditor extends LightningElement {
 	}
 	set inputVariables(value) {
 		this._inputVariables = value ?? [];
-		this._values = Object.fromEntries(this._inputVariables.map((input) => [input.name, input]));
+		// A new action's inputs arrive blank, not null; Flow Builder can't save a blank literal, so blank means unset
+		const saved = this._inputVariables.filter((input) => input.value !== "");
+		this._values = Object.fromEntries(saved.map((input) => [input.name, input]));
 		this._howMany = this._initHowMany();
 	}
 
