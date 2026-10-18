@@ -265,7 +265,8 @@ export default class DmlRecordsEditor extends LightningElement {
 		this._inputVariables = value ?? [];
 		// A new action's inputs arrive blank, not null; Flow Builder can't save a blank literal, so blank means unset
 		const saved = this._inputVariables.filter((input) => input.value !== "");
-		this._values = Object.fromEntries(saved.map((input) => [input.name, input]));
+		const entries = saved.map((input) => [input.name, input]);
+		this._values = Object.fromEntries(entries);
 		this._howMany = this._initHowMany();
 	}
 
@@ -280,7 +281,8 @@ export default class DmlRecordsEditor extends LightningElement {
 		const fields = this.options;
 		const optionErrors = [this._validateAccessLevel(fields), ...this._validateBooleans(fields)].filter(Boolean);
 		const errors = [this._validateRecords(), this._validateMatchField(), ...optionErrors].filter(Boolean);
-		this._errors = Object.fromEntries(errors.map((error) => [error.key, error.errorString]));
+		const errorEntries = errors.map((error) => [error.key, error.errorString]);
+		this._errors = Object.fromEntries(errorEntries);
 		// The options start collapsed, which would hide their errors
 		this._openSection = optionErrors.length ? OPTIONS_SECTION : this._openSection;
 		return errors;
