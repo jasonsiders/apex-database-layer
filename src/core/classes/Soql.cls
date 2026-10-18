@@ -1113,14 +1113,13 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 
 		// * WITH *
 		/**
-		 * @description Adds SECURITY_ENFORCED clause to the query and sets access level to SYSTEM_MODE.
+		 * @description Sets the access level to USER_MODE.
+		 * @deprecated WITH SECURITY_ENFORCED is not supported in API v68.0+.
+		 * Use `setAccessLevel(System.AccessLevel.USER_MODE)` instead. This method will be removed in v5.0.0.
 		 * @return This Builder instance for method chaining
 		 */
 		global Soql.Builder withSecurityEnforced() {
-			this.withClause = 'SECURITY_ENFORCED';
-			// Note: Cannot use the WITH SECURITY_ENFORCED clause in queries using USER_MODE access level.
-			this.setAccessLevel(System.AccessLevel.SYSTEM_MODE);
-			return this;
+			return this.setAccessLevel(System.AccessLevel.USER_MODE);
 		}
 
 		// * GROUP BY *
