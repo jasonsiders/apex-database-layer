@@ -1,5 +1,6 @@
 /**
- * @description Flow action that undeletes records via `DatabaseLayer.Dml`, exposing the access level and all-or-none behavior
+ * @description Flow action that undeletes records via `DatabaseLayer.Dml`, exposing the access level and all-or-none
+ * behavior
  */
 public inherited sharing class InvocableDmlUndeleteRecords extends InvocableDml {
 	// **** PUBLIC **** //

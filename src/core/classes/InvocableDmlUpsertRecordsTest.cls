@@ -90,6 +90,20 @@ private class InvocableDmlUpsertRecordsTest {
 		Assert.isFalse(fieldsByName?.containsKey('LastName'), 'Listed a field that upserts cannot match on');
 	}
 
+	@IsTest
+	private static void shouldThrowAuraHandledExceptionForUnknownObject() {
+		Test.startTest();
+		Exception caughtError;
+		try {
+			InvocableDmlUpsertRecords.getMatchFields('Not_A_Real_Object__c');
+		} catch (System.AuraHandledException error) {
+			caughtError = error;
+		}
+		Test.stopTest();
+
+		Assert.isNotNull(caughtError, 'Did not throw a System.AuraHandledException');
+	}
+
 	// **** HELPER **** //
 	private static InvocableDml.Output invoke(InvocableDml.Input input) {
 		List<InvocableDml.Input> inputs = new List<InvocableDml.Input>{ input };

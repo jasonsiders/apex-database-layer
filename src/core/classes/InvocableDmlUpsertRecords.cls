@@ -28,10 +28,8 @@ public inherited sharing class InvocableDmlUpsertRecords extends InvocableDml {
 	 */
 	@AuraEnabled(cacheable=true)
 	public static List<InvocableDmlUpsertRecords.MatchField> getMatchFields(String objectApiName) {
-		List<String> objectApiNames = new List<String>{ objectApiName };
-		List<DescribeSObjectResult> objects = Schema.describeSObjects(objectApiNames, SObjectDescribeOptions.DEFERRED);
 		List<InvocableDmlUpsertRecords.MatchField> matchFields = new List<InvocableDmlUpsertRecords.MatchField>{};
-		for (SObjectField field : objects?.get(0)?.fields?.getMap()?.values()) {
+		for (SObjectField field : InvocableDmlUpsertRecords.describeFields(objectApiName)) {
 			DescribeFieldResult describe = field?.getDescribe();
 			if (InvocableDmlUpsertRecords.isMatchable(describe)) {
 				InvocableDmlUpsertRecords.MatchField matchField = new InvocableDmlUpsertRecords.MatchField(describe);
@@ -58,6 +56,25 @@ public inherited sharing class InvocableDmlUpsertRecords extends InvocableDml {
 	}
 
 	// **** PRIVATE **** //
+	/**
+	 * @description The editor calls this through Lightning, which only shows an AuraHandledException's message
+	 * @param objectApiName The object to describe
+	 * @return The object's fields
+	 * @throws System.AuraHandledException When the object doesn't exist
+	 */
+	private static List<SObjectField> describeFields(String objectApiName) {
+		List<String> objectApiNames = new List<String>{ objectApiName };
+		try {
+			List<DescribeSObjectResult> objects = Schema.describeSObjects(
+				objectApiNames,
+				SObjectDescribeOptions.DEFERRED
+			);
+			return objects?.get(0)?.fields?.getMap()?.values();
+		} catch (System.InvalidParameterValueException error) {
+			throw new System.AuraHandledException(error?.getMessage());
+		}
+	}
+
 	/**
 	 * @description Upserts can match on external ID fields and standard ID lookup fields; Id is the default, so the
 	 * editor offers it separately
@@ -87,7 +104,8 @@ public inherited sharing class InvocableDmlUpsertRecords extends InvocableDml {
 				?.getDescribe(SObjectDescribeOptions.DEFERRED)
 				?.fields
 				?.getMap();
-			field = fields?.get(fieldName?.trim());
+			String trimmedName = fieldName?.trim();
+			field = fields?.get(trimmedName);
 			if (field == null) {
 				throw new IllegalArgumentException('Invalid external ID field for ' + objectType + ': ' + fieldName);
 			}

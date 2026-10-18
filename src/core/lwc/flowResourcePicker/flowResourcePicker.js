@@ -161,14 +161,14 @@ export default class FlowResourcePicker extends LightningElement {
 		return "slds-dropdown slds-dropdown_length-10 slds-dropdown_fluid" + paddingClass;
 	}
 
-	get expanded() {
-		return String(this.isOpen);
-	}
-
 	get error() {
 		// Like Flow Builder's own inputs, a required one flags itself once it's left empty
 		const isMissing = this.required && this._isTouched && this._value == null;
 		return this.errorMessage ?? (isMissing ? REQUIRED_ERROR : null);
+	}
+
+	get expanded() {
+		return String(this.isOpen);
 	}
 
 	get formElementClass() {
@@ -176,12 +176,12 @@ export default class FlowResourcePicker extends LightningElement {
 		return "slds-form-element slds-col" + errorClass;
 	}
 
-	get hasCrumbs() {
-		return this._trail.length > 0;
-	}
-
 	get groupClass() {
 		return "slds-listbox slds-listbox_vertical" + (this.isPicklistOnly ? "" : " picker-group");
+	}
+
+	get hasCrumbs() {
+		return this._trail.length > 0;
 	}
 
 	get hasOptions() {
@@ -199,6 +199,10 @@ export default class FlowResourcePicker extends LightningElement {
 	get isOpen() {
 		// Like Flow Builder's field pickers, a picklist with nothing to offer stays closed
 		return this._isOpen && (this.hasOptions || !this.isPicklistOnly);
+	}
+
+	get isResourceMenu() {
+		return !this.isPicklistOnly;
 	}
 
 	get labelIcon() {
@@ -249,10 +253,6 @@ export default class FlowResourcePicker extends LightningElement {
 
 	get selection() {
 		return this._selection;
-	}
-
-	get isResourceMenu() {
-		return !this.isPicklistOnly;
 	}
 
 	get showPill() {

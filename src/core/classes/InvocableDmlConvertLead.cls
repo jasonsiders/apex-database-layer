@@ -32,15 +32,25 @@ public inherited sharing class InvocableDmlConvertLead {
 	 * @return The results, in input order
 	 */
 	private static List<Database.LeadConvertResult> convertLeads(List<InvocableDmlConvertLead.Input> inputs) {
+		List<Database.LeadConvert> leadsToConvert = InvocableDmlConvertLead.initLeadConverts(inputs);
+		InvocableDml.Input settings = inputs?.get(0)?.toSettings();
+		Database.DmlOptions options = settings?.toDmlOptions();
+		System.AccessLevel accessLevel = settings?.toAccessLevel();
+		return DatabaseLayer.Dml?.doConvert(leadsToConvert, options, accessLevel);
+	}
+
+	/**
+	 * @description Each input converts one lead, so they pool into one conversion
+	 * @param inputs One input per flow interview
+	 * @return One lead to convert per input, in the same order
+	 */
+	private static List<Database.LeadConvert> initLeadConverts(List<InvocableDmlConvertLead.Input> inputs) {
 		List<Database.LeadConvert> leadsToConvert = new List<Database.LeadConvert>{};
 		for (InvocableDmlConvertLead.Input input : inputs) {
 			Database.LeadConvert leadToConvert = input?.toLeadConvert();
 			leadsToConvert?.add(leadToConvert);
 		}
-		InvocableDml.Input settings = inputs?.get(0)?.toSettings();
-		Database.DmlOptions options = settings?.toDmlOptions();
-		System.AccessLevel accessLevel = settings?.toAccessLevel();
-		return DatabaseLayer.Dml?.doConvert(leadsToConvert, options, accessLevel);
+		return leadsToConvert;
 	}
 
 	/**
