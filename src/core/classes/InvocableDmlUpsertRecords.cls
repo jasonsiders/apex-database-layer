@@ -13,7 +13,7 @@ public inherited sharing class InvocableDmlUpsertRecords extends InvocableDml {
 		category='Database Layer'
 		configurationEditor='c-dml-records-editor'
 		description='Insert or update one or more records, matched by ID or an external ID field, with control over the access level and partial success.'
-		iconName='slds:standard:record_update'
+		iconName='slds:standard:merge'
 		label='Upsert Records'
 	)
 	public static List<InvocableDml.Output> invoke(List<InvocableDml.Input> inputs) {
