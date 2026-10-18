@@ -28,6 +28,8 @@ const SOBJECT = "SObject";
 
 // Flow Builder's own message for an empty required input, shared by the picker and the editors that validate it
 export const REQUIRED_ERROR = "Enter a value.";
+// The data type Flow Builder saves for an input set to a resource, not a typed-in value
+export const REFERENCE = "reference";
 // Shared, since creating a collator per comparison makes sorting large menus slow
 const LABEL_COLLATOR = new Intl.Collator(undefined, { sensitivity: "base" });
 const TYPE_ORDER = ["Boolean", "Currency", "Date", "DateTime", "Multipicklist", "Number", "Picklist", "String", "Time"];

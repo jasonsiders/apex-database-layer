@@ -1,6 +1,6 @@
 import { LightningElement, api, wire } from "lwc";
 import getMatchFields from "@salesforce/apex/InvocableDmlUpsertRecords.getMatchFields";
-import { REQUIRED_ERROR, compareLabels, toBooleanConstant } from "c/flowResourceMenu";
+import { REFERENCE, REQUIRED_ERROR, compareLabels, toBooleanConstant } from "c/flowResourceMenu";
 
 const ACCESS_LEVELS = [
 	{ label: "User Mode", value: "USER_MODE" },
@@ -39,7 +39,6 @@ const RECORDS_INPUTS = {
 	[MULTIPLE]: { label: "Record Collection", name: "recordCollection", isCollection: true },
 	[ONE]: { label: "Record", name: "record", isCollection: false }
 };
-const REFERENCE = "reference";
 
 // Mirror InvocableDml.Input
 const ACCESS_LEVEL = {
@@ -60,7 +59,7 @@ const ALL_OR_NONE = {
 const SETTINGS = [ACCESS_LEVEL, ALL_OR_NONE];
 // Flow Builder's Update and Delete Records take either shape in one input
 const EITHER_RECORDS_INPUT = { label: "Record or Record Collection", isCollection: undefined };
-// Most used first: the settings apply to every action, then duplicate rules and Lead/Case assignment come up most
+// Most used first: Access Level and All or None, then duplicate rules and Lead/Case assignment
 const DML_OPTIONS = [
 	...SETTINGS,
 	{
@@ -478,11 +477,10 @@ export default class DmlRecordsEditor extends LightningElement {
 	 * @returns {Object} An error, or null
 	 */
 	_validateAccessLevel(fields) {
-		const input = this._values.accessLevel;
+		const input = fields.find((field) => field.name === ACCESS_LEVEL.name);
 		const level = String(input?.value).trim().toUpperCase();
-		const isChecked = this._isLiteral(input) && fields.some((field) => field.name === ACCESS_LEVEL.name);
-		const isValid = !isChecked || ACCESS_LEVELS.some((option) => option.value === level);
-		return isValid ? null : { key: "accessLevel", errorString: "Enter USER_MODE or SYSTEM_MODE." };
+		const isValid = !this._isLiteral(input) || ACCESS_LEVELS.some((option) => option.value === level);
+		return isValid ? null : { key: ACCESS_LEVEL.name, errorString: "Enter USER_MODE or SYSTEM_MODE." };
 	}
 
 	/**

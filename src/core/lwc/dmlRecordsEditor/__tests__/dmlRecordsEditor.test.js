@@ -58,8 +58,12 @@ function picker(element, name) {
 	return element.shadowRoot.querySelector(`c-flow-resource-picker[data-name="${name}"]`);
 }
 
-function pickerNames(element) {
-	return [...element.shadowRoot.querySelectorAll("c-flow-resource-picker")].map((child) => child.name);
+function pickerNames(element, root = element.shadowRoot) {
+	return [...root.querySelectorAll("c-flow-resource-picker")].map((child) => child.name);
+}
+
+function accordion(element) {
+	return element.shadowRoot.querySelector("lightning-accordion");
 }
 
 function headings(element) {
@@ -103,7 +107,6 @@ describe("c-dml-records-editor", () => {
 		const record = picker(element, "record");
 		expect(record).toMatchObject({ label: "Record", required: true, type: "SObject", isCollection: false });
 		expect(picker(element, "recordCollection")).toBeNull();
-		OPTION_NAMES.forEach((name) => expect(picker(element, name)).not.toBeNull());
 		expect(picker(element, "accessLevel").picklistValues).toEqual([
 			{ label: "User Mode", value: "USER_MODE" },
 			{ label: "System Mode", value: "SYSTEM_MODE" }
@@ -115,17 +118,15 @@ describe("c-dml-records-editor", () => {
 	it("collapses every option into one DML Options section, most used first", async () => {
 		const { element } = await render();
 
-		const accordion = element.shadowRoot.querySelector("lightning-accordion");
-		const section = accordion.querySelector("lightning-accordion-section");
-		expect(accordion.allowMultipleSectionsOpen).toBe(true);
-		expect(accordion.activeSectionName).toBeUndefined();
+		const options = accordion(element);
+		const section = options.querySelector("lightning-accordion-section");
+		expect(options.allowMultipleSectionsOpen).toBe(true);
+		expect(options.activeSectionName).toBeUndefined();
 		expect(section.label).toBe("DML Options");
-		expect([...section.querySelectorAll("c-flow-resource-picker")].map((child) => child.name)).toEqual(
-			OPTION_NAMES
-		);
+		expect(pickerNames(element, section)).toEqual(OPTION_NAMES);
 		element.validate();
 		await flush();
-		expect(accordion.activeSectionName).toBeUndefined();
+		expect(options.activeSectionName).toBeUndefined();
 	});
 
 	it("tells each picker which element is being edited", async () => {
@@ -240,7 +241,8 @@ describe("c-dml-records-editor", () => {
 		]);
 		await flush();
 		// A collapsed section would hide the errors
-		expect(element.shadowRoot.querySelector("lightning-accordion").activeSectionName).toBe("options");
+		const options = accordion(element);
+		expect(options.activeSectionName).toBe(options.querySelector("lightning-accordion-section").name);
 	});
 
 	it("ignores inputs the action doesn't show", async () => {
@@ -303,19 +305,19 @@ describe("c-dml-records-editor", () => {
 		expect(picker(element, "recordCollection")).not.toBeNull();
 	});
 
-	it("shows each action's own settings", async () => {
-		const settingsByAction = {
+	it("shows each action's own options", async () => {
+		const optionsByAction = {
 			InvocableDmlEmptyRecycleBin: [],
 			InvocableDmlUndeleteRecords: ["accessLevel", "allOrNone"],
 			InvocableDmlUpdateRecords: OPTION_NAMES,
 			InvocableDmlUpsertRecords: ["accessLevel", "allOrNone"]
 		};
 
-		for (const [actionName, settings] of Object.entries(settingsByAction)) {
+		for (const [actionName, options] of Object.entries(optionsByAction)) {
 			// eslint-disable-next-line no-await-in-loop
 			const { element } = await render([], actionName);
-			expect(pickerNames(element)).toEqual(["record", ...settings]);
-			expect(Boolean(element.shadowRoot.querySelector("lightning-accordion"))).toBe(settings.length > 0);
+			expect(pickerNames(element)).toEqual(["record", ...options]);
+			expect(Boolean(accordion(element))).toBe(options.length > 0);
 			document.body.removeChild(element);
 		}
 	});

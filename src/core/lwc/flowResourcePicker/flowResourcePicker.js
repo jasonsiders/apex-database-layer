@@ -5,6 +5,7 @@ import {
 	getChildSections,
 	getRootSections,
 	parseInput,
+	REFERENCE,
 	REQUIRED_ERROR,
 	resolveItem,
 	toBooleanConstant
@@ -13,7 +14,6 @@ import {
 const GLOBAL_CONSTANT_PREFIX = "$GlobalConstant.";
 // Flow Builder's action inputs use these icons, not its resource menu's
 const LABEL_ICONS = { Boolean: "utility:crossfilter", String: "utility:text" };
-const REFERENCE = "reference";
 const ROOT_LABEL = "All Resources";
 
 /**

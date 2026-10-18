@@ -1,5 +1,5 @@
 <template>
-	<div lwc:if={action.howManyLabel} class="editor-section slds-border_top">
+	<div lwc:if={action.howManyLabel} class="editor-section">
 		<lightning-radio-group
 			class="slds-var-p-horizontal_xx-small slds-var-m-bottom_x-small"
 			label={action.howManyLabel}
@@ -74,7 +74,7 @@
 			</div>
 		</fieldset>
 	</div>
-	<div lwc:if={options.length} class="editor-section slds-border_top">
+	<div lwc:if={action.options.length} class="editor-section slds-border_top">
 		<lightning-accordion allow-multiple-sections-open active-section-name={openSection}>
 			<lightning-accordion-section name="options" label="DML Options">
 				<template for:each={options} for:item="field">
