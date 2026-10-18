@@ -20,6 +20,7 @@ In Flow Builder, add an **Action** element and search for the action by name, un
 
 - **Insert Records** works like Create Records. Under **How Many Records to Insert**, choose **One** or **Multiple**, then select a record variable or record collection. Its ID must be blank.
 - The other record actions work like Update Records and Delete Records. Select a record variable or record collection in **Record or Record Collection**. Each record must have an ID, except new records passed to Upsert Records.
+- **Upsert Records** also works like Create Records with **Update Existing Record** turned on. Under **Field to use to identify existing record**, choose **Record ID**, **External ID**, or **Standard Field**. For the last two, pick one of the object's external ID fields, or one of its standard fields whose `idLookup` property is true, such as Contact's Email.
 
 Then, optionally, set the action's other inputs. Every input accepts a literal value or a flow resource. The resource picker works like Flow Builder's: type `{!` or start typing to search, and select a record or lookup field to drill into it.
 
@@ -32,7 +33,7 @@ Each action shows only the inputs that its operation uses.
 | Record / Record Collection          | SObject | (required)  | All                            | The records to process.                                                                                                                                               |
 | Access Level                        | Text    | `USER_MODE` | All but Empty Recycle Bin      | `USER_MODE` enforces the running user's object permissions, field-level security, and sharing rules. `SYSTEM_MODE` ignores them. Any other value runs in `USER_MODE`. |
 | All or None                         | Boolean | `true`      | All but Empty Recycle Bin      | When `true`, any failure rolls back every record and fails the action. When `false`, valid records are processed, and failures are reported in the results.           |
-| External ID Field                   | Text    |             | Upsert Records                 | The API name of the external ID field that matches records, ex: `External_Id__c`. When blank, records match on their ID.                                              |
+| External ID Field                   | Text    |             | Upsert Records                 | The API name of the external ID or standard ID lookup field that matches records, ex: `External_Id__c`. When blank, records match on their ID.                        |
 | Allow Duplicates                    | Boolean | `false`     | Insert Records, Update Records | Save records that a duplicate rule would otherwise alert on.                                                                                                          |
 | Allow Field Truncation              | Boolean | `false`     | Insert Records, Update Records | Truncate text values that are too long for their field, instead of failing.                                                                                           |
 | Assignment Rule ID                  | Text    |             | Insert Records, Update Records | The ID of a specific Lead or Case assignment rule to run.                                                                                                             |
