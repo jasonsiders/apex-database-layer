@@ -1,5 +1,5 @@
 <template>
-	<div lwc:if={howManyLabel} class="editor-section">
+	<div lwc:if={howManyLabel} class="editor-section slds-border_top">
 		<lightning-radio-group
 			class="slds-var-p-horizontal_xx-small slds-var-m-bottom_x-small"
 			label={howManyLabel}
@@ -9,7 +9,7 @@
 			onchange={handleHowManyChange}
 		></lightning-radio-group>
 	</div>
-	<div class={records.sectionClass}>
+	<div class="editor-section slds-border_top">
 		<h3 class="slds-text-heading_small slds-var-m-bottom_small">{records.heading}</h3>
 		<c-flow-resource-picker
 			data-name={records.name}

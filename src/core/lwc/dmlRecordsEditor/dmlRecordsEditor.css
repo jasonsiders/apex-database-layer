@@ -3,3 +3,8 @@
 	margin: 0 -0.75rem;
 	padding: 0.75rem;
 }
+
+/* Which section comes first depends on the action, and nothing above it needs dividing */
+.editor-section:first-child {
+	border-top: none;
+}

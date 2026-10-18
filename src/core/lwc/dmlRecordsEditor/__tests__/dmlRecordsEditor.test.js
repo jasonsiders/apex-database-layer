@@ -166,6 +166,10 @@ describe("c-dml-records-editor", () => {
 		expect(element.validate()).toEqual([{ key: "record", errorString: "Enter a value." }]);
 		await flush();
 		expect(picker(element, "record").errorMessage).toBe("Enter a value.");
+
+		changePicker(element, "record", { value: "accountVar", valueDataType: "reference", objectType: "Account" });
+		await flush();
+		expect(picker(element, "record").errorMessage).toBeUndefined();
 	});
 
 	it("rejects literals the action can't use", async () => {
@@ -179,6 +183,18 @@ describe("c-dml-records-editor", () => {
 			{ key: "accessLevel", errorString: "Enter USER_MODE or SYSTEM_MODE." },
 			{ key: "allOrNone", errorString: "Enter True or False." }
 		]);
+	});
+
+	it("ignores inputs the action doesn't show", async () => {
+		const { element } = await render(
+			[
+				{ name: "record", value: "accountVar", valueDataType: "reference" },
+				{ name: "allowDuplicates", value: "maybe", valueDataType: "Boolean" }
+			],
+			"InvocableDmlDeleteRecords"
+		);
+
+		expect(element.validate()).toEqual([]);
 	});
 
 	it("accepts a complete configuration", async () => {

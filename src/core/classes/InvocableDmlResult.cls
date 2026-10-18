@@ -149,7 +149,6 @@ public class InvocableDmlResult {
 	 * @param databaseErrors The record's errors
 	 */
 	private InvocableDmlResult(Id recordId, Boolean isSuccess, List<Database.Error> databaseErrors) {
-		this();
 		this.errors = InvocableDmlResult.formatErrors(databaseErrors);
 		this.id = recordId;
 		this.isSuccess = isSuccess;

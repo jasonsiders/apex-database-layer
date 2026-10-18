@@ -1,5 +1,5 @@
 import { LightningElement, api } from "lwc";
-import { toBooleanConstant } from "c/flowResourceMenu";
+import { REQUIRED_ERROR, toBooleanConstant } from "c/flowResourceMenu";
 
 const ACCESS_LEVELS = [
 	{ label: "User Mode", value: "USER_MODE" },
@@ -13,8 +13,8 @@ const HOW_MANY_OPTIONS = [
 const MULTIPLE = "multiple";
 const ONE = "one";
 const RECORDS_INPUTS = {
-	[MULTIPLE]: { label: "Record Collection", name: "recordCollection" },
-	[ONE]: { label: "Record", name: "record" }
+	[MULTIPLE]: { label: "Record Collection", name: "recordCollection", isCollection: true },
+	[ONE]: { label: "Record", name: "record", isCollection: false }
 };
 const REFERENCE = "reference";
 
@@ -43,7 +43,7 @@ const EXTERNAL_ID_FIELD = {
 };
 const SETTINGS = [ACCESS_LEVEL, ALL_OR_NONE];
 // Flow Builder's Update and Delete Records take either shape in one input
-const EITHER_RECORDS_LABEL = "Record or Record Collection";
+const EITHER_RECORDS_INPUT = { label: "Record or Record Collection", isCollection: undefined };
 const DML_OPTIONS = [
 	{
 		name: "allowDuplicates",
@@ -102,11 +102,10 @@ const DML_OPTIONS = [
 ];
 
 // Wording follows Flow Builder's Create, Update, and Delete Records elements
-const ID_HINT = "Flow requires record identifiers to successfully";
 const ACTIONS = {
 	InvocableDmlDeleteRecords: {
 		heading: "Select Record(s) to Delete",
-		hint: `${ID_HINT} delete records. Make sure the records include IDs.`,
+		hint: "Flow requires record identifiers to successfully delete records. Make sure the records include IDs.",
 		settings: SETTINGS
 	},
 	InvocableDmlEmptyRecycleBin: {
@@ -123,12 +122,12 @@ const ACTIONS = {
 	},
 	InvocableDmlUndeleteRecords: {
 		heading: "Select Record(s) to Undelete",
-		hint: `${ID_HINT} undelete records. Make sure the records include IDs, and are in the Recycle Bin.`,
+		hint: "Flow requires record identifiers to successfully undelete records. Make sure the records include IDs, and are in the Recycle Bin.",
 		settings: SETTINGS
 	},
 	InvocableDmlUpdateRecords: {
 		heading: "Select Record(s) to Update",
-		hint: `${ID_HINT} update records. Make sure the records include IDs.`,
+		hint: "Flow requires record identifiers to successfully update records. Make sure the records include IDs.",
 		settings: SETTINGS,
 		hasDmlOptions: true
 	},
@@ -138,7 +137,6 @@ const ACTIONS = {
 		settings: [...SETTINGS, EXTERNAL_ID_FIELD]
 	}
 };
-const BOOLEAN_FIELDS = [...SETTINGS, ...DML_OPTIONS].filter((definition) => definition.type === "Boolean");
 
 /**
  * Custom Property Editor for the record DML actions (`InvocableDml` subclasses), configured by the action being
@@ -199,11 +197,9 @@ export default class DmlRecordsEditor extends LightningElement {
 		const input = this._values[recordsInput.name];
 		return {
 			...recordsInput,
-			label: howManyLabel ? recordsInput.label : EITHER_RECORDS_LABEL,
+			...(howManyLabel ? {} : EITHER_RECORDS_INPUT),
 			heading: headings?.[this._howMany] ?? heading,
 			hint,
-			isCollection: howManyLabel ? this._howMany === MULTIPLE : undefined,
-			sectionClass: howManyLabel ? "editor-section slds-border_top" : "editor-section",
 			value: input?.value,
 			valueDataType: input?.valueDataType,
 			errorMessage: this._errors[recordsInput.name]
@@ -235,13 +231,14 @@ export default class DmlRecordsEditor extends LightningElement {
 
 	// **** API METHODS **** //
 	/**
-	 * @description Flow Builder calls this after every change and before saving; any error badges the element and
+	 * @description Flow Builder calls this when the panel closes and before saving; any error badges the element and
 	 * blocks activation, so only configurations the action can't run are flagged
 	 * @returns {Array} `{ key, errorString }` for each problem; empty when the configuration is valid
 	 */
 	@api
 	validate() {
-		const checks = [this._validateRecords(), this._validateAccessLevel(), ...this._validateBooleans()];
+		const fields = this.sections.flatMap((section) => section.fields);
+		const checks = [this._validateRecords(), this._validateAccessLevel(fields), ...this._validateBooleans(fields)];
 		const errors = checks.filter(Boolean);
 		this._errors = Object.fromEntries(errors.map((error) => [error.key, error.errorString]));
 		return errors;
@@ -274,7 +271,7 @@ export default class DmlRecordsEditor extends LightningElement {
 		if (!this.howManyLabel && value != null) {
 			this._setHowMany(isCollection ? MULTIPLE : ONE);
 		}
-		this._saveInput({ ...event.detail, name: this.records.name });
+		this._saveInput({ ...event.detail, name: RECORDS_INPUTS[this._howMany].name });
 		this._setGenericTypes(event.detail);
 	}
 
@@ -339,6 +336,8 @@ export default class DmlRecordsEditor extends LightningElement {
 	 */
 	_saveInput(detail) {
 		const { name, value, valueDataType } = detail;
+		// Errors only refresh in validate(), which Flow Builder calls when the panel closes, so a fixed input clears its own
+		this._errors = { ...this._errors, [name]: undefined };
 		if (value == null) {
 			this._deleteInput(name);
 		} else {
@@ -355,7 +354,7 @@ export default class DmlRecordsEditor extends LightningElement {
 	 * @param {String} howMany `one` or `multiple`
 	 */
 	_setHowMany(howMany) {
-		const previousName = this.records.name;
+		const previousName = RECORDS_INPUTS[this._howMany].name;
 		const isChanged = howMany !== this._howMany;
 		this._howMany = howMany;
 		if (isChanged && this._values[previousName]?.value != null) {
@@ -379,25 +378,27 @@ export default class DmlRecordsEditor extends LightningElement {
 	}
 
 	/**
-	 * @description Checks that a literal access level is one the action accepts.
+	 * @description Checks that a literal access level is one the action accepts, if the action shows it.
+	 * @param {Array} fields The inputs the action shows
 	 * @returns {Object} An error, or null
 	 */
-	_validateAccessLevel() {
+	_validateAccessLevel(fields) {
 		const input = this._values.accessLevel;
 		const level = String(input?.value).trim().toUpperCase();
-		const isValid = !this._isLiteral(input) || ACCESS_LEVELS.some((option) => option.value === level);
+		const isChecked = this._isLiteral(input) && fields.some((field) => field.name === ACCESS_LEVEL.name);
+		const isValid = !isChecked || ACCESS_LEVELS.some((option) => option.value === level);
 		return isValid ? null : { key: "accessLevel", errorString: "Enter USER_MODE or SYSTEM_MODE." };
 	}
 
 	/**
 	 * @description Checks that literal booleans are true or false.
+	 * @param {Array} fields The inputs the action shows
 	 * @returns {Array} An error for each invalid boolean input
 	 */
-	_validateBooleans() {
-		return BOOLEAN_FIELDS.filter((definition) => {
-			const input = this._values[definition.name];
-			return this._isLiteral(input) && !toBooleanConstant(input.value);
-		}).map((definition) => ({ key: definition.name, errorString: "Enter True or False." }));
+	_validateBooleans(fields) {
+		return fields
+			.filter((field) => field.type === "Boolean" && this._isLiteral(field) && !toBooleanConstant(field.value))
+			.map((field) => ({ key: field.name, errorString: "Enter True or False." }));
 	}
 
 	/**
@@ -405,8 +406,7 @@ export default class DmlRecordsEditor extends LightningElement {
 	 * @returns {Object} An error, or null
 	 */
 	_validateRecords() {
-		const { name } = this.records;
-		// Flow Builder's own record inputs use this message
-		return this._values[name]?.value == null ? { key: name, errorString: "Enter a value." } : null;
+		const { name } = RECORDS_INPUTS[this._howMany];
+		return this._values[name]?.value == null ? { key: name, errorString: REQUIRED_ERROR } : null;
 	}
 }

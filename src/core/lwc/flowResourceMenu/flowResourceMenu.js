@@ -25,6 +25,9 @@ const ELEMENT_TYPES = [
 const ICON_RECORD = "utility:record_alt";
 const ICON_RECORD_COLLECTION = "utility:record_collection";
 const SOBJECT = "SObject";
+
+// Flow Builder's own message for an empty required input, shared by the picker and the editors that validate it
+export const REQUIRED_ERROR = "Enter a value.";
 // Shared, since creating a collator per comparison makes sorting large menus slow
 const LABEL_COLLATOR = new Intl.Collator(undefined, { sensitivity: "base" });
 const TYPE_ORDER = ["Boolean", "Currency", "Date", "DateTime", "Multipicklist", "Number", "Picklist", "String", "Time"];
