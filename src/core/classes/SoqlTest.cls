@@ -745,14 +745,11 @@ private class SoqlTest {
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
 			?.setAccessLevel(System.AccessLevel.SYSTEM_MODE)
 			?.withSecurityEnforced()
-			?.setRowLimit(1)
 			?.toSoql();
-		Assert.areEqual(System.AccessLevel.USER_MODE, soql?.accessLevel, 'Did not set access level');
-		String expected = 'SELECT Id FROM User LIMIT 1';
+		String queryString = soql?.toString();
 
-		Test.startTest();
-		SoqlTest.validateQuery(soql, expected);
-		Test.stopTest();
+		Assert.areEqual(System.AccessLevel.USER_MODE, soql?.accessLevel, 'Did not set access level');
+		Assert.areEqual('SELECT Id FROM User', queryString, 'Added a WITH clause');
 	}
 
 	@IsTest

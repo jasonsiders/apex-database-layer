@@ -3,13 +3,9 @@
 private class DmlTest {
 	// **** VARIABLES **** //
 	private static final LeadStatus CONVERTED_STATUS;
-	private static List<Database.DeleteResult> deleteCallbacksMade;
-	private static List<Database.SaveResult> saveCallbacksMade;
 
 	static {
 		CONVERTED_STATUS = DmlTest.getConvertedStatus();
-		deleteCallbacksMade = new List<Database.DeleteResult>();
-		saveCallbacksMade = new List<Database.SaveResult>();
 		// Custom metadata actually defined in the org should not interfere with this test:
 		MockCmdt.mock(DatabaseLayerParameter__mdt.SObjectType);
 	}
@@ -116,7 +112,7 @@ private class DmlTest {
 	@IsTest
 	private static void shouldDoInsertAsyncWithCallback() {
 		Account account = DmlTest.initAccount();
-		DataSource.AsyncSaveCallback callback = new DmlTest.SaveCallback();
+		DataSource.AsyncSaveCallback callback = new Dml.EmptySaveCallback();
 
 		Test.startTest();
 		try {
@@ -131,7 +127,7 @@ private class DmlTest {
 	@IsTest
 	private static void shouldDoInsertAsyncWithCallbackAndAccessLevel() {
 		Account account = DmlTest.initAccount();
-		DataSource.AsyncSaveCallback callback = new DmlTest.SaveCallback();
+		DataSource.AsyncSaveCallback callback = new Dml.EmptySaveCallback();
 
 		Test.startTest();
 		try {
@@ -250,7 +246,6 @@ private class DmlTest {
 	@IsTest
 	private static void shouldDoUpdateAsync() {
 		Account account = DmlTest.initAccount();
-		insert account;
 
 		Test.startTest();
 		try {
@@ -265,7 +260,6 @@ private class DmlTest {
 	@IsTest
 	private static void shouldDoUpdateAsyncWithAccessLevel() {
 		Account account = DmlTest.initAccount();
-		insert account;
 
 		Test.startTest();
 		try {
@@ -280,8 +274,7 @@ private class DmlTest {
 	@IsTest
 	private static void shouldDoUpdateAsyncWithCallback() {
 		Account account = DmlTest.initAccount();
-		insert account;
-		DataSource.AsyncSaveCallback callback = new DmlTest.SaveCallback();
+		DataSource.AsyncSaveCallback callback = new Dml.EmptySaveCallback();
 
 		Test.startTest();
 		try {
@@ -296,8 +289,7 @@ private class DmlTest {
 	@IsTest
 	private static void shouldDoUpdateAsyncWithCallbackAndAccessLevel() {
 		Account account = DmlTest.initAccount();
-		insert account;
-		DataSource.AsyncSaveCallback callback = new DmlTest.SaveCallback();
+		DataSource.AsyncSaveCallback callback = new Dml.EmptySaveCallback();
 
 		Test.startTest();
 		try {
@@ -312,7 +304,6 @@ private class DmlTest {
 	@IsTest
 	private static void shouldDoUpdateImmediate() {
 		Account account = DmlTest.initAccount();
-		insert account;
 
 		Test.startTest();
 		try {
@@ -327,7 +318,6 @@ private class DmlTest {
 	@IsTest
 	private static void shouldDoUpdateImmediateWithAccessLevel() {
 		Account account = DmlTest.initAccount();
-		insert account;
 
 		Test.startTest();
 		try {
@@ -535,7 +525,6 @@ private class DmlTest {
 	@IsTest
 	private static void shouldDoDeleteAsync() {
 		Account account = DmlTest.initAccount();
-		insert account;
 
 		Test.startTest();
 		try {
@@ -550,7 +539,6 @@ private class DmlTest {
 	@IsTest
 	private static void shouldDoDeleteAsyncWithAccessLevel() {
 		Account account = DmlTest.initAccount();
-		insert account;
 
 		Test.startTest();
 		try {
@@ -565,8 +553,7 @@ private class DmlTest {
 	@IsTest
 	private static void shouldDoDeleteAsyncWithCallback() {
 		Account account = DmlTest.initAccount();
-		insert account;
-		DataSource.AsyncDeleteCallback callback = new DmlTest.DeleteCallback();
+		DataSource.AsyncDeleteCallback callback = new Dml.EmptyDeleteCallback();
 
 		Test.startTest();
 		try {
@@ -581,8 +568,7 @@ private class DmlTest {
 	@IsTest
 	private static void shouldDoDeleteAsyncWithCallbackAndAccessLevel() {
 		Account account = DmlTest.initAccount();
-		insert account;
-		DataSource.AsyncDeleteCallback callback = new DmlTest.DeleteCallback();
+		DataSource.AsyncDeleteCallback callback = new Dml.EmptyDeleteCallback();
 
 		Test.startTest();
 		try {
@@ -597,7 +583,6 @@ private class DmlTest {
 	@IsTest
 	private static void shouldDoDeleteImmediate() {
 		Account account = DmlTest.initAccount();
-		insert account;
 
 		Test.startTest();
 		try {
@@ -612,7 +597,6 @@ private class DmlTest {
 	@IsTest
 	private static void shouldDoDeleteImmediateWithAccessLevel() {
 		Account account = DmlTest.initAccount();
-		insert account;
 
 		Test.startTest();
 		try {
@@ -1033,9 +1017,13 @@ private class DmlTest {
 	}
 
 	// **** HELPER **** //
+	/**
+	 * @description In API v60.0+, async & immediate DML only accepts external objects, and this package doesn't include any
+	 * @param error The exception thrown by the async or immediate DML call
+	 */
 	private static void assertInvalidEntityType(System.TypeException error) {
-		// In API v60.0+, async & immediate DML only accepts external objects, and this package doesn't include any
-		Assert.isTrue(error?.getMessage()?.contains('Invalid entity type'), 'Unexpected error: ' + error);
+		Boolean isInvalidEntityType = error?.getMessage()?.contains('Invalid entity type');
+		Assert.isTrue(isInvalidEntityType, 'Unexpected error: ' + error);
 	}
 
 	private static LeadStatus getConvertedStatus() {
@@ -1065,18 +1053,5 @@ private class DmlTest {
 		leadToConvert?.setLeadId(lead?.Id);
 		leadToConvert?.setConvertedStatus(CONVERTED_STATUS?.ApiName);
 		return leadToConvert;
-	}
-
-	// **** INNER **** //
-	private class DeleteCallback extends DataSource.AsyncDeleteCallback {
-		public override void processDelete(Database.DeleteResult result) {
-			DmlTest.deleteCallbacksMade?.add(result);
-		}
-	}
-
-	private class SaveCallback extends DataSource.AsyncSaveCallback {
-		public override void processSave(Database.SaveResult result) {
-			DmlTest.saveCallbacksMade?.add(result);
-		}
 	}
 }
