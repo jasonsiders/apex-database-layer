@@ -1,8 +1,12 @@
 <template>
-	<div class="slds-grid slds-grid_vertical-align-start">
-		<div lwc:if={labelIcon} class="slds-var-m-right_x-small slds-var-p-top_xx-small">
-			<lightning-icon icon-name={labelIcon} size="xx-small" alternative-text=""></lightning-icon>
-		</div>
+	<div class="slds-grid">
+		<lightning-icon
+			lwc:if={labelIcon}
+			class="slds-var-m-right_x-small slds-var-p-top_xx-small"
+			icon-name={labelIcon}
+			size="xx-small"
+			alternative-text=""
+		></lightning-icon>
 		<div class={formElementClass}>
 			<label class="slds-form-element__label" for="combobox-input">
 				<abbr lwc:if={required} class="slds-required" title="required">*</abbr> {label}
@@ -74,7 +78,7 @@
 						<div
 							lwc:if={isOpen}
 							id="listbox"
-							class="slds-dropdown slds-dropdown_length-10 slds-dropdown_fluid"
+							class="slds-dropdown slds-dropdown_length-10 slds-dropdown_fluid slds-p-vertical_none"
 							role="listbox"
 							aria-label={label}
 							onmousedown={handleListMouseDown}
@@ -92,77 +96,71 @@
 								</lightning-breadcrumbs>
 								<template lwc:else>All Resources</template>
 							</div>
-							<ul
-								lwc:if={hasOptions}
-								class="slds-listbox slds-listbox_vertical picker-list"
-								role="presentation"
-							>
+							<template lwc:if={hasOptions}>
 								<template for:each={menu} for:item="section">
-									<li key={section.label} role="presentation">
-										<ul role="group" aria-label={section.label}>
-											<li role="presentation" class="slds-listbox__item">
+									<ul
+										key={section.label}
+										class="slds-listbox slds-listbox_vertical picker-group"
+										role="group"
+										aria-label={section.label}
+									>
+										<li role="presentation" class="slds-listbox__item">
+											<h3 class="slds-listbox__option-header picker-section" role="presentation">
+												{section.label}
+											</h3>
+										</li>
+										<template for:each={section.items} for:item="option">
+											<li key={option.key} role="presentation" class="slds-listbox__item">
 												<div
-													class="slds-media slds-listbox__option_plain picker-section"
-													role="presentation"
+													id={option.domId}
+													class={option.className}
+													role="option"
+													aria-selected={option.isActive}
+													data-key={option.key}
+													data-label={option.label}
+													onclick={handleOptionClick}
 												>
-													<h3 class="slds-listbox__option-header" role="presentation">
-														{section.label}
-													</h3>
+													<span
+														class="slds-media__figure slds-listbox__option-icon slds-m-right_none"
+													>
+														<lightning-icon
+															lwc:if={option.isCurrent}
+															icon-name="utility:check"
+															size="x-small"
+															alternative-text="Current value"
+														></lightning-icon>
+													</span>
+													<span
+														class="slds-media__figure slds-listbox__option-icon slds-var-m-right_x-small"
+													>
+														<lightning-icon
+															icon-name={option.icon}
+															size="x-small"
+															alternative-text=""
+														></lightning-icon>
+													</span>
+													<span class="slds-media__body">
+														<span class="slds-truncate" title={option.label}
+															>{option.label}</span
+														>
+													</span>
+													<span
+														lwc:if={option.isDrillable}
+														class="slds-media__figure slds-media__figure_reverse"
+													>
+														<lightning-icon
+															icon-name="utility:chevronright"
+															size="x-small"
+															alternative-text=""
+														></lightning-icon>
+													</span>
 												</div>
 											</li>
-											<template for:each={section.items} for:item="option">
-												<li key={option.key} role="presentation" class="slds-listbox__item">
-													<div
-														id={option.domId}
-														class={option.className}
-														role="option"
-														aria-selected={option.isActive}
-														data-key={option.key}
-														data-label={option.label}
-														onclick={handleOptionClick}
-													>
-														<span
-															class="slds-media__figure slds-listbox__option-icon picker-check"
-														>
-															<lightning-icon
-																lwc:if={option.isCurrent}
-																icon-name="utility:check"
-																size="x-small"
-																alternative-text="Current value"
-															></lightning-icon>
-														</span>
-														<span
-															class="slds-media__figure slds-listbox__option-icon picker-icon"
-														>
-															<lightning-icon
-																icon-name={option.icon}
-																size="x-small"
-																alternative-text=""
-															></lightning-icon>
-														</span>
-														<span class="slds-media__body">
-															<span class="slds-truncate" title={option.label}
-																>{option.label}</span
-															>
-														</span>
-														<span
-															lwc:if={option.isDrillable}
-															class="slds-media__figure slds-media__figure_reverse"
-														>
-															<lightning-icon
-																icon-name="utility:chevronright"
-																size="x-small"
-																alternative-text=""
-															></lightning-icon>
-														</span>
-													</div>
-												</li>
-											</template>
-										</ul>
-										<div lwc:if={section.hasDivider} class="picker-divider" role="separator"></div>
-									</li>
+										</template>
+										<li lwc:if={section.hasDivider} role="presentation" class="picker-divider"></li>
+									</ul>
 								</template>
-							</ul>
+							</template>
 							<p lwc:else class="picker-empty slds-var-p-around_small slds-text-align_center">
 								We couldn't find any matching resources,<br />but you can enter a value.
 							</p>

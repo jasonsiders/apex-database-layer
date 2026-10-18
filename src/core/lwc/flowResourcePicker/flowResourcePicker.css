@@ -7,18 +7,17 @@
 }
 
 /* Spacing and colors below match Flow Builder's own resource menu */
-.slds-dropdown {
-	padding: 0;
-}
-
-.picker-check {
-	width: 1.5rem;
-	margin-right: 0;
-}
-
 .picker-divider {
 	margin: 0.25rem;
 	border-top: 1px solid var(--slds-g-color-neutral-base-80, #c9c9c9);
+}
+
+.picker-group:first-of-type {
+	padding-top: 0.5rem;
+}
+
+.picker-group:last-of-type .picker-divider {
+	display: none;
 }
 
 .picker-header {
@@ -27,12 +26,8 @@
 	background: var(--slds-g-color-neutral-base-90, #e5e5e5);
 }
 
-.picker-icon {
-	margin-right: 0.5rem;
-}
-
-.picker-list {
-	padding-top: 0.5rem;
+.picker-option {
+	padding: 0.5rem;
 }
 
 .picker-pill {

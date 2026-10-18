@@ -10,6 +10,8 @@ import {
 } from "c/flowResourceMenu";
 
 const GLOBAL_CONSTANT_PREFIX = "$GlobalConstant.";
+// Flow Builder's action inputs use these icons, not its resource menu's
+const LABEL_ICONS = { Boolean: "utility:crossfilter", String: "utility:text" };
 const REFERENCE = "reference";
 const ROOT_LABEL = "All Resources";
 
@@ -59,11 +61,6 @@ export default class FlowResourcePicker extends LightningElement {
 	 * @type {String}
 	 */
 	@api label;
-	/**
-	 * @description An icon before the label, like Flow Builder shows for action inputs, ex: `utility:text`
-	 * @type {String}
-	 */
-	@api labelIcon;
 	/**
 	 * @description The input's name, echoed in `change` events
 	 * @type {String}
@@ -167,6 +164,10 @@ export default class FlowResourcePicker extends LightningElement {
 		return this._isOpen;
 	}
 
+	get labelIcon() {
+		return LABEL_ICONS[this.type];
+	}
+
 	/**
 	 * @description The menu's sections, with each option's DOM id, highlight, and checkmark for the current value
 	 * @returns {Array} Sections of options, ready for the template
@@ -183,9 +184,7 @@ export default class FlowResourcePicker extends LightningElement {
 					domId: `option-${index}`,
 					isActive: String(isActive),
 					isCurrent: item.value === this._value,
-					className:
-						"slds-media slds-media_center slds-listbox__option slds-listbox__option_plain slds-var-p-horizontal_x-small" +
-						activeClass
+					className: "slds-media slds-media_center slds-listbox__option picker-option" + activeClass
 				};
 				index++;
 				return option;
