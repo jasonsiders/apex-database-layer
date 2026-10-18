@@ -1,5 +1,5 @@
 import { createElement } from "lwc";
-import DmlInsertRecordsEditor from "c/dmlInsertRecordsEditor";
+import DmlRecordsEditor from "c/dmlRecordsEditor";
 import CONTEXT from "../../flowResourceMenu/__tests__/data/context.json";
 
 const OPTION_NAMES = [
@@ -24,7 +24,7 @@ async function flush() {
 }
 
 async function render(inputVariables = []) {
-	const element = createElement("c-dml-insert-records-editor", { is: DmlInsertRecordsEditor });
+	const element = createElement("c-dml-records-editor", { is: DmlRecordsEditor });
 	Object.assign(element, {
 		inputVariables,
 		builderContext: CONTEXT.builderContext,
@@ -51,7 +51,7 @@ function changePicker(element, name, detail) {
 	picker(element, name).dispatchEvent(new CustomEvent("change", { detail: { name, ...detail } }));
 }
 
-describe("c-dml-insert-records-editor", () => {
+describe("c-dml-records-editor", () => {
 	afterEach(() => {
 		while (document.body.firstChild) {
 			document.body.removeChild(document.body.firstChild);

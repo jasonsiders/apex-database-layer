@@ -11,7 +11,7 @@ public inherited sharing class InvocableDmlInsertRecords extends InvocableDml {
 	 */
 	@InvocableMethod(
 		category='Database Layer'
-		configurationEditor='c-dml-insert-records-editor'
+		configurationEditor='c-dml-records-editor'
 		description='Insert one or more records, with control over the access level, partial success, and DML options.'
 		iconName='slds:standard:record_create'
 		label='Insert Records'
@@ -27,9 +27,10 @@ public inherited sharing class InvocableDmlInsertRecords extends InvocableDml {
 	 * @param settings The input whose settings apply to the insert
 	 * @return The results, in record order
 	 */
-	protected override List<Database.SaveResult> doDml(List<SObject> records, InvocableDml.Input settings) {
+	protected override List<InvocableDmlResult> doDml(List<SObject> records, InvocableDml.Input settings) {
 		Database.DmlOptions options = settings?.toDmlOptions();
 		System.AccessLevel accessLevel = settings?.toAccessLevel();
-		return DatabaseLayer.Dml?.doInsert(records, options, accessLevel);
+		List<Database.SaveResult> results = DatabaseLayer.Dml?.doInsert(records, options, accessLevel);
+		return InvocableDmlResult.fromList(results);
 	}
 }

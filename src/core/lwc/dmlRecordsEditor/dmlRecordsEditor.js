@@ -104,7 +104,7 @@ const BOOLEAN_FIELDS = [...SETTINGS, ...DML_OPTIONS].filter((definition) => defi
  * Create Records element: one Records input that saves to `record` or `recordCollection`, and types the action's
  * generic inputs and outputs to the chosen object.
  */
-export default class DmlInsertRecordsEditor extends LightningElement {
+export default class DmlRecordsEditor extends LightningElement {
 	/**
 	 * @description From Flow Builder: outputs of actions that store them automatically, for drilling into
 	 * @type {Object}
