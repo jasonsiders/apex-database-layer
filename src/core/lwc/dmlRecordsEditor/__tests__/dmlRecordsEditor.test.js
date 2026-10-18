@@ -58,8 +58,12 @@ function picker(element, name) {
 	return element.shadowRoot.querySelector(`c-flow-resource-picker[data-name="${name}"]`);
 }
 
-function pickerNames(element, root = element.shadowRoot) {
-	return [...root.querySelectorAll("c-flow-resource-picker")].map((child) => child.name);
+function inputNames(element, root = element.shadowRoot) {
+	return [...root.querySelectorAll("[data-name]")].map((child) => child.dataset.name);
+}
+
+function optionInput(element, name) {
+	return accordion(element).querySelector(`[data-name="${name}"]`);
 }
 
 function accordion(element) {
@@ -98,7 +102,7 @@ describe("c-dml-records-editor", () => {
 		}
 	});
 
-	it("starts with a single record input, and a picker for every option", async () => {
+	it("starts with a single record input, and a static input for every option", async () => {
 		const { element } = await render();
 
 		const radio = element.shadowRoot.querySelector("lightning-radio-group");
@@ -107,12 +111,30 @@ describe("c-dml-records-editor", () => {
 		const record = picker(element, "record");
 		expect(record).toMatchObject({ label: "Record", required: true, type: "SObject", isCollection: false });
 		expect(picker(element, "recordCollection")).toBeNull();
-		expect(picker(element, "accessLevel").picklistValues).toEqual([
+		const accessLevel = optionInput(element, "accessLevel");
+		expect(accessLevel.tagName).toBe("LIGHTNING-COMBOBOX");
+		expect(accessLevel.options).toEqual([
 			{ label: "User Mode", value: "USER_MODE" },
 			{ label: "System Mode", value: "SYSTEM_MODE" }
 		]);
-		expect(picker(element, "allOrNone").type).toBe("Boolean");
-		expect(picker(element, "localeOptions").type).toBe("String");
+		expect(optionInput(element, "allOrNone")).toMatchObject({ type: "checkbox" });
+		expect(optionInput(element, "localeOptions")).toMatchObject({ type: "text" });
+	});
+
+	it("shows each option's default until it's set", async () => {
+		const { element } = await render();
+
+		expect(optionInput(element, "accessLevel").value).toBe("USER_MODE");
+		expect(optionInput(element, "allOrNone").checked).toBe(true);
+		expect(optionInput(element, "allowDuplicates").checked).toBe(false);
+	});
+
+	it("only lets Assignment Rule ID take a resource, since rule IDs differ between orgs", async () => {
+		const { element } = await render();
+
+		const resourceOptions = [...accordion(element).querySelectorAll("c-flow-resource-picker")];
+		expect(resourceOptions.map((child) => child.name)).toEqual(["assignmentRuleId"]);
+		expect(resourceOptions[0].helpText).toContain("differ between orgs");
 	});
 
 	it("collapses every option into one DML Options section, most used first", async () => {
@@ -123,10 +145,7 @@ describe("c-dml-records-editor", () => {
 		expect(options.allowMultipleSectionsOpen).toBe(true);
 		expect(options.activeSectionName).toBeUndefined();
 		expect(section.label).toBe("DML Options");
-		expect(pickerNames(element, section)).toEqual(OPTION_NAMES);
-		element.validate();
-		await flush();
-		expect(options.activeSectionName).toBeUndefined();
+		expect(inputNames(element, section)).toEqual(OPTION_NAMES);
 	});
 
 	it("tells each picker which element is being edited", async () => {
@@ -152,11 +171,8 @@ describe("c-dml-records-editor", () => {
 			valueDataType: "reference",
 			isCollection: true
 		});
-		expect(picker(element, "accessLevel")).toMatchObject({ value: "SYSTEM_MODE", valueDataType: "String" });
-		expect(picker(element, "allOrNone")).toMatchObject({
-			value: "$GlobalConstant.False",
-			valueDataType: "Boolean"
-		});
+		expect(optionInput(element, "accessLevel").value).toBe("SYSTEM_MODE");
+		expect(optionInput(element, "allOrNone").checked).toBe(false);
 		expect(element.inputVariables).toHaveLength(3);
 	});
 
@@ -180,15 +196,24 @@ describe("c-dml-records-editor", () => {
 	it("saves options, and deletes them when cleared", async () => {
 		const { element, events } = await render();
 
-		changePicker(element, "accessLevel", { value: "SYSTEM_MODE", valueDataType: "String" });
-		changePicker(element, "accessLevel", { value: null, valueDataType: null });
+		const change = (name, detail) =>
+			optionInput(element, name).dispatchEvent(new CustomEvent("change", { detail }));
+		change("accessLevel", { value: "SYSTEM_MODE" });
+		change("allOrNone", { checked: false });
+		change("allowDuplicates", { checked: true });
+		change("localeOptions", { value: " en_US " });
+		change("localeOptions", { value: " " });
 
+		const saved = (name, newValue, newValueDataType) => ({
+			type: "configuration_editor_input_value_changed",
+			detail: { name, newValue, newValueDataType }
+		});
 		expect(events).toEqual([
-			{
-				type: "configuration_editor_input_value_changed",
-				detail: { name: "accessLevel", newValue: "SYSTEM_MODE", newValueDataType: "String" }
-			},
-			{ type: "configuration_editor_input_value_deleted", detail: { name: "accessLevel" } }
+			saved("accessLevel", "SYSTEM_MODE", "String"),
+			saved("allOrNone", "$GlobalConstant.False", "Boolean"),
+			saved("allowDuplicates", "$GlobalConstant.True", "Boolean"),
+			saved("localeOptions", "en_US", "String"),
+			{ type: "configuration_editor_input_value_deleted", detail: { name: "localeOptions" } }
 		]);
 	});
 
@@ -228,35 +253,6 @@ describe("c-dml-records-editor", () => {
 		expect(radios(upsert.element).find((radio) => radio.checked).label).toBe("Record ID");
 	});
 
-	it("rejects literals the action can't use", async () => {
-		const { element } = await render([
-			{ name: "recordCollection", value: "accountsVar", valueDataType: "reference" },
-			{ name: "accessLevel", value: "GOD_MODE", valueDataType: "String" },
-			{ name: "allOrNone", value: "maybe", valueDataType: "Boolean" }
-		]);
-
-		expect(element.validate()).toEqual([
-			{ key: "accessLevel", errorString: "Enter USER_MODE or SYSTEM_MODE." },
-			{ key: "allOrNone", errorString: "Enter True or False." }
-		]);
-		await flush();
-		// A collapsed section would hide the errors
-		const options = accordion(element);
-		expect(options.activeSectionName).toBe(options.querySelector("lightning-accordion-section").name);
-	});
-
-	it("ignores inputs the action doesn't show", async () => {
-		const { element } = await render(
-			[
-				{ name: "record", value: "accountVar", valueDataType: "reference" },
-				{ name: "allowDuplicates", value: "maybe", valueDataType: "Boolean" }
-			],
-			"InvocableDmlDeleteRecords"
-		);
-
-		expect(element.validate()).toEqual([]);
-	});
-
 	it("accepts a complete configuration", async () => {
 		const { element } = await render([
 			{ name: "record", value: "accountVar", valueDataType: "reference" },
@@ -277,7 +273,7 @@ describe("c-dml-records-editor", () => {
 		expect(picker(element, "record").isCollection).toBeUndefined();
 		expect(headings(element)).toEqual(["Select Record(s) to Delete"]);
 		expect(element.shadowRoot.querySelector("p").textContent).toContain("include IDs");
-		expect(pickerNames(element)).toEqual(["record", "accessLevel", "allOrNone"]);
+		expect(inputNames(element)).toEqual(["record", "accessLevel", "allOrNone"]);
 		expect(element.validate()).toEqual([{ key: "record", errorString: "Enter a value." }]);
 	});
 
@@ -316,7 +312,7 @@ describe("c-dml-records-editor", () => {
 		for (const [actionName, options] of Object.entries(optionsByAction)) {
 			// eslint-disable-next-line no-await-in-loop
 			const { element } = await render([], actionName);
-			expect(pickerNames(element)).toEqual(["record", ...options]);
+			expect(inputNames(element)).toEqual(["record", ...options]);
 			expect(Boolean(accordion(element))).toBe(options.length > 0);
 			document.body.removeChild(element);
 		}

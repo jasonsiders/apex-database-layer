@@ -75,26 +75,59 @@
 		</fieldset>
 	</div>
 	<div lwc:if={action.options.length} class="editor-section slds-border_top">
-		<lightning-accordion allow-multiple-sections-open active-section-name={openSection}>
+		<lightning-accordion allow-multiple-sections-open>
 			<lightning-accordion-section name="options" label="DML Options">
 				<template for:each={options} for:item="field">
-					<c-flow-resource-picker
+					<div
 						key={field.name}
 						class="slds-var-p-around_x-small slds-var-m-bottom_x-small slds-var-m-left_small"
-						data-name={field.name}
-						name={field.name}
-						label={field.label}
-						help-text={field.helpText}
-						type={field.type}
-						picklist-values={field.picklistValues}
-						value={field.value}
-						value-data-type={field.valueDataType}
-						error-message={field.errorMessage}
-						builder-context={builderContext}
-						element-name={elementName}
-						automatic-output-variables={automaticOutputVariables}
-						onchange={handleInputChange}
-					></c-flow-resource-picker>
+					>
+						<lightning-input
+							lwc:if={field.isBoolean}
+							type="checkbox"
+							data-name={field.name}
+							name={field.name}
+							label={field.label}
+							field-level-help={field.helpText}
+							checked={field.checked}
+							onchange={handleBooleanChange}
+						></lightning-input>
+						<lightning-combobox
+							lwc:elseif={field.picklistValues}
+							data-name={field.name}
+							name={field.name}
+							label={field.label}
+							field-level-help={field.helpText}
+							options={field.picklistValues}
+							value={field.value}
+							onchange={handleTextChange}
+						></lightning-combobox>
+						<c-flow-resource-picker
+							lwc:elseif={field.allowsResources}
+							data-name={field.name}
+							name={field.name}
+							label={field.label}
+							help-text={field.helpText}
+							type={field.type}
+							value={field.value}
+							value-data-type={field.valueDataType}
+							error-message={field.errorMessage}
+							builder-context={builderContext}
+							element-name={elementName}
+							automatic-output-variables={automaticOutputVariables}
+							onchange={handleInputChange}
+						></c-flow-resource-picker>
+						<lightning-input
+							lwc:else
+							type="text"
+							data-name={field.name}
+							name={field.name}
+							label={field.label}
+							field-level-help={field.helpText}
+							value={field.value}
+							onchange={handleTextChange}
+						></lightning-input>
+					</div>
 				</template>
 			</lightning-accordion-section>
 		</lightning-accordion>

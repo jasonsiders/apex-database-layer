@@ -22,7 +22,9 @@ In Flow Builder, add an **Action** element and search for the action by name, un
 - The other record actions work like Update Records and Delete Records. Select a record variable or record collection in **Record or Record Collection**. Each record must have an ID, except new records passed to Upsert Records.
 - **Upsert Records** also works like Create Records with **Update Existing Record** turned on. Under **Field to use to identify existing record**, choose **Record ID**, **External ID**, or **Standard Field**. For the last two, pick one of the object's external ID fields, or one of its standard fields whose `idLookup` property is true, such as Contact's Email.
 
-Then, optionally, expand **DML Options** to set the action's other inputs. Every input accepts a literal value or a flow resource. The resource picker works like Flow Builder's: type `{!` or start typing to search, and select a record or lookup field to drill into it.
+The records input takes a flow resource. The resource picker works like Flow Builder's: type `{!` or start typing to search, and select a record or lookup field to drill into it.
+
+Then, optionally, expand **DML Options** to set the action's other inputs. Options take typed-in values, not resources, since a batch of flow interviews runs one DML statement with the first interview's options. Assignment Rule ID is the exception: rule IDs differ between orgs, so set it to a resource, such as an ID from a Get Records on Assignment Rule.
 
 ### Inputs
 

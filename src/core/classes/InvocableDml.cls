@@ -100,7 +100,7 @@ public abstract inherited sharing class InvocableDml {
 		/** @description Maps to Database.DmlOptions.AssignmentRuleHeader.AssignmentRuleId **/
 		@InvocableVariable(
 			label='Assignment Rule ID'
-			description='The Id of a specific Lead or Case assignment rule to run.'
+			description='The ID of a specific Lead or Case assignment rule to run. Rule IDs differ between orgs, so use a resource, ex: an ID from Get Records on Assignment Rule, instead of typing one in.'
 		)
 		public Id assignmentRuleId;
 		/** @description Text, not an SObjectField, since Flow can't pass one; upserts only **/

@@ -1,12 +1,13 @@
 import { LightningElement, api, wire } from "lwc";
 import getMatchFields from "@salesforce/apex/InvocableDmlUpsertRecords.getMatchFields";
-import { REFERENCE, REQUIRED_ERROR, compareLabels, toBooleanConstant } from "c/flowResourceMenu";
+import { REQUIRED_ERROR, compareLabels, toBooleanConstant } from "c/flowResourceMenu";
 
 const ACCESS_LEVELS = [
 	{ label: "User Mode", value: "USER_MODE" },
 	{ label: "System Mode", value: "SYSTEM_MODE" }
 ];
 const EXTERNAL_ID = "externalId";
+const FALSE = "$GlobalConstant.False";
 const EXTERNAL_ID_FIELD = "externalIdField";
 const GENERIC_TYPES = ["T__record", "T__recordCollection", "U__record", "U__recordCollection"];
 const HOW_MANY_OPTIONS = [
@@ -15,9 +16,9 @@ const HOW_MANY_OPTIONS = [
 ];
 const MULTIPLE = "multiple";
 const ONE = "one";
-const OPTIONS_SECTION = "options";
 const RECORD_ID = "recordId";
 const STANDARD_FIELD = "standardField";
+const TRUE = "$GlobalConstant.True";
 // Wording follows Flow Builder's Create Records upsert
 const MATCH_MODES = [
 	{ label: "Record ID", value: RECORD_ID },
@@ -40,11 +41,13 @@ const RECORDS_INPUTS = {
 	[ONE]: { label: "Record", name: "record", isCollection: false }
 };
 
-// Mirror InvocableDml.Input
+// Mirror InvocableDml.Input. Options are static, since a batch of interviews runs one DML statement with the first
+// interview's options; only Assignment Rule ID takes a resource, since rule IDs differ between orgs.
 const ACCESS_LEVEL = {
 	name: "accessLevel",
 	label: "Access Level",
 	type: "String",
+	defaultValue: "USER_MODE",
 	picklistValues: ACCESS_LEVELS,
 	helpText:
 		"USER_MODE (default) enforces the running user's object permissions, field-level security, and sharing rules. SYSTEM_MODE ignores them."
@@ -53,6 +56,7 @@ const ALL_OR_NONE = {
 	name: "allOrNone",
 	label: "All or None",
 	type: "Boolean",
+	defaultValue: true,
 	helpText:
 		"When true (default), any failure rolls back every record and fails the action. When false, valid records are processed, and failures are reported in the results."
 };
@@ -78,7 +82,9 @@ const DML_OPTIONS = [
 		name: "assignmentRuleId",
 		label: "Assignment Rule ID",
 		type: "String",
-		helpText: "The Id of a specific Lead or Case assignment rule to run."
+		allowsResources: true,
+		helpText:
+			"The ID of a specific Lead or Case assignment rule to run. Rule IDs differ between orgs, so use a resource, ex: an ID from Get Records on Assignment Rule, instead of typing one in."
 	},
 	{
 		name: "allowFieldTruncation",
@@ -187,7 +193,6 @@ export default class DmlRecordsEditor extends LightningElement {
 	_matchFields = [];
 	_matchMode;
 	_objectType;
-	_openSection;
 	_values = {};
 
 	// **** GETTERS **** //
@@ -229,12 +234,13 @@ export default class DmlRecordsEditor extends LightningElement {
 		return this.action.hasMatchField ? (this._objectType ?? mapping?.typeValue) : undefined;
 	}
 
-	get openSection() {
-		return this._openSection;
-	}
-
 	get options() {
-		return this._initFields(this.action.options);
+		const fields = this._initFields(this.action.options);
+		return fields.map((field) => {
+			const value = field.value ?? field.defaultValue;
+			const isBoolean = field.type === "Boolean";
+			return { ...field, value, isBoolean, checked: isBoolean && toBooleanConstant(value) === TRUE };
+		});
 	}
 
 	get records() {
@@ -278,13 +284,9 @@ export default class DmlRecordsEditor extends LightningElement {
 	 */
 	@api
 	validate() {
-		const fields = this.options;
-		const optionErrors = [this._validateAccessLevel(fields), ...this._validateBooleans(fields)].filter(Boolean);
-		const errors = [this._validateRecords(), this._validateMatchField(), ...optionErrors].filter(Boolean);
+		const errors = [this._validateRecords(), this._validateMatchField()].filter(Boolean);
 		const errorEntries = errors.map((error) => [error.key, error.errorString]);
 		this._errors = Object.fromEntries(errorEntries);
-		// The options start collapsed, which would hide their errors
-		this._openSection = optionErrors.length ? OPTIONS_SECTION : this._openSection;
 		return errors;
 	}
 
@@ -337,11 +339,29 @@ export default class DmlRecordsEditor extends LightningElement {
 	}
 
 	/**
+	 * @description Saves a checkbox option as a boolean constant, like Flow Builder saves a typed-in boolean
+	 * @param {CustomEvent} event Change on an option's checkbox
+	 */
+	handleBooleanChange(event) {
+		const value = event.detail.checked ? TRUE : FALSE;
+		this._saveInput({ name: event.target.name, value, valueDataType: "Boolean" });
+	}
+
+	/**
 	 * @description Saves a picker's value to the action, or removes it when cleared
 	 * @param {CustomEvent} event Change on a picker: `{ name, value, valueDataType }`
 	 */
 	handleInputChange(event) {
 		this._saveInput(event.detail);
+	}
+
+	/**
+	 * @description Saves a text or picklist option, or removes it when blank, since Flow Builder can't save a blank literal
+	 * @param {CustomEvent} event Change on an option's text input or combobox
+	 */
+	handleTextChange(event) {
+		const value = event.detail.value?.trim() || null;
+		this._saveInput({ name: event.target.name, value, valueDataType: "String" });
 	}
 
 	/**
@@ -418,15 +438,6 @@ export default class DmlRecordsEditor extends LightningElement {
 	}
 
 	/**
-	 * @description Whether an input holds a typed-in value, not a resource; only those can be checked before the flow runs
-	 * @param {Object} input A saved input value
-	 * @returns {Boolean} True for literals
-	 */
-	_isLiteral(input) {
-		return input?.value != null && input.valueDataType !== REFERENCE;
-	}
-
-	/**
 	 * @description Saves a value to the action, or removes it when cleared.
 	 * @param {Object} detail `{ name, value, valueDataType }`
 	 */
@@ -471,29 +482,6 @@ export default class DmlRecordsEditor extends LightningElement {
 				typeValue: detail.objectType
 			});
 		});
-	}
-
-	/**
-	 * @description Checks that a literal access level is one the action accepts, if the action shows it.
-	 * @param {Array} fields The inputs the action shows
-	 * @returns {Object} An error, or null
-	 */
-	_validateAccessLevel(fields) {
-		const input = fields.find((field) => field.name === ACCESS_LEVEL.name);
-		const level = String(input?.value).trim().toUpperCase();
-		const isValid = !this._isLiteral(input) || ACCESS_LEVELS.some((option) => option.value === level);
-		return isValid ? null : { key: ACCESS_LEVEL.name, errorString: "Enter USER_MODE or SYSTEM_MODE." };
-	}
-
-	/**
-	 * @description Checks that literal booleans are true or false.
-	 * @param {Array} fields The inputs the action shows
-	 * @returns {Array} An error for each invalid boolean input
-	 */
-	_validateBooleans(fields) {
-		return fields
-			.filter((field) => field.type === "Boolean" && this._isLiteral(field) && !toBooleanConstant(field.value))
-			.map((field) => ({ key: field.name, errorString: "Enter True or False." }));
 	}
 
 	/**
