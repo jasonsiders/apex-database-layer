@@ -82,19 +82,8 @@
 						key={field.name}
 						class="slds-var-p-around_x-small slds-var-m-bottom_x-small slds-var-m-left_small"
 					>
-						<lightning-combobox
-							lwc:if={field.picklistValues}
-							data-name={field.name}
-							data-type={field.type}
-							name={field.name}
-							label={field.label}
-							field-level-help={field.helpText}
-							options={field.picklistValues}
-							value={field.value}
-							onchange={handleOptionChange}
-						></lightning-combobox>
 						<c-flow-resource-picker
-							lwc:elseif={field.allowsResources}
+							lwc:if={field.allowsResources}
 							data-name={field.name}
 							name={field.name}
 							label={field.label}
@@ -108,17 +97,18 @@
 							automatic-output-variables={automaticOutputVariables}
 							onchange={handleInputChange}
 						></c-flow-resource-picker>
-						<lightning-input
+						<lightning-combobox
 							lwc:else
-							type="text"
+							class="option-combobox"
 							data-name={field.name}
 							data-type={field.type}
 							name={field.name}
 							label={field.label}
 							field-level-help={field.helpText}
+							options={field.picklistValues}
 							value={field.value}
 							onchange={handleOptionChange}
-						></lightning-input>
+						></lightning-combobox>
 					</div>
 				</template>
 			</lightning-accordion-section>

@@ -24,7 +24,7 @@ In Flow Builder, add an **Action** element and search for the action by name, un
 
 The records input takes a flow resource. The resource picker works like Flow Builder's: type `{!` or start typing to search, and select a record or lookup field to drill into it.
 
-Then, optionally, expand **DML Options** to set the action's other inputs. Options take typed-in values, not resources, since a batch of flow interviews runs one DML statement with the first interview's options. Assignment Rule ID is the exception: rule IDs differ between orgs, so set it to a resource, such as an ID from a Get Records on Assignment Rule.
+Then, optionally, expand **DML Options** to set the action's other inputs. Options take fixed values, not resources, since a batch of flow interviews runs one DML statement with the first interview's options. Assignment Rule ID is the exception: rule IDs differ between orgs, so set it to a resource, such as an ID from a Get Records on Assignment Rule.
 
 ### Inputs
 

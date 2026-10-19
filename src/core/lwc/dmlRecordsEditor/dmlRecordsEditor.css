@@ -8,3 +8,9 @@
 .editor-section:first-child {
 	border-top: none;
 }
+
+/* As wide as c-flow-resource-picker's input, so every input in the panel lines up */
+.option-combobox {
+	display: block;
+	max-width: 23rem;
+}

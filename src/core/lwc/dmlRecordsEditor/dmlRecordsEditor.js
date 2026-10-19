@@ -1,4 +1,6 @@
 import { LightningElement, api, wire } from "lwc";
+import { getPicklistValues } from "lightning/uiObjectInfoApi";
+import LANGUAGE_FIELD from "@salesforce/schema/User.LanguageLocaleKey";
 import getMatchFields from "@salesforce/apex/InvocableDmlUpsertRecords.getMatchFields";
 import { REQUIRED_ERROR, compareLabels, toBooleanConstant } from "c/flowResourceMenu";
 
@@ -25,6 +27,9 @@ const ONE = "one";
 const RECORD_ID = "recordId";
 const STANDARD_FIELD = "standardField";
 // Wording follows Flow Builder's Create Records upsert
+const MASTER_RECORD_TYPE_ID = "012000000000000AAA";
+// Flow Builder can't save a blank literal, so choosing None removes the input
+const NONE = { label: "--None--", value: "" };
 const MATCH_MODES = [
 	{ label: "Record ID", value: RECORD_ID },
 	{
@@ -68,6 +73,7 @@ const ALL_OR_NONE = {
 const SETTINGS = [ACCESS_LEVEL, ALL_OR_NONE];
 // Flow Builder's Update and Delete Records take either shape in one input
 const EITHER_RECORDS_INPUT = { label: "Record or Record Collection", isCollection: undefined };
+const LOCALE_OPTIONS = "localeOptions";
 // Most used first: Access Level and All or None, then duplicate rules and Lead/Case assignment
 const DML_OPTIONS = [
 	...SETTINGS,
@@ -122,7 +128,7 @@ const DML_OPTIONS = [
 		helpText: "Enforce the running user's sharing rules when duplicate rules look for duplicates."
 	},
 	{
-		name: "localeOptions",
+		name: LOCALE_OPTIONS,
 		label: "Locale Options",
 		type: "String",
 		helpText: 'The language of any labels returned by the operation, ex: "en_US".'
@@ -195,6 +201,7 @@ export default class DmlRecordsEditor extends LightningElement {
 	_errors = {};
 	_howMany = ONE;
 	_inputVariables = [];
+	_languages = [];
 	_matchFields = [];
 	_matchMode;
 	_objectType;
@@ -243,9 +250,10 @@ export default class DmlRecordsEditor extends LightningElement {
 		const fields = this._initFields(this.action.options);
 		return fields.map((field) => {
 			const value = field.value ?? field.defaultValue;
+			const picklistValues = field.name === LOCALE_OPTIONS ? this._languages : field.picklistValues;
 			// Unset booleans show the action's default, false unless the definition says otherwise
 			const boolean = { picklistValues: BOOLEANS, value: toBooleanConstant(value) ?? FALSE };
-			return field.type === "Boolean" ? { ...field, ...boolean } : { ...field, value };
+			return field.type === "Boolean" ? { ...field, ...boolean } : { ...field, picklistValues, value };
 		});
 	}
 
@@ -297,6 +305,16 @@ export default class DmlRecordsEditor extends LightningElement {
 	}
 
 	// **** WIRED **** //
+	/**
+	 * @description Lists the languages Salesforce translates labels into, for Locale Options
+	 * @param {Object} response The wire's `{ data, error }`
+	 */
+	@wire(getPicklistValues, { recordTypeId: MASTER_RECORD_TYPE_ID, fieldApiName: LANGUAGE_FIELD })
+	wiredLanguages(response) {
+		const languages = (response?.data?.values ?? []).map(({ label, value }) => ({ label, value }));
+		this._languages = [NONE, ...languages];
+	}
+
 	/**
 	 * @description Lists the fields Upsert Records can match on, by API name like Flow Builder; an object Apex can't
 	 * describe offers none, and the user can still type a field
@@ -353,13 +371,12 @@ export default class DmlRecordsEditor extends LightningElement {
 	}
 
 	/**
-	 * @description Saves a static option as its data type, or removes it when blank, since Flow Builder can't save a
-	 * blank literal
-	 * @param {CustomEvent} event Change on an option's combobox or text input
+	 * @description Saves a static option as its data type, or removes it when None is chosen
+	 * @param {CustomEvent} event Change on an option's combobox
 	 */
 	handleOptionChange(event) {
 		const { name, type } = event.target.dataset;
-		const value = event.detail.value?.trim() || null;
+		const value = event.detail.value || null;
 		this._saveInput({ name, value, valueDataType: type });
 	}
 

@@ -12,8 +12,6 @@ import {
 } from "c/flowResourceMenu";
 
 const GLOBAL_CONSTANT_PREFIX = "$GlobalConstant.";
-// Flow Builder's action inputs use these icons, not its resource menu's
-const LABEL_ICONS = { Boolean: "utility:crossfilter", String: "utility:text" };
 const ROOT_LABEL = "All Resources";
 
 /**
@@ -203,10 +201,6 @@ export default class FlowResourcePicker extends LightningElement {
 
 	get isResourceMenu() {
 		return !this.isPicklistOnly;
-	}
-
-	get labelIcon() {
-		return this.isLabelHidden ? null : LABEL_ICONS[this.type];
 	}
 
 	get labelTextClass() {

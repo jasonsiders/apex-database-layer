@@ -1,5 +1,6 @@
 import { createElement } from "lwc";
 import DmlRecordsEditor from "c/dmlRecordsEditor";
+import { getPicklistValues } from "lightning/uiObjectInfoApi";
 import getMatchFields from "@salesforce/apex/InvocableDmlUpsertRecords.getMatchFields";
 import CONTEXT from "../../flowResourceMenu/__tests__/data/context.json";
 
@@ -123,7 +124,29 @@ describe("c-dml-records-editor", () => {
 			{ label: "True", value: "$GlobalConstant.True" },
 			{ label: "False", value: "$GlobalConstant.False" }
 		]);
-		expect(optionInput(element, "localeOptions")).toMatchObject({ type: "text" });
+		expect(optionInput(element, "localeOptions").tagName).toBe("LIGHTNING-COMBOBOX");
+	});
+
+	it("offers the org's languages for Locale Options, and a way to unset it", async () => {
+		const { element } = await render();
+
+		expect(getPicklistValues.getLastConfig()).toEqual({
+			recordTypeId: "012000000000000AAA",
+			fieldApiName: { objectApiName: "User", fieldApiName: "LanguageLocaleKey" }
+		});
+		getPicklistValues.emit({
+			values: [
+				{ label: "English", value: "en_US", attributes: null, validFor: [] },
+				{ label: "German", value: "de", attributes: null, validFor: [] }
+			]
+		});
+		await flush();
+
+		expect(optionInput(element, "localeOptions").options).toEqual([
+			{ label: "--None--", value: "" },
+			{ label: "English", value: "en_US" },
+			{ label: "German", value: "de" }
+		]);
 	});
 
 	it("shows each option's default until it's set", async () => {
@@ -206,8 +229,8 @@ describe("c-dml-records-editor", () => {
 		change("accessLevel", { value: "SYSTEM_MODE" });
 		change("allOrNone", { value: "$GlobalConstant.False" });
 		change("allowDuplicates", { value: "$GlobalConstant.True" });
-		change("localeOptions", { value: " en_US " });
-		change("localeOptions", { value: " " });
+		change("localeOptions", { value: "en_US" });
+		change("localeOptions", { value: "" });
 
 		const saved = (name, newValue, newValueDataType) => ({
 			type: "configuration_editor_input_value_changed",

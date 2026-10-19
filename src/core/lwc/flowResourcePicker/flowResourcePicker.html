@@ -1,12 +1,5 @@
 <template>
 	<div class="slds-grid">
-		<lightning-icon
-			lwc:if={labelIcon}
-			class="slds-var-m-right_x-small slds-var-p-top_xx-small"
-			icon-name={labelIcon}
-			size="xx-small"
-			alternative-text=""
-		></lightning-icon>
 		<div class={formElementClass}>
 			<label class="slds-form-element__label" for="combobox-input">
 				<abbr lwc:if={required} class="slds-required" title="required">*</abbr>
