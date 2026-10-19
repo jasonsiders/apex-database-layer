@@ -651,7 +651,7 @@ export default class FlowResourcePicker extends LightningElement {
 		if (item.isLiteral) {
 			this._selection = null;
 			this._text = item.value;
-			this._emitChange(item.value, "String");
+			this._emitChange(item.value, this._literalDataType());
 		} else {
 			this._selection = item;
 			this._text = "";
