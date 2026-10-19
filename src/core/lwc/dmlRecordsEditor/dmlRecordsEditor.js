@@ -28,6 +28,7 @@ const RECORD_ID = "recordId";
 const STANDARD_FIELD = "standardField";
 // Wording follows Flow Builder's Create Records upsert
 const MASTER_RECORD_TYPE_ID = "012000000000000AAA";
+const MAX_LOCALE_LENGTH = 5;
 // Flow Builder can't save a blank literal, so choosing None removes the input
 const NONE = { label: "--None--", value: "" };
 const MATCH_MODES = [
@@ -312,7 +313,9 @@ export default class DmlRecordsEditor extends LightningElement {
 	 */
 	@wire(getPicklistValues, { recordTypeId: MASTER_RECORD_TYPE_ID, fieldApiName: LOCALE_FIELD })
 	wiredLocales(response) {
-		const locales = (response?.data?.values ?? []).map(({ value }) => ({ label: value, value }));
+		// The DmlOptions docs allow 2-5 characters, which rules out locales like zh_CN_PINYIN; Apex doesn't check
+		const values = (response?.data?.values ?? []).filter(({ value }) => value.length <= MAX_LOCALE_LENGTH);
+		const locales = values.map(({ value }) => ({ label: value, value }));
 		this._locales = [NONE, ...locales.sort(compareLabels)];
 	}
 

@@ -127,7 +127,7 @@ describe("c-dml-records-editor", () => {
 		expect(optionInput(element, "localeOptions").tagName).toBe("LIGHTNING-COMBOBOX");
 	});
 
-	it("offers the org's user locales for Locale Options by code, and a way to unset it", async () => {
+	it("offers the org's user locales that DmlOptions accepts by code, and a way to unset it", async () => {
 		const { element } = await render();
 
 		expect(getPicklistValues.getLastConfig()).toEqual({
@@ -137,7 +137,8 @@ describe("c-dml-records-editor", () => {
 		getPicklistValues.emit({
 			values: [
 				{ label: "English (United States)", value: "en_US", attributes: null, validFor: [] },
-				{ label: "German (Germany)", value: "de_DE", attributes: null, validFor: [] }
+				{ label: "German (Germany)", value: "de_DE", attributes: null, validFor: [] },
+				{ label: "Chinese (China, Pinyin Ordering)", value: "zh_CN_PINYIN", attributes: null, validFor: [] }
 			]
 		});
 		await flush();
