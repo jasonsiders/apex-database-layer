@@ -1,6 +1,6 @@
 import { LightningElement, api, wire } from "lwc";
 import { getPicklistValues } from "lightning/uiObjectInfoApi";
-import LANGUAGE_FIELD from "@salesforce/schema/User.LanguageLocaleKey";
+import LOCALE_FIELD from "@salesforce/schema/User.LocaleSidKey";
 import getMatchFields from "@salesforce/apex/InvocableDmlUpsertRecords.getMatchFields";
 import { REQUIRED_ERROR, compareLabels, toBooleanConstant } from "c/flowResourceMenu";
 
@@ -201,7 +201,7 @@ export default class DmlRecordsEditor extends LightningElement {
 	_errors = {};
 	_howMany = ONE;
 	_inputVariables = [];
-	_languages = [];
+	_locales = [];
 	_matchFields = [];
 	_matchMode;
 	_objectType;
@@ -250,7 +250,7 @@ export default class DmlRecordsEditor extends LightningElement {
 		const fields = this._initFields(this.action.options);
 		return fields.map((field) => {
 			const value = field.value ?? field.defaultValue;
-			const picklistValues = field.name === LOCALE_OPTIONS ? this._languages : field.picklistValues;
+			const picklistValues = field.name === LOCALE_OPTIONS ? this._locales : field.picklistValues;
 			// Unset booleans show the action's default, false unless the definition says otherwise
 			const boolean = { picklistValues: BOOLEANS, value: toBooleanConstant(value) ?? FALSE };
 			return field.type === "Boolean" ? { ...field, ...boolean } : { ...field, picklistValues, value };
@@ -306,13 +306,14 @@ export default class DmlRecordsEditor extends LightningElement {
 
 	// **** WIRED **** //
 	/**
-	 * @description Lists the languages Salesforce translates labels into, for Locale Options
+	 * @description Lists the org's user locales for Locale Options, by code like the `DmlOptions` docs' `de_DE`, since
+	 * that's what the action saves
 	 * @param {Object} response The wire's `{ data, error }`
 	 */
-	@wire(getPicklistValues, { recordTypeId: MASTER_RECORD_TYPE_ID, fieldApiName: LANGUAGE_FIELD })
-	wiredLanguages(response) {
-		const languages = (response?.data?.values ?? []).map(({ label, value }) => ({ label, value }));
-		this._languages = [NONE, ...languages];
+	@wire(getPicklistValues, { recordTypeId: MASTER_RECORD_TYPE_ID, fieldApiName: LOCALE_FIELD })
+	wiredLocales(response) {
+		const locales = (response?.data?.values ?? []).map(({ value }) => ({ label: value, value }));
+		this._locales = [NONE, ...locales.sort(compareLabels)];
 	}
 
 	/**

@@ -127,25 +127,25 @@ describe("c-dml-records-editor", () => {
 		expect(optionInput(element, "localeOptions").tagName).toBe("LIGHTNING-COMBOBOX");
 	});
 
-	it("offers the org's languages for Locale Options, and a way to unset it", async () => {
+	it("offers the org's user locales for Locale Options by code, and a way to unset it", async () => {
 		const { element } = await render();
 
 		expect(getPicklistValues.getLastConfig()).toEqual({
 			recordTypeId: "012000000000000AAA",
-			fieldApiName: { objectApiName: "User", fieldApiName: "LanguageLocaleKey" }
+			fieldApiName: { objectApiName: "User", fieldApiName: "LocaleSidKey" }
 		});
 		getPicklistValues.emit({
 			values: [
-				{ label: "English", value: "en_US", attributes: null, validFor: [] },
-				{ label: "German", value: "de", attributes: null, validFor: [] }
+				{ label: "English (United States)", value: "en_US", attributes: null, validFor: [] },
+				{ label: "German (Germany)", value: "de_DE", attributes: null, validFor: [] }
 			]
 		});
 		await flush();
 
 		expect(optionInput(element, "localeOptions").options).toEqual([
 			{ label: "--None--", value: "" },
-			{ label: "English", value: "en_US" },
-			{ label: "German", value: "de" }
+			{ label: "de_DE", value: "de_DE" },
+			{ label: "en_US", value: "en_US" }
 		]);
 	});
 
