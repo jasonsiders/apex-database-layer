@@ -611,18 +611,9 @@ function initResourceSections(context) {
 		},
 		initSection("Action", initActionItems(builderContext, context, scope)),
 		initSection("Get Records", lookups),
-		initSection(
-			"Choices",
-			(builderContext.choices ?? []).map((choice) => initTypedItem(choice.name, choice.dataType))
-		),
-		initSection(
-			"Constants",
-			(builderContext.constants ?? []).map((constant) => initTypedItem(constant.name, constant.dataType))
-		),
-		initSection(
-			"Formulas",
-			(builderContext.formulas ?? []).map((formula) => initTypedItem(formula.name, formula.dataType))
-		),
+		initSection("Choices", (builderContext.choices ?? []).map(initTypedItem)),
+		initSection("Constants", (builderContext.constants ?? []).map(initTypedItem)),
+		initSection("Formulas", (builderContext.formulas ?? []).map(initTypedItem)),
 		initSection(
 			"Record Collections",
 			records.filter((item) => item.isCollection)
@@ -657,7 +648,7 @@ function initScreenItems(builderContext, scope) {
 	const flatten = (fields) => fields.flatMap((field) => [field, ...flatten(field.fields ?? [])]);
 	const screens = (builderContext.screens ?? []).filter((screen) => scope.isUpstream(screen.name));
 	const fields = screens.flatMap((screen) => flatten(screen.fields ?? []));
-	return fields.filter((field) => field.dataType).map((field) => initTypedItem(field.name, field.dataType));
+	return fields.filter((field) => field.dataType).map(initTypedItem);
 }
 
 /**
@@ -692,11 +683,10 @@ function initTextTemplateItem(template) {
 
 /**
  * @description Builds an item for a named resource of a given type.
- * @param {String} name The resource's API name
- * @param {String} dataType The resource's Flow data type
+ * @param {Object} resource The resource's `{ name, dataType }`: its API name and Flow data type
  * @returns {Object} The resource's item
  */
-function initTypedItem(name, dataType) {
+function initTypedItem({ name, dataType }) {
 	return initItem({ value: name, label: name, dataType });
 }
 
