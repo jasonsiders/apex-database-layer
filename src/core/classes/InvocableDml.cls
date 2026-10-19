@@ -236,7 +236,7 @@ public abstract inherited sharing class InvocableDml {
 		private Output(List<SObject> records) {
 			this();
 			this.recordCollection = records;
-			this.record = records?.isEmpty() ? null : records?.get(0);
+			this.record = records?.isEmpty() == false ? records?.get(0) : null;
 		}
 
 		/**
@@ -248,7 +248,7 @@ public abstract inherited sharing class InvocableDml {
 				InvocableDmlResult result = resultIterator?.next();
 				this.resultCollection?.add(result);
 			}
-			this.result = this.resultCollection?.isEmpty() ? null : this.resultCollection?.get(0);
+			this.result = this.resultCollection?.isEmpty() == false ? this.resultCollection?.get(0) : null;
 		}
 	}
 }
