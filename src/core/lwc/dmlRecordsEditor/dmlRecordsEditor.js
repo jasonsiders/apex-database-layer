@@ -18,19 +18,15 @@ const ACCESS_LEVELS = [
 const EXTERNAL_ID = "externalId";
 const EXTERNAL_ID_FIELD = "externalIdField";
 const GENERIC_TYPES = ["T__record", "T__recordCollection", "U__record", "U__recordCollection"];
-const HOW_MANY_OPTIONS = [
-	{ label: "One", value: "one" },
-	{ label: "Multiple", value: "multiple" }
-];
+const MASTER_RECORD_TYPE_ID = "012000000000000AAA";
+const MAX_LOCALE_LENGTH = 5;
 const MULTIPLE = "multiple";
+// Flow Builder can't save a blank literal, so choosing None removes the input
+const NONE = { label: "--None--", value: "" };
 const ONE = "one";
 const RECORD_ID = "recordId";
 const STANDARD_FIELD = "standardField";
 // Wording follows Flow Builder's Create Records upsert
-const MASTER_RECORD_TYPE_ID = "012000000000000AAA";
-const MAX_LOCALE_LENGTH = 5;
-// Flow Builder can't save a blank literal, so choosing None removes the input
-const NONE = { label: "--None--", value: "" };
 const MATCH_MODES = [
 	{ label: "Record ID", value: RECORD_ID },
 	{
@@ -47,6 +43,10 @@ const MATCH_MODES = [
 		placeholder: "Search standard fields..."
 	}
 ];
+const HOW_MANY_OPTIONS = [
+	{ label: "One", value: ONE },
+	{ label: "Multiple", value: MULTIPLE }
+];
 const RECORDS_INPUTS = {
 	[MULTIPLE]: { label: "Record Collection", name: "recordCollection", isCollection: true },
 	[ONE]: { label: "Record", name: "record", isCollection: false }
@@ -54,24 +54,25 @@ const RECORDS_INPUTS = {
 
 // Mirror InvocableDml.Input. Options are static, since a batch of interviews runs one DML statement with the first
 // interview's options; only Assignment Rule ID takes a resource, since rule IDs differ between orgs.
-const ACCESS_LEVEL = {
-	name: "accessLevel",
-	label: "Access Level",
-	type: "String",
-	defaultValue: "USER_MODE",
-	picklistValues: ACCESS_LEVELS,
-	helpText:
-		"USER_MODE (default) enforces the running user's object permissions, field-level security, and sharing rules. SYSTEM_MODE ignores them."
-};
-const ALL_OR_NONE = {
-	name: "allOrNone",
-	label: "All or None",
-	type: "Boolean",
-	defaultValue: true,
-	helpText:
-		"When true (default), any failure rolls back every record and fails the action. When false, valid records are processed, and failures are reported in the results."
-};
-const SETTINGS = [ACCESS_LEVEL, ALL_OR_NONE];
+const SETTINGS = [
+	{
+		name: "accessLevel",
+		label: "Access Level",
+		type: "String",
+		defaultValue: "USER_MODE",
+		picklistValues: ACCESS_LEVELS,
+		helpText:
+			"USER_MODE (default) enforces the running user's object permissions, field-level security, and sharing rules. SYSTEM_MODE ignores them."
+	},
+	{
+		name: "allOrNone",
+		label: "All or None",
+		type: "Boolean",
+		defaultValue: true,
+		helpText:
+			"When true (default), any failure rolls back every record and fails the action. When false, valid records are processed, and failures are reported in the results."
+	}
+];
 // Flow Builder's Update and Delete Records take either shape in one input
 const EITHER_RECORDS_INPUT = { label: "Record or Record Collection", isCollection: undefined };
 const LOCALE_OPTIONS = "localeOptions";
@@ -243,7 +244,11 @@ export default class DmlRecordsEditor extends LightningElement {
 		const matchMode = this.matchMode;
 		return MATCH_MODES.map((mode) => {
 			const isChecked = mode.value === matchMode;
-			return { ...mode, isChecked, field: isChecked && mode.placeholder ? this._initMatchField(mode) : null };
+			return {
+				...mode,
+				isChecked,
+				field: isChecked && mode.value !== RECORD_ID ? this._initMatchField(mode) : null
+			};
 		});
 	}
 
