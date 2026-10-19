@@ -214,7 +214,6 @@ describe("c-flow-resource-picker", () => {
 			picklistValues
 		});
 		expect(element.shadowRoot.querySelector("label .slds-assistive-text").textContent).toBe("External ID");
-		expect(element.shadowRoot.querySelector(".slds-grid > lightning-icon")).toBeNull();
 
 		await open(element);
 

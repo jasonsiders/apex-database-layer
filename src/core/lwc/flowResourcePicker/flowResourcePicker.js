@@ -171,7 +171,7 @@ export default class FlowResourcePicker extends LightningElement {
 
 	get formElementClass() {
 		const errorClass = this.error ? " slds-has-error" : "";
-		return "slds-form-element slds-col" + errorClass;
+		return "slds-form-element" + errorClass;
 	}
 
 	get groupClass() {
