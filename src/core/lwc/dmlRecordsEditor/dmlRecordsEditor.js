@@ -2,12 +2,18 @@ import { LightningElement, api, wire } from "lwc";
 import getMatchFields from "@salesforce/apex/InvocableDmlUpsertRecords.getMatchFields";
 import { REQUIRED_ERROR, compareLabels, toBooleanConstant } from "c/flowResourceMenu";
 
+const FALSE = "$GlobalConstant.False";
+const TRUE = "$GlobalConstant.True";
+// Labeled like Flow Builder's boolean global constants
+const BOOLEANS = [
+	{ label: "True", value: TRUE },
+	{ label: "False", value: FALSE }
+];
 const ACCESS_LEVELS = [
 	{ label: "User Mode", value: "USER_MODE" },
 	{ label: "System Mode", value: "SYSTEM_MODE" }
 ];
 const EXTERNAL_ID = "externalId";
-const FALSE = "$GlobalConstant.False";
 const EXTERNAL_ID_FIELD = "externalIdField";
 const GENERIC_TYPES = ["T__record", "T__recordCollection", "U__record", "U__recordCollection"];
 const HOW_MANY_OPTIONS = [
@@ -18,7 +24,6 @@ const MULTIPLE = "multiple";
 const ONE = "one";
 const RECORD_ID = "recordId";
 const STANDARD_FIELD = "standardField";
-const TRUE = "$GlobalConstant.True";
 // Wording follows Flow Builder's Create Records upsert
 const MATCH_MODES = [
 	{ label: "Record ID", value: RECORD_ID },
@@ -238,8 +243,9 @@ export default class DmlRecordsEditor extends LightningElement {
 		const fields = this._initFields(this.action.options);
 		return fields.map((field) => {
 			const value = field.value ?? field.defaultValue;
-			const isBoolean = field.type === "Boolean";
-			return { ...field, value, isBoolean, checked: isBoolean && toBooleanConstant(value) === TRUE };
+			// Unset booleans show the action's default, false unless the definition says otherwise
+			const boolean = { picklistValues: BOOLEANS, value: toBooleanConstant(value) ?? FALSE };
+			return field.type === "Boolean" ? { ...field, ...boolean } : { ...field, value };
 		});
 	}
 
@@ -339,15 +345,6 @@ export default class DmlRecordsEditor extends LightningElement {
 	}
 
 	/**
-	 * @description Saves a checkbox option as a boolean constant, like Flow Builder saves a typed-in boolean
-	 * @param {CustomEvent} event Change on an option's checkbox
-	 */
-	handleBooleanChange(event) {
-		const value = event.detail.checked ? TRUE : FALSE;
-		this._saveInput({ name: event.target.name, value, valueDataType: "Boolean" });
-	}
-
-	/**
 	 * @description Saves a picker's value to the action, or removes it when cleared
 	 * @param {CustomEvent} event Change on a picker: `{ name, value, valueDataType }`
 	 */
@@ -356,12 +353,14 @@ export default class DmlRecordsEditor extends LightningElement {
 	}
 
 	/**
-	 * @description Saves a text or picklist option, or removes it when blank, since Flow Builder can't save a blank literal
-	 * @param {CustomEvent} event Change on an option's text input or combobox
+	 * @description Saves a static option as its data type, or removes it when blank, since Flow Builder can't save a
+	 * blank literal
+	 * @param {CustomEvent} event Change on an option's combobox or text input
 	 */
-	handleTextChange(event) {
+	handleOptionChange(event) {
+		const { name, type } = event.target.dataset;
 		const value = event.detail.value?.trim() || null;
-		this._saveInput({ name: event.target.name, value, valueDataType: "String" });
+		this._saveInput({ name, value, valueDataType: type });
 	}
 
 	/**

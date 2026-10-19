@@ -82,25 +82,16 @@
 						key={field.name}
 						class="slds-var-p-around_x-small slds-var-m-bottom_x-small slds-var-m-left_small"
 					>
-						<lightning-input
-							lwc:if={field.isBoolean}
-							type="checkbox"
-							data-name={field.name}
-							name={field.name}
-							label={field.label}
-							field-level-help={field.helpText}
-							checked={field.checked}
-							onchange={handleBooleanChange}
-						></lightning-input>
 						<lightning-combobox
-							lwc:elseif={field.picklistValues}
+							lwc:if={field.picklistValues}
 							data-name={field.name}
+							data-type={field.type}
 							name={field.name}
 							label={field.label}
 							field-level-help={field.helpText}
 							options={field.picklistValues}
 							value={field.value}
-							onchange={handleTextChange}
+							onchange={handleOptionChange}
 						></lightning-combobox>
 						<c-flow-resource-picker
 							lwc:elseif={field.allowsResources}
@@ -121,11 +112,12 @@
 							lwc:else
 							type="text"
 							data-name={field.name}
+							data-type={field.type}
 							name={field.name}
 							label={field.label}
 							field-level-help={field.helpText}
 							value={field.value}
-							onchange={handleTextChange}
+							onchange={handleOptionChange}
 						></lightning-input>
 					</div>
 				</template>

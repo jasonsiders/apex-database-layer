@@ -117,7 +117,12 @@ describe("c-dml-records-editor", () => {
 			{ label: "User Mode", value: "USER_MODE" },
 			{ label: "System Mode", value: "SYSTEM_MODE" }
 		]);
-		expect(optionInput(element, "allOrNone")).toMatchObject({ type: "checkbox" });
+		const allOrNone = optionInput(element, "allOrNone");
+		expect(allOrNone.tagName).toBe("LIGHTNING-COMBOBOX");
+		expect(allOrNone.options).toEqual([
+			{ label: "True", value: "$GlobalConstant.True" },
+			{ label: "False", value: "$GlobalConstant.False" }
+		]);
 		expect(optionInput(element, "localeOptions")).toMatchObject({ type: "text" });
 	});
 
@@ -125,8 +130,8 @@ describe("c-dml-records-editor", () => {
 		const { element } = await render();
 
 		expect(optionInput(element, "accessLevel").value).toBe("USER_MODE");
-		expect(optionInput(element, "allOrNone").checked).toBe(true);
-		expect(optionInput(element, "allowDuplicates").checked).toBe(false);
+		expect(optionInput(element, "allOrNone").value).toBe("$GlobalConstant.True");
+		expect(optionInput(element, "allowDuplicates").value).toBe("$GlobalConstant.False");
 	});
 
 	it("only lets Assignment Rule ID take a resource, since rule IDs differ between orgs", async () => {
@@ -172,7 +177,7 @@ describe("c-dml-records-editor", () => {
 			isCollection: true
 		});
 		expect(optionInput(element, "accessLevel").value).toBe("SYSTEM_MODE");
-		expect(optionInput(element, "allOrNone").checked).toBe(false);
+		expect(optionInput(element, "allOrNone").value).toBe("$GlobalConstant.False");
 		expect(element.inputVariables).toHaveLength(3);
 	});
 
@@ -199,8 +204,8 @@ describe("c-dml-records-editor", () => {
 		const change = (name, detail) =>
 			optionInput(element, name).dispatchEvent(new CustomEvent("change", { detail }));
 		change("accessLevel", { value: "SYSTEM_MODE" });
-		change("allOrNone", { checked: false });
-		change("allowDuplicates", { checked: true });
+		change("allOrNone", { value: "$GlobalConstant.False" });
+		change("allowDuplicates", { value: "$GlobalConstant.True" });
 		change("localeOptions", { value: " en_US " });
 		change("localeOptions", { value: " " });
 
