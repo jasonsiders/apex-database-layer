@@ -12,7 +12,7 @@ public inherited sharing class InvocableDmlEmptyRecycleBin extends InvocableDml 
 		category='Database Layer'
 		configurationEditor='c-dml-records-editor'
 		description='Permanently delete one or more records that are already in the Recycle Bin.'
-		iconName='slds:standard:record_delete'
+		iconName='slds:standard:recycle_bin'
 		label='Empty Recycle Bin'
 	)
 	public static List<InvocableDml.Output> invoke(List<InvocableDml.Input> inputs) {
