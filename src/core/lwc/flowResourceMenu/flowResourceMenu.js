@@ -5,23 +5,6 @@
 const DRILL_GLOBAL = "global";
 const DRILL_OUTPUTS = "outputs";
 const DRILL_RECORD = "record";
-const ELEMENT_TYPES = [
-	"actionCalls",
-	"apexPluginCalls",
-	"assignments",
-	"collectionProcessors",
-	"decisions",
-	"loops",
-	"recordCreates",
-	"recordDeletes",
-	"recordLookups",
-	"recordRollbacks",
-	"recordUpdates",
-	"screens",
-	"subflows",
-	"transforms",
-	"waits"
-];
 const ICON_RECORD = "utility:record_alt";
 const ICON_RECORD_COLLECTION = "utility:record_collection";
 const SOBJECT = "SObject";
@@ -845,7 +828,9 @@ function getTargets(element) {
  * @returns {Object} `{ isUpstream(name), isInLoop(loop) }`
  */
 function initScope(builderContext, elementName) {
-	const elements = [builderContext.start ?? {}, ...ELEMENT_TYPES.flatMap((type) => builderContext[type] ?? [])];
+	// Every list in the context, so new element types are walked too; resources like variables have no connectors
+	const lists = Object.values(builderContext).filter(Array.isArray);
+	const elements = [builderContext.start ?? {}, ...lists.flat()];
 	const isKnown = Boolean(elementName) && elements.some((element) => element.name === elementName);
 	const sources = isKnown ? findSources(elements, elementName) : null;
 	return {
