@@ -150,6 +150,12 @@ describe("c-dml-records-editor", () => {
 		]);
 	});
 
+	it("only looks up locales for actions with Locale Options", async () => {
+		await render([], "InvocableDmlDeleteRecords");
+
+		expect(getPicklistValues.getLastConfig()?.recordTypeId).toBeUndefined();
+	});
+
 	it("shows each option's default until it's set", async () => {
 		const { element } = await render();
 

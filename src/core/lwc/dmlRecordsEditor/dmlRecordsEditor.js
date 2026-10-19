@@ -225,6 +225,12 @@ export default class DmlRecordsEditor extends LightningElement {
 		return HOW_MANY_OPTIONS;
 	}
 
+	get localeRecordTypeId() {
+		const hasLocaleOptions = this.action.options.some((option) => option.name === LOCALE_OPTIONS);
+		// Only actions with Locale Options fetch the org's locales
+		return hasLocaleOptions ? MASTER_RECORD_TYPE_ID : undefined;
+	}
+
 	get matchMode() {
 		const value = this._values[EXTERNAL_ID_FIELD]?.value;
 		const field = this._matchFields.find((candidate) => candidate.value === value);
@@ -311,7 +317,7 @@ export default class DmlRecordsEditor extends LightningElement {
 	 * that's what the action saves
 	 * @param {Object} response The wire's `{ data, error }`
 	 */
-	@wire(getPicklistValues, { recordTypeId: MASTER_RECORD_TYPE_ID, fieldApiName: LOCALE_FIELD })
+	@wire(getPicklistValues, { recordTypeId: "$localeRecordTypeId", fieldApiName: LOCALE_FIELD })
 	wiredLocales(response) {
 		// The DmlOptions docs allow 2-5 characters, which rules out locales like zh_CN_PINYIN; Apex doesn't check
 		const values = (response?.data?.values ?? []).filter(({ value }) => value.length <= MAX_LOCALE_LENGTH);
