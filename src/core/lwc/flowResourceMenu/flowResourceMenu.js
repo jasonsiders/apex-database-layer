@@ -269,8 +269,9 @@ export async function resolveItem(path, context, describeObject) {
 	for (const segment of path?.split(".") ?? []) {
 		value = value ? `${value}.${segment}` : segment;
 		const match = findItem(sections, value);
-		if (match) {
-			item = match;
+		item = match ?? item;
+		// The last item's children aren't needed, so its object isn't described
+		if (match && value !== path) {
 			// eslint-disable-next-line no-await-in-loop
 			sections = await getChildSections(match, context, null, describeObject);
 		}

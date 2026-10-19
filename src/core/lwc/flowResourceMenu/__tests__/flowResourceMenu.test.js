@@ -392,6 +392,13 @@ describe("c-flow-resource-menu", () => {
 			});
 		});
 
+		it("describes only the objects on the way to the reference", async () => {
+			describeObject.mockClear();
+			await resolveItem("accountVar.Owner", context, describeObject);
+
+			expect(describeObject.mock.calls).toEqual([["Account"]]);
+		});
+
 		it("resolves global constants and variables", async () => {
 			expect(await resolveItem("$GlobalConstant.True", context, describeObject)).toMatchObject({
 				pathLabel: "True"
