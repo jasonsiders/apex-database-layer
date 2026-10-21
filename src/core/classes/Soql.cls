@@ -1017,9 +1017,9 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @return This Builder instance for method chaining
 		 */
 		global Soql.Builder addWhere(String fieldName, Soql.Operator operator, Object value) {
-			// Shorthand overload constructs a Condition object for the caller
 			this.addBindsFromValue(value);
-			Object conditionValue = this.formatWhereValue(value);
+			// Render InnerQuery now, so its WHERE text matches the binds copied from it above
+			Object conditionValue = (value instanceof Soql.InnerQuery) ? value.toString() : value;
 			Soql.Condition condition = new Soql.Condition(fieldName, operator, conditionValue);
 			return this.addWhere(condition);
 		}
@@ -1205,7 +1205,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		/**
-		 * @description Callers may type InnerQuery/Binder values as Object, so binds can't rely on overload resolution
+		 * @description Registers binds carried by an InnerQuery or Binder value, so callers don't need to call addBind
 		 * @param value The WHERE condition value
 		 */
 		private void addBindsFromValue(Object value) {
@@ -1214,16 +1214,6 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			} else if (value instanceof Soql.Binder) {
 				this.addBind((Soql.Binder) value);
 			}
-		}
-
-		/**
-		 * @description Renders InnerQuery/Binder values now, so the WHERE text matches the binds captured alongside it
-		 * @param value The WHERE condition value
-		 * @return The rendered InnerQuery/Binder, or the original value for any other type
-		 */
-		private Object formatWhereValue(Object value) {
-			Boolean hasBinds = value instanceof Soql.InnerQuery || value instanceof Soql.Binder;
-			return hasBinds ? value?.toString() : value;
 		}
 
 		protected String constructClause(String prefix, Object value) {

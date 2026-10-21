@@ -238,7 +238,7 @@ private class SoqlTest {
 
 	@IsTest
 	private static void shouldBindVariableToQuery() {
-		Soql.Binder binder = new Soql.Binder('userId', UserInfo.getUserId());
+		Object binder = new Soql.Binder('userId', UserInfo.getUserId());
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
 			?.addSelect(User.Username)
 			?.addWhere(User.Id, Soql.EQUALS, binder)
@@ -264,42 +264,6 @@ private class SoqlTest {
 		Test.startTest();
 		SoqlTest.validateQuery(soql, expected);
 		Test.stopTest();
-	}
-
-	@IsTest
-	private static void shouldBindObjectTypedBinder() {
-		Id userId = UserInfo.getUserId();
-		Object binder = new Soql.Binder('userId', userId);
-		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)?.addWhere(User.Id, Soql.EQUALS, binder)?.toSoql();
-		String expected = 'SELECT Id FROM User WHERE Id = :userId';
-
-		Test.startTest();
-		SoqlTest.validateQuery(soql, expected);
-		Test.stopTest();
-
-		Object boundValue = soql?.binds?.get('userId');
-		Assert.areEqual(userId, boundValue, 'Did not bind Object-typed Binder');
-	}
-
-	@IsTest
-	private static void shouldAddBindsFromObjectTypedInnerQuery() {
-		Id ownerId = UserInfo.getUserId();
-		Soql.Binder owner = new Soql.Binder('ownerId', ownerId);
-		Object innerQuery = new Soql.InnerQuery(Case.SObjectType)
-			?.addSelect(Case.AccountId)
-			?.addWhere(Case.OwnerId, Soql.EQUALS, owner)
-			?.toInnerQuery();
-		Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)
-			?.addWhere(Account.Id, Soql.IN_COLLECTION, innerQuery)
-			?.toSoql();
-		String expected = 'SELECT Id FROM Account WHERE Id IN (SELECT AccountId FROM Case WHERE OwnerId = :ownerId)';
-
-		Test.startTest();
-		SoqlTest.validateQuery(soql, expected);
-		Test.stopTest();
-
-		Object boundValue = soql?.binds?.get('ownerId');
-		Assert.areEqual(ownerId, boundValue, 'Did not add Object-typed InnerQuery binds');
 	}
 
 	@IsTest
@@ -1542,7 +1506,7 @@ private class SoqlTest {
 	@IsTest
 	private static void shouldAddInnerQueryBindsToParent() {
 		Soql.Binder owner = new Soql.Binder('ownerId', UserInfo.getUserId());
-		Soql.InnerQuery innerQuery = new Soql.InnerQuery(Case.SObjectType)
+		Object innerQuery = new Soql.InnerQuery(Case.SObjectType)
 			?.addSelect(Case.AccountId)
 			?.addWhere(Case.OwnerId, Soql.EQUALS, owner)
 			?.toInnerQuery();
