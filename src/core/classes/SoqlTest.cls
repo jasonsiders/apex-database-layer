@@ -253,10 +253,11 @@ private class SoqlTest {
 
 	@IsTest
 	private static void shouldAddNullWhereConditions() {
+		Soql.ParentField profileName = new Soql.ParentField(User.ProfileId, Profile.Name);
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
 			?.addWhere('Username', Soql.NOT_EQUALS, null)
 			?.addWhere(User.ManagerId, Soql.EQUALS, null)
-			?.addWhere(new Soql.ParentField(User.ProfileId, Profile.Name), Soql.NOT_EQUALS, null)
+			?.addWhere(profileName, Soql.NOT_EQUALS, null)
 			?.toSoql();
 		String expected = 'SELECT Id FROM User WHERE Username != null AND ManagerId = null AND Profile.Name != null';
 
@@ -267,7 +268,8 @@ private class SoqlTest {
 
 	@IsTest
 	private static void shouldBindObjectTypedBinder() {
-		Object binder = new Soql.Binder('userId', UserInfo.getUserId());
+		Id userId = UserInfo.getUserId();
+		Object binder = new Soql.Binder('userId', userId);
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)?.addWhere(User.Id, Soql.EQUALS, binder)?.toSoql();
 		String expected = 'SELECT Id FROM User WHERE Id = :userId';
 
@@ -275,12 +277,14 @@ private class SoqlTest {
 		SoqlTest.validateQuery(soql, expected);
 		Test.stopTest();
 
-		Assert.areEqual(UserInfo.getUserId(), soql?.binds?.get('userId'), 'Did not bind Object-typed Binder');
+		Object boundValue = soql?.binds?.get('userId');
+		Assert.areEqual(userId, boundValue, 'Did not bind Object-typed Binder');
 	}
 
 	@IsTest
 	private static void shouldAddBindsFromObjectTypedInnerQuery() {
-		Soql.Binder owner = new Soql.Binder('ownerId', UserInfo.getUserId());
+		Id ownerId = UserInfo.getUserId();
+		Soql.Binder owner = new Soql.Binder('ownerId', ownerId);
 		Object innerQuery = new Soql.InnerQuery(Case.SObjectType)
 			?.addSelect(Case.AccountId)
 			?.addWhere(Case.OwnerId, Soql.EQUALS, owner)
@@ -294,7 +298,8 @@ private class SoqlTest {
 		SoqlTest.validateQuery(soql, expected);
 		Test.stopTest();
 
-		Assert.areEqual(owner?.getValue(), soql?.binds?.get('ownerId'), 'Did not add Object-typed InnerQuery binds');
+		Object boundValue = soql?.binds?.get('ownerId');
+		Assert.areEqual(ownerId, boundValue, 'Did not add Object-typed InnerQuery binds');
 	}
 
 	@IsTest
