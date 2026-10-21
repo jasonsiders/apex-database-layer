@@ -1018,8 +1018,9 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		global Soql.Builder addWhere(String fieldName, Soql.Operator operator, Object value) {
 			this.addBindsFromValue(value);
-			// Render InnerQuery now, so its WHERE text matches the binds copied from it above
-			Object conditionValue = (value instanceof Soql.InnerQuery) ? value.toString() : value;
+			// Store as text, like the removed typed overloads did, so InnerQuery text matches the binds copied above
+			Boolean hasBinds = value instanceof Soql.InnerQuery || value instanceof Soql.Binder;
+			Object conditionValue = hasBinds ? value.toString() : value;
 			Soql.Condition condition = new Soql.Condition(fieldName, operator, conditionValue);
 			return this.addWhere(condition);
 		}
