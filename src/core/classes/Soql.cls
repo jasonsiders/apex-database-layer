@@ -1018,7 +1018,8 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		global Soql.Builder addWhere(String fieldName, Soql.Operator operator, Object value) {
 			// Shorthand overload constructs a Condition object for the caller
-			return this.addWhere(new Soql.Condition(fieldName, operator, value));
+			Object conditionValue = this.processWhereValue(value);
+			return this.addWhere(new Soql.Condition(fieldName, operator, conditionValue));
 		}
 
 		/**
@@ -1041,64 +1042,6 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		global Soql.Builder addWhere(Soql.ParentField field, Soql.Operator operator, Object value) {
 			return this.addWhere(field?.toString(), operator, value);
-		}
-
-		/**
-		 * @description Adds a WHERE condition using field name, operator, and inner query.
-		 * @param fieldName The field name to filter on
-		 * @param operator The comparison operator
-		 * @param innerQuery The inner query to compare against
-		 * @return This Builder instance for method chaining
-		 */
-		global Soql.Builder addWhere(String fieldName, Soql.Operator operator, Soql.InnerQuery innerQuery) {
-			// If the current `value` object is an InnerQuery, add its binds to the parent query:
-			this.addBindsFromChildQuery(innerQuery);
-			return this.addWhere(fieldName, operator, innerQuery?.toString());
-		}
-
-		/**
-		 * @description Adds a WHERE condition using SObjectField, operator, and inner query.
-		 * @param field The SObjectField to filter on
-		 * @param operator The comparison operator
-		 * @param innerQuery The inner query to compare against
-		 * @return This Builder instance for method chaining
-		 */
-		global Soql.Builder addWhere(SObjectField field, Soql.Operator operator, Soql.InnerQuery innerQuery) {
-			return this.addWhere(field?.toString(), operator, innerQuery);
-		}
-
-		/**
-		 * @description Adds a WHERE condition using field name, operator, and bind variable.
-		 * @param fieldName The field name to filter on
-		 * @param operator The comparison operator
-		 * @param binder The bind variable to compare against
-		 * @return This Builder instance for method chaining
-		 */
-		global Soql.Builder addWhere(String fieldName, Soql.Operator operator, Soql.Binder binder) {
-			// If the current `value` object is a Binder, bind the values so that callers don't need to do so manually
-			return this.addWhere(fieldName, operator, binder?.toString())?.addBind(binder);
-		}
-
-		/**
-		 * @description Adds a WHERE condition using SObjectField, operator, and bind variable.
-		 * @param field The SObjectField to filter on
-		 * @param operator The comparison operator
-		 * @param binder The bind variable to compare against
-		 * @return This Builder instance for method chaining
-		 */
-		global Soql.Builder addWhere(SObjectField field, Soql.Operator operator, Soql.Binder binder) {
-			return this.addWhere(field?.toString(), operator, binder);
-		}
-
-		/**
-		 * @description Adds a WHERE condition using parent field, operator, and bind variable.
-		 * @param field The parent field to filter on
-		 * @param operator The comparison operator
-		 * @param binder The bind variable to compare against
-		 * @return This Builder instance for method chaining
-		 */
-		global Soql.Builder addWhere(Soql.ParentField field, Soql.Operator operator, Soql.Binder binder) {
-			return this.addWhere(field?.toString(), operator, binder);
 		}
 
 		/**
@@ -1257,6 +1200,22 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			// Add all binds from a child query to the current query
 			Map<String, Object> childBinds = childQuery?.binds ?? new Map<String, Object>();
 			this.binds?.putAll(childBinds);
+		}
+
+		/**
+		 * @description Adds any binds carried by an InnerQuery or Binder value, and renders it for use in a WHERE Condition.
+		 * @param value The WHERE condition value
+		 * @return The rendered InnerQuery/Binder, or the original value for any other type
+		 */
+		private Object processWhereValue(Object value) {
+			// Callers may pass these as `Object`, so binds are added here rather than via type-specific overloads
+			if (value instanceof Soql.InnerQuery) {
+				this.addBindsFromChildQuery((Soql.InnerQuery) value);
+			} else if (value instanceof Soql.Binder) {
+				this.addBind((Soql.Binder) value);
+			}
+			Boolean hasBinds = value instanceof Soql.InnerQuery || value instanceof Soql.Binder;
+			return hasBinds ? value?.toString() : value;
 		}
 
 		protected String constructClause(String prefix, Object value) {

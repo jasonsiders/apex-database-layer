@@ -252,6 +252,52 @@ private class SoqlTest {
 	}
 
 	@IsTest
+	private static void shouldAddNullWhereConditions() {
+		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
+			?.addWhere('Username', Soql.NOT_EQUALS, null)
+			?.addWhere(User.ManagerId, Soql.EQUALS, null)
+			?.addWhere(new Soql.ParentField(User.ProfileId, Profile.Name), Soql.NOT_EQUALS, null)
+			?.toSoql();
+		String expected = 'SELECT Id FROM User WHERE Username != null AND ManagerId = null AND Profile.Name != null';
+
+		Test.startTest();
+		SoqlTest.validateQuery(soql, expected);
+		Test.stopTest();
+	}
+
+	@IsTest
+	private static void shouldBindObjectTypedBinder() {
+		Object binder = new Soql.Binder('userId', UserInfo.getUserId());
+		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)?.addWhere(User.Id, Soql.EQUALS, binder)?.toSoql();
+		String expected = 'SELECT Id FROM User WHERE Id = :userId';
+
+		Test.startTest();
+		SoqlTest.validateQuery(soql, expected);
+		Test.stopTest();
+
+		Assert.areEqual(UserInfo.getUserId(), soql?.binds?.get('userId'), 'Did not bind Object-typed Binder');
+	}
+
+	@IsTest
+	private static void shouldAddBindsFromObjectTypedInnerQuery() {
+		Soql.Binder owner = new Soql.Binder('ownerId', UserInfo.getUserId());
+		Object innerQuery = new Soql.InnerQuery(Case.SObjectType)
+			?.addSelect(Case.AccountId)
+			?.addWhere(Case.OwnerId, Soql.EQUALS, owner)
+			?.toInnerQuery();
+		Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)
+			?.addWhere(Account.Id, Soql.IN_COLLECTION, innerQuery)
+			?.toSoql();
+		String expected = 'SELECT Id FROM Account WHERE Id IN (SELECT AccountId FROM Case WHERE OwnerId = :ownerId)';
+
+		Test.startTest();
+		SoqlTest.validateQuery(soql, expected);
+		Test.stopTest();
+
+		Assert.areEqual(owner?.getValue(), soql?.binds?.get('ownerId'), 'Did not add Object-typed InnerQuery binds');
+	}
+
+	@IsTest
 	private static void shouldDeselectAllFields() {
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)?.selectAll()?.toSoql();
 		Assert.isTrue(soql?.selectClauses?.size() > 1, 'Wrong # of SELECT clauses');
