@@ -238,13 +238,28 @@ private class SoqlTest {
 
 	@IsTest
 	private static void shouldBindVariableToQuery() {
-		Soql.Binder binder = new Soql.Binder('userId', UserInfo.getUserId());
+		Object binder = new Soql.Binder('userId', UserInfo.getUserId());
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
 			?.addSelect(User.Username)
 			?.addWhere(User.Id, Soql.EQUALS, binder)
 			?.setRowLimit(1)
 			?.toSoql();
 		String expected = 'SELECT Id, Username FROM User WHERE Id = :userId LIMIT 1';
+
+		Test.startTest();
+		SoqlTest.validateQuery(soql, expected);
+		Test.stopTest();
+	}
+
+	@IsTest
+	private static void shouldAddNullWhereConditions() {
+		Soql.ParentField profileName = new Soql.ParentField(User.ProfileId, Profile.Name);
+		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
+			?.addWhere('Username', Soql.NOT_EQUALS, null)
+			?.addWhere(User.ManagerId, Soql.EQUALS, null)
+			?.addWhere(profileName, Soql.NOT_EQUALS, null)
+			?.toSoql();
+		String expected = 'SELECT Id FROM User WHERE Username != null AND ManagerId = null AND Profile.Name != null';
 
 		Test.startTest();
 		SoqlTest.validateQuery(soql, expected);
@@ -1491,7 +1506,7 @@ private class SoqlTest {
 	@IsTest
 	private static void shouldAddInnerQueryBindsToParent() {
 		Soql.Binder owner = new Soql.Binder('ownerId', UserInfo.getUserId());
-		Soql.InnerQuery innerQuery = new Soql.InnerQuery(Case.SObjectType)
+		Object innerQuery = new Soql.InnerQuery(Case.SObjectType)
 			?.addSelect(Case.AccountId)
 			?.addWhere(Case.OwnerId, Soql.EQUALS, owner)
 			?.toInnerQuery();

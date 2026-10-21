@@ -47,9 +47,8 @@ Adds conditions to the WHERE clause of the query.
 - `Soql.Builder addWhere(String fieldName, Soql.Operator operator, Object value)`
 - `Soql.Builder addWhere(SObjectField field, Soql.Operator operator, Object value)`
 - `Soql.Builder addWhere(Soql.ParentField field, Soql.Operator operator, Object value)`
-- `Soql.Builder addWhere(String fieldName, Soql.Operator operator, Soql.Binder binder)`
-- `Soql.Builder addWhere(SObjectField field, Soql.Operator operator, Soql.Binder binder)`
-- `Soql.Builder addWhere(Soql.ParentField field, Soql.Operator operator, Soql.Binder binder)`
+
+`value` accepts any type, including `null`, a [`Soql.Binder`](./The-Soql.Binder-Class), or a [`Soql.InnerQuery`](./The-Soql.InnerQuery-Class). Binds from a `Soql.Binder` or `Soql.InnerQuery` are added to the query automatically.
 
 ### `deselect`
 
