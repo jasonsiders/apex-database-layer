@@ -37,7 +37,7 @@ private class InvocableDmlUpdateRecordsTest {
 	}
 
 	@IsTest
-	private static void shouldUpdateRecordsSharedByInputsOnce() {
+	private static void shouldFailRecordsSharedByInputs() {
 		Account parent = new Account(Name = 'Before');
 		insert parent;
 		InvocableDml.Input nameInput = new InvocableDml.Input();
@@ -47,17 +47,16 @@ private class InvocableDmlUpdateRecordsTest {
 		List<InvocableDml.Input> inputs = new List<InvocableDml.Input>{ nameInput, phoneInput };
 
 		Test.startTest();
-		// A DML operation would throw on the duplicate Id, and fail both interviews:
-		List<InvocableDml.Output> outputs = InvocableDmlUpdateRecords.invoke(inputs);
+		Exception caughtError;
+		try {
+			InvocableDmlUpdateRecords.invoke(inputs);
+		} catch (System.ListException error) {
+			caughtError = error;
+		}
 		Test.stopTest();
 
-		for (InvocableDml.Output output : outputs) {
-			Assert.isTrue(output?.result?.isSuccess, 'Shared record failed: ' + output?.result?.errors);
-			Assert.areEqual(parent?.Id, output?.result?.id, 'Result does not match its record');
-		}
-		Account updated = [SELECT Name, Phone FROM Account WHERE Id = :parent.Id];
-		Assert.areEqual('After', updated?.Name, 'Lost the 1st input\'s change');
-		Assert.isNull(updated?.Phone, 'Saved the 2nd input\'s copy, not the 1st');
+		// Like a DML statement, the operation rejects an Id listed twice:
+		Assert.isNotNull(caughtError, 'Did not throw a System.ListException');
 	}
 
 	@IsTest

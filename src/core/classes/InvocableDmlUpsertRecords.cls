@@ -51,20 +51,21 @@ public inherited sharing class InvocableDmlUpsertRecords extends InvocableDml {
 	protected override List<InvocableDmlResult> doDml(List<SObject> records, InvocableDml.Input settings) {
 		Boolean allOrNone = settings?.toAllOrNone();
 		System.AccessLevel accessLevel = settings?.toAccessLevel();
+		SObjectField externalIdField = InvocableDmlUpsertRecords.getExternalIdField(records, settings);
 		List<Database.UpsertResult> results = DatabaseLayer.Dml
-			?.doUpsert(records, this.matchField, allOrNone, accessLevel);
+			?.doUpsert(records, externalIdField, allOrNone, accessLevel);
 		return InvocableDmlResult.fromList(results);
 	}
 
+	// **** PRIVATE **** //
 	/**
-	 * @description Upserts identify records by the external ID field, so inputs that share a value list one record.
-	 * Flow passes the field by name; an unknown name throws, since upserting on Ids instead could duplicate records
+	 * @description Flow passes the field by name; an unknown name throws, since matching on Ids could duplicate records
 	 * @param records Every input's records; the first one supplies the object
 	 * @param settings The input whose external ID field applies to the operation
 	 * @return The external ID field, or null to identify records by Id
 	 * @throws System.IllegalArgumentException When the object has no field by that name
 	 */
-	protected override SObjectField getMatchField(List<SObject> records, InvocableDml.Input settings) {
+	private static SObjectField getExternalIdField(List<SObject> records, InvocableDml.Input settings) {
 		SObjectField field;
 		String fieldName = settings?.externalIdField?.trim();
 		if (String.isNotBlank(fieldName)) {
@@ -81,7 +82,6 @@ public inherited sharing class InvocableDmlUpsertRecords extends InvocableDml {
 		return field;
 	}
 
-	// **** PRIVATE **** //
 	/**
 	 * @description The editor calls this through Lightning, which only shows an AuraHandledException's message
 	 * @param objectApiName The object to describe

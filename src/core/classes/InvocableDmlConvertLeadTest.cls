@@ -111,30 +111,6 @@ private class InvocableDmlConvertLeadTest {
 	}
 
 	@IsTest
-	private static void shouldConvertSharedLeadOnce() {
-		DatabaseLayer.useMockDml();
-		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
-		Id leadId = MockRecord.initRecordId(Lead.SObjectType);
-		List<InvocableDmlConvertLead.Input> inputs = new List<InvocableDmlConvertLead.Input>{
-			InvocableDmlConvertLeadTest.initInput(leadId),
-			InvocableDmlConvertLeadTest.initInput(leadId)
-		};
-
-		Test.startTest();
-		List<InvocableDmlConvertLead.Output> outputs = InvocableDmlConvertLead.invoke(inputs);
-		Test.stopTest();
-
-		Dml.Request request = DatabaseLayerTestUtils.DmlPluginSpy?.lastDmlRequest;
-		Assert.areEqual(1, request?.leadsToConvert?.size(), 'Converted the shared lead more than once');
-		Assert.areEqual(2, outputs?.size(), 'Wrong # of outputs');
-		for (InvocableDmlConvertLead.Output output : outputs) {
-			Assert.isTrue(output?.result?.isSuccess, 'Shared lead failed: ' + output?.result?.errors);
-			Assert.areEqual(leadId, output?.result?.id, 'Result does not match its lead');
-		}
-		Assert.areEqual(outputs?.get(0)?.accountId, outputs?.get(1)?.accountId, 'Outputs got different accounts');
-	}
-
-	@IsTest
 	private static void shouldDoNothingWithoutInputs() {
 		DatabaseLayer.useMockDml();
 		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());

@@ -19,8 +19,8 @@ public inherited sharing class InvocableDmlConvertLead {
 	public static List<InvocableDmlConvertLead.Output> invoke(List<InvocableDmlConvertLead.Input> inputs) {
 		List<InvocableDmlConvertLead.Output> outputs = new List<InvocableDmlConvertLead.Output>{};
 		if (inputs?.isEmpty() == false) {
-			Map<Id, Database.LeadConvertResult> resultsByLeadId = InvocableDmlConvertLead.convertLeads(inputs);
-			outputs = InvocableDmlConvertLead.initOutputs(inputs, resultsByLeadId);
+			List<Database.LeadConvertResult> results = InvocableDmlConvertLead.convertLeads(inputs);
+			outputs = InvocableDmlConvertLead.initOutputs(results);
 		}
 		return outputs;
 	}
@@ -29,70 +29,42 @@ public inherited sharing class InvocableDmlConvertLead {
 	/**
 	 * @description Goes through DatabaseLayer.Dml, so plugins and MockDml apply to flows too
 	 * @param inputs One input per flow interview; the first one's settings apply to all
-	 * @return Each lead's result, by lead Id
+	 * @return One result per input, in the same order
 	 */
-	private static Map<Id, Database.LeadConvertResult> convertLeads(List<InvocableDmlConvertLead.Input> inputs) {
+	private static List<Database.LeadConvertResult> convertLeads(List<InvocableDmlConvertLead.Input> inputs) {
 		List<Database.LeadConvert> leadsToConvert = InvocableDmlConvertLead.initLeadConverts(inputs);
 		InvocableDml.Input settings = inputs?.get(0)?.toSettings();
 		Database.DmlOptions options = settings?.toDmlOptions();
 		System.AccessLevel accessLevel = settings?.toAccessLevel();
-		List<Database.LeadConvertResult> results = DatabaseLayer.Dml?.doConvert(leadsToConvert, options, accessLevel);
-		return InvocableDmlConvertLead.mapResults(leadsToConvert, results);
+		return DatabaseLayer.Dml?.doConvert(leadsToConvert, options, accessLevel);
 	}
 
 	/**
-	 * @description Inputs that convert the same lead share one conversion, since converting a lead twice in one call
-	 * fails it; the first such input's options apply
+	 * @description Each input converts its own lead, with its own options
 	 * @param inputs One input per flow interview
-	 * @return One lead to convert per distinct lead Id
+	 * @return One lead to convert per input, in the same order
 	 */
 	private static List<Database.LeadConvert> initLeadConverts(List<InvocableDmlConvertLead.Input> inputs) {
-		Map<Id, Database.LeadConvert> leadsToConvert = new Map<Id, Database.LeadConvert>{};
+		List<Database.LeadConvert> leadsToConvert = new List<Database.LeadConvert>{};
 		for (InvocableDmlConvertLead.Input input : inputs) {
-			if (leadsToConvert?.containsKey(input?.leadId) == false) {
-				Database.LeadConvert leadToConvert = input?.toLeadConvert();
-				leadsToConvert?.put(input?.leadId, leadToConvert);
-			}
+			Database.LeadConvert leadToConvert = input?.toLeadConvert();
+			leadsToConvert?.add(leadToConvert);
 		}
-		return leadsToConvert?.values();
+		return leadsToConvert;
 	}
 
 	/**
-	 * @description Each input takes its lead's result, so inputs that share a lead share its result
-	 * @param inputs One input per flow interview
-	 * @param resultsByLeadId Each lead's result, by lead Id
+	 * @description Results come back in conversion order, which is input order
+	 * @param results The conversion's results
 	 * @return One output per input, in the same order
 	 */
-	private static List<InvocableDmlConvertLead.Output> initOutputs(
-		List<InvocableDmlConvertLead.Input> inputs,
-		Map<Id, Database.LeadConvertResult> resultsByLeadId
-	) {
+	private static List<InvocableDmlConvertLead.Output> initOutputs(List<Database.LeadConvertResult> results) {
 		List<InvocableDmlConvertLead.Output> outputs = new List<InvocableDmlConvertLead.Output>{};
-		for (InvocableDmlConvertLead.Input input : inputs) {
-			Database.LeadConvertResult result = resultsByLeadId?.get(input?.leadId);
+		for (Database.LeadConvertResult result : results) {
 			InvocableDmlConvertLead.Output output = new InvocableDmlConvertLead.Output(result);
 			outputs?.add(output);
 		}
 		return outputs;
-	}
-
-	/**
-	 * @description Results come back in conversion order, so each lines up with its lead by position
-	 * @param leadsToConvert The leads converted
-	 * @param results The conversion's results
-	 * @return Each lead's result, by lead Id
-	 */
-	private static Map<Id, Database.LeadConvertResult> mapResults(
-		List<Database.LeadConvert> leadsToConvert,
-		List<Database.LeadConvertResult> results
-	) {
-		Map<Id, Database.LeadConvertResult> resultsByLeadId = new Map<Id, Database.LeadConvertResult>{};
-		for (Integer index = 0; index < leadsToConvert?.size(); index++) {
-			Id leadId = leadsToConvert?.get(index)?.getLeadId();
-			Database.LeadConvertResult result = results?.get(index);
-			resultsByLeadId?.put(leadId, result);
-		}
-		return resultsByLeadId;
 	}
 
 	// **** INNER **** //
