@@ -187,6 +187,11 @@ const GLOBAL_VARIABLES = [
 	}
 ];
 
+// Built once, since canDrill checks $Api's ~140 fields on every keystroke
+const GLOBALS_BY_VALUE = new Map(GLOBAL_VARIABLES.map((global) => [global.value, initGlobal(global)]));
+// Scopes walk the flow's connectors, so each builder context gets one per element, not one per keystroke
+const SCOPES = new WeakMap();
+
 const GLOBAL_CONSTANTS = [
 	{ value: "$GlobalConstant.False", label: "False", dataType: "Boolean" },
 	{ value: "$GlobalConstant.True", label: "True", dataType: "Boolean" },
@@ -221,7 +226,8 @@ export async function getChildSections(item, context, target, describeObject) {
 		[DRILL_OUTPUTS]: getOutputSections,
 		[DRILL_RECORD]: getRecordSections
 	};
-	const loader = loaders[item?.drillType];
+	// Flow can't reference a collection's fields, so a collection has nothing to drill into, even when typed
+	const loader = item?.isCollection ? null : loaders[item?.drillType];
 	const sections = loader ? await loader(item, context, describeObject) : [];
 	return applyTarget(sections, target, context);
 }
@@ -320,7 +326,7 @@ export function isAssignable(item, target) {
 	const matchesShape = target?.isCollection == null || item.isCollection === target.isCollection;
 	const matchesRecord = item.dataType === SOBJECT && matchesShape && matchesObject;
 	const isScalar = Boolean(item.dataType) && !item.isCollection && ![SOBJECT, "Apex"].includes(item.dataType);
-	const matchesScalar = isScalar && (target?.dataType === "String" || item.dataType === target?.dataType);
+	const matchesScalar = isScalar && item.dataType === target?.dataType;
 	// Typing mustn't reach values that a picklist-only target doesn't list
 	const isListed =
 		Boolean(item.isLiteral) && (target?.picklistValues ?? []).some(({ value }) => value === item.value);
@@ -387,13 +393,7 @@ function findItem(sections, value) {
  * @returns {Object} `{ label, items }`
  */
 function findGlobal(value) {
-	const global = GLOBAL_VARIABLES.find((candidate) => candidate.value === value);
-	const items = Object.entries(global.fields).flatMap(([dataType, names]) =>
-		names.map((name) =>
-			initItem({ value: `${value}.${name}`, label: name, pathLabel: `${value} > ${name}`, dataType })
-		)
-	);
-	return { label: global.label, items };
+	return GLOBALS_BY_VALUE.get(value);
 }
 
 /**
@@ -481,6 +481,68 @@ function initFieldItem(field, parent) {
 	const dataType = FLOW_TYPES_BY_FIELD_TYPE[field.dataType] ?? "String";
 	const value = `${parent.value}.${field.apiName}`;
 	return initItem({ value, label: field.label, pathLabel: `${parent.pathLabel} > ${field.label}`, dataType });
+}
+
+/**
+ * @description Builds the item for each Collection Filter element: a collection like the one it filters. Collection
+ * Sort elements sort in place, so they add no resource.
+ * @param {Object} builderContext The CPE's builder context
+ * @param {Array} collections Items the filters may filter
+ * @param {Object} context Used to look up action outputs and object labels
+ * @param {Object} scope Which filters can run before the element being edited
+ * @returns {Array} The filter items
+ */
+function initFilterItems(builderContext, collections, context, scope) {
+	const filters = (builderContext.collectionProcessors ?? []).filter(
+		(processor) => processor.elementSubtype === "FilterCollectionProcessor"
+	);
+	// shortcut: a filter of a filter resolves only when listed after it; resolve recursively if flows list them out of order
+	const items = filters.reduce((filtered, filter) => {
+		const source =
+			[...collections, ...filtered].find((item) => item.value === filter.collectionReference) ??
+			resolveOutput(filter.collectionReference, context);
+		return [...filtered, initFilterItem(filter, source, context)];
+	}, []);
+	return items.filter((item) => scope.isUpstream(item.value));
+}
+
+/**
+ * @description Builds a Collection Filter element's item, labeled like Get Records'.
+ * @param {Object} filter The Collection Filter element
+ * @param {Object} source The item for the collection it filters, if known
+ * @param {Object} context Supplies the object's labels, once known
+ * @returns {Object} The filter's item
+ */
+function initFilterItem(filter, source, context) {
+	const isRecord = source?.dataType === SOBJECT;
+	const objectLabel = context?.objectLabels?.[source?.objectType]?.labelPlural ?? source?.objectType;
+	return initItem({
+		value: filter.name,
+		label: isRecord ? `${objectLabel} from ${filter.label}` : filter.label,
+		dataType: source?.dataType,
+		objectType: source?.objectType,
+		isCollection: true,
+		drillType: isRecord ? DRILL_RECORD : null
+	});
+}
+
+/**
+ * @description Builds a global variable's fields as items.
+ * @param {Object} global The global variable's definition
+ * @returns {Object} `{ label, items }`
+ */
+function initGlobal(global) {
+	const items = Object.entries(global.fields).flatMap(([dataType, names]) =>
+		names.map((name) =>
+			initItem({
+				value: `${global.value}.${name}`,
+				label: name,
+				pathLabel: `${global.value} > ${name}`,
+				dataType
+			})
+		)
+	);
+	return { label: global.label, items };
 }
 
 /**
@@ -618,12 +680,13 @@ function initRelationshipItem(field, parent) {
  */
 function initResourceSections(context) {
 	const builderContext = context?.builderContext ?? {};
-	const scope = initScope(builderContext, context?.elementName);
+	const scope = getScope(builderContext, context?.elementName);
 	const variables = (builderContext.variables ?? []).map(initVariableItem);
 	const lookups = (builderContext.recordLookups ?? [])
 		.filter((lookup) => lookup.storeOutputAutomatically && scope.isUpstream(lookup.name))
 		.map((lookup) => initLookupItem(lookup, context));
-	const loops = initLoopItems(builderContext, [...variables, ...lookups], context, scope);
+	const filters = initFilterItems(builderContext, [...variables, ...lookups], context, scope);
+	const loops = initLoopItems(builderContext, [...variables, ...lookups, ...filters], context, scope);
 	const triggers = initTriggerItems(builderContext, context);
 	const quickResources = initSection("Quick Resources", [...triggers, ...loops], false);
 	const actions = initActionItems(builderContext, context, scope);
@@ -643,6 +706,7 @@ function initResourceSections(context) {
 		// Flow Builder divides quick resources from the rest of the menu
 		{ ...quickResources, hasDivider: true },
 		initSection("Action", actions),
+		initSection("Collection Filter", filters),
 		initSection("Get Records", lookups),
 		initSection("Choices", choices),
 		initSection("Constants", constants),
@@ -764,9 +828,8 @@ function findSources(elements, target) {
 	});
 	const sources = new Set();
 	const queue = [target];
-	while (queue.length) {
-		const current = queue.shift();
-		const unseen = (sourcesByTarget.get(current) ?? []).filter((source) => !sources.has(source));
+	for (let index = 0; index < queue.length; index++) {
+		const unseen = (sourcesByTarget.get(queue[index]) ?? []).filter((source) => !sources.has(source));
 		unseen.forEach((source) => sources.add(source));
 		queue.push(...unseen);
 	}
@@ -775,19 +838,20 @@ function findSources(elements, target) {
 
 /**
  * @description Finds the elements in a loop's "For Each" path.
- * @param {Array} elements Every element in the flow
+ * @param {Map} elementsByName Every element in the flow, by API name
  * @param {Object} loop The loop
  * @returns {Set} The API names of elements that run once per item
  */
-function findLoopBody(elements, loop) {
-	const elementsByName = new Map(elements.map((element) => [element.name, element]));
+function findLoopBody(elementsByName, loop) {
 	const body = new Set();
 	const queue = [loop.nextValueConnector?.targetReference].filter(Boolean);
-	while (queue.length) {
-		const current = queue.shift();
+	// An index, not shift(), keeps the walk linear in large flows
+	for (let index = 0; index < queue.length; index++) {
+		const current = queue[index];
 		if (current !== loop.name && !body.has(current)) {
 			body.add(current);
-			queue.push(...getTargets(elementsByName.get(current) ?? {}));
+			const element = elementsByName.get(current) ?? {};
+			queue.push(...getTargets(element));
 		}
 	}
 	return body;
@@ -823,12 +887,36 @@ function initScope(builderContext, elementName) {
 	// Every list in the context, so new element types are walked too; resources like variables have no connectors
 	const lists = Object.values(builderContext).filter(Array.isArray);
 	const elements = [builderContext.start ?? {}, ...lists.flat()];
-	const isKnown = Boolean(elementName) && elements.some((element) => element.name === elementName);
+	const elementsByName = new Map(elements.map((element) => [element.name, element]));
+	const isKnown = Boolean(elementName) && elementsByName.has(elementName);
 	const sources = isKnown ? findSources(elements, elementName) : null;
+	const loopBodies = new Map();
+	const getLoopBody = (loop) => {
+		if (!loopBodies.has(loop.name)) {
+			loopBodies.set(loop.name, findLoopBody(elementsByName, loop));
+		}
+		return loopBodies.get(loop.name);
+	};
 	return {
-		isInLoop: (loop) => !sources || findLoopBody(elements, loop).has(elementName),
+		isInLoop: (loop) => !sources || getLoopBody(loop).has(elementName),
 		isUpstream: (name) => !sources || sources.has(name)
 	};
+}
+
+/**
+ * @description Reuses the scope already worked out for this builder context and element, since Flow Builder sends a
+ * new builder context whenever the flow changes
+ * @param {Object} builderContext The CPE's builder context
+ * @param {String} elementName The API name of the element being edited
+ * @returns {Object} `{ isUpstream(name), isInLoop(loop) }`
+ */
+function getScope(builderContext, elementName) {
+	const scopes = SCOPES.get(builderContext) ?? new Map();
+	if (!scopes.has(elementName)) {
+		scopes.set(elementName, initScope(builderContext, elementName));
+		SCOPES.set(builderContext, scopes);
+	}
+	return scopes.get(elementName);
 }
 
 /**

@@ -448,14 +448,24 @@ describe("c-flow-resource-picker", () => {
 			valueDataType: "String"
 		});
 
-		await editPill(element);
-		await type(element, "{!$GlobalConstant.False}");
-		await blur(element);
-		expect(lastChange(onChange)).toEqual({
-			name: "accessLevel",
+		const boolean = await render({ name: "allOrNone", type: "Boolean" });
+		await type(boolean.element, "{!$GlobalConstant.False}");
+		await blur(boolean.element);
+		expect(lastChange(boolean.onChange)).toEqual({
+			name: "allOrNone",
 			value: "$GlobalConstant.False",
 			valueDataType: "Boolean"
 		});
+	});
+
+	it("rejects a typed resource of another type, restoring the previous value", async () => {
+		const { element, onChange } = await render();
+
+		await type(element, "{!$GlobalConstant.False}");
+		await blur(element);
+
+		expect(onChange).not.toHaveBeenCalled();
+		expect(input(element).value).toBe("");
 	});
 
 	it("clears the value when the text is erased", async () => {
