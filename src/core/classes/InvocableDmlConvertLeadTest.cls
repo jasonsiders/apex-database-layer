@@ -103,11 +103,66 @@ private class InvocableDmlConvertLeadTest {
 		List<InvocableDmlConvertLead.Output> outputs = InvocableDmlConvertLead.invoke(inputs);
 		Test.stopTest();
 
-		Assert.areEqual(1, DatabaseLayerTestUtils.DmlPluginSpy?.numPreCalls, 'Wrong # of DML operations');
+		// convertLead takes at most 100 leads per call
+		Assert.areEqual(2, DatabaseLayerTestUtils.DmlPluginSpy?.numPreCalls, 'Wrong # of DML operations');
+		Assert.areEqual(
+			100,
+			DatabaseLayerTestUtils.DmlPluginSpy?.lastDmlRequest?.leadsToConvert?.size(),
+			'Wrong chunk size'
+		);
 		Assert.areEqual(TEST_SIZE, outputs?.size(), 'Wrong # of outputs');
 		for (Integer i = 0; i < TEST_SIZE; i++) {
 			Assert.areEqual(inputs?.get(i)?.leadId, outputs?.get(i)?.result?.id, 'Output is out of order');
 		}
+	}
+
+	@IsTest
+	private static void shouldConvertSharedLeadOnce() {
+		DatabaseLayer.useMockDml();
+		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
+		Id leadId = MockRecord.initRecordId(Lead.SObjectType);
+		List<InvocableDmlConvertLead.Input> inputs = new List<InvocableDmlConvertLead.Input>{
+			InvocableDmlConvertLeadTest.initInput(leadId),
+			InvocableDmlConvertLeadTest.initInput(leadId)
+		};
+
+		Test.startTest();
+		List<InvocableDmlConvertLead.Output> outputs = InvocableDmlConvertLead.invoke(inputs);
+		Test.stopTest();
+
+		Dml.Request request = DatabaseLayerTestUtils.DmlPluginSpy?.lastDmlRequest;
+		Assert.areEqual(1, request?.leadsToConvert?.size(), 'Converted the shared lead more than once');
+		Assert.areEqual(2, outputs?.size(), 'Wrong # of outputs');
+		for (InvocableDmlConvertLead.Output output : outputs) {
+			Assert.isTrue(output?.result?.isSuccess, 'Shared lead failed: ' + output?.result?.errors);
+			Assert.areEqual(leadId, output?.result?.id, 'Result does not match its lead');
+		}
+		Assert.areEqual(outputs?.get(0)?.accountId, outputs?.get(1)?.accountId, 'Outputs got different accounts');
+	}
+
+	@IsTest
+	private static void shouldRollBackEarlierChunksOnFailure() {
+		DatabaseLayer.useMockDml();
+		List<InvocableDmlConvertLead.Input> inputs = new List<InvocableDmlConvertLead.Input>{};
+		for (Integer i = 0; i < TEST_SIZE; i++) {
+			Id leadId = MockRecord.initRecordId(Lead.SObjectType);
+			InvocableDmlConvertLead.Input input = InvocableDmlConvertLeadTest.initInput(leadId);
+			inputs?.add(input);
+		}
+		Id failingLeadId = inputs?.get(TEST_SIZE - 1)?.leadId;
+		MockDml.shouldFailIf(new InvocableDmlConvertLeadTest.LeadFailure(failingLeadId));
+
+		Test.startTest();
+		try {
+			InvocableDmlConvertLead.invoke(inputs);
+			Assert.fail('Did not throw an error');
+		} catch (System.DmlException error) {
+			// As expected...
+		}
+		Test.stopTest();
+
+		MockDml.Savepoint savepoint = MockDml.SAVEPOINTS?.getAll()?.get(0);
+		Assert.isTrue(savepoint?.wasRolledBack, 'Did not roll back the earlier chunk');
 	}
 
 	@IsTest
@@ -139,5 +194,19 @@ private class InvocableDmlConvertLeadTest {
 		input.convertedStatus = CONVERTED_STATUS;
 		input.leadId = leadId;
 		return input;
+	}
+
+	// **** INNER **** //
+	private class LeadFailure implements MockDml.ConditionalFailure {
+		private Id leadId;
+
+		private LeadFailure(Id leadId) {
+			this.leadId = leadId;
+		}
+
+		public Exception checkFailure(Dml.Operation operation, SObject record) {
+			Boolean isMatch = operation == Dml.Operation.DO_CONVERT && record?.Id == this.leadId;
+			return isMatch ? new System.DmlException('Test failure') : null;
+		}
 	}
 }
