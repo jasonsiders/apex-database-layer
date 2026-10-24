@@ -1,6 +1,6 @@
 /**
- * Builds the menus for `c-flow-resource-picker` from a Custom Property Editor's `builderContext`, mirroring the
- * categories, order, icons, and drill-down of Flow Builder's own resource picker.
+ * @description Builds the menus for `c-flow-resource-picker` from a Custom Property Editor's `builderContext`,
+ * mirroring the categories, order, icons, and drill-down of Flow Builder's own resource picker.
  */
 const DRILL_GLOBAL = "global";
 const DRILL_OUTPUTS = "outputs";
@@ -188,7 +188,8 @@ const GLOBAL_VARIABLES = [
 ];
 
 // Built once, since canDrill checks $Api's ~140 fields on every keystroke
-const GLOBALS_BY_VALUE = new Map(GLOBAL_VARIABLES.map((global) => [global.value, initGlobal(global)]));
+const GLOBAL_ENTRIES = GLOBAL_VARIABLES.map((global) => [global.value, initGlobal(global)]);
+const GLOBALS_BY_VALUE = new Map(GLOBAL_ENTRIES);
 // Scopes walk the flow's connectors, so each builder context gets one per element, not one per keystroke
 const SCOPES = new WeakMap();
 
@@ -199,9 +200,10 @@ const GLOBAL_CONSTANTS = [
 ];
 
 /**
- * @description Builds the top-level menu: every resource in the flow that fits the target input, or contains one that does.
+ * @description Builds the top-level menu: each resource that fits the target input, or contains one that does.
  * @param {Object} context `{ builderContext, automaticOutputVariables, objectLabels }`
- * @param {Object} target The input being configured: `{ dataType, isCollection, isPicklistOnly, objectType, picklistValues }`. Null includes everything; a record target without `isCollection` takes either.
+ * @param {Object} target The input being configured: `{ dataType, isCollection, isPicklistOnly, objectType,
+ * picklistValues }`. Null includes everything; a record target without `isCollection` takes either.
  * @returns {Array} Sections of `{ label, items, hasDivider }`, in Flow Builder's order
  */
 export function getRootSections(context, target) {
@@ -213,7 +215,8 @@ export function getRootSections(context, target) {
 }
 
 /**
- * @description Builds the menu for drilling into an item: a record's fields, an action's outputs, or a global variable's fields.
+ * @description Builds the menu for drilling into an item: a record's fields, an action's outputs, or a global
+ * variable's fields.
  * @param {Object} item The item to drill into
  * @param {Object} context `{ builderContext, automaticOutputVariables, objectLabels }`
  * @param {Object} target The input being configured. Null includes everything.
@@ -285,8 +288,8 @@ export function toBooleanConstant(value) {
 /**
  * @description Reads the picker's text: a partial or complete merge field, or a plain search term.
  * @param {String} text The text in the picker's input
- * @returns {Object} `{ isReference, isComplete, path, parentPath, searchTerm }`, where `path` has no merge field braces,
- * and a reference's last segment is its search term, ex: `{!accountVar.Na` searches `accountVar` for `Na`
+ * @returns {Object} `{ isReference, isComplete, path, parentPath, searchTerm }`, where `path` has no merge field
+ * braces, and a reference's last segment is its search term, ex: `{!accountVar.Na` searches `accountVar` for `Na`
  */
 export function parseInput(text) {
 	const trimmed = text?.trim() ?? "";
@@ -295,11 +298,12 @@ export function parseInput(text) {
 	const body = isReference ? trimmed.slice(2) : trimmed;
 	const path = isComplete ? body.slice(0, -1) : body;
 	const lastDot = isReference ? path.lastIndexOf(".") : -1;
+	const parentEnd = Math.max(lastDot, 0);
 	return {
 		isReference,
 		isComplete,
 		path,
-		parentPath: path.slice(0, Math.max(lastDot, 0)),
+		parentPath: path.slice(0, parentEnd),
 		searchTerm: path.slice(lastDot + 1)
 	};
 }
@@ -367,7 +371,7 @@ function applyTarget(sections, target, context) {
 function canDrill(item, target, context) {
 	const isRecordTarget = target?.dataType === SOBJECT;
 	const checks = {
-		[DRILL_GLOBAL]: () => findGlobal(item.value).items.some((field) => isAssignable(field, target)),
+		[DRILL_GLOBAL]: () => GLOBALS_BY_VALUE.get(item.value).items.some((field) => isAssignable(field, target)),
 		[DRILL_OUTPUTS]: () =>
 			initOutputItems(item, context).some(
 				(output) => isAssignable(output, target) || canDrill(output, target, context)
@@ -388,21 +392,12 @@ function findItem(sections, value) {
 }
 
 /**
- * @description Finds a global variable's definition, with its fields as items.
- * @param {String} value The global variable, ex: `$User`
- * @returns {Object} `{ label, items }`
- */
-function findGlobal(value) {
-	return GLOBALS_BY_VALUE.get(value);
-}
-
-/**
  * @description Lists a global variable's fields.
  * @param {Object} item The global variable's item
  * @returns {Array} One section, labeled for the global variable
  */
 function getGlobalSections(item) {
-	const global = findGlobal(item.value);
+	const global = GLOBALS_BY_VALUE.get(item.value);
 	return [initSection(global.label, global.items, false)];
 }
 
@@ -418,7 +413,7 @@ function getOutputSections(item, context) {
 }
 
 /**
- * @description Lists a record's fields; an object that can't be described (deleted, or no access) has none to drill into
+ * @description Lists a record's fields; an object that can't be described (deleted, or no access) has none
  * @param {Object} item The record's item
  * @param {Object} context Unused; matches the other loaders' signature
  * @param {Function} describeObject Resolves an object's describe, given its API name
@@ -496,7 +491,7 @@ function initFilterItems(builderContext, collections, context, scope) {
 	const filters = (builderContext.collectionProcessors ?? []).filter(
 		(processor) => processor.elementSubtype === "FilterCollectionProcessor"
 	);
-	// shortcut: a filter of a filter resolves only when listed after it; resolve recursively if flows list them out of order
+	// shortcut: a filter of a filter resolves only when listed after it; resolve recursively if flows misorder them
 	const items = filters.reduce((filtered, filter) => {
 		const source =
 			[...collections, ...filtered].find((item) => item.value === filter.collectionReference) ??
@@ -667,7 +662,7 @@ function initRelationshipItem(field, parent) {
 		label: field.label,
 		pathLabel: `${parent.pathLabel} > ${field.label}`,
 		dataType: SOBJECT,
-		// shortcut: polymorphic lookups (ex: Owner on Case) drill into their first type; list each type if users need others
+		// shortcut: polymorphic lookups (ex: Owner on Case) drill into their first type; list each type if users ask
 		objectType: field.referenceToInfos[0].apiName,
 		drillType: DRILL_RECORD
 	});
@@ -822,9 +817,10 @@ function resolveOutput(reference, context) {
 function findSources(elements, target) {
 	const sourcesByTarget = new Map();
 	elements.forEach((element) => {
-		getTargets(element).forEach((next) =>
-			sourcesByTarget.set(next, [...(sourcesByTarget.get(next) ?? []), element.name])
-		);
+		getTargets(element).forEach((next) => {
+			const sources = sourcesByTarget.get(next) ?? [];
+			sourcesByTarget.set(next, [...sources, element.name]);
+		});
 	});
 	const sources = new Set();
 	const queue = [target];
@@ -851,7 +847,8 @@ function findLoopBody(elementsByName, loop) {
 		if (current !== loop.name && !body.has(current)) {
 			body.add(current);
 			const element = elementsByName.get(current) ?? {};
-			queue.push(...getTargets(element));
+			const targets = getTargets(element);
+			queue.push(...targets);
 		}
 	}
 	return body;
@@ -887,13 +884,15 @@ function initScope(builderContext, elementName) {
 	// Every list in the context, so new element types are walked too; resources like variables have no connectors
 	const lists = Object.values(builderContext).filter(Array.isArray);
 	const elements = [builderContext.start ?? {}, ...lists.flat()];
-	const elementsByName = new Map(elements.map((element) => [element.name, element]));
+	const entries = elements.map((element) => [element.name, element]);
+	const elementsByName = new Map(entries);
 	const isKnown = Boolean(elementName) && elementsByName.has(elementName);
 	const sources = isKnown ? findSources(elements, elementName) : null;
 	const loopBodies = new Map();
 	const getLoopBody = (loop) => {
 		if (!loopBodies.has(loop.name)) {
-			loopBodies.set(loop.name, findLoopBody(elementsByName, loop));
+			const body = findLoopBody(elementsByName, loop);
+			loopBodies.set(loop.name, body);
 		}
 		return loopBodies.get(loop.name);
 	};
@@ -913,7 +912,8 @@ function initScope(builderContext, elementName) {
 function getScope(builderContext, elementName) {
 	const scopes = SCOPES.get(builderContext) ?? new Map();
 	if (!scopes.has(elementName)) {
-		scopes.set(elementName, initScope(builderContext, elementName));
+		const scope = initScope(builderContext, elementName);
+		scopes.set(elementName, scope);
 		SCOPES.set(builderContext, scopes);
 	}
 	return scopes.get(elementName);

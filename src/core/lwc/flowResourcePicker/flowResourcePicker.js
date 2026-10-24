@@ -8,16 +8,15 @@ import {
 	parseInput,
 	REFERENCE,
 	REQUIRED_ERROR,
-	resolveItem,
-	toBooleanConstant
+	resolveItem
 } from "c/flowResourceMenu";
 
 const GLOBAL_CONSTANT_PREFIX = "$GlobalConstant.";
 const ROOT_LABEL = "All Resources";
 
 /**
- * @description A promise with its `resolve` and `reject`, like `Promise.withResolvers`, which browsers before Chrome 119
- * and Safari 17.4 lack
+ * @description A promise with its `resolve` and `reject`, like `Promise.withResolvers`, which Chrome before 119 and
+ * Safari before 17.4 lack
  * @returns {Object} `{ promise, resolve, reject }`
  */
 function initDeferred() {
@@ -39,9 +38,9 @@ function toValueDataType(item) {
 }
 
 /**
- * Flow Builder's resource picker, for Custom Property Editors: a combobox that searches the flow's resources, drills
- * into records, action outputs, and global variables, and accepts literal values. Fires `change` with
- * `{ name, value, valueDataType }`, where `valueDataType` is `reference` for resources.
+ * @description Flow Builder's resource picker, for Custom Property Editors: a combobox that searches the flow's
+ * resources, drills into records, action outputs, and global variables, and accepts literal values. Fires `change`
+ * with `{ name, value, valueDataType }`, where `valueDataType` is `reference` for resources.
  */
 export default class FlowResourcePicker extends LightningElement {
 	/**
@@ -65,7 +64,7 @@ export default class FlowResourcePicker extends LightningElement {
 	 */
 	@api helpText;
 	/**
-	 * @description Whether the record input takes a collection; unset accepts either, like Flow Builder's Update Records
+	 * @description Whether the record input takes a collection; unset accepts either, like Update Records
 	 * @type {Boolean}
 	 */
 	@api isCollection;
@@ -105,7 +104,8 @@ export default class FlowResourcePicker extends LightningElement {
 	 */
 	@api required = false;
 	/**
-	 * @description The Flow data type the input accepts: `String`, `Boolean`, or `SObject`
+	 * @description The Flow data type of the resources the input accepts, ex: `String` or `SObject`; typed values save
+	 * as text
 	 * @type {String}
 	 */
 	@api type = "String";
@@ -204,10 +204,6 @@ export default class FlowResourcePicker extends LightningElement {
 		return this.isPicklistOnly ? "xx-small" : "x-small";
 	}
 
-	get isLabelHidden() {
-		return this.variant === "label-hidden";
-	}
-
 	get isOpen() {
 		// Like Flow Builder's field pickers, a picklist with nothing to offer stays closed
 		return this._isOpen && (this.hasOptions || !this.isPicklistOnly);
@@ -218,7 +214,7 @@ export default class FlowResourcePicker extends LightningElement {
 	}
 
 	get labelTextClass() {
-		return this.isLabelHidden ? "slds-assistive-text" : "";
+		return this.variant === "label-hidden" ? "slds-assistive-text" : "";
 	}
 
 	/**
@@ -449,8 +445,8 @@ export default class FlowResourcePicker extends LightningElement {
 
 	// **** PRIVATE **** //
 	/**
-	 * @description Describes an object on demand: adding it to the wire's objects fetches it, and Lightning Data Service
-	 * caches it across pickers. Objects are only ever appended, so results line up with them by position.
+	 * @description Describes an object on demand: adding it to the wire's objects fetches it, and Lightning Data
+	 * Service caches it across pickers. Objects are only ever appended, so results line up with them by position.
 	 * @param {String} objectApiName The object to describe
 	 * @returns {Promise<Object>} The object's UI API object info
 	 */
@@ -458,7 +454,8 @@ export default class FlowResourcePicker extends LightningElement {
 		if (!this._describes.has(objectApiName)) {
 			const names = this._describeNames ?? [];
 			const isNew = !names.includes(objectApiName);
-			this._describes.set(objectApiName, initDeferred());
+			const deferred = initDeferred();
+			this._describes.set(objectApiName, deferred);
 			// A new array even when retrying, so the wire fetches again
 			this._describeNames = isNew ? [...names, objectApiName] : [...names];
 		}
@@ -499,8 +496,8 @@ export default class FlowResourcePicker extends LightningElement {
 	}
 
 	/**
-	 * @description Saves anything the user typed, then closes the menu. Drilling by click only navigates, so the text it
-	 * leaves, ex: `{!accountVar.`, gives way to the current value again.
+	 * @description Saves anything the user typed, then closes the menu. Drilling by click only navigates, so the text
+	 * it leaves, ex: `{!accountVar.`, gives way to the current value again.
 	 */
 	_commitText() {
 		if (this._isDirty || this._isEditing) {
@@ -533,14 +530,6 @@ export default class FlowResourcePicker extends LightningElement {
 	}
 
 	/**
-	 * @description The data type to save literals as.
-	 * @returns {String} `Boolean` for boolean inputs, else `String`
-	 */
-	_literalDataType() {
-		return this.type === "Boolean" ? "Boolean" : "String";
-	}
-
-	/**
 	 * @description Rebuilds the menu for the current text: the resources in the drilled-into item, or at the root.
 	 */
 	async _loadMenu() {
@@ -567,7 +556,8 @@ export default class FlowResourcePicker extends LightningElement {
 	async _loadObjectLabels() {
 		const lookupObjects = (this._builderContext?.recordLookups ?? []).map((lookup) => lookup.object);
 		const triggerObject = this._builderContext?.start?.object;
-		const objects = new Set([...lookupObjects, triggerObject].filter(Boolean));
+		const objectApiNames = [...lookupObjects, triggerObject].filter(Boolean);
+		const objects = new Set(objectApiNames);
 		const requests = [...objects].map((objectApiName) =>
 			this._describeObject(objectApiName)
 				.then((describe) => [objectApiName, { label: describe.label, labelPlural: describe.labelPlural }])
@@ -575,7 +565,8 @@ export default class FlowResourcePicker extends LightningElement {
 				.catch(() => null)
 		);
 		const entries = await Promise.all(requests);
-		this._objectLabels = Object.fromEntries(entries.filter(Boolean));
+		const labeledEntries = entries.filter(Boolean);
+		this._objectLabels = Object.fromEntries(labeledEntries);
 		if (this._isOpen) {
 			this._loadMenu();
 		}
@@ -621,9 +612,8 @@ export default class FlowResourcePicker extends LightningElement {
 	async _refreshSelection() {
 		const refreshId = ++this._refreshId;
 		const value = this._value;
-		const booleanPath = this._valueDataType === "Boolean" ? toBooleanConstant(value) : null;
 		const isConstant = String(value).startsWith(GLOBAL_CONSTANT_PREFIX);
-		const path = this._valueDataType === REFERENCE || isConstant ? value : booleanPath;
+		const path = this._valueDataType === REFERENCE || isConstant ? value : null;
 		this._text = path || value == null ? "" : String(value);
 		// Flow Builder sets builderContext, value, and valueDataType together, so only the last one's refresh resolves
 		await Promise.resolve();
@@ -636,13 +626,12 @@ export default class FlowResourcePicker extends LightningElement {
 	}
 
 	/**
-	 * @description Saves the typed text as a reference (`{!path}`), a boolean constant, or a literal. An unfinished
-	 * merge field (ex: `{!accountVar.`), or a literal the input doesn't take, is discarded, restoring the previous value.
+	 * @description Saves the typed text as a reference (`{!path}`) or a text literal. An unfinished merge field (ex:
+	 * `{!accountVar.`), or a literal the input doesn't take, is discarded, restoring the previous value.
 	 */
 	_saveText() {
 		const parsed = parseInput(this._text);
-		const booleanConstant = this.type === "Boolean" ? toBooleanConstant(this._text) : null;
-		const referencePath = parsed.isComplete ? parsed.path : booleanConstant;
+		const referencePath = parsed.isComplete ? parsed.path : null;
 		const isUnfinished = parsed.isReference && !parsed.isComplete;
 		const hasText = this._text.trim() !== "";
 		const literal = { value: this._text, dataType: "String", isLiteral: true };
@@ -652,7 +641,7 @@ export default class FlowResourcePicker extends LightningElement {
 		} else if (isInvalid) {
 			this._refreshSelection();
 		} else {
-			this._emitChange(hasText ? this._text : null, hasText ? this._literalDataType() : null);
+			this._emitChange(hasText ? this._text : null, hasText ? "String" : null);
 		}
 	}
 
@@ -675,7 +664,7 @@ export default class FlowResourcePicker extends LightningElement {
 		if (item.isLiteral) {
 			this._selection = null;
 			this._text = item.value;
-			this._emitChange(item.value, this._literalDataType());
+			this._emitChange(item.value, "String");
 		} else {
 			this._selection = item;
 			this._text = "";

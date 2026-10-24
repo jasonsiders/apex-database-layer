@@ -42,7 +42,8 @@
 				<template for:each={matchModes} for:item="mode">
 					<div key={mode.value}>
 						<div class="slds-grid">
-							<!-- Native radios, unlike lightning-input's, share one shadow root, so the browser groups them for arrow keys and screen readers -->
+							<!-- Native radios, unlike lightning-input's, share one shadow root, so the browser groups
+								them for arrow keys and screen readers -->
 							<span class="slds-radio">
 								<input
 									type="radio"
@@ -59,7 +60,7 @@
 							</span>
 							<lightning-helptext lwc:if={mode.helpText} content={mode.helpText}></lightning-helptext>
 						</div>
-						<div lwc:if={mode.field} class="slds-m-left_small slds-size_small">
+						<div lwc:if={mode.field} class="slds-var-m-left_small slds-size_small">
 							<c-flow-resource-picker
 								data-name="externalIdField"
 								name="externalIdField"
@@ -83,20 +84,20 @@
 	<div lwc:if={action.options.length} class="editor-section slds-border_top">
 		<lightning-accordion allow-multiple-sections-open>
 			<lightning-accordion-section name="options" label="DML Options">
-				<template for:each={options} for:item="field">
+				<template for:each={options} for:item="option">
 					<div
-						key={field.name}
+						key={option.name}
 						class="slds-var-p-around_x-small slds-var-m-bottom_x-small slds-var-m-left_small"
 					>
 						<c-flow-resource-picker
-							lwc:if={field.allowsResources}
-							data-name={field.name}
-							name={field.name}
-							label={field.label}
-							help-text={field.helpText}
-							type={field.type}
-							value={field.value}
-							value-data-type={field.valueDataType}
+							lwc:if={option.allowsResources}
+							data-name={option.name}
+							name={option.name}
+							label={option.label}
+							help-text={option.helpText}
+							type={option.type}
+							value={option.value}
+							value-data-type={option.valueDataType}
 							builder-context={builderContext}
 							element-name={elementName}
 							automatic-output-variables={automaticOutputVariables}
@@ -105,13 +106,13 @@
 						<lightning-combobox
 							lwc:else
 							class="option-combobox"
-							data-name={field.name}
-							data-type={field.type}
-							name={field.name}
-							label={field.label}
-							field-level-help={field.helpText}
-							options={field.picklistValues}
-							value={field.value}
+							data-name={option.name}
+							data-type={option.type}
+							name={option.name}
+							label={option.label}
+							field-level-help={option.helpText}
+							options={option.picklistValues}
+							value={option.value}
 							onchange={handleOptionChange}
 						></lightning-combobox>
 					</div>

@@ -441,20 +441,6 @@ describe("c-flow-resource-picker", () => {
 		expect(lastChange(onChange)).toEqual({ name: "accessLevel", value: "Erp_Id__c", valueDataType: "String" });
 	});
 
-	it("commits typed true/false as a boolean global constant", async () => {
-		const { element, onChange } = await render({ type: "Boolean" });
-		await open(element);
-
-		await type(element, "TRUE");
-		await blur(element);
-
-		expect(lastChange(onChange)).toEqual({
-			name: "accessLevel",
-			value: "$GlobalConstant.True",
-			valueDataType: "Boolean"
-		});
-	});
-
 	it("saves global constants with their own data type, as Flow Builder requires", async () => {
 		const { element, onChange } = await render();
 		await open(element);
@@ -516,13 +502,9 @@ describe("c-flow-resource-picker", () => {
 		expect(remove.alternativeText).toBe("Remove accountVar > Owner ID > Email");
 	});
 
-	it("shows boolean values as global constant pills", async () => {
+	it("shows global constants as pills", async () => {
 		const { element } = await render({ type: "Boolean", value: "$GlobalConstant.True", valueDataType: "Boolean" });
 		expect(pillLabel(element)).toBe("True");
-
-		element.value = false;
-		await flush();
-		expect(pillLabel(element)).toBe("False");
 	});
 
 	it("shows unknown references as-is", async () => {
