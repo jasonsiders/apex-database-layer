@@ -49,8 +49,11 @@ private class InvocableDmlUpdateRecordsTest {
 		Test.startTest();
 		// A DML operation would throw on the duplicate Id, and fail both interviews:
 		List<InvocableDml.Output> outputs = InvocableDmlUpdateRecords.invoke(inputs);
+		// The inputs set different fields, so nothing needs the saved values
+		Integer numQueries = Limits.getQueries();
 		Test.stopTest();
 
+		Assert.areEqual(0, numQueries, 'Queried records whose copies agree');
 		for (InvocableDml.Output output : outputs) {
 			Assert.isTrue(output?.result?.isSuccess, 'Shared record failed: ' + output?.result?.errors);
 			Assert.areEqual(parent?.Id, output?.result?.id, 'Result does not match its record');
@@ -84,6 +87,37 @@ private class InvocableDmlUpdateRecordsTest {
 			Assert.isTrue(output?.result?.isSuccess, 'Shared record failed: ' + output?.result?.errors);
 		}
 		Account updated = [SELECT Name, Phone FROM Account WHERE Id = :parent.Id];
+		Assert.areEqual('After', updated?.Name, 'Lost the 1st input\'s change');
+		Assert.areEqual('555-0100', updated?.Phone, 'Lost the 2nd input\'s change');
+	}
+
+	@IsTest
+	private static void shouldKeepEachChangeToStaleCopies() {
+		Account parent = new Account(Name = 'Before');
+		insert parent;
+		// Each interview read the record, like Get Records, before either changed it
+		Account nameUpdate = [SELECT Id, Name, Phone FROM Account WHERE Id = :parent.Id];
+		nameUpdate.Name = 'After';
+		Account phoneUpdate = [SELECT Id, Name, Phone FROM Account WHERE Id = :parent.Id];
+		phoneUpdate.Phone = '555-0100';
+		List<InvocableDml.Input> inputs = new List<InvocableDml.Input>{};
+		for (Account record : new List<Account>{ nameUpdate, phoneUpdate }) {
+			InvocableDml.Input input = new InvocableDml.Input();
+			input.record = record;
+			inputs?.add(input);
+		}
+
+		Test.startTest();
+		List<InvocableDml.Output> outputs = InvocableDmlUpdateRecords.invoke(inputs);
+		Integer numQueries = Limits.getQueries();
+		Test.stopTest();
+
+		for (InvocableDml.Output output : outputs) {
+			Assert.isTrue(output?.result?.isSuccess, 'Shared record failed: ' + output?.result?.errors);
+		}
+		Assert.areEqual(1, numQueries, 'Wrong # of queries for the saved values');
+		Account updated = [SELECT Name, Phone FROM Account WHERE Id = :parent.Id];
+		// The 2nd copy's stale Name mustn't undo the 1st input's change
 		Assert.areEqual('After', updated?.Name, 'Lost the 1st input\'s change');
 		Assert.areEqual('555-0100', updated?.Phone, 'Lost the 2nd input\'s change');
 	}
