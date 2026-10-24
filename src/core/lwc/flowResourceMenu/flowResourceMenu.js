@@ -200,7 +200,8 @@ const GLOBAL_CONSTANTS = [
  * @returns {Array} Sections of `{ label, items, hasDivider }`, in Flow Builder's order
  */
 export function getRootSections(context, target) {
-	const picklist = initSection("Picklist Values", (target?.picklistValues ?? []).map(initPicklistItem), false);
+	const picklistItems = (target?.picklistValues ?? []).map(initPicklistItem);
+	const picklist = initSection("Picklist Values", picklistItems, false);
 	// A picklist-only target skips building the resources it would discard
 	const sections = target?.isPicklistOnly ? [picklist] : [picklist, ...initResourceSections(context)];
 	return applyTarget(sections, target, context);
@@ -307,6 +308,26 @@ export function compareLabels(first, second) {
 	return LABEL_COLLATOR.compare(first.label, second.label);
 }
 
+/**
+ * @description Whether the target input accepts the item.
+ * @param {Object} item The item to evaluate
+ * @param {Object} target The input being configured. Null accepts everything.
+ * @returns {Boolean} True if the item can be selected
+ */
+export function isAssignable(item, target) {
+	const isRecordTarget = target?.dataType === SOBJECT;
+	const matchesObject = !target?.objectType || item.objectType === target.objectType;
+	const matchesShape = target?.isCollection == null || item.isCollection === target.isCollection;
+	const matchesRecord = item.dataType === SOBJECT && matchesShape && matchesObject;
+	const isScalar = Boolean(item.dataType) && !item.isCollection && ![SOBJECT, "Apex"].includes(item.dataType);
+	const matchesScalar = isScalar && (target?.dataType === "String" || item.dataType === target?.dataType);
+	// Typing mustn't reach values that a picklist-only target doesn't list
+	const isListed =
+		Boolean(item.isLiteral) && (target?.picklistValues ?? []).some(({ value }) => value === item.value);
+	const matchesMode = !target?.isPicklistOnly || isListed;
+	return !target || (matchesMode && (isRecordTarget ? matchesRecord : matchesScalar));
+}
+
 // **** PRIVATE **** //
 /**
  * @description Marks each item as selectable and/or drillable for the target, dropping items that are neither.
@@ -392,7 +413,8 @@ function getGlobalSections(item) {
  * @returns {Array} One "Outputs" section
  */
 function getOutputSections(item, context) {
-	return [initSection("Outputs", initOutputItems(item, context), false)];
+	const outputs = initOutputItems(item, context);
+	return [initSection("Outputs", outputs, false)];
 }
 
 /**
@@ -602,39 +624,37 @@ function initResourceSections(context) {
 		.filter((lookup) => lookup.storeOutputAutomatically && scope.isUpstream(lookup.name))
 		.map((lookup) => initLookupItem(lookup, context));
 	const loops = initLoopItems(builderContext, [...variables, ...lookups], context, scope);
+	const triggers = initTriggerItems(builderContext, context);
+	const quickResources = initSection("Quick Resources", [...triggers, ...loops], false);
+	const actions = initActionItems(builderContext, context, scope);
+	const choices = (builderContext.choices ?? []).map(initTypedItem);
+	const constants = (builderContext.constants ?? []).map(initTypedItem);
+	const formulas = (builderContext.formulas ?? []).map(initTypedItem);
 	const records = variables.filter((item) => item.dataType === SOBJECT);
+	const recordCollections = records.filter((item) => item.isCollection);
+	const recordVariables = records.filter((item) => !item.isCollection);
+	const screenComponents = initScreenItems(builderContext, scope);
+	const simpleVariables = variables.filter((item) => item.dataType !== SOBJECT);
+	const stages = (builderContext.stages ?? []).map(initStageItem);
+	const textTemplates = (builderContext.textTemplates ?? []).map(initTextTemplateItem);
+	const globalConstants = GLOBAL_CONSTANTS.map((constant) => initItem(constant));
+	const globalVariables = GLOBAL_VARIABLES.map(initGlobalItem);
 	return [
 		// Flow Builder divides quick resources from the rest of the menu
-		{
-			...initSection("Quick Resources", [...initTriggerItems(builderContext, context), ...loops], false),
-			hasDivider: true
-		},
-		initSection("Action", initActionItems(builderContext, context, scope)),
+		{ ...quickResources, hasDivider: true },
+		initSection("Action", actions),
 		initSection("Get Records", lookups),
-		initSection("Choices", (builderContext.choices ?? []).map(initTypedItem)),
-		initSection("Constants", (builderContext.constants ?? []).map(initTypedItem)),
-		initSection("Formulas", (builderContext.formulas ?? []).map(initTypedItem)),
-		initSection(
-			"Record Collections",
-			records.filter((item) => item.isCollection)
-		),
-		initSection(
-			"Record Variables",
-			records.filter((item) => !item.isCollection)
-		),
-		initSection("Screen Components", initScreenItems(builderContext, scope)),
-		initSection(
-			"Simple Variables",
-			variables.filter((item) => item.dataType !== SOBJECT)
-		),
-		initSection("Stages", (builderContext.stages ?? []).map(initStageItem)),
-		initSection("Text Templates", (builderContext.textTemplates ?? []).map(initTextTemplateItem)),
-		initSection(
-			"Global Constants",
-			GLOBAL_CONSTANTS.map((constant) => initItem(constant)),
-			false
-		),
-		initSection("Global Variables", GLOBAL_VARIABLES.map(initGlobalItem), false)
+		initSection("Choices", choices),
+		initSection("Constants", constants),
+		initSection("Formulas", formulas),
+		initSection("Record Collections", recordCollections),
+		initSection("Record Variables", recordVariables),
+		initSection("Screen Components", screenComponents),
+		initSection("Simple Variables", simpleVariables),
+		initSection("Stages", stages),
+		initSection("Text Templates", textTemplates),
+		initSection("Global Constants", globalConstants, false),
+		initSection("Global Variables", globalVariables, false)
 	];
 }
 
@@ -705,24 +725,6 @@ function initVariableItem(variable) {
 		isCollection: Boolean(variable.isCollection),
 		drillType: isRecord ? DRILL_RECORD : null
 	});
-}
-
-/**
- * @description Whether the target input accepts the item.
- * @param {Object} item The item to evaluate
- * @param {Object} target The input being configured. Null accepts everything.
- * @returns {Boolean} True if the item can be selected
- */
-function isAssignable(item, target) {
-	const isRecordTarget = target?.dataType === SOBJECT;
-	const matchesObject = !target?.objectType || item.objectType === target.objectType;
-	const matchesShape = target?.isCollection == null || item.isCollection === target.isCollection;
-	const matchesRecord = item.dataType === SOBJECT && matchesShape && matchesObject;
-	const isScalar = Boolean(item.dataType) && !item.isCollection && ![SOBJECT, "Apex"].includes(item.dataType);
-	const matchesScalar = isScalar && (target?.dataType === "String" || item.dataType === target?.dataType);
-	// Typing a merge field mustn't reach resources that a picklist-only target hides
-	const matchesMode = !target?.isPicklistOnly || Boolean(item.isLiteral);
-	return !target || (matchesMode && (isRecordTarget ? matchesRecord : matchesScalar));
 }
 
 /**

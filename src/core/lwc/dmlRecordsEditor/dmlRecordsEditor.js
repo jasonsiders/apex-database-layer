@@ -332,7 +332,7 @@ export default class DmlRecordsEditor extends LightningElement {
 
 	/**
 	 * @description Lists the fields Upsert Records can match on, by API name like Flow Builder; an object Apex can't
-	 * describe offers none, and the user can still type a field
+	 * describe offers none
 	 * @param {Object} response The wire's `{ data, error }`
 	 */
 	@wire(getMatchFields, { objectApiName: "$matchObjectType" })
@@ -371,10 +371,7 @@ export default class DmlRecordsEditor extends LightningElement {
 	 * @param {Event} event Change on a match mode radio button
 	 */
 	handleMatchModeChange(event) {
-		this._matchMode = event.target.value;
-		if (this._values[EXTERNAL_ID_FIELD]?.value != null) {
-			this._deleteInput(EXTERNAL_ID_FIELD);
-		}
+		this._setMatchMode(event.target.value);
 	}
 
 	/**
@@ -402,7 +399,7 @@ export default class DmlRecordsEditor extends LightningElement {
 	 */
 	handleRecordsChange(event) {
 		const { isCollection, objectType, value } = event.detail;
-		this._objectType = objectType ?? this._objectType;
+		this._setObjectType(objectType);
 		if (!this.action.howManyLabel && value != null) {
 			this._setHowMany(isCollection ? MULTIPLE : ONE);
 		}
@@ -498,6 +495,31 @@ export default class DmlRecordsEditor extends LightningElement {
 		if (isChanged && this._values[previousName]?.value != null) {
 			this._deleteInput(previousName);
 		}
+	}
+
+	/**
+	 * @description Switches how records are matched, dropping any field chosen for another mode or object
+	 * @param {String} matchMode `recordId`, `externalId`, or `standardField`
+	 */
+	_setMatchMode(matchMode) {
+		this._matchMode = matchMode;
+		if (this._values[EXTERNAL_ID_FIELD]?.value != null) {
+			this._deleteInput(EXTERNAL_ID_FIELD);
+		}
+	}
+
+	/**
+	 * @description Keeps the records' object, once known; switching to another object drops the match field, which it
+	 * wouldn't have, but keeps the mode, so validate() asks for a new field
+	 * @param {String} objectType The records' object, if known
+	 */
+	_setObjectType(objectType) {
+		const previousType = this.matchObjectType;
+		const isNewObject = Boolean(previousType && objectType) && objectType !== previousType;
+		if (isNewObject) {
+			this._setMatchMode(this.matchMode);
+		}
+		this._objectType = objectType ?? this._objectType;
 	}
 
 	/**

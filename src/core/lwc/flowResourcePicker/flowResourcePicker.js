@@ -4,6 +4,7 @@ import {
 	filterSections,
 	getChildSections,
 	getRootSections,
+	isAssignable,
 	parseInput,
 	REFERENCE,
 	REQUIRED_ERROR,
@@ -13,6 +14,19 @@ import {
 
 const GLOBAL_CONSTANT_PREFIX = "$GlobalConstant.";
 const ROOT_LABEL = "All Resources";
+
+/**
+ * @description A promise with its `resolve` and `reject`, like `Promise.withResolvers`, which browsers before Chrome 119
+ * and Safari 17.4 lack
+ * @returns {Object} `{ promise, resolve, reject }`
+ */
+function initDeferred() {
+	const deferred = {};
+	deferred.promise = new Promise((resolve, reject) => {
+		Object.assign(deferred, { resolve, reject });
+	});
+	return deferred;
+}
 
 /**
  * @description The data type Flow Builder expects for a resource. Global constants keep their own type.
@@ -442,7 +456,7 @@ export default class FlowResourcePicker extends LightningElement {
 		if (!this._describes.has(objectApiName)) {
 			const names = this._describeNames ?? [];
 			const isNew = !names.includes(objectApiName);
-			this._describes.set(objectApiName, Promise.withResolvers());
+			this._describes.set(objectApiName, initDeferred());
 			// A new array even when retrying, so the wire fetches again
 			this._describeNames = isNew ? [...names, objectApiName] : [...names];
 		}
@@ -606,7 +620,10 @@ export default class FlowResourcePicker extends LightningElement {
 		const isConstant = String(value).startsWith(GLOBAL_CONSTANT_PREFIX);
 		const path = this._valueDataType === REFERENCE || isConstant ? value : booleanPath;
 		this._text = path || value == null ? "" : String(value);
-		const selection = path ? await this._resolveSelection(path) : null;
+		// Flow Builder sets builderContext, value, and valueDataType together, so only the last one's refresh resolves
+		await Promise.resolve();
+		const isLatest = refreshId === this._refreshId;
+		const selection = isLatest && path ? await this._resolveSelection(path) : null;
 		// A slow describe can resolve after a newer value arrives; only the newest is shown
 		if (refreshId === this._refreshId) {
 			this._selection = selection;
@@ -615,7 +632,7 @@ export default class FlowResourcePicker extends LightningElement {
 
 	/**
 	 * @description Saves the typed text as a reference (`{!path}`), a boolean constant, or a literal. An unfinished
-	 * merge field (ex: `{!accountVar.`) is discarded, restoring the previous value.
+	 * merge field (ex: `{!accountVar.`), or a literal the input doesn't take, is discarded, restoring the previous value.
 	 */
 	_saveText() {
 		const parsed = parseInput(this._text);
@@ -623,9 +640,11 @@ export default class FlowResourcePicker extends LightningElement {
 		const referencePath = parsed.isComplete ? parsed.path : booleanConstant;
 		const isUnfinished = parsed.isReference && !parsed.isComplete;
 		const hasText = this._text.trim() !== "";
+		const literal = { value: this._text, dataType: "String", isLiteral: true };
+		const isInvalid = isUnfinished || (hasText && !isAssignable(literal, this.target));
 		if (referencePath) {
 			this._selectReference(referencePath);
-		} else if (isUnfinished) {
+		} else if (isInvalid) {
 			this._refreshSelection();
 		} else {
 			this._emitChange(hasText ? this._text : null, hasText ? this._literalDataType() : null);
@@ -664,13 +683,18 @@ export default class FlowResourcePicker extends LightningElement {
 	}
 
 	/**
-	 * @description Saves a typed reference, showing it as a pill.
+	 * @description Saves a typed reference, showing it as a pill, if the input takes it like it would from the menu;
+	 * otherwise restores the previous value
 	 * @param {String} path The reference path
 	 */
 	async _selectReference(path) {
 		this._text = "";
-		this._selection = await this._resolveSelection(path);
-		const valueDataType = toValueDataType(this._selection);
-		this._emitChange(path, valueDataType, this._selection);
+		// The raw path that stands in for a missing resource has no data type, so the input never takes it
+		const item = await this._resolveSelection(path);
+		if (isAssignable(item, this.target)) {
+			this._select(item);
+		} else {
+			this._refreshSelection();
+		}
 	}
 }

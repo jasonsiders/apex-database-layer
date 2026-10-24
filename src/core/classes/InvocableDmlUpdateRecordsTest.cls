@@ -37,6 +37,30 @@ private class InvocableDmlUpdateRecordsTest {
 	}
 
 	@IsTest
+	private static void shouldMergeRecordsSharedByInputs() {
+		Account parent = new Account(Name = 'Before');
+		insert parent;
+		InvocableDml.Input nameInput = new InvocableDml.Input();
+		nameInput.record = new Account(Id = parent?.Id, Name = 'After');
+		InvocableDml.Input phoneInput = new InvocableDml.Input();
+		phoneInput.record = new Account(Id = parent?.Id, Phone = '555-0100');
+		List<InvocableDml.Input> inputs = new List<InvocableDml.Input>{ nameInput, phoneInput };
+
+		Test.startTest();
+		// A DML operation would throw on the duplicate Id, and fail both interviews:
+		List<InvocableDml.Output> outputs = InvocableDmlUpdateRecords.invoke(inputs);
+		Test.stopTest();
+
+		for (InvocableDml.Output output : outputs) {
+			Assert.isTrue(output?.result?.isSuccess, 'Shared record failed: ' + output?.result?.errors);
+			Assert.areEqual(parent?.Id, output?.result?.id, 'Result does not match its record');
+		}
+		Account updated = [SELECT Name, Phone FROM Account WHERE Id = :parent.Id];
+		Assert.areEqual('After', updated?.Name, 'Lost the 1st input\'s change');
+		Assert.areEqual('555-0100', updated?.Phone, 'Lost the 2nd input\'s change');
+	}
+
+	@IsTest
 	private static void shouldApplyAllOptions() {
 		DatabaseLayer.useMockDml();
 		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
