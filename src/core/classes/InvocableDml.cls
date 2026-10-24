@@ -254,10 +254,11 @@ public abstract inherited sharing class InvocableDml {
 		@InvocableVariable(label='Result Collection' description='One result per record, in input order.')
 		public List<InvocableDmlResult> resultCollection;
 		/** @description Where each record went in the pool, since records that match share a position **/
-		private List<Integer> positions = new List<Integer>{};
+		private List<Integer> positions;
 
 		/** @description Invocable variable classes need an accessible no-arg constructor **/
 		public Output() {
+			this.positions = new List<Integer>{};
 			this.recordCollection = new List<SObject>{};
 			this.resultCollection = new List<InvocableDmlResult>{};
 		}
@@ -314,11 +315,11 @@ public abstract inherited sharing class InvocableDml {
 		/** @description Identifies a record; null matches on Id **/
 		private SObjectField matchField;
 		/** @description The fields of each record that inputs share, collected until the records are rebuilt **/
-		private Map<Integer, Map<String, Object>> mergedFieldsByPosition = new Map<Integer, Map<String, Object>>{};
+		private Map<Integer, Map<String, Object>> mergedFieldsByPosition;
 		/** @description Keyed by the match field's value **/
-		private Map<Object, Integer> positionsByKey = new Map<Object, Integer>{};
+		private Map<Object, Integer> positionsByKey;
 		/** @description The records for the DML operation **/
-		private List<SObject> records = new List<SObject>{};
+		private List<SObject> records;
 
 		/**
 		 * @description Starts an empty pool
@@ -326,6 +327,9 @@ public abstract inherited sharing class InvocableDml {
 		 */
 		private RecordPool(SObjectField matchField) {
 			this.matchField = matchField;
+			this.mergedFieldsByPosition = new Map<Integer, Map<String, Object>>{};
+			this.positionsByKey = new Map<Object, Integer>{};
+			this.records = new List<SObject>{};
 		}
 
 		/**
@@ -335,6 +339,8 @@ public abstract inherited sharing class InvocableDml {
 		 * @return The record's position in the pool
 		 */
 		private Integer add(SObject record) {
+			// shortcut: keys match case-sensitively, so external IDs that differ only in case still fail as duplicates;
+			// lowercase text keys if flows hit it
 			Object key = this.matchField == null ? record?.Id : record?.get(this.matchField);
 			Integer position = this.positionsByKey?.get(key);
 			if (position == null) {
@@ -369,7 +375,8 @@ public abstract inherited sharing class InvocableDml {
 		private void mergeInto(Integer position, SObject record) {
 			if (this.mergedFieldsByPosition?.containsKey(position) == false) {
 				SObject pooled = this.records?.get(position);
-				Map<String, Object> pooledFields = new Map<String, Object>(pooled?.getPopulatedFieldsAsMap());
+				Map<String, Object> populatedFields = pooled?.getPopulatedFieldsAsMap();
+				Map<String, Object> pooledFields = new Map<String, Object>(populatedFields);
 				this.mergedFieldsByPosition?.put(position, pooledFields);
 			}
 			Map<String, Object> newFields = record?.getPopulatedFieldsAsMap();
