@@ -123,7 +123,6 @@ export default class FlowResourcePicker extends LightningElement {
 	_isEditing = false;
 	_isTouched = false;
 	_isOpen = false;
-	_isRefreshQueued = false;
 	_objectLabels = {};
 	_refreshId = 0;
 	_requestId = 0;
@@ -294,7 +293,7 @@ export default class FlowResourcePicker extends LightningElement {
 	set builderContext(value) {
 		this._builderContext = value;
 		this._loadObjectLabels();
-		this._queueRefresh();
+		this._refreshSelection();
 	}
 
 	/**
@@ -307,7 +306,7 @@ export default class FlowResourcePicker extends LightningElement {
 	}
 	set value(value) {
 		this._value = value;
-		this._queueRefresh();
+		this._refreshSelection();
 	}
 
 	/**
@@ -320,7 +319,7 @@ export default class FlowResourcePicker extends LightningElement {
 	}
 	set valueDataType(value) {
 		this._valueDataType = value;
-		this._queueRefresh();
+		this._refreshSelection();
 	}
 
 	// **** WIRED **** //
@@ -612,20 +611,6 @@ export default class FlowResourcePicker extends LightningElement {
 	}
 
 	/**
-	 * @description Refreshes the selection once for every setter that changes in the same tick, since Flow Builder sets
-	 * them together and each refresh rebuilds the menu to resolve the value
-	 */
-	_queueRefresh() {
-		if (!this._isRefreshQueued) {
-			this._isRefreshQueued = true;
-			Promise.resolve().then(() => {
-				this._isRefreshQueued = false;
-				this._refreshSelection();
-			});
-		}
-	}
-
-	/**
 	 * @description Shows the current value: a pill for references, or text for literals.
 	 */
 	async _refreshSelection() {
@@ -635,21 +620,14 @@ export default class FlowResourcePicker extends LightningElement {
 		const isConstant = String(value).startsWith(GLOBAL_CONSTANT_PREFIX);
 		const path = this._valueDataType === REFERENCE || isConstant ? value : booleanPath;
 		this._text = path || value == null ? "" : String(value);
-		const selection = path ? await this._resolveSelection(path) : null;
+		// Flow Builder sets builderContext, value, and valueDataType together, so only the last one's refresh resolves
+		await Promise.resolve();
+		const isLatest = refreshId === this._refreshId;
+		const selection = isLatest && path ? await this._resolveSelection(path) : null;
 		// A slow describe can resolve after a newer value arrives; only the newest is shown
 		if (refreshId === this._refreshId) {
 			this._selection = selection;
 		}
-	}
-
-	/**
-	 * @description Whether the input takes typed text as a literal: only text inputs, and picklists only their values
-	 * @param {String} text The typed text
-	 * @returns {Boolean} True if the text can be saved as is
-	 */
-	_isLiteralAllowed(text) {
-		const isPicklistValue = (this.picklistValues ?? []).some((picklistValue) => picklistValue.value === text);
-		return this.type === "String" && (!this.isPicklistOnly || isPicklistValue);
 	}
 
 	/**
@@ -662,7 +640,8 @@ export default class FlowResourcePicker extends LightningElement {
 		const referencePath = parsed.isComplete ? parsed.path : booleanConstant;
 		const isUnfinished = parsed.isReference && !parsed.isComplete;
 		const hasText = this._text.trim() !== "";
-		const isInvalid = isUnfinished || (hasText && !this._isLiteralAllowed(this._text));
+		const literal = { value: this._text, dataType: "String", isLiteral: true };
+		const isInvalid = isUnfinished || (hasText && !isAssignable(literal, this.target));
 		if (referencePath) {
 			this._selectReference(referencePath);
 		} else if (isInvalid) {
@@ -710,11 +689,10 @@ export default class FlowResourcePicker extends LightningElement {
 	 */
 	async _selectReference(path) {
 		this._text = "";
-		const item = await resolveItem(path, this.context, this._describeObject).catch(() => null);
-		if (item && isAssignable(item, this.target)) {
-			this._selection = item;
-			const valueDataType = toValueDataType(item);
-			this._emitChange(path, valueDataType, item);
+		// The raw path that stands in for a missing resource has no data type, so the input never takes it
+		const item = await this._resolveSelection(path);
+		if (isAssignable(item, this.target)) {
+			this._select(item);
 		} else {
 			this._refreshSelection();
 		}

@@ -321,8 +321,10 @@ export function isAssignable(item, target) {
 	const matchesRecord = item.dataType === SOBJECT && matchesShape && matchesObject;
 	const isScalar = Boolean(item.dataType) && !item.isCollection && ![SOBJECT, "Apex"].includes(item.dataType);
 	const matchesScalar = isScalar && (target?.dataType === "String" || item.dataType === target?.dataType);
-	// Typing a merge field mustn't reach resources that a picklist-only target hides
-	const matchesMode = !target?.isPicklistOnly || Boolean(item.isLiteral);
+	// Typing mustn't reach values that a picklist-only target doesn't list
+	const isListed =
+		Boolean(item.isLiteral) && (target?.picklistValues ?? []).some(({ value }) => value === item.value);
+	const matchesMode = !target?.isPicklistOnly || isListed;
 	return !target || (matchesMode && (isRecordTarget ? matchesRecord : matchesScalar));
 }
 

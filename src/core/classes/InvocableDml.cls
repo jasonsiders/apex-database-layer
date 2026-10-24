@@ -44,7 +44,7 @@ public abstract inherited sharing class InvocableDml {
 
 	// **** PRIVATE **** //
 	/**
-	 * @description Pools every input's records, so they can be processed in one DML operation
+	 * @description Lists every input's records, before any that match are pooled as one
 	 * @param outputs One output per input
 	 * @return Every record, in output order
 	 */
@@ -98,7 +98,7 @@ public abstract inherited sharing class InvocableDml {
 		for (InvocableDml.Output output : outputs) {
 			output?.addTo(pool);
 		}
-		return pool?.records;
+		return pool?.toRecords();
 	}
 
 	// **** INNER **** //
@@ -268,8 +268,7 @@ public abstract inherited sharing class InvocableDml {
 		 */
 		private Output(List<SObject> records) {
 			this();
-			this.recordCollection = records;
-			this.record = records?.isEmpty() == false ? records?.get(0) : null;
+			this.setRecords(records);
 		}
 
 		/**
@@ -278,15 +277,14 @@ public abstract inherited sharing class InvocableDml {
 		 * @param results The results of the pooled DML operation, in record order
 		 */
 		private void addResults(List<SObject> records, List<InvocableDmlResult> results) {
-			List<SObject> pooledRecords = new List<SObject>{};
+			List<SObject> outputRecords = new List<SObject>{};
 			for (Integer position : this.positions) {
 				SObject record = records?.get(position);
 				InvocableDmlResult result = results?.get(position);
-				pooledRecords?.add(record);
+				outputRecords?.add(record);
 				this.resultCollection?.add(result);
 			}
-			this.recordCollection = pooledRecords;
-			this.record = pooledRecords?.isEmpty() == false ? pooledRecords?.get(0) : null;
+			this.setRecords(outputRecords);
 			this.result = this.resultCollection?.isEmpty() == false ? this.resultCollection?.get(0) : null;
 		}
 
@@ -300,12 +298,23 @@ public abstract inherited sharing class InvocableDml {
 				this.positions?.add(position);
 			}
 		}
+
+		/**
+		 * @description Single-record flows read the first record, so it's kept in step with the collection
+		 * @param records The output's records
+		 */
+		private void setRecords(List<SObject> records) {
+			this.recordCollection = records;
+			this.record = records?.isEmpty() == false ? records?.get(0) : null;
+		}
 	}
 
 	/** @description Every input's records, with those that match merged into one **/
 	private class RecordPool {
 		/** @description Identifies a record; null matches on Id **/
 		private SObjectField matchField;
+		/** @description The fields of each record that inputs share, collected until the records are rebuilt **/
+		private Map<Integer, Map<String, Object>> mergedFieldsByPosition = new Map<Integer, Map<String, Object>>{};
 		/** @description Keyed by the match field's value **/
 		private Map<Object, Integer> positionsByKey = new Map<Object, Integer>{};
 		/** @description The records for the DML operation **/
@@ -327,7 +336,7 @@ public abstract inherited sharing class InvocableDml {
 		 */
 		private Integer add(SObject record) {
 			Object key = this.matchField == null ? record?.Id : record?.get(this.matchField);
-			Integer position = key == null ? null : this.positionsByKey?.get(key);
+			Integer position = this.positionsByKey?.get(key);
 			if (position == null) {
 				position = this.append(record, key);
 			} else {
@@ -352,22 +361,46 @@ public abstract inherited sharing class InvocableDml {
 		}
 
 		/**
-		 * @description Combines a record with the pooled one it matches, so no input's changes are lost; on a field
-		 * both set, the later input wins
+		 * @description Collects a record's fields onto those of the pooled record it matches, so no input's changes are
+		 * lost; on a field both set, the later input wins
 		 * @param position The pooled record's position
 		 * @param record The record to merge in
 		 */
 		private void mergeInto(Integer position, SObject record) {
-			SObject pooled = this.records?.get(position);
-			Map<String, Object> fields = new Map<String, Object>(pooled?.getPopulatedFieldsAsMap());
+			if (this.mergedFieldsByPosition?.containsKey(position) == false) {
+				SObject pooled = this.records?.get(position);
+				Map<String, Object> pooledFields = new Map<String, Object>(pooled?.getPopulatedFieldsAsMap());
+				this.mergedFieldsByPosition?.put(position, pooledFields);
+			}
 			Map<String, Object> newFields = record?.getPopulatedFieldsAsMap();
-			fields?.putAll(newFields);
+			this.mergedFieldsByPosition?.get(position)?.putAll(newFields);
+		}
+
+		/**
+		 * @description Rebuilds a shared record from its collected fields
+		 * @param position The record's position
+		 * @return The merged record
+		 */
+		private SObject toMergedRecord(Integer position) {
+			SObject pooled = this.records?.get(position);
+			Map<String, Object> fields = this.mergedFieldsByPosition?.get(position);
 			String serialized = JSON.serialize(fields);
 			String objectName = String.valueOf(pooled?.getSObjectType());
 			System.Type objectType = System.Type.forName(objectName);
 			// Deserializing, unlike SObject.put, accepts read-only fields, ex: formulas from Get Records
-			SObject merged = (SObject) JSON.deserialize(serialized, objectType);
-			this.records?.set(position, merged);
+			return (SObject) JSON.deserialize(serialized, objectType);
+		}
+
+		/**
+		 * @description Rebuilds each shared record once, however many inputs shared it
+		 * @return The records for the DML operation
+		 */
+		private List<SObject> toRecords() {
+			for (Integer position : this.mergedFieldsByPosition?.keySet()) {
+				SObject merged = this.toMergedRecord(position);
+				this.records?.set(position, merged);
+			}
+			return this.records;
 		}
 	}
 }
