@@ -15,8 +15,10 @@ public abstract inherited sharing class InvocableDml {
 		List<SObject> records = InvocableDml.collectRecords(outputs);
 		if (records?.isEmpty() == false) {
 			InvocableDml.Input settings = inputs?.get(0);
-			List<InvocableDmlResult> results = this.doDml(records, settings);
-			InvocableDml.distributeResults(outputs, results);
+			SObjectField matchField = this.getMatchField(records, settings);
+			List<SObject> pooledRecords = InvocableDml.poolRecords(outputs, matchField);
+			List<InvocableDmlResult> results = this.doDml(pooledRecords, settings);
+			InvocableDml.distributeResults(outputs, pooledRecords, results);
 		}
 		return outputs;
 	}
@@ -29,6 +31,16 @@ public abstract inherited sharing class InvocableDml {
 	 * @return The results, in record order
 	 */
 	protected abstract List<InvocableDmlResult> doDml(List<SObject> records, InvocableDml.Input settings);
+
+	/**
+	 * @description The field that identifies a record to the DML operation, so records that match on it pool as one
+	 * @param records Every input's records
+	 * @param settings The input whose settings apply to the operation
+	 * @return The field, or null to match on Id
+	 */
+	protected virtual SObjectField getMatchField(List<SObject> records, InvocableDml.Input settings) {
+		return null;
+	}
 
 	// **** PRIVATE **** //
 	/**
@@ -45,14 +57,18 @@ public abstract inherited sharing class InvocableDml {
 	}
 
 	/**
-	 * @description Results come back for the pooled records, so each output takes its share in order
-	 * @param outputs Outputs whose records were pooled, in the order they were pooled
-	 * @param results The results of the pooled DML operation
+	 * @description Results come back for the pooled records, so each output takes those of the records it pooled
+	 * @param outputs Outputs whose records were pooled
+	 * @param records The pooled records
+	 * @param results The results of the pooled DML operation, in record order
 	 */
-	private static void distributeResults(List<InvocableDml.Output> outputs, List<InvocableDmlResult> results) {
-		Iterator<InvocableDmlResult> resultIterator = results?.iterator();
+	private static void distributeResults(
+		List<InvocableDml.Output> outputs,
+		List<SObject> records,
+		List<InvocableDmlResult> results
+	) {
 		for (InvocableDml.Output output : outputs) {
-			output?.addResults(resultIterator);
+			output?.addResults(records, results);
 		}
 	}
 
@@ -68,6 +84,21 @@ public abstract inherited sharing class InvocableDml {
 			outputs?.add(output);
 		}
 		return outputs;
+	}
+
+	/**
+	 * @description A DML operation rejects a record listed twice, ex: when two interviews update the same parent, so
+	 * records that match pool as one
+	 * @param outputs One output per input
+	 * @param matchField The field that identifies a record, or null to match on Id
+	 * @return The pooled records
+	 */
+	private static List<SObject> poolRecords(List<InvocableDml.Output> outputs, SObjectField matchField) {
+		InvocableDml.RecordPool pool = new InvocableDml.RecordPool(matchField);
+		for (InvocableDml.Output output : outputs) {
+			output?.addTo(pool);
+		}
+		return pool?.records;
 	}
 
 	// **** INNER **** //
@@ -222,6 +253,8 @@ public abstract inherited sharing class InvocableDml {
 		/** @description One result per record, in input order, for partial-success handling **/
 		@InvocableVariable(label='Result Collection' description='One result per record, in input order.')
 		public List<InvocableDmlResult> resultCollection;
+		/** @description Where each record went in the pool, since records that match share a position **/
+		private List<Integer> positions = new List<Integer>{};
 
 		/** @description Invocable variable classes need an accessible no-arg constructor **/
 		public Output() {
@@ -240,15 +273,101 @@ public abstract inherited sharing class InvocableDml {
 		}
 
 		/**
-		 * @description Pooled results arrive in record order, so each output takes the next one per record
-		 * @param resultIterator Results for the whole DML operation, positioned at this output's first record
+		 * @description Takes each record's result, and the pooled record itself, which holds any merged values and Id
+		 * @param records The pooled records
+		 * @param results The results of the pooled DML operation, in record order
 		 */
-		private void addResults(Iterator<InvocableDmlResult> resultIterator) {
-			for (Integer i = 0; i < this.recordCollection?.size(); i++) {
-				InvocableDmlResult result = resultIterator?.next();
+		private void addResults(List<SObject> records, List<InvocableDmlResult> results) {
+			List<SObject> pooledRecords = new List<SObject>{};
+			for (Integer position : this.positions) {
+				SObject record = records?.get(position);
+				InvocableDmlResult result = results?.get(position);
+				pooledRecords?.add(record);
 				this.resultCollection?.add(result);
 			}
+			this.recordCollection = pooledRecords;
+			this.record = pooledRecords?.isEmpty() == false ? pooledRecords?.get(0) : null;
 			this.result = this.resultCollection?.isEmpty() == false ? this.resultCollection?.get(0) : null;
+		}
+
+		/**
+		 * @description Pools this output's records, noting where each one went, to match its results back later
+		 * @param pool The records of every output so far
+		 */
+		private void addTo(InvocableDml.RecordPool pool) {
+			for (SObject record : this.recordCollection) {
+				Integer position = pool?.add(record);
+				this.positions?.add(position);
+			}
+		}
+	}
+
+	/** @description Every input's records, with those that match merged into one **/
+	private class RecordPool {
+		/** @description Identifies a record; null matches on Id **/
+		private SObjectField matchField;
+		/** @description Keyed by the match field's value **/
+		private Map<Object, Integer> positionsByKey = new Map<Object, Integer>{};
+		/** @description The records for the DML operation **/
+		private List<SObject> records = new List<SObject>{};
+
+		/**
+		 * @description Starts an empty pool
+		 * @param matchField The field that identifies a record, or null to match on Id
+		 */
+		private RecordPool(SObjectField matchField) {
+			this.matchField = matchField;
+		}
+
+		/**
+		 * @description Adds a record, or merges it into the pooled record it matches; a record without a key, ex: a
+		 * new one, matches nothing
+		 * @param record The record to add
+		 * @return The record's position in the pool
+		 */
+		private Integer add(SObject record) {
+			Object key = this.matchField == null ? record?.Id : record?.get(this.matchField);
+			Integer position = key == null ? null : this.positionsByKey?.get(key);
+			if (position == null) {
+				position = this.append(record, key);
+			} else {
+				this.mergeInto(position, record);
+			}
+			return position;
+		}
+
+		/**
+		 * @description Adds a record that matches none in the pool
+		 * @param record The record to add
+		 * @param key The record's match field value, or null if it has none
+		 * @return The record's position in the pool
+		 */
+		private Integer append(SObject record, Object key) {
+			Integer position = this.records?.size();
+			this.records?.add(record);
+			if (key != null) {
+				this.positionsByKey?.put(key, position);
+			}
+			return position;
+		}
+
+		/**
+		 * @description Combines a record with the pooled one it matches, so no input's changes are lost; on a field
+		 * both set, the later input wins
+		 * @param position The pooled record's position
+		 * @param record The record to merge in
+		 */
+		private void mergeInto(Integer position, SObject record) {
+			SObject pooled = this.records?.get(position);
+			Map<String, Object> fields = new Map<String, Object>(pooled?.getPopulatedFieldsAsMap());
+			Map<String, Object> newFields = record?.getPopulatedFieldsAsMap();
+			fields?.putAll(newFields);
+			String serialized = JSON.serialize(fields);
+			String objectName = String.valueOf(pooled?.getSObjectType());
+			System.Type objectType = System.Type.forName(objectName);
+			// Deserializing, unlike SObject.put, accepts read-only fields, ex: formulas from Get Records
+			SObject merged = (SObject) JSON.deserialize(serialized, objectType);
+			this.records?.set(position, merged);
 		}
 	}
 }

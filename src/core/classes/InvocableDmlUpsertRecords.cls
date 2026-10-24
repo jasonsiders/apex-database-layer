@@ -55,6 +55,16 @@ public inherited sharing class InvocableDmlUpsertRecords extends InvocableDml {
 		return InvocableDmlResult.fromList(results);
 	}
 
+	/**
+	 * @description Upserts identify records by the external ID field, so inputs that share a value pool as one record
+	 * @param records Every input's records
+	 * @param settings The input whose settings apply to the operation
+	 * @return The external ID field, or null to match on Id
+	 */
+	protected override SObjectField getMatchField(List<SObject> records, InvocableDml.Input settings) {
+		return InvocableDmlUpsertRecords.getExternalIdField(records, settings?.externalIdField);
+	}
+
 	// **** PRIVATE **** //
 	/**
 	 * @description The editor calls this through Lightning, which only shows an AuraHandledException's message
