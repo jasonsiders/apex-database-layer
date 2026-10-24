@@ -123,6 +123,7 @@ export default class FlowResourcePicker extends LightningElement {
 	_isEditing = false;
 	_isTouched = false;
 	_isOpen = false;
+	_isRefreshQueued = false;
 	_objectLabels = {};
 	_refreshId = 0;
 	_requestId = 0;
@@ -293,7 +294,7 @@ export default class FlowResourcePicker extends LightningElement {
 	set builderContext(value) {
 		this._builderContext = value;
 		this._loadObjectLabels();
-		this._refreshSelection();
+		this._queueRefresh();
 	}
 
 	/**
@@ -306,7 +307,7 @@ export default class FlowResourcePicker extends LightningElement {
 	}
 	set value(value) {
 		this._value = value;
-		this._refreshSelection();
+		this._queueRefresh();
 	}
 
 	/**
@@ -319,7 +320,7 @@ export default class FlowResourcePicker extends LightningElement {
 	}
 	set valueDataType(value) {
 		this._valueDataType = value;
-		this._refreshSelection();
+		this._queueRefresh();
 	}
 
 	// **** WIRED **** //
@@ -607,6 +608,20 @@ export default class FlowResourcePicker extends LightningElement {
 		this._isOpen = true;
 		if (!wasOpen) {
 			this._loadMenu();
+		}
+	}
+
+	/**
+	 * @description Refreshes the selection once for every setter that changes in the same tick, since Flow Builder sets
+	 * them together and each refresh rebuilds the menu to resolve the value
+	 */
+	_queueRefresh() {
+		if (!this._isRefreshQueued) {
+			this._isRefreshQueued = true;
+			Promise.resolve().then(() => {
+				this._isRefreshQueued = false;
+				this._refreshSelection();
+			});
 		}
 	}
 
