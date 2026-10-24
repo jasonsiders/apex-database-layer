@@ -2,6 +2,7 @@
  * @description Flow can't read Database result types, so this Apex-defined type carries their outcome in plain fields
  */
 public class InvocableDmlResult {
+	// **** MEMBER **** //
 	/** @description Formatted as `STATUS_CODE: Message (Field1, Field2)`, since Flow can't read Database.Error **/
 	@AuraEnabled
 	public List<String> errors;
@@ -72,7 +73,8 @@ public class InvocableDmlResult {
 	}
 
 	/**
-	 * @description Converts the results of a delete operation
+	 * @description Database result types share no interface, so each gets its own overload; this one takes
+	 * a delete operation's results
 	 * @param deleteResults The results to convert
 	 * @return The converted results, in the same order
 	 */
@@ -86,7 +88,8 @@ public class InvocableDmlResult {
 	}
 
 	/**
-	 * @description Converts the results of an empty recycle bin operation
+	 * @description Database result types share no interface, so each gets its own overload; this one takes
+	 * an empty recycle bin operation's results
 	 * @param purgeResults The results to convert
 	 * @return The converted results, in the same order
 	 */
@@ -100,7 +103,8 @@ public class InvocableDmlResult {
 	}
 
 	/**
-	 * @description Converts the results of an insert or update operation
+	 * @description Database result types share no interface, so each gets its own overload; this one takes
+	 * an insert or update operation's results
 	 * @param saveResults The results to convert
 	 * @return The converted results, in the same order
 	 */
@@ -114,7 +118,8 @@ public class InvocableDmlResult {
 	}
 
 	/**
-	 * @description Converts the results of an undelete operation
+	 * @description Database result types share no interface, so each gets its own overload; this one takes
+	 * an undelete operation's results
 	 * @param undeleteResults The results to convert
 	 * @return The converted results, in the same order
 	 */
@@ -128,7 +133,8 @@ public class InvocableDmlResult {
 	}
 
 	/**
-	 * @description Converts the results of an upsert operation
+	 * @description Database result types share no interface, so each gets its own overload; this one takes
+	 * an upsert operation's results
 	 * @param upsertResults The results to convert
 	 * @return The converted results, in the same order
 	 */

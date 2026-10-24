@@ -1,10 +1,12 @@
 /**
- * @description Flow action that deletes records via `DatabaseLayer.Dml`, exposing the access level and all-or-none behavior
+ * @description Flow action that deletes records via `DatabaseLayer.Dml`, exposing the access level and all-or-none
+ * behavior
  */
 public inherited sharing class InvocableDmlDeleteRecords extends InvocableDml {
 	// **** PUBLIC **** //
 	/**
-	 * @description Deletes every input's records in a single DML operation, using the first input's settings
+	 * @description Deletes every input's records in a single DML operation, using the first input's settings, so a
+	 * bulk run can't exhaust the DML statement limit
 	 * @param inputs One input per flow interview
 	 * @return One output per input, in the same order
 	 */

@@ -7,7 +7,12 @@ public abstract inherited sharing class InvocableDml {
 	/** @description Resolved once per run, so listing records and the DML operation identify them by the same field **/
 	protected SObjectField matchField;
 	/** @description The first copy of each record that has a key, which every input that shares it gets back **/
-	private Map<Object, SObject> recordsByKey = new Map<Object, SObject>{};
+	private Map<Object, SObject> recordsByKey;
+
+	/** @description Each action runs once, so it starts with no records listed **/
+	protected InvocableDml() {
+		this.recordsByKey = new Map<Object, SObject>{};
+	}
 
 	// **** PUBLIC **** //
 	/**
@@ -77,8 +82,9 @@ public abstract inherited sharing class InvocableDml {
 	}
 
 	/**
-	 * @description Identifies a record to the DML operation
-	 * @param record The record
+	 * @description Records with the same key are one record to the DML operation, so they're listed once and share
+	 * a result
+	 * @param record A record from any input
 	 * @return The match field's value, or the Id, or null if the record has none, ex: a new record
 	 */
 	private Object getKey(SObject record) {
@@ -111,12 +117,11 @@ public abstract inherited sharing class InvocableDml {
 		List<SObject> uniqueRecords = new List<SObject>{};
 		for (SObject record : records) {
 			Object key = this.getKey(record);
-			Boolean isListed = this.recordsByKey?.containsKey(key) == true;
-			if (!isListed) {
+			if (this.recordsByKey?.containsKey(key) == false) {
 				uniqueRecords?.add(record);
-			}
-			if (key != null && !isListed) {
-				this.recordsByKey?.put(key, record);
+				if (key != null) {
+					this.recordsByKey?.put(key, record);
+				}
 			}
 		}
 		return uniqueRecords;
@@ -306,10 +311,7 @@ public abstract inherited sharing class InvocableDml {
 			List<SObject> outputRecords = new List<SObject>{};
 			for (SObject record : this.recordCollection) {
 				Object key = action?.getKey(record);
-				InvocableDmlResult result = resultsByKey?.get(key);
-				if (result == null) {
-					result = remaining?.next();
-				}
+				InvocableDmlResult result = resultsByKey?.get(key) ?? remaining?.next();
 				if (key != null) {
 					resultsByKey?.put(key, result);
 				}
