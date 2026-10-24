@@ -16,6 +16,19 @@ const GLOBAL_CONSTANT_PREFIX = "$GlobalConstant.";
 const ROOT_LABEL = "All Resources";
 
 /**
+ * @description A promise with its `resolve` and `reject`, like `Promise.withResolvers`, which browsers before Chrome 119
+ * and Safari 17.4 lack
+ * @returns {Object} `{ promise, resolve, reject }`
+ */
+function initDeferred() {
+	const deferred = {};
+	deferred.promise = new Promise((resolve, reject) => {
+		Object.assign(deferred, { resolve, reject });
+	});
+	return deferred;
+}
+
+/**
  * @description The data type Flow Builder expects for a resource. Global constants keep their own type.
  * @param {Object} item The chosen resource
  * @returns {String} The constant's data type, or `reference`
@@ -443,7 +456,7 @@ export default class FlowResourcePicker extends LightningElement {
 		if (!this._describes.has(objectApiName)) {
 			const names = this._describeNames ?? [];
 			const isNew = !names.includes(objectApiName);
-			this._describes.set(objectApiName, Promise.withResolvers());
+			this._describes.set(objectApiName, initDeferred());
 			// A new array even when retrying, so the wire fetches again
 			this._describeNames = isNew ? [...names, objectApiName] : [...names];
 		}
