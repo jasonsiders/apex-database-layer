@@ -76,13 +76,17 @@ function headings(element) {
 }
 
 function radios(element) {
-	return [...element.shadowRoot.querySelectorAll("lightning-input")].filter((input) => input.type === "radio");
+	return [...element.shadowRoot.querySelectorAll('input[type="radio"]')].map((input) => ({
+		input,
+		label: input.closest(".slds-radio").textContent.trim(),
+		checked: input.checked
+	}));
 }
 
 async function chooseMatchMode(element, label) {
-	radios(element)
-		.find((radio) => radio.label === label)
-		.dispatchEvent(new CustomEvent("change"));
+	const { input } = radios(element).find((radio) => radio.label === label);
+	input.checked = true;
+	input.dispatchEvent(new CustomEvent("change"));
 	await flush();
 }
 
@@ -391,6 +395,15 @@ describe("c-dml-records-editor", () => {
 			["Record ID", true],
 			["External ID", false],
 			["Standard Field", false]
+		]);
+		// One native group, so arrow keys move between the modes and screen readers announce one group
+		const inputs = radios(element).map((radio) => radio.input);
+		expect(new Set(inputs.map((input) => input.name))).toEqual(new Set(["matchMode"]));
+		expect(new Set(inputs.map((input) => input.getRootNode())).size).toBe(1);
+		expect(inputs.map((input) => input.labels?.[0]?.textContent.trim())).toEqual([
+			"Record ID",
+			"External ID",
+			"Standard Field"
 		]);
 		expect(picker(element, "externalIdField")).toBeNull();
 		expect(element.validate()).toEqual([{ key: "record", errorString: "Enter a value." }]);
