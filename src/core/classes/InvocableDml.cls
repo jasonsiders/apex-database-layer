@@ -3,10 +3,6 @@
  * operation, via `doDml`
  */
 public abstract inherited sharing class InvocableDml {
-	// **** MEMBER **** //
-	/** @description Resolved once per run, so pooling and the DML operation match records on the same field **/
-	protected SObjectField matchField;
-
 	// **** PUBLIC **** //
 	/**
 	 * @description Flow bulkifies interviews into one call; they share one DML operation, so a bulk run can't exhaust
@@ -16,13 +12,12 @@ public abstract inherited sharing class InvocableDml {
 	 */
 	public List<InvocableDml.Output> run(List<InvocableDml.Input> inputs) {
 		List<InvocableDml.Output> outputs = InvocableDml.initOutputs(inputs);
-		List<SObject> records = InvocableDml.collectRecords(outputs);
+		Map<Id, SObject> recordsById = new Map<Id, SObject>{};
+		List<SObject> records = InvocableDml.collectRecords(outputs, recordsById);
 		if (records?.isEmpty() == false) {
 			InvocableDml.Input settings = inputs?.get(0);
-			this.matchField = this.getMatchField(records, settings);
-			List<SObject> pooledRecords = InvocableDml.poolRecords(outputs, this.matchField);
-			List<InvocableDmlResult> results = this.doDml(pooledRecords, settings);
-			InvocableDml.distributeResults(outputs, pooledRecords, results);
+			List<InvocableDmlResult> results = this.doDml(records, settings);
+			InvocableDml.distributeResults(outputs, recordsById, results);
 		}
 		return outputs;
 	}
@@ -30,54 +25,49 @@ public abstract inherited sharing class InvocableDml {
 	// **** PROTECTED **** //
 	/**
 	 * @description The DML operation the action performs, ex: insert
-	 * @param records Every input's records
+	 * @param records Every input's records, each listed once
 	 * @param settings The input whose settings apply to the operation
 	 * @return The results, in record order
 	 */
 	protected abstract List<InvocableDmlResult> doDml(List<SObject> records, InvocableDml.Input settings);
 
-	/**
-	 * @description The field that identifies a record to the DML operation, so records that match on it pool as one
-	 * @param records Every input's records
-	 * @param settings The input whose settings apply to the operation
-	 * @return The field, or null to match on Id
-	 */
-	protected virtual SObjectField getMatchField(List<SObject> records, InvocableDml.Input settings) {
-		return null;
-	}
-
 	// **** PRIVATE **** //
 	/**
-	 * @description Lists every input's records, before any that match are pooled as one
+	 * @description A DML operation rejects a record listed twice, ex: when two interviews update the same parent, so
+	 * each record is listed once, and the first input's copy wins
 	 * @param outputs One output per input
-	 * @return Every record, in output order
+	 * @param recordsById Collects the first copy of each record that has an Id
+	 * @return The records for the DML operation, in output order
 	 */
-	private static List<SObject> collectRecords(List<InvocableDml.Output> outputs) {
+	private static List<SObject> collectRecords(List<InvocableDml.Output> outputs, Map<Id, SObject> recordsById) {
 		List<SObject> records = new List<SObject>{};
 		for (InvocableDml.Output output : outputs) {
-			records?.addAll(output?.recordCollection);
+			output?.addTo(records, recordsById);
 		}
 		return records;
 	}
 
 	/**
-	 * @description Results come back for the pooled records, so each output takes those of the records it pooled
-	 * @param outputs Outputs whose records were pooled
-	 * @param records The pooled records
-	 * @param results The results of the pooled DML operation, in record order
+	 * @description Results come back in record order, so each output takes the next ones, in the order its records were
+	 * listed; a record listed by an earlier output shares that output's result
+	 * @param outputs One output per input
+	 * @param recordsById The first copy of each record that has an Id
+	 * @param results The results of the DML operation, in record order
 	 */
 	private static void distributeResults(
 		List<InvocableDml.Output> outputs,
-		List<SObject> records,
+		Map<Id, SObject> recordsById,
 		List<InvocableDmlResult> results
 	) {
+		Iterator<InvocableDmlResult> remaining = results?.iterator();
+		Map<Id, InvocableDmlResult> resultsById = new Map<Id, InvocableDmlResult>{};
 		for (InvocableDml.Output output : outputs) {
-			output?.addResults(records, results);
+			output?.addResults(remaining, recordsById, resultsById);
 		}
 	}
 
 	/**
-	 * @description Each output holds its input's records, so results can be matched back to it after pooling
+	 * @description Each output holds its input's records, so results can be matched back to it
 	 * @param inputs One input per flow interview
 	 * @return One output per input, in the same order
 	 */
@@ -88,21 +78,6 @@ public abstract inherited sharing class InvocableDml {
 			outputs?.add(output);
 		}
 		return outputs;
-	}
-
-	/**
-	 * @description A DML operation rejects a record listed twice, ex: when two interviews update the same parent, so
-	 * each record is listed once, and the first input's copy wins
-	 * @param outputs One output per input
-	 * @param matchField The field that identifies a record, or null to match on Id
-	 * @return The pooled records
-	 */
-	private static List<SObject> poolRecords(List<InvocableDml.Output> outputs, SObjectField matchField) {
-		InvocableDml.RecordPool pool = new InvocableDml.RecordPool(matchField);
-		for (InvocableDml.Output output : outputs) {
-			output?.addTo(pool);
-		}
-		return pool?.records;
 	}
 
 	// **** INNER **** //
@@ -257,12 +232,9 @@ public abstract inherited sharing class InvocableDml {
 		/** @description One result per record, in input order, for partial-success handling **/
 		@InvocableVariable(label='Result Collection' description='One result per record, in input order.')
 		public List<InvocableDmlResult> resultCollection;
-		/** @description Where each record went in the pool, since records that match share a position **/
-		private List<Integer> positions;
 
 		/** @description Invocable variable classes need an accessible no-arg constructor **/
 		public Output() {
-			this.positions = new List<Integer>{};
 			this.recordCollection = new List<SObject>{};
 			this.resultCollection = new List<InvocableDmlResult>{};
 		}
@@ -277,16 +249,30 @@ public abstract inherited sharing class InvocableDml {
 		}
 
 		/**
-		 * @description Takes each record's result, and the record the DML operation saved, which holds its Id
-		 * @param records The pooled records
-		 * @param results The results of the pooled DML operation, in record order
+		 * @description Takes each record's result, and the copy the DML operation saved, which holds its Id. A record
+		 * an earlier output listed takes that output's result; any other takes the next one. New records have their
+		 * Ids by now, unless they failed, so they never match another's
+		 * @param remaining The results not yet taken, in record order
+		 * @param recordsById The first copy of each record that had an Id
+		 * @param resultsById The result of each record taken so far, by Id
 		 */
-		private void addResults(List<SObject> records, List<InvocableDmlResult> results) {
+		private void addResults(
+			Iterator<InvocableDmlResult> remaining,
+			Map<Id, SObject> recordsById,
+			Map<Id, InvocableDmlResult> resultsById
+		) {
 			List<SObject> outputRecords = new List<SObject>{};
-			for (Integer position : this.positions) {
-				SObject record = records?.get(position);
-				InvocableDmlResult result = results?.get(position);
-				outputRecords?.add(record);
+			for (SObject record : this.recordCollection) {
+				Id recordId = record?.Id;
+				InvocableDmlResult result = resultsById?.get(recordId);
+				if (result == null) {
+					result = remaining?.next();
+				}
+				if (recordId != null) {
+					resultsById?.put(recordId, result);
+				}
+				SObject saved = recordsById?.get(recordId) ?? record;
+				outputRecords?.add(saved);
 				this.resultCollection?.add(result);
 			}
 			this.setRecords(outputRecords);
@@ -294,13 +280,20 @@ public abstract inherited sharing class InvocableDml {
 		}
 
 		/**
-		 * @description Pools this output's records, noting where each one went, to match its results back later
-		 * @param pool The records of every output so far
+		 * @description Lists this output's records for the DML operation, except those an earlier output listed
+		 * @param records The records for the DML operation so far
+		 * @param recordsById The first copy of each record so far that has an Id
 		 */
-		private void addTo(InvocableDml.RecordPool pool) {
+		private void addTo(List<SObject> records, Map<Id, SObject> recordsById) {
 			for (SObject record : this.recordCollection) {
-				Integer position = pool?.add(record);
-				this.positions?.add(position);
+				Id recordId = record?.Id;
+				Boolean isListed = recordsById?.containsKey(recordId) == true;
+				if (!isListed) {
+					records?.add(record);
+				}
+				if (recordId != null && !isListed) {
+					recordsById?.put(recordId, record);
+				}
 			}
 		}
 
@@ -311,58 +304,6 @@ public abstract inherited sharing class InvocableDml {
 		private void setRecords(List<SObject> records) {
 			this.recordCollection = records;
 			this.record = records?.isEmpty() == false ? records?.get(0) : null;
-		}
-	}
-
-	/** @description Every input's records, each listed once **/
-	private class RecordPool {
-		/** @description Identifies a record; null matches on Id **/
-		private SObjectField matchField;
-		/** @description Keyed by the match field's value **/
-		private Map<Object, Integer> positionsByKey;
-		/** @description The records for the DML operation **/
-		private List<SObject> records;
-
-		/**
-		 * @description Starts an empty pool
-		 * @param matchField The field that identifies a record, or null to match on Id
-		 */
-		private RecordPool(SObjectField matchField) {
-			this.matchField = matchField;
-			this.positionsByKey = new Map<Object, Integer>{};
-			this.records = new List<SObject>{};
-		}
-
-		/**
-		 * @description Adds a record, unless it matches one already pooled, whose copy wins; a record without a key, ex:
-		 * a new one, matches nothing
-		 * @param record The record to add
-		 * @return The record's position in the pool
-		 */
-		private Integer add(SObject record) {
-			// shortcut: keys match case-sensitively, so external IDs that differ only in case still fail as duplicates;
-			// lowercase text keys if flows hit it
-			Object key = this.matchField == null ? record?.Id : record?.get(this.matchField);
-			Integer position = this.positionsByKey?.get(key);
-			if (position == null) {
-				position = this.append(record, key);
-			}
-			return position;
-		}
-
-		/**
-		 * @description Adds a record that matches none in the pool
-		 * @param record The record to add
-		 * @param key The record's match field value, or null if it has none
-		 * @return The record's position in the pool
-		 */
-		private Integer append(SObject record, Object key) {
-			Integer position = this.records?.size();
-			this.records?.add(record);
-			if (key != null) {
-				this.positionsByKey?.put(key, position);
-			}
-			return position;
 		}
 	}
 }
