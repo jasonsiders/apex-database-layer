@@ -153,14 +153,15 @@ private class InvocableDmlConvertLeadTest {
 		MockDml.shouldFailIf(new InvocableDmlConvertLeadTest.LeadFailure(failingLeadId));
 
 		Test.startTest();
+		Exception caughtError;
 		try {
 			InvocableDmlConvertLead.invoke(inputs);
-			Assert.fail('Did not throw an error');
 		} catch (System.DmlException error) {
-			// As expected...
+			caughtError = error;
 		}
 		Test.stopTest();
 
+		Assert.isNotNull(caughtError, 'Did not throw an error');
 		MockDml.Savepoint savepoint = MockDml.SAVEPOINTS?.getAll()?.get(0);
 		Assert.isTrue(savepoint?.wasRolledBack, 'Did not roll back the earlier chunk');
 	}
@@ -197,6 +198,9 @@ private class InvocableDmlConvertLeadTest {
 	}
 
 	// **** INNER **** //
+	/**
+	 * @description Fails the conversion of one lead, so a test can fail a later chunk
+	 */
 	private class LeadFailure implements MockDml.ConditionalFailure {
 		private Id leadId;
 
@@ -204,6 +208,12 @@ private class InvocableDmlConvertLeadTest {
 			this.leadId = leadId;
 		}
 
+		/**
+		 * @description Fails only the conversion of this failure's lead
+		 * @param operation The DML operation being performed
+		 * @param record The record being processed
+		 * @return An exception for the lead, else null
+		 */
 		public Exception checkFailure(Dml.Operation operation, SObject record) {
 			Boolean isMatch = operation == Dml.Operation.DO_CONVERT && record?.Id == this.leadId;
 			return isMatch ? new System.DmlException('Test failure') : null;
