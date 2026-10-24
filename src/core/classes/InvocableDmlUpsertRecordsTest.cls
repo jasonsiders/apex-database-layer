@@ -53,6 +53,31 @@ private class InvocableDmlUpsertRecordsTest {
 	}
 
 	@IsTest
+	private static void shouldUpsertRecordsThatShareAnExternalIdOnce() {
+		DatabaseLayer.useMockDml();
+		InvocableDml.Input nameInput = new InvocableDml.Input();
+		nameInput.externalIdField = 'Email';
+		nameInput.record = new Contact(Email = 'test@example.com', LastName = 'Test');
+		InvocableDml.Input phoneInput = new InvocableDml.Input();
+		phoneInput.record = new Contact(Email = 'test@example.com', Phone = '555-0100');
+		List<InvocableDml.Input> inputs = new List<InvocableDml.Input>{ nameInput, phoneInput };
+
+		Test.startTest();
+		List<InvocableDml.Output> outputs = InvocableDmlUpsertRecords.invoke(inputs);
+		Test.stopTest();
+
+		List<SObject> upserted = MockDml.UPSERTED?.getRecords(Contact.SObjectType);
+		Assert.areEqual(1, upserted?.size(), 'Upserted the shared record more than once');
+		Contact saved = (Contact) upserted?.get(0);
+		Assert.areEqual('Test', saved?.LastName, 'Lost the 1st input\'s change');
+		Assert.isNull(saved?.Phone, 'Saved the 2nd input\'s copy, not the 1st');
+		for (InvocableDml.Output output : outputs) {
+			Assert.areEqual(saved?.Id, output?.record?.Id, 'Output does not hold the upserted record');
+			Assert.areEqual(saved?.Id, output?.result?.id, 'Result does not match its record');
+		}
+	}
+
+	@IsTest
 	private static void shouldThrowOnUnknownExternalIdField() {
 		DatabaseLayer.useMockDml();
 		InvocableDml.Input input = new InvocableDml.Input();

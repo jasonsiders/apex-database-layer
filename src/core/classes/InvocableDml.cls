@@ -3,6 +3,12 @@
  * operation, via `doDml`
  */
 public abstract inherited sharing class InvocableDml {
+	// **** MEMBER **** //
+	/** @description Resolved once per run, so listing records and the DML operation identify them by the same field **/
+	protected SObjectField matchField;
+	/** @description The first copy of each record that has a key, which every input that shares it gets back **/
+	private Map<Object, SObject> recordsByKey = new Map<Object, SObject>{};
+
 	// **** PUBLIC **** //
 	/**
 	 * @description Flow bulkifies interviews into one call; they share one DML operation, so a bulk run can't exhaust
@@ -12,12 +18,13 @@ public abstract inherited sharing class InvocableDml {
 	 */
 	public List<InvocableDml.Output> run(List<InvocableDml.Input> inputs) {
 		List<InvocableDml.Output> outputs = InvocableDml.initOutputs(inputs);
-		Map<Id, SObject> recordsById = new Map<Id, SObject>{};
-		List<SObject> records = InvocableDml.collectRecords(outputs, recordsById);
+		List<SObject> records = InvocableDml.collectRecords(outputs);
 		if (records?.isEmpty() == false) {
 			InvocableDml.Input settings = inputs?.get(0);
-			List<InvocableDmlResult> results = this.doDml(records, settings);
-			InvocableDml.distributeResults(outputs, recordsById, results);
+			this.matchField = this.getMatchField(records, settings);
+			List<SObject> uniqueRecords = this.listOnce(records);
+			List<InvocableDmlResult> results = this.doDml(uniqueRecords, settings);
+			this.distributeResults(outputs, results);
 		}
 		return outputs;
 	}
@@ -31,39 +38,53 @@ public abstract inherited sharing class InvocableDml {
 	 */
 	protected abstract List<InvocableDmlResult> doDml(List<SObject> records, InvocableDml.Input settings);
 
+	/**
+	 * @description The field that identifies a record to the DML operation, so it's listed once
+	 * @param records Every input's records
+	 * @param settings The input whose settings apply to the operation
+	 * @return The field, or null to identify records by Id
+	 */
+	protected virtual SObjectField getMatchField(List<SObject> records, InvocableDml.Input settings) {
+		return null;
+	}
+
 	// **** PRIVATE **** //
 	/**
-	 * @description A DML operation rejects a record listed twice, ex: when two interviews update the same parent, so
-	 * each record is listed once, and the first input's copy wins
+	 * @description Lists every input's records, before any listed twice are dropped
 	 * @param outputs One output per input
-	 * @param recordsById Collects the first copy of each record that has an Id
-	 * @return The records for the DML operation, in output order
+	 * @return Every record, in output order
 	 */
-	private static List<SObject> collectRecords(List<InvocableDml.Output> outputs, Map<Id, SObject> recordsById) {
+	private static List<SObject> collectRecords(List<InvocableDml.Output> outputs) {
 		List<SObject> records = new List<SObject>{};
 		for (InvocableDml.Output output : outputs) {
-			output?.addTo(records, recordsById);
+			records?.addAll(output?.recordCollection);
 		}
 		return records;
 	}
 
 	/**
 	 * @description Results come back in record order, so each output takes the next ones, in the order its records were
-	 * listed; a record listed by an earlier output shares that output's result
+	 * listed; a record an earlier output listed shares that output's result
 	 * @param outputs One output per input
-	 * @param recordsById The first copy of each record that has an Id
 	 * @param results The results of the DML operation, in record order
 	 */
-	private static void distributeResults(
-		List<InvocableDml.Output> outputs,
-		Map<Id, SObject> recordsById,
-		List<InvocableDmlResult> results
-	) {
+	private void distributeResults(List<InvocableDml.Output> outputs, List<InvocableDmlResult> results) {
 		Iterator<InvocableDmlResult> remaining = results?.iterator();
-		Map<Id, InvocableDmlResult> resultsById = new Map<Id, InvocableDmlResult>{};
+		Map<Object, InvocableDmlResult> resultsByKey = new Map<Object, InvocableDmlResult>{};
 		for (InvocableDml.Output output : outputs) {
-			output?.addResults(remaining, recordsById, resultsById);
+			output?.addResults(this, remaining, resultsByKey);
 		}
+	}
+
+	/**
+	 * @description Identifies a record to the DML operation
+	 * @param record The record
+	 * @return The match field's value, or the Id, or null if the record has none, ex: a new record
+	 */
+	private Object getKey(SObject record) {
+		// shortcut: keys match case-sensitively, so external IDs that differ only in case still fail as duplicates;
+		// lowercase text keys if flows hit it
+		return this.matchField == null ? record?.Id : record?.get(this.matchField);
 	}
 
 	/**
@@ -78,6 +99,27 @@ public abstract inherited sharing class InvocableDml {
 			outputs?.add(output);
 		}
 		return outputs;
+	}
+
+	/**
+	 * @description A DML operation rejects a record listed twice, ex: when two interviews update the same parent, so
+	 * each record is listed once, and the first input's copy wins; records without a key, ex: new ones, are all listed
+	 * @param records Every input's records
+	 * @return The records for the DML operation, in input order
+	 */
+	private List<SObject> listOnce(List<SObject> records) {
+		List<SObject> uniqueRecords = new List<SObject>{};
+		for (SObject record : records) {
+			Object key = this.getKey(record);
+			Boolean isListed = this.recordsByKey?.containsKey(key) == true;
+			if (!isListed) {
+				uniqueRecords?.add(record);
+			}
+			if (key != null && !isListed) {
+				this.recordsByKey?.put(key, record);
+			}
+		}
+		return uniqueRecords;
 	}
 
 	// **** INNER **** //
@@ -252,49 +294,31 @@ public abstract inherited sharing class InvocableDml {
 		 * @description Takes each record's result, and the copy the DML operation saved, which holds its Id. A record
 		 * an earlier output listed takes that output's result; any other takes the next one. New records have their
 		 * Ids by now, unless they failed, so they never match another's
+		 * @param action The action, which identifies records and holds the first copy of each
 		 * @param remaining The results not yet taken, in record order
-		 * @param recordsById The first copy of each record that had an Id
-		 * @param resultsById The result of each record taken so far, by Id
+		 * @param resultsByKey The result of each record taken so far, by key
 		 */
 		private void addResults(
+			InvocableDml action,
 			Iterator<InvocableDmlResult> remaining,
-			Map<Id, SObject> recordsById,
-			Map<Id, InvocableDmlResult> resultsById
+			Map<Object, InvocableDmlResult> resultsByKey
 		) {
 			List<SObject> outputRecords = new List<SObject>{};
 			for (SObject record : this.recordCollection) {
-				Id recordId = record?.Id;
-				InvocableDmlResult result = resultsById?.get(recordId);
+				Object key = action?.getKey(record);
+				InvocableDmlResult result = resultsByKey?.get(key);
 				if (result == null) {
 					result = remaining?.next();
 				}
-				if (recordId != null) {
-					resultsById?.put(recordId, result);
+				if (key != null) {
+					resultsByKey?.put(key, result);
 				}
-				SObject saved = recordsById?.get(recordId) ?? record;
+				SObject saved = action?.recordsByKey?.get(key) ?? record;
 				outputRecords?.add(saved);
 				this.resultCollection?.add(result);
 			}
 			this.setRecords(outputRecords);
 			this.result = this.resultCollection?.isEmpty() == false ? this.resultCollection?.get(0) : null;
-		}
-
-		/**
-		 * @description Lists this output's records for the DML operation, except those an earlier output listed
-		 * @param records The records for the DML operation so far
-		 * @param recordsById The first copy of each record so far that has an Id
-		 */
-		private void addTo(List<SObject> records, Map<Id, SObject> recordsById) {
-			for (SObject record : this.recordCollection) {
-				Id recordId = record?.Id;
-				Boolean isListed = recordsById?.containsKey(recordId) == true;
-				if (!isListed) {
-					records?.add(record);
-				}
-				if (recordId != null && !isListed) {
-					recordsById?.put(recordId, record);
-				}
-			}
 		}
 
 		/**
