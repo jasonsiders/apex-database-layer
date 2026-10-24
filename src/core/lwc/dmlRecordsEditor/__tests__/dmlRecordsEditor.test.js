@@ -177,6 +177,24 @@ describe("c-dml-records-editor", () => {
 		expect(optionInput(element, "allowDuplicates").value).toBe("$GlobalConstant.False");
 	});
 
+	it("shows a resource saved outside the editor, instead of a default", async () => {
+		const { element } = await render([
+			{ name: "allowFieldTruncation", value: "truncateVar", valueDataType: "reference" },
+			{ name: "accessLevel", value: "levelVar", valueDataType: "reference" },
+			{ name: "allOrNone", value: "$GlobalConstant.False", valueDataType: "reference" }
+		]);
+
+		const truncation = optionInput(element, "allowFieldTruncation");
+		expect(truncation.value).toBe("truncateVar");
+		expect(truncation.options[0]).toEqual({ label: "{!truncateVar}", value: "truncateVar" });
+		const accessLevel = optionInput(element, "accessLevel");
+		expect(accessLevel.value).toBe("levelVar");
+		expect(accessLevel.options.map((choice) => choice.value)).toEqual(["levelVar", "USER_MODE", "SYSTEM_MODE"]);
+		// A boolean constant is a value, not a resource
+		expect(optionInput(element, "allOrNone").value).toBe("$GlobalConstant.False");
+		expect(optionInput(element, "allOrNone").options).toHaveLength(2);
+	});
+
 	it("only lets Assignment Rule ID take a resource, since rule IDs differ between orgs", async () => {
 		const { element } = await render();
 

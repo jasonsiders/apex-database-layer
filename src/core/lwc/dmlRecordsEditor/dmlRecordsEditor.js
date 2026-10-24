@@ -2,7 +2,7 @@ import { LightningElement, api, wire } from "lwc";
 import { getPicklistValues } from "lightning/uiObjectInfoApi";
 import LOCALE_FIELD from "@salesforce/schema/User.LocaleSidKey";
 import getMatchFields from "@salesforce/apex/InvocableDmlUpsertRecords.getMatchFields";
-import { REQUIRED_ERROR, compareLabels, toBooleanConstant } from "c/flowResourceMenu";
+import { REFERENCE, REQUIRED_ERROR, compareLabels, toBooleanConstant } from "c/flowResourceMenu";
 
 const FALSE = "$GlobalConstant.False";
 const TRUE = "$GlobalConstant.True";
@@ -260,13 +260,7 @@ export default class DmlRecordsEditor extends LightningElement {
 
 	get options() {
 		const fields = this._initFields(this.action.options);
-		return fields.map((field) => {
-			const value = field.value ?? field.defaultValue;
-			const picklistValues = field.name === LOCALE_OPTIONS ? this._locales : field.picklistValues;
-			// Unset booleans show the action's default, false unless the definition says otherwise
-			const boolean = { picklistValues: BOOLEANS, value: toBooleanConstant(value) ?? FALSE };
-			return field.type === "Boolean" ? { ...field, ...boolean } : { ...field, picklistValues, value };
-		});
+		return fields.map((field) => this._initOption(field));
 	}
 
 	get records() {
@@ -440,6 +434,29 @@ export default class DmlRecordsEditor extends LightningElement {
 				valueDataType: input?.valueDataType
 			};
 		});
+	}
+
+	/**
+	 * @description Combines a static option with its choices. A resource saved outside the editor, ex: in metadata, is
+	 * listed as its own choice, so the option shows it, not a default, until the user picks another value.
+	 * @param {Object} field The option, with its saved value
+	 * @returns {Object} The option, ready for `lightning-combobox`
+	 */
+	_initOption(field) {
+		const value = field.value ?? field.defaultValue;
+		const isResource = field.valueDataType === REFERENCE && toBooleanConstant(value) == null;
+		// The picker shows its own resources
+		const resource = isResource && !field.allowsResources ? value : null;
+		const resourceChoices = resource ? [{ label: `{!${resource}}`, value: resource }] : [];
+		const isBoolean = field.type === "Boolean";
+		const listChoices = field.name === LOCALE_OPTIONS ? this._locales : (field.picklistValues ?? []);
+		// Unset booleans show the action's default, false unless the definition says otherwise
+		const booleanValue = resource ?? toBooleanConstant(value) ?? FALSE;
+		return {
+			...field,
+			picklistValues: [...resourceChoices, ...(isBoolean ? BOOLEANS : listChoices)],
+			value: isBoolean ? booleanValue : value
+		};
 	}
 
 	/**
