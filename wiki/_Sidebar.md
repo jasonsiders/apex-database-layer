@@ -10,6 +10,7 @@
 - **Dml**
     - [Performing DML Operations](./Performing-DML-Operations)
     - [Mocking DML Operations](./Mocking-DML-Operations)
+    - [Performing DML in Flow](./Performing-DML-in-Flow)
 - **Soql**
     - [Performing SOQL Queries](./Performing-SOQL-Queries)
     - [Mocking SOQL Queries](./Mocking-SOQL-Queries)

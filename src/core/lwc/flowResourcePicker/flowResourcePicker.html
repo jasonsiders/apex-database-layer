@@ -1,0 +1,163 @@
+<template>
+	<div class={formElementClass}>
+		<label class="slds-form-element__label" for="combobox-input">
+			<abbr lwc:if={required} class="slds-required" title="required">*</abbr>
+			<span class={labelTextClass}>{label}</span>
+		</label>
+		<lightning-helptext lwc:if={helpText} content={helpText}></lightning-helptext>
+		<div class="slds-form-element__control">
+			<div class="slds-combobox_container">
+				<div class={comboboxClass} onfocusout={handleFocusOut}>
+					<div class="slds-combobox__form-element slds-input-has-icon slds-input-has-icon_right" role="none">
+						<template lwc:if={showPill}>
+							<div class="slds-pill_container picker-pill">
+								<span class="slds-pill slds-pill_link">
+									<span class="slds-pill__icon_container">
+										<lightning-icon
+											icon-name={selection.icon}
+											size="x-small"
+											alternative-text=""
+										></lightning-icon>
+									</span>
+									<a
+										href="#"
+										role="button"
+										class="slds-pill__action picker-pill-edit"
+										title={selection.pathLabel}
+										onclick={handlePillClick}
+									>
+										<span class="slds-pill__label">{selection.pathLabel}</span>
+									</a>
+									<lightning-button-icon
+										class="slds-pill__remove picker-pill-remove"
+										icon-name="utility:close"
+										variant="bare"
+										alternative-text={removeLabel}
+										onclick={handlePillRemove}
+									></lightning-button-icon>
+								</span>
+							</div>
+						</template>
+						<template lwc:else>
+							<input
+								id="combobox-input"
+								class="slds-input slds-combobox__input"
+								type="text"
+								role="combobox"
+								autocomplete="off"
+								aria-autocomplete="list"
+								aria-controls="listbox"
+								aria-describedby="error-message"
+								aria-expanded={expanded}
+								aria-activedescendant={activeDescendant}
+								placeholder={placeholder}
+								value={text}
+								onfocus={handleFocus}
+								oninput={handleInput}
+								onkeydown={handleKeyDown}
+							/>
+							<lightning-icon
+								class="slds-input__icon slds-input__icon_right"
+								icon-name="utility:search"
+								size="x-small"
+								alternative-text=""
+							></lightning-icon>
+						</template>
+					</div>
+					<div
+						lwc:if={isOpen}
+						id="listbox"
+						class={dropdownClass}
+						role="listbox"
+						aria-label={label}
+						onmousedown={handleListMouseDown}
+					>
+						<div lwc:if={isResourceMenu} class="picker-header slds-text-body_small">
+							<lightning-breadcrumbs lwc:if={hasCrumbs}>
+								<template for:each={crumbs} for:item="crumb">
+									<lightning-breadcrumb
+										key={crumb.index}
+										data-index={crumb.index}
+										label={crumb.label}
+										onclick={handleCrumbClick}
+									></lightning-breadcrumb>
+								</template>
+							</lightning-breadcrumbs>
+							<template lwc:else>All Resources</template>
+						</div>
+						<template lwc:if={hasOptions}>
+							<template for:each={menu} for:item="section">
+								<ul key={section.label} class={groupClass} role="group" aria-label={section.label}>
+									<li lwc:if={isResourceMenu} role="presentation" class="slds-listbox__item">
+										<h3 class="slds-listbox__option-header picker-section" role="presentation">
+											{section.label}
+										</h3>
+									</li>
+									<template for:each={section.items} for:item="option">
+										<li key={option.key} role="presentation" class="slds-listbox__item">
+											<div
+												id={option.domId}
+												class={option.className}
+												role="option"
+												aria-selected={option.isActive}
+												data-key={option.key}
+												data-label={option.label}
+												onclick={handleOptionClick}
+											>
+												<span
+													lwc:if={isResourceMenu}
+													class="slds-media__figure slds-listbox__option-icon slds-m-right_none"
+												>
+													<lightning-icon
+														lwc:if={option.isCurrent}
+														icon-name="utility:check"
+														size="x-small"
+														alternative-text="Current value"
+													></lightning-icon>
+												</span>
+												<span
+													class="slds-media__figure slds-listbox__option-icon slds-var-m-right_x-small"
+												>
+													<lightning-icon
+														icon-name={option.icon}
+														size={iconSize}
+														alternative-text=""
+													></lightning-icon>
+												</span>
+												<span class="slds-media__body">
+													<span class={optionTextClass} title={option.label}
+														>{option.label}</span
+													>
+													<span
+														lwc:if={option.description}
+														class="slds-listbox__option-meta slds-listbox__option-meta_entity"
+														>{option.description}</span
+													>
+												</span>
+												<span
+													lwc:if={option.isDrillable}
+													class="slds-media__figure slds-media__figure_reverse"
+												>
+													<lightning-icon
+														icon-name="utility:chevronright"
+														size="x-small"
+														alternative-text=""
+													></lightning-icon>
+												</span>
+											</div>
+										</li>
+									</template>
+									<li lwc:if={section.hasDivider} role="presentation" class="picker-divider"></li>
+								</ul>
+							</template>
+						</template>
+						<p lwc:else class="picker-empty slds-var-p-around_small slds-text-align_center">
+							We couldn't find any matching resources,<br />but you can enter a value.
+						</p>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div lwc:if={error} id="error-message" class="slds-form-element__help">{error}</div>
+	</div>
+</template>
