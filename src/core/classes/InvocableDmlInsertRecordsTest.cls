@@ -136,7 +136,7 @@ private class InvocableDmlInsertRecordsTest {
 		Id assignmentRuleId = MockRecord.initRecordId(Schema.SObjectType.AssignmentRule.getSObjectType());
 		InvocableDml.Input input = new InvocableDml.Input();
 		input.recordCollection = InvocableDmlInsertRecordsTest.initAccounts(1);
-		input.accessLevel = 'system_mode';
+		input.accessLevel = 'SYSTEM_MODE';
 		input.allOrNone = false;
 		input.allowDuplicates = true;
 		input.allowFieldTruncation = true;
@@ -168,19 +168,23 @@ private class InvocableDmlInsertRecordsTest {
 	}
 
 	@IsTest
-	private static void shouldRunInvalidAccessLevelInUserMode() {
+	private static void shouldThrowOnInvalidAccessLevel() {
 		DatabaseLayer.useMockDml();
-		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
 		InvocableDml.Input input = new InvocableDml.Input();
 		input.accessLevel = 'Not a real access level';
 		input.recordCollection = InvocableDmlInsertRecordsTest.initAccounts(1);
 
 		Test.startTest();
-		InvocableDmlInsertRecordsTest.invoke(input);
+		Exception caughtError;
+		try {
+			InvocableDmlInsertRecordsTest.invoke(input);
+		} catch (System.IllegalArgumentException error) {
+			caughtError = error;
+		}
 		Test.stopTest();
 
-		Dml.Request request = DatabaseLayerTestUtils.DmlPluginSpy?.lastDmlRequest;
-		Assert.areEqual(System.AccessLevel.USER_MODE, request?.accessLevel, 'Wrong access level');
+		Assert.isNotNull(caughtError, 'Did not throw a System.IllegalArgumentException');
+		Assert.isTrue(MockDml.INSERTED?.getRecords(Account.SObjectType)?.isEmpty(), 'Inserted despite the error');
 	}
 
 	@IsTest
