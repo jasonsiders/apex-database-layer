@@ -98,11 +98,11 @@ public abstract inherited sharing class InvocableDml {
 	 * @return The pooled records
 	 */
 	private static List<SObject> poolRecords(List<InvocableDml.Output> outputs, SObjectField matchField) {
-		InvocableDmlRecordPool pool = new InvocableDmlRecordPool(matchField);
+		InvocableDml.RecordPool pool = new InvocableDml.RecordPool(matchField);
 		for (InvocableDml.Output output : outputs) {
 			output?.addTo(pool);
 		}
-		return pool?.toRecords();
+		return pool?.records;
 	}
 
 	// **** INNER **** //
@@ -297,7 +297,7 @@ public abstract inherited sharing class InvocableDml {
 		 * @description Pools this output's records, noting where each one went, to match its results back later
 		 * @param pool The records of every output so far
 		 */
-		private void addTo(InvocableDmlRecordPool pool) {
+		private void addTo(InvocableDml.RecordPool pool) {
 			for (SObject record : this.recordCollection) {
 				Integer position = pool?.add(record);
 				this.positions?.add(position);
@@ -311,6 +311,92 @@ public abstract inherited sharing class InvocableDml {
 		private void setRecords(List<SObject> records) {
 			this.recordCollection = records;
 			this.record = records?.isEmpty() == false ? records?.get(0) : null;
+		}
+	}
+
+	/** @description Every input's records, with those that match merged into one **/
+	private class RecordPool {
+		/** @description Identifies a record; null matches on Id **/
+		private SObjectField matchField;
+		/** @description Keyed by the match field's value **/
+		private Map<Object, Integer> positionsByKey;
+		/** @description The records for the DML operation **/
+		private List<SObject> records;
+
+		/**
+		 * @description Starts an empty pool
+		 * @param matchField The field that identifies a record, or null to match on Id
+		 */
+		private RecordPool(SObjectField matchField) {
+			this.matchField = matchField;
+			this.positionsByKey = new Map<Object, Integer>{};
+			this.records = new List<SObject>{};
+		}
+
+		/**
+		 * @description Adds a record, or merges it into the pooled record it matches; a record without a key, ex: a
+		 * new one, matches nothing
+		 * @param record The record to add
+		 * @return The record's position in the pool
+		 */
+		private Integer add(SObject record) {
+			// shortcut: keys match case-sensitively, so external IDs that differ only in case still fail as duplicates;
+			// lowercase text keys if flows hit it
+			Object key = this.matchField == null ? record?.Id : record?.get(this.matchField);
+			Integer position = this.positionsByKey?.get(key);
+			if (position == null) {
+				position = this.append(record, key);
+			} else {
+				this.mergeInto(position, record);
+			}
+			return position;
+		}
+
+		/**
+		 * @description Adds a record that matches none in the pool
+		 * @param record The record to add
+		 * @param key The record's match field value, or null if it has none
+		 * @return The record's position in the pool
+		 */
+		private Integer append(SObject record, Object key) {
+			Integer position = this.records?.size();
+			this.records?.add(record);
+			if (key != null) {
+				this.positionsByKey?.put(key, position);
+			}
+			return position;
+		}
+
+		/**
+		 * @description Copies a record's fields onto the pooled record it matches, so no input's changes are lost; on a
+		 * field both set, the later input wins
+		 * @param position The pooled record's position
+		 * @param record The record to merge in
+		 */
+		private void mergeInto(Integer position, SObject record) {
+			SObject pooled = this.records?.get(position);
+			Map<String, Object> fields = record?.getPopulatedFieldsAsMap();
+			// shortcut: a later full copy, ex: from Get Records, overwrites an earlier input's change with its stale
+			// value; merge only changed fields if flows hit it
+			for (String fieldName : fields?.keySet()) {
+				Object value = fields?.get(fieldName);
+				this.setField(pooled, fieldName, value);
+			}
+		}
+
+		/**
+		 * @description Sets one field on a pooled record. Apex can't put some values a queried record holds, ex: formulas,
+		 * audit fields, and related records, so those keep the pooled record's value, as queried
+		 * @param pooled The pooled record
+		 * @param fieldName The field or relationship's API name
+		 * @param value The field's value, or the related records
+		 */
+		private void setField(SObject pooled, String fieldName, Object value) {
+			try {
+				pooled?.put(fieldName, value);
+			} catch (System.SObjectException ignored) {
+				// DML wouldn't save the later input's value anyway
+			}
 		}
 	}
 }
