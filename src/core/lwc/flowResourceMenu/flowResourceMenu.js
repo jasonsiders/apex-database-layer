@@ -493,9 +493,7 @@ function initFilterItems(builderContext, collections, context, scope) {
 	);
 	// shortcut: a filter of a filter resolves only when listed after it; resolve recursively if flows misorder them
 	const items = filters.reduce((filtered, filter) => {
-		const source =
-			[...collections, ...filtered].find((item) => item.value === filter.collectionReference) ??
-			resolveOutput(filter.collectionReference, context);
+		const source = findCollection(filter.collectionReference, [...collections, ...filtered], context);
 		return [...filtered, initFilterItem(filter, source, context)];
 	}, []);
 	return items.filter((item) => scope.isUpstream(item.value));
@@ -516,8 +514,7 @@ function initFilterItem(filter, source, context) {
 		label: isRecord ? `${objectLabel} from ${filter.label}` : filter.label,
 		dataType: source?.dataType,
 		objectType: source?.objectType,
-		isCollection: true,
-		drillType: isRecord ? DRILL_RECORD : null
+		isCollection: true
 	});
 }
 
@@ -556,7 +553,7 @@ function initGlobalItem(global) {
 }
 
 /**
- * @description Applies defaults to an item, deriving its icon from its data type.
+ * @description Applies defaults to an item, deriving its icon and drill-down from its data type.
  * @param {Object} props The item's properties
  * @returns {Object} The item
  */
@@ -565,7 +562,8 @@ function initItem(props) {
 	const recordIcon = props.isCollection ? ICON_RECORD_COLLECTION : ICON_RECORD;
 	const typeIcon = TYPE_ICONS[props.dataType] ?? "utility:text";
 	const icon = isRecord ? recordIcon : typeIcon;
-	return { icon, isCollection: false, isLiteral: false, drillType: null, pathLabel: props.label, ...props };
+	const drillType = isRecord ? DRILL_RECORD : null;
+	return { icon, isCollection: false, isLiteral: false, drillType, pathLabel: props.label, ...props };
 }
 
 /**
@@ -580,16 +578,12 @@ function initLoopItems(builderContext, collections, context, scope) {
 	return (builderContext.loops ?? [])
 		.filter((loop) => !loop.assignNextValueToReference && scope.isInLoop(loop))
 		.map((loop) => {
-			const collection =
-				collections.find((item) => item.value === loop.collectionReference) ??
-				resolveOutput(loop.collectionReference, context);
-			const isRecord = collection?.dataType === SOBJECT;
+			const collection = findCollection(loop.collectionReference, collections, context);
 			return initItem({
 				value: loop.name,
 				label: `Current Item from Loop ${loop.label}`,
 				dataType: collection?.dataType,
-				objectType: collection?.objectType,
-				drillType: isRecord ? DRILL_RECORD : null
+				objectType: collection?.objectType
 			});
 		});
 }
@@ -609,8 +603,7 @@ function initLookupItem(lookup, context) {
 		label: `${objectLabel} from ${lookup.label}`,
 		dataType: SOBJECT,
 		objectType: lookup.object,
-		isCollection,
-		drillType: DRILL_RECORD
+		isCollection
 	});
 }
 
@@ -631,8 +624,7 @@ function initOutputItems(action, context) {
 				pathLabel: `${action.pathLabel} > ${output.label ?? output.name}`,
 				dataType,
 				objectType: output.sobjectType,
-				isCollection: output.maxOccurs > 1,
-				drillType: dataType === SOBJECT ? DRILL_RECORD : null
+				isCollection: output.maxOccurs > 1
 			});
 		})
 		.sort(
@@ -663,8 +655,7 @@ function initRelationshipItem(field, parent) {
 		pathLabel: `${parent.pathLabel} > ${field.label}`,
 		dataType: SOBJECT,
 		// shortcut: polymorphic lookups (ex: Owner on Case) drill into their first type; list each type if users ask
-		objectType: field.referenceToInfos[0].apiName,
-		drillType: DRILL_RECORD
+		objectType: field.referenceToInfos[0].apiName
 	});
 }
 
@@ -775,14 +766,12 @@ function initTypedItem({ name, dataType }) {
  * @returns {Object} The variable's item
  */
 function initVariableItem(variable) {
-	const isRecord = variable.dataType === SOBJECT;
 	return initItem({
 		value: variable.name,
 		label: variable.name,
 		dataType: variable.dataType,
 		objectType: variable.objectType,
-		isCollection: Boolean(variable.isCollection),
-		drillType: isRecord ? DRILL_RECORD : null
+		isCollection: Boolean(variable.isCollection)
 	});
 }
 
@@ -794,6 +783,17 @@ function initVariableItem(variable) {
  */
 function matchesSearch(item, term) {
 	return `${item.label}\n${item.value}`.toLowerCase().includes(term);
+}
+
+/**
+ * @description Finds the collection a reference names: a known item, or else an action output.
+ * @param {String} reference The collection's reference, ex: `Get_Accounts`
+ * @param {Array} collections Items the reference may name
+ * @param {Object} context Used to look up action outputs
+ * @returns {Object} The collection's item, if found
+ */
+function findCollection(reference, collections, context) {
+	return collections.find((item) => item.value === reference) ?? resolveOutput(reference, context);
 }
 
 /**
@@ -939,8 +939,7 @@ function initTriggerItems(builderContext, context) {
 			...trigger,
 			pathLabel: trigger.value,
 			dataType: SOBJECT,
-			objectType: start.object,
-			drillType: DRILL_RECORD
+			objectType: start.object
 		})
 	);
 }

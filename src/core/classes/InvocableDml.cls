@@ -199,20 +199,11 @@ public abstract inherited sharing class InvocableDml {
 
 		/**
 		 * @description Treats the single record and the collection alike, so the rest of the action handles one list
-		 * @return Every record in this input
-		 */
-		private List<SObject> getRecords() {
-			List<SObject> records = this.record == null ? new List<SObject>{} : new List<SObject>{ this.record };
-			records?.addAll(this.recordCollection ?? new List<SObject>{});
-			return records;
-		}
-
-		/**
-		 * @description The output holds this input's records until they're processed
-		 * @return An output holding this input's records
+		 * @return An output holding this input's records until they're processed
 		 */
 		private InvocableDml.Output toOutput() {
-			List<SObject> records = this.getRecords();
+			List<SObject> records = this.record == null ? new List<SObject>{} : new List<SObject>{ this.record };
+			records?.addAll(this.recordCollection ?? new List<SObject>{});
 			return new InvocableDml.Output(records);
 		}
 	}

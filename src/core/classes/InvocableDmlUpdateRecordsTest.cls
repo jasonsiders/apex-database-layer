@@ -37,14 +37,12 @@ private class InvocableDmlUpdateRecordsTest {
 	}
 
 	@IsTest
-	private static void shouldFailRecordsSharedByInputs() {
-		Account parent = new Account(Name = 'Before');
-		insert parent;
-		InvocableDml.Input nameInput = new InvocableDml.Input();
-		nameInput.record = new Account(Id = parent?.Id, Name = 'After');
-		InvocableDml.Input phoneInput = new InvocableDml.Input();
-		phoneInput.record = new Account(Id = parent?.Id, Phone = '555-0100');
-		List<InvocableDml.Input> inputs = new List<InvocableDml.Input>{ nameInput, phoneInput };
+	private static void shouldThrowOnRecordListedTwice() {
+		Account existing = new Account(Name = 'Test');
+		insert existing;
+		InvocableDml.Input input = new InvocableDml.Input();
+		input.record = new Account(Id = existing?.Id);
+		List<InvocableDml.Input> inputs = new List<InvocableDml.Input>{ input, input };
 
 		Test.startTest();
 		Exception caughtError;

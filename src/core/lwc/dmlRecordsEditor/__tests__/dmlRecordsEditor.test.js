@@ -327,7 +327,7 @@ describe("c-dml-records-editor", () => {
 	it("accepts a complete configuration", async () => {
 		const { element } = await render([
 			{ name: "record", value: "accountVar", valueDataType: "reference" },
-			{ name: "accessLevel", value: "system_mode", valueDataType: "String" },
+			{ name: "accessLevel", value: "SYSTEM_MODE", valueDataType: "String" },
 			{ name: "allOrNone", value: false, valueDataType: "Boolean" },
 			{ name: "allowDuplicates", value: "$GlobalConstant.True", valueDataType: "Boolean" },
 			{ name: "triggerUserEmail", value: "boolVar", valueDataType: "reference" }
