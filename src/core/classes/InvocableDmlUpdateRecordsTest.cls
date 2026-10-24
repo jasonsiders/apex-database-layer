@@ -61,6 +61,34 @@ private class InvocableDmlUpdateRecordsTest {
 	}
 
 	@IsTest
+	private static void shouldMergeRecordsWithReadOnlyFields() {
+		Account parent = new Account(Name = 'Before');
+		insert parent;
+		insert new Contact(AccountId = parent?.Id, LastName = 'Test');
+		Account phoneUpdate = new Account(Id = parent?.Id, Phone = '555-0100');
+		// Like a Get Records result, with audit fields and child records Apex can't set
+		Account nameUpdate = InvocableDmlUpdateRecordsTest.queryWithReadOnlyFields(parent?.Id);
+		nameUpdate.Name = 'After';
+		List<InvocableDml.Input> inputs = new List<InvocableDml.Input>{};
+		for (Account record : new List<Account>{ phoneUpdate, nameUpdate }) {
+			InvocableDml.Input input = new InvocableDml.Input();
+			input.record = record;
+			inputs?.add(input);
+		}
+
+		Test.startTest();
+		List<InvocableDml.Output> outputs = InvocableDmlUpdateRecords.invoke(inputs);
+		Test.stopTest();
+
+		for (InvocableDml.Output output : outputs) {
+			Assert.isTrue(output?.result?.isSuccess, 'Shared record failed: ' + output?.result?.errors);
+		}
+		Account updated = [SELECT Name, Phone FROM Account WHERE Id = :parent.Id];
+		Assert.areEqual('After', updated?.Name, 'Lost the 1st input\'s change');
+		Assert.areEqual('555-0100', updated?.Phone, 'Lost the 2nd input\'s change');
+	}
+
+	@IsTest
 	private static void shouldApplyAllOptions() {
 		DatabaseLayer.useMockDml();
 		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
@@ -86,5 +114,13 @@ private class InvocableDmlUpdateRecordsTest {
 	private static InvocableDml.Output invoke(InvocableDml.Input input) {
 		List<InvocableDml.Input> inputs = new List<InvocableDml.Input>{ input };
 		return InvocableDmlUpdateRecords.invoke(inputs)?.get(0);
+	}
+
+	private static Account queryWithReadOnlyFields(Id accountId) {
+		return [
+			SELECT Id, Name, CreatedDate, LastModifiedDate, (SELECT Id FROM Contacts)
+			FROM Account
+			WHERE Id = :accountId
+		];
 	}
 }

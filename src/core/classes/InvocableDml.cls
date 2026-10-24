@@ -102,7 +102,7 @@ public abstract inherited sharing class InvocableDml {
 		for (InvocableDml.Output output : outputs) {
 			output?.addTo(pool);
 		}
-		return pool?.toRecords();
+		return pool?.records;
 	}
 
 	// **** INNER **** //
@@ -318,8 +318,6 @@ public abstract inherited sharing class InvocableDml {
 	private class RecordPool {
 		/** @description Identifies a record; null matches on Id **/
 		private SObjectField matchField;
-		/** @description The fields of each record that inputs share, collected until the records are rebuilt **/
-		private Map<Integer, Map<String, Object>> mergedFieldsByPosition;
 		/** @description Keyed by the match field's value **/
 		private Map<Object, Integer> positionsByKey;
 		/** @description The records for the DML operation **/
@@ -331,7 +329,6 @@ public abstract inherited sharing class InvocableDml {
 		 */
 		private RecordPool(SObjectField matchField) {
 			this.matchField = matchField;
-			this.mergedFieldsByPosition = new Map<Integer, Map<String, Object>>{};
 			this.positionsByKey = new Map<Object, Integer>{};
 			this.records = new List<SObject>{};
 		}
@@ -371,47 +368,37 @@ public abstract inherited sharing class InvocableDml {
 		}
 
 		/**
-		 * @description Collects a record's fields onto those of the pooled record it matches, so no input's changes are
-		 * lost; on a field both set, the later input wins
+		 * @description Copies a record's fields onto the pooled record it matches, so no input's changes are lost; on a
+		 * field both set, the later input wins
 		 * @param position The pooled record's position
 		 * @param record The record to merge in
 		 */
 		private void mergeInto(Integer position, SObject record) {
-			if (this.mergedFieldsByPosition?.containsKey(position) == false) {
-				SObject pooled = this.records?.get(position);
-				Map<String, Object> populatedFields = pooled?.getPopulatedFieldsAsMap();
-				Map<String, Object> pooledFields = new Map<String, Object>(populatedFields);
-				this.mergedFieldsByPosition?.put(position, pooledFields);
-			}
-			Map<String, Object> newFields = record?.getPopulatedFieldsAsMap();
-			this.mergedFieldsByPosition?.get(position)?.putAll(newFields);
-		}
-
-		/**
-		 * @description Rebuilds a shared record from its collected fields
-		 * @param position The record's position
-		 * @return The merged record
-		 */
-		private SObject toMergedRecord(Integer position) {
 			SObject pooled = this.records?.get(position);
-			Map<String, Object> fields = this.mergedFieldsByPosition?.get(position);
-			String serialized = JSON.serialize(fields);
-			String objectName = String.valueOf(pooled?.getSObjectType());
-			System.Type objectType = System.Type.forName(objectName);
-			// Deserializing, unlike SObject.put, accepts read-only fields, ex: formulas from Get Records
-			return (SObject) JSON.deserialize(serialized, objectType);
+			Map<String, Object> fields = record?.getPopulatedFieldsAsMap();
+			for (String fieldName : fields?.keySet()) {
+				Object value = fields?.get(fieldName);
+				this.setField(pooled, fieldName, value);
+			}
 		}
 
 		/**
-		 * @description Rebuilds each shared record once, however many inputs shared it
-		 * @return The records for the DML operation
+		 * @description Sets one field on a pooled record. Apex can't set some fields Get Records returns, ex: formulas,
+		 * audit fields, and child records, so those keep the pooled record's value, as queried
+		 * @param pooled The pooled record
+		 * @param fieldName The field or relationship's API name
+		 * @param value The field's value, or the related record
 		 */
-		private List<SObject> toRecords() {
-			for (Integer position : this.mergedFieldsByPosition?.keySet()) {
-				SObject merged = this.toMergedRecord(position);
-				this.records?.set(position, merged);
+		private void setField(SObject pooled, String fieldName, Object value) {
+			try {
+				if (value instanceof SObject) {
+					pooled?.putSObject(fieldName, (SObject) value);
+				} else {
+					pooled?.put(fieldName, value);
+				}
+			} catch (System.SObjectException ignored) {
+				// The field is read-only, so DML wouldn't save the later input's value anyway
 			}
-			return this.records;
 		}
 	}
 }
