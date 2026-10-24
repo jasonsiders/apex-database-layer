@@ -200,7 +200,8 @@ const GLOBAL_CONSTANTS = [
  * @returns {Array} Sections of `{ label, items, hasDivider }`, in Flow Builder's order
  */
 export function getRootSections(context, target) {
-	const picklist = initSection("Picklist Values", (target?.picklistValues ?? []).map(initPicklistItem), false);
+	const picklistItems = (target?.picklistValues ?? []).map(initPicklistItem);
+	const picklist = initSection("Picklist Values", picklistItems, false);
 	// A picklist-only target skips building the resources it would discard
 	const sections = target?.isPicklistOnly ? [picklist] : [picklist, ...initResourceSections(context)];
 	return applyTarget(sections, target, context);
@@ -410,7 +411,8 @@ function getGlobalSections(item) {
  * @returns {Array} One "Outputs" section
  */
 function getOutputSections(item, context) {
-	return [initSection("Outputs", initOutputItems(item, context), false)];
+	const outputs = initOutputItems(item, context);
+	return [initSection("Outputs", outputs, false)];
 }
 
 /**
@@ -620,39 +622,37 @@ function initResourceSections(context) {
 		.filter((lookup) => lookup.storeOutputAutomatically && scope.isUpstream(lookup.name))
 		.map((lookup) => initLookupItem(lookup, context));
 	const loops = initLoopItems(builderContext, [...variables, ...lookups], context, scope);
+	const triggers = initTriggerItems(builderContext, context);
+	const quickResources = initSection("Quick Resources", [...triggers, ...loops], false);
+	const actions = initActionItems(builderContext, context, scope);
+	const choices = (builderContext.choices ?? []).map(initTypedItem);
+	const constants = (builderContext.constants ?? []).map(initTypedItem);
+	const formulas = (builderContext.formulas ?? []).map(initTypedItem);
 	const records = variables.filter((item) => item.dataType === SOBJECT);
+	const recordCollections = records.filter((item) => item.isCollection);
+	const recordVariables = records.filter((item) => !item.isCollection);
+	const screenComponents = initScreenItems(builderContext, scope);
+	const simpleVariables = variables.filter((item) => item.dataType !== SOBJECT);
+	const stages = (builderContext.stages ?? []).map(initStageItem);
+	const textTemplates = (builderContext.textTemplates ?? []).map(initTextTemplateItem);
+	const globalConstants = GLOBAL_CONSTANTS.map((constant) => initItem(constant));
+	const globalVariables = GLOBAL_VARIABLES.map(initGlobalItem);
 	return [
 		// Flow Builder divides quick resources from the rest of the menu
-		{
-			...initSection("Quick Resources", [...initTriggerItems(builderContext, context), ...loops], false),
-			hasDivider: true
-		},
-		initSection("Action", initActionItems(builderContext, context, scope)),
+		{ ...quickResources, hasDivider: true },
+		initSection("Action", actions),
 		initSection("Get Records", lookups),
-		initSection("Choices", (builderContext.choices ?? []).map(initTypedItem)),
-		initSection("Constants", (builderContext.constants ?? []).map(initTypedItem)),
-		initSection("Formulas", (builderContext.formulas ?? []).map(initTypedItem)),
-		initSection(
-			"Record Collections",
-			records.filter((item) => item.isCollection)
-		),
-		initSection(
-			"Record Variables",
-			records.filter((item) => !item.isCollection)
-		),
-		initSection("Screen Components", initScreenItems(builderContext, scope)),
-		initSection(
-			"Simple Variables",
-			variables.filter((item) => item.dataType !== SOBJECT)
-		),
-		initSection("Stages", (builderContext.stages ?? []).map(initStageItem)),
-		initSection("Text Templates", (builderContext.textTemplates ?? []).map(initTextTemplateItem)),
-		initSection(
-			"Global Constants",
-			GLOBAL_CONSTANTS.map((constant) => initItem(constant)),
-			false
-		),
-		initSection("Global Variables", GLOBAL_VARIABLES.map(initGlobalItem), false)
+		initSection("Choices", choices),
+		initSection("Constants", constants),
+		initSection("Formulas", formulas),
+		initSection("Record Collections", recordCollections),
+		initSection("Record Variables", recordVariables),
+		initSection("Screen Components", screenComponents),
+		initSection("Simple Variables", simpleVariables),
+		initSection("Stages", stages),
+		initSection("Text Templates", textTemplates),
+		initSection("Global Constants", globalConstants, false),
+		initSection("Global Variables", globalVariables, false)
 	];
 }
 
