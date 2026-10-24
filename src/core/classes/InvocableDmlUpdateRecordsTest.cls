@@ -37,7 +37,7 @@ private class InvocableDmlUpdateRecordsTest {
 	}
 
 	@IsTest
-	private static void shouldMergeRecordsSharedByInputs() {
+	private static void shouldUpdateRecordsSharedByInputsOnce() {
 		Account parent = new Account(Name = 'Before');
 		insert parent;
 		InvocableDml.Input nameInput = new InvocableDml.Input();
@@ -57,7 +57,7 @@ private class InvocableDmlUpdateRecordsTest {
 		}
 		Account updated = [SELECT Name, Phone FROM Account WHERE Id = :parent.Id];
 		Assert.areEqual('After', updated?.Name, 'Lost the 1st input\'s change');
-		Assert.areEqual('555-0100', updated?.Phone, 'Lost the 2nd input\'s change');
+		Assert.isNull(updated?.Phone, 'Saved the 2nd input\'s copy, not the 1st');
 	}
 
 	@IsTest

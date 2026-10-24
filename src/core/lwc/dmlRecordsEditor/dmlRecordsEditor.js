@@ -2,10 +2,10 @@ import { LightningElement, api, wire } from "lwc";
 import { getPicklistValues } from "lightning/uiObjectInfoApi";
 import LOCALE_FIELD from "@salesforce/schema/User.LocaleSidKey";
 import getMatchFields from "@salesforce/apex/InvocableDmlUpsertRecords.getMatchFields";
-import { REQUIRED_ERROR, compareLabels, toBooleanConstant } from "c/flowResourceMenu";
+import { REFERENCE, REQUIRED_ERROR, compareLabels, toBooleanConstant } from "c/flowResourceMenu";
 
-const FALSE = "$GlobalConstant.False";
-const TRUE = "$GlobalConstant.True";
+const FALSE = toBooleanConstant(false);
+const TRUE = toBooleanConstant(true);
 // Labeled like Flow Builder's boolean global constants
 const BOOLEANS = [
 	{ label: "True", value: TRUE },
@@ -62,7 +62,7 @@ const SETTINGS = [
 		defaultValue: "USER_MODE",
 		picklistValues: ACCESS_LEVELS,
 		helpText:
-			"USER_MODE (default) enforces the running user's object permissions, field-level security, and sharing rules. SYSTEM_MODE ignores them."
+			"USER_MODE (default) enforces the running user's object permissions, field-level security, and sharing rules. SYSTEM_MODE ignores object permissions and field-level security, but sharing rules still apply."
 	},
 	{
 		name: "allOrNone",
@@ -174,9 +174,9 @@ const ACTIONS = {
 };
 
 /**
- * Custom Property Editor for the record DML actions (`InvocableDml` subclasses), configured by the action being
- * edited. Mirrors Flow Builder's Create, Update, and Delete Records elements: one records input that saves to `record`
- * or `recordCollection`, and types the action's generic inputs and outputs to the chosen object.
+ * @description Custom Property Editor for the record DML actions (`InvocableDml` subclasses), configured by the action
+ * being edited. Mirrors Flow Builder's Create, Update, and Delete Records elements: one records input that saves to
+ * `record` or `recordCollection`, and types the action's generic inputs and outputs to the chosen object.
  */
 export default class DmlRecordsEditor extends LightningElement {
 	/**
@@ -200,6 +200,7 @@ export default class DmlRecordsEditor extends LightningElement {
 	 */
 	@api genericTypeMappings;
 
+	howManyOptions = HOW_MANY_OPTIONS;
 	_errors = {};
 	_howMany = ONE;
 	_inputVariables = [];
@@ -220,10 +221,6 @@ export default class DmlRecordsEditor extends LightningElement {
 
 	get howMany() {
 		return this._howMany;
-	}
-
-	get howManyOptions() {
-		return HOW_MANY_OPTIONS;
 	}
 
 	get localeRecordTypeId() {
@@ -260,27 +257,17 @@ export default class DmlRecordsEditor extends LightningElement {
 
 	get options() {
 		const fields = this._initFields(this.action.options);
-		return fields.map((field) => {
-			const value = field.value ?? field.defaultValue;
-			const picklistValues = field.name === LOCALE_OPTIONS ? this._locales : field.picklistValues;
-			// Unset booleans show the action's default, false unless the definition says otherwise
-			const boolean = { picklistValues: BOOLEANS, value: toBooleanConstant(value) ?? FALSE };
-			return field.type === "Boolean" ? { ...field, ...boolean } : { ...field, picklistValues, value };
-		});
+		return fields.map((field) => this._initOption(field));
 	}
 
 	get records() {
 		const { heading, headings, hint, howManyLabel } = this.action;
-		const recordsInput = RECORDS_INPUTS[this._howMany];
-		const input = this._values[recordsInput.name];
+		const [field] = this._initFields([RECORDS_INPUTS[this._howMany]]);
 		return {
-			...recordsInput,
+			...field,
 			...(howManyLabel ? {} : EITHER_RECORDS_INPUT),
 			heading: headings?.[this._howMany] ?? heading,
-			hint,
-			value: input?.value,
-			valueDataType: input?.valueDataType,
-			errorMessage: this._errors[recordsInput.name]
+			hint
 		};
 	}
 
@@ -295,10 +282,7 @@ export default class DmlRecordsEditor extends LightningElement {
 	}
 	set inputVariables(value) {
 		this._inputVariables = value ?? [];
-		// A new action's inputs arrive blank, not null; Flow Builder can't save a blank literal, so blank means unset
-		const saved = this._inputVariables.filter((input) => input.value !== "");
-		const entries = saved.map((input) => [input.name, input]);
-		this._values = Object.fromEntries(entries);
+		this._values = this._initValues();
 		this._howMany = this._initHowMany();
 	}
 
@@ -395,7 +379,7 @@ export default class DmlRecordsEditor extends LightningElement {
 	/**
 	 * @description Saves the records to the input matching their shape, then types every generic input and output to
 	 * their object, which Flow Builder needs before it can save the flow
-	 * @param {CustomEvent} event Change on the records picker: `{ name, value, valueDataType, objectType, isCollection }`
+	 * @param {CustomEvent} event Change on the records picker, with the records' `objectType` and `isCollection`
 	 */
 	handleRecordsChange(event) {
 		const { isCollection, objectType, value } = event.detail;
@@ -443,6 +427,29 @@ export default class DmlRecordsEditor extends LightningElement {
 	}
 
 	/**
+	 * @description Combines a static option with its choices. A resource saved outside the editor, ex: in metadata, is
+	 * listed as its own choice, so the option shows it, not a default, until the user picks another value.
+	 * @param {Object} field The option, with its saved value
+	 * @returns {Object} The option, ready for `lightning-combobox`
+	 */
+	_initOption(field) {
+		const value = field.value ?? field.defaultValue;
+		const isResource = field.valueDataType === REFERENCE && toBooleanConstant(value) == null;
+		// The picker shows its own resources
+		const resource = isResource && !field.allowsResources ? value : null;
+		const resourceChoices = resource ? [{ label: `{!${resource}}`, value: resource }] : [];
+		const isBoolean = field.type === "Boolean";
+		const listChoices = field.name === LOCALE_OPTIONS ? this._locales : (field.picklistValues ?? []);
+		// Unset booleans show the action's default, false unless the definition says otherwise
+		const booleanValue = resource ?? toBooleanConstant(value) ?? FALSE;
+		return {
+			...field,
+			picklistValues: [...resourceChoices, ...(isBoolean ? BOOLEANS : listChoices)],
+			value: isBoolean ? booleanValue : value
+		};
+	}
+
+	/**
 	 * @description Combines a match mode with its field's saved value, error, and the object's fields for that mode.
 	 * @param {Object} mode External ID or Standard Field
 	 * @returns {Object} The mode's field, ready for `c-flow-resource-picker`
@@ -466,12 +473,23 @@ export default class DmlRecordsEditor extends LightningElement {
 	}
 
 	/**
+	 * @description Indexes the saved inputs by name. A new action's inputs arrive blank, not null; Flow Builder can't
+	 * save a blank literal, so blank means unset.
+	 * @returns {Object} Each saved input, by name
+	 */
+	_initValues() {
+		const saved = this._inputVariables.filter((input) => input.value !== "");
+		const entries = saved.map((input) => [input.name, input]);
+		return Object.fromEntries(entries);
+	}
+
+	/**
 	 * @description Saves a value to the action, or removes it when cleared.
 	 * @param {Object} detail `{ name, value, valueDataType }`
 	 */
 	_saveInput(detail) {
 		const { name, value, valueDataType } = detail;
-		// Errors only refresh in validate(), which Flow Builder calls when the panel closes, so a fixed input clears its own
+		// Errors only refresh in validate(), which runs when the panel closes, so a fixed input clears its own
 		this._errors = { ...this._errors, [name]: undefined };
 		if (value == null) {
 			this._deleteInput(name);
@@ -523,7 +541,7 @@ export default class DmlRecordsEditor extends LightningElement {
 	}
 
 	/**
-	 * @description Types the action's generic inputs and outputs to the chosen object; skipped when the object isn't known
+	 * @description Types the action's generic inputs and outputs to the chosen object, once it's known
 	 * @param {Object} detail The records picker's change: `{ value, objectType }`
 	 */
 	_setGenericTypes(detail) {

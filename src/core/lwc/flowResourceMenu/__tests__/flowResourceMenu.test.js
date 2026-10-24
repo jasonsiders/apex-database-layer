@@ -29,7 +29,7 @@ function findItem(sections, value) {
 
 describe("c-flow-resource-menu", () => {
 	describe("getRootSections", () => {
-		it("lists every scalar resource for a text input, in Flow Builder's order", () => {
+		it("lists only text resources, and containers of them, for a text input, in Flow Builder's order", () => {
 			const sections = getRootSections(context, TEXT);
 
 			expect(labelsBySection(sections)).toEqual({
@@ -37,21 +37,19 @@ describe("c-flow-resource-menu", () => {
 				Action: ["Outputs from Insert Spike"],
 				Choices: ["choiceA"],
 				Constants: ["constText"],
-				Formulas: ["formulaBool"],
 				"Record Variables": ["accountVar", "contactVar"],
-				"Screen Components": ["agreeBox", "nameInput"],
-				"Simple Variables": ["boolVar", "textVar"],
+				"Screen Components": ["nameInput"],
+				"Simple Variables": ["textVar"],
 				Stages: ["Stage One"],
 				"Text Templates": ["tmplText"],
-				"Global Constants": ["False", "True", "Blank Value (Empty String)"],
+				"Global Constants": ["Blank Value (Empty String)"],
 				"Global Variables": [
 					"API",
 					"Running Flow Interview",
 					"Running Org",
 					"Running User",
 					"Running User Profile",
-					"Running User Role",
-					"System"
+					"Running User Role"
 				]
 			});
 		});
@@ -151,6 +149,31 @@ describe("c-flow-resource-menu", () => {
 			const sections = getRootSections({ ...context, builderContext }, RECORD);
 
 			expect(findItem(sections, "Loop_Outputs")).toMatchObject({ objectType: "Account", isSelectable: true });
+		});
+
+		it("lists Collection Filter outputs like the collections they filter, and loops over them", () => {
+			const collectionProcessors = [
+				{
+					name: "Filter_Open",
+					label: "Filter Open",
+					elementSubtype: "FilterCollectionProcessor",
+					collectionReference: "Get_Accounts"
+				},
+				{ name: "Sort_Open", label: "Sort Open", elementSubtype: "SortCollectionProcessor" }
+			];
+			const loops = [{ name: "Loop_Open", label: "Loop Open", collectionReference: "Filter_Open" }];
+			const builderContext = { ...context.builderContext, collectionProcessors, loops };
+
+			const collections = getRootSections({ ...context, builderContext }, RECORDS);
+			const records = getRootSections({ ...context, builderContext }, RECORD);
+
+			expect(labelsBySection(collections)["Collection Filter"]).toEqual(["Accounts from Filter Open"]);
+			expect(findItem(collections, "Filter_Open")).toMatchObject({
+				objectType: "Account",
+				isCollection: true,
+				isSelectable: true
+			});
+			expect(findItem(records, "Loop_Open")).toMatchObject({ objectType: "Account", isSelectable: true });
 		});
 
 		it("lists only picklist values for a picklist-only input", () => {
@@ -253,9 +276,9 @@ describe("c-flow-resource-menu", () => {
 
 	describe("getChildSections", () => {
 		it("lists a record's relationship fields, then its fields sorted by type and label", async () => {
-			const accountVar = findItem(getRootSections(context, TEXT), "accountVar");
+			const accountVar = findItem(getRootSections(context, null), "accountVar");
 
-			const sections = await getChildSections(accountVar, context, TEXT, describeObject);
+			const sections = await getChildSections(accountVar, context, null, describeObject);
 
 			expect(labelsBySection(sections)).toEqual({
 				"Relationship Fields": ["Owner ID", "Parent Account ID", "Owner ID", "Parent Account ID"],
@@ -270,6 +293,21 @@ describe("c-flow-resource-menu", () => {
 					"Account Name"
 				]
 			});
+			expect(findItem(sections, "accountVar.IsDeleted")).toMatchObject({
+				dataType: "Boolean",
+				icon: "utility:toggle"
+			});
+		});
+
+		it("lists only text fields, and relationships, for a text input", async () => {
+			const accountVar = findItem(getRootSections(context, TEXT), "accountVar");
+
+			const sections = await getChildSections(accountVar, context, TEXT, describeObject);
+
+			expect(labelsBySection(sections)).toEqual({
+				"Relationship Fields": ["Owner ID", "Parent Account ID", "Owner ID", "Parent Account ID"],
+				"Record Fields": ["Account ID", "Account Name"]
+			});
 			expect(sections[0].items[0]).toMatchObject({
 				value: "accountVar.Owner",
 				objectType: "User",
@@ -281,10 +319,6 @@ describe("c-flow-resource-menu", () => {
 				value: "accountVar.OwnerId",
 				icon: "utility:text",
 				isSelectable: true
-			});
-			expect(findItem(sections, "accountVar.IsDeleted")).toMatchObject({
-				dataType: "Boolean",
-				icon: "utility:toggle"
 			});
 		});
 
@@ -356,6 +390,12 @@ describe("c-flow-resource-menu", () => {
 
 			expect(await getChildSections(textVar, context, TEXT, describeObject)).toEqual([]);
 		});
+
+		it("returns no fields for a record collection, since Flow can't reference them", async () => {
+			const lookup = findItem(getRootSections(context, RECORDS), "Get_Accounts");
+
+			expect(await getChildSections(lookup, context, TEXT, describeObject)).toEqual([]);
+		});
 	});
 
 	describe("filterSections", () => {
@@ -406,6 +446,10 @@ describe("c-flow-resource-menu", () => {
 			expect(await resolveItem("$User.Email", context, describeObject)).toMatchObject({
 				pathLabel: "$User > Email"
 			});
+		});
+
+		it("returns null for a field of a record collection", async () => {
+			expect(await resolveItem("Get_Accounts.Name", context, describeObject)).toBeNull();
 		});
 
 		it("returns null for unknown references", async () => {

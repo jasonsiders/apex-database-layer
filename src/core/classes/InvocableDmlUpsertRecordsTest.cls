@@ -53,7 +53,7 @@ private class InvocableDmlUpsertRecordsTest {
 	}
 
 	@IsTest
-	private static void shouldMergeRecordsThatShareAnExternalId() {
+	private static void shouldUpsertRecordsThatShareAnExternalIdOnce() {
 		DatabaseLayer.useMockDml();
 		InvocableDml.Input nameInput = new InvocableDml.Input();
 		nameInput.externalIdField = 'Email';
@@ -67,13 +67,13 @@ private class InvocableDmlUpsertRecordsTest {
 		Test.stopTest();
 
 		List<SObject> upserted = MockDml.UPSERTED?.getRecords(Contact.SObjectType);
-		Assert.areEqual(1, upserted?.size(), 'Did not merge the records');
-		Contact merged = (Contact) upserted?.get(0);
-		Assert.areEqual('Test', merged?.LastName, 'Lost the 1st input\'s change');
-		Assert.areEqual('555-0100', merged?.Phone, 'Lost the 2nd input\'s change');
+		Assert.areEqual(1, upserted?.size(), 'Upserted the shared record more than once');
+		Contact saved = (Contact) upserted?.get(0);
+		Assert.areEqual('Test', saved?.LastName, 'Lost the 1st input\'s change');
+		Assert.isNull(saved?.Phone, 'Saved the 2nd input\'s copy, not the 1st');
 		for (InvocableDml.Output output : outputs) {
-			Assert.areEqual(merged?.Id, output?.record?.Id, 'Output does not hold the upserted record');
-			Assert.areEqual(merged?.Id, output?.result?.id, 'Result does not match its record');
+			Assert.areEqual(saved?.Id, output?.record?.Id, 'Output does not hold the upserted record');
+			Assert.areEqual(saved?.Id, output?.result?.id, 'Result does not match its record');
 		}
 	}
 

@@ -4,7 +4,8 @@
 public inherited sharing class InvocableDmlEmptyRecycleBin extends InvocableDml {
 	// **** PUBLIC **** //
 	/**
-	 * @description Permanently deletes every input's records in a single DML operation, using the first input's settings
+	 * @description Permanently deletes every input's records in a single DML operation, so a bulk run can't exhaust
+	 * the DML statement limit
 	 * @param inputs One input per flow interview
 	 * @return One output per input, in the same order
 	 */
