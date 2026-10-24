@@ -307,6 +307,24 @@ export function compareLabels(first, second) {
 	return LABEL_COLLATOR.compare(first.label, second.label);
 }
 
+/**
+ * @description Whether the target input accepts the item.
+ * @param {Object} item The item to evaluate
+ * @param {Object} target The input being configured. Null accepts everything.
+ * @returns {Boolean} True if the item can be selected
+ */
+export function isAssignable(item, target) {
+	const isRecordTarget = target?.dataType === SOBJECT;
+	const matchesObject = !target?.objectType || item.objectType === target.objectType;
+	const matchesShape = target?.isCollection == null || item.isCollection === target.isCollection;
+	const matchesRecord = item.dataType === SOBJECT && matchesShape && matchesObject;
+	const isScalar = Boolean(item.dataType) && !item.isCollection && ![SOBJECT, "Apex"].includes(item.dataType);
+	const matchesScalar = isScalar && (target?.dataType === "String" || item.dataType === target?.dataType);
+	// Typing a merge field mustn't reach resources that a picklist-only target hides
+	const matchesMode = !target?.isPicklistOnly || Boolean(item.isLiteral);
+	return !target || (matchesMode && (isRecordTarget ? matchesRecord : matchesScalar));
+}
+
 // **** PRIVATE **** //
 /**
  * @description Marks each item as selectable and/or drillable for the target, dropping items that are neither.
@@ -705,24 +723,6 @@ function initVariableItem(variable) {
 		isCollection: Boolean(variable.isCollection),
 		drillType: isRecord ? DRILL_RECORD : null
 	});
-}
-
-/**
- * @description Whether the target input accepts the item.
- * @param {Object} item The item to evaluate
- * @param {Object} target The input being configured. Null accepts everything.
- * @returns {Boolean} True if the item can be selected
- */
-function isAssignable(item, target) {
-	const isRecordTarget = target?.dataType === SOBJECT;
-	const matchesObject = !target?.objectType || item.objectType === target.objectType;
-	const matchesShape = target?.isCollection == null || item.isCollection === target.isCollection;
-	const matchesRecord = item.dataType === SOBJECT && matchesShape && matchesObject;
-	const isScalar = Boolean(item.dataType) && !item.isCollection && ![SOBJECT, "Apex"].includes(item.dataType);
-	const matchesScalar = isScalar && (target?.dataType === "String" || item.dataType === target?.dataType);
-	// Typing a merge field mustn't reach resources that a picklist-only target hides
-	const matchesMode = !target?.isPicklistOnly || Boolean(item.isLiteral);
-	return !target || (matchesMode && (isRecordTarget ? matchesRecord : matchesScalar));
 }
 
 /**

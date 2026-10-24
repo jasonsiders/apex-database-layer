@@ -371,6 +371,55 @@ describe("c-flow-resource-picker", () => {
 		expect(lastChange(onChange)).toEqual({ name: "accessLevel", value: "plain text", valueDataType: "String" });
 	});
 
+	it("discards typed values a record input wouldn't offer, keeping the previous value", async () => {
+		const { element, onChange } = await render({
+			name: "record",
+			type: "SObject",
+			isCollection: false,
+			value: "accountVar",
+			valueDataType: "reference"
+		});
+
+		for (const text of ["abc", "{!accountsVar}", "{!textVar}", "{!deletedVar}"]) {
+			element.shadowRoot.querySelector(".picker-pill-edit").click();
+			// eslint-disable-next-line no-await-in-loop
+			await flush();
+			// eslint-disable-next-line no-await-in-loop
+			await type(element, text);
+			// eslint-disable-next-line no-await-in-loop
+			await blur(element);
+			expect(pillLabel(element)).toBe("accountVar");
+		}
+		expect(onChange).not.toHaveBeenCalled();
+
+		element.shadowRoot.querySelector(".picker-pill-edit").click();
+		await flush();
+		await type(element, "{!contactVar}");
+		await blur(element);
+		expect(lastChange(onChange)).toMatchObject({ value: "contactVar", objectType: "Contact" });
+	});
+
+	it("only takes its picklist values when typed in picklist-only mode", async () => {
+		const picklistValues = [{ label: "Erp_Id__c", value: "Erp_Id__c" }];
+		const { element, onChange } = await render({ isPicklistOnly: true, picklistValues });
+
+		for (const text of ["{!textVar}", "Not_A_Field__c"]) {
+			// eslint-disable-next-line no-await-in-loop
+			await open(element);
+			// eslint-disable-next-line no-await-in-loop
+			await type(element, text);
+			// eslint-disable-next-line no-await-in-loop
+			await blur(element);
+		}
+		expect(onChange).not.toHaveBeenCalled();
+		expect(input(element).value).toBe("");
+
+		await open(element);
+		await type(element, "Erp_Id__c");
+		await blur(element);
+		expect(lastChange(onChange)).toEqual({ name: "accessLevel", value: "Erp_Id__c", valueDataType: "String" });
+	});
+
 	it("commits typed true/false as a boolean global constant", async () => {
 		const { element, onChange } = await render({ type: "Boolean" });
 		await open(element);

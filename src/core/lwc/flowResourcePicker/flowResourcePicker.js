@@ -4,6 +4,7 @@ import {
 	filterSections,
 	getChildSections,
 	getRootSections,
+	isAssignable,
 	parseInput,
 	REFERENCE,
 	REQUIRED_ERROR,
@@ -614,8 +615,18 @@ export default class FlowResourcePicker extends LightningElement {
 	}
 
 	/**
+	 * @description Whether the input takes typed text as a literal: only text inputs, and picklists only their values
+	 * @param {String} text The typed text
+	 * @returns {Boolean} True if the text can be saved as is
+	 */
+	_isLiteralAllowed(text) {
+		const isPicklistValue = (this.picklistValues ?? []).some((picklistValue) => picklistValue.value === text);
+		return this.type === "String" && (!this.isPicklistOnly || isPicklistValue);
+	}
+
+	/**
 	 * @description Saves the typed text as a reference (`{!path}`), a boolean constant, or a literal. An unfinished
-	 * merge field (ex: `{!accountVar.`) is discarded, restoring the previous value.
+	 * merge field (ex: `{!accountVar.`), or a literal the input doesn't take, is discarded, restoring the previous value.
 	 */
 	_saveText() {
 		const parsed = parseInput(this._text);
@@ -623,9 +634,10 @@ export default class FlowResourcePicker extends LightningElement {
 		const referencePath = parsed.isComplete ? parsed.path : booleanConstant;
 		const isUnfinished = parsed.isReference && !parsed.isComplete;
 		const hasText = this._text.trim() !== "";
+		const isInvalid = isUnfinished || (hasText && !this._isLiteralAllowed(this._text));
 		if (referencePath) {
 			this._selectReference(referencePath);
-		} else if (isUnfinished) {
+		} else if (isInvalid) {
 			this._refreshSelection();
 		} else {
 			this._emitChange(hasText ? this._text : null, hasText ? this._literalDataType() : null);
@@ -664,13 +676,19 @@ export default class FlowResourcePicker extends LightningElement {
 	}
 
 	/**
-	 * @description Saves a typed reference, showing it as a pill.
+	 * @description Saves a typed reference, showing it as a pill, if the input takes it like it would from the menu;
+	 * otherwise restores the previous value
 	 * @param {String} path The reference path
 	 */
 	async _selectReference(path) {
 		this._text = "";
-		this._selection = await this._resolveSelection(path);
-		const valueDataType = toValueDataType(this._selection);
-		this._emitChange(path, valueDataType, this._selection);
+		const item = await resolveItem(path, this.context, this._describeObject).catch(() => null);
+		if (item && isAssignable(item, this.target)) {
+			this._selection = item;
+			const valueDataType = toValueDataType(item);
+			this._emitChange(path, valueDataType, item);
+		} else {
+			this._refreshSelection();
+		}
 	}
 }
