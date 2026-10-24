@@ -3,6 +3,10 @@
  * operation, via `doDml`
  */
 public abstract inherited sharing class InvocableDml {
+	// **** MEMBER **** //
+	/** @description Resolved once per run, so pooling and the DML operation match records on the same field **/
+	protected SObjectField matchField;
+
 	// **** PUBLIC **** //
 	/**
 	 * @description Flow bulkifies interviews into one call; they share one DML operation, so a bulk run can't exhaust
@@ -15,8 +19,8 @@ public abstract inherited sharing class InvocableDml {
 		List<SObject> records = InvocableDml.collectRecords(outputs);
 		if (records?.isEmpty() == false) {
 			InvocableDml.Input settings = inputs?.get(0);
-			SObjectField matchField = this.getMatchField(records, settings);
-			List<SObject> pooledRecords = InvocableDml.poolRecords(outputs, matchField);
+			this.matchField = this.getMatchField(records, settings);
+			List<SObject> pooledRecords = InvocableDml.poolRecords(outputs, this.matchField);
 			List<InvocableDmlResult> results = this.doDml(pooledRecords, settings);
 			InvocableDml.distributeResults(outputs, pooledRecords, results);
 		}
