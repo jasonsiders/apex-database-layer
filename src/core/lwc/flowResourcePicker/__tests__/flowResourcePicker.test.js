@@ -294,6 +294,25 @@ describe("c-flow-resource-picker", () => {
 		expect(element.shadowRoot.querySelector(".picker-header").textContent).toBe("All Resources");
 	});
 
+	it("restores the current value when focus leaves mid-drill", async () => {
+		const { element, onChange } = await render();
+		await open(element);
+		option(element, "accountVar").click();
+		await flush();
+		option(element, "Owner ID").click();
+		await flush();
+		element.shadowRoot
+			.querySelector('lightning-breadcrumb[data-index="0"]')
+			.dispatchEvent(new CustomEvent("click"));
+		await flush();
+		expect(input(element).value).toBe("{!accountVar.");
+
+		await blur(element);
+
+		expect(onChange).not.toHaveBeenCalled();
+		expect(input(element).value).toBe("");
+	});
+
 	it("drills by typing a merge field path", async () => {
 		const { element } = await render();
 		await open(element);

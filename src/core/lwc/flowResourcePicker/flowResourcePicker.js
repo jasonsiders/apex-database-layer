@@ -499,11 +499,14 @@ export default class FlowResourcePicker extends LightningElement {
 	}
 
 	/**
-	 * @description Saves anything the user typed, then closes the menu.
+	 * @description Saves anything the user typed, then closes the menu. Drilling by click only navigates, so the text it
+	 * leaves, ex: `{!accountVar.`, gives way to the current value again.
 	 */
 	_commitText() {
 		if (this._isDirty || this._isEditing) {
 			this._saveText();
+		} else {
+			this._refreshSelection();
 		}
 		this._isDirty = false;
 		this._isEditing = false;
