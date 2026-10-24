@@ -149,7 +149,7 @@ public inherited sharing class InvocableDmlConvertLead {
 		/** @description Text, not an enum, since Flow can't pass System.AccessLevel **/
 		@InvocableVariable(
 			label='Access Level'
-			description='USER_MODE (default) enforces the running user\'s object permissions, field-level security, and sharing rules. SYSTEM_MODE ignores them.'
+			description='USER_MODE (default) enforces the running user\'s object permissions, field-level security, and sharing rules. SYSTEM_MODE ignores object permissions and field-level security, but sharing rules still apply.'
 		)
 		public String accessLevel;
 		/** @description Maps to Database.LeadConvert.setAccountId **/

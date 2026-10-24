@@ -62,7 +62,7 @@ const SETTINGS = [
 		defaultValue: "USER_MODE",
 		picklistValues: ACCESS_LEVELS,
 		helpText:
-			"USER_MODE (default) enforces the running user's object permissions, field-level security, and sharing rules. SYSTEM_MODE ignores them."
+			"USER_MODE (default) enforces the running user's object permissions, field-level security, and sharing rules. SYSTEM_MODE ignores object permissions and field-level security, but sharing rules still apply."
 	},
 	{
 		name: "allOrNone",
