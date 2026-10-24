@@ -103,13 +103,7 @@ private class InvocableDmlConvertLeadTest {
 		List<InvocableDmlConvertLead.Output> outputs = InvocableDmlConvertLead.invoke(inputs);
 		Test.stopTest();
 
-		// convertLead takes at most 100 leads per call
-		Assert.areEqual(2, DatabaseLayerTestUtils.DmlPluginSpy?.numPreCalls, 'Wrong # of DML operations');
-		Assert.areEqual(
-			100,
-			DatabaseLayerTestUtils.DmlPluginSpy?.lastDmlRequest?.leadsToConvert?.size(),
-			'Wrong chunk size'
-		);
+		Assert.areEqual(1, DatabaseLayerTestUtils.DmlPluginSpy?.numPreCalls, 'Wrong # of DML operations');
 		Assert.areEqual(TEST_SIZE, outputs?.size(), 'Wrong # of outputs');
 		for (Integer i = 0; i < TEST_SIZE; i++) {
 			Assert.areEqual(inputs?.get(i)?.leadId, outputs?.get(i)?.result?.id, 'Output is out of order');
@@ -141,32 +135,6 @@ private class InvocableDmlConvertLeadTest {
 	}
 
 	@IsTest
-	private static void shouldRollBackEarlierChunksOnFailure() {
-		DatabaseLayer.useMockDml();
-		List<InvocableDmlConvertLead.Input> inputs = new List<InvocableDmlConvertLead.Input>{};
-		for (Integer i = 0; i < TEST_SIZE; i++) {
-			Id leadId = MockRecord.initRecordId(Lead.SObjectType);
-			InvocableDmlConvertLead.Input input = InvocableDmlConvertLeadTest.initInput(leadId);
-			inputs?.add(input);
-		}
-		Id failingLeadId = inputs?.get(TEST_SIZE - 1)?.leadId;
-		MockDml.shouldFailIf(new InvocableDmlConvertLeadTest.LeadFailure(failingLeadId));
-
-		Test.startTest();
-		Exception caughtError;
-		try {
-			InvocableDmlConvertLead.invoke(inputs);
-		} catch (System.DmlException error) {
-			caughtError = error;
-		}
-		Test.stopTest();
-
-		Assert.isNotNull(caughtError, 'Did not throw an error');
-		MockDml.Savepoint savepoint = MockDml.SAVEPOINTS?.getAll()?.get(0);
-		Assert.isTrue(savepoint?.wasRolledBack, 'Did not roll back the earlier chunk');
-	}
-
-	@IsTest
 	private static void shouldDoNothingWithoutInputs() {
 		DatabaseLayer.useMockDml();
 		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
@@ -195,28 +163,5 @@ private class InvocableDmlConvertLeadTest {
 		input.convertedStatus = CONVERTED_STATUS;
 		input.leadId = leadId;
 		return input;
-	}
-
-	// **** INNER **** //
-	/**
-	 * @description Fails the conversion of one lead, so a test can fail a later chunk
-	 */
-	private class LeadFailure implements MockDml.ConditionalFailure {
-		private Id leadId;
-
-		private LeadFailure(Id leadId) {
-			this.leadId = leadId;
-		}
-
-		/**
-		 * @description Fails only the conversion of this failure's lead
-		 * @param operation The DML operation being performed
-		 * @param record The record being processed
-		 * @return An exception for the lead, else null
-		 */
-		public Exception checkFailure(Dml.Operation operation, SObject record) {
-			Boolean isMatch = operation == Dml.Operation.DO_CONVERT && record?.Id == this.leadId;
-			return isMatch ? new System.DmlException('Test failure') : null;
-		}
 	}
 }

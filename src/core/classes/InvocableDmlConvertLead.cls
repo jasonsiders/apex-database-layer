@@ -3,14 +3,10 @@
  * behavior, and duplicate rule settings
  */
 public inherited sharing class InvocableDmlConvertLead {
-	// **** VARIABLES **** //
-	// Salesforce caps Database.convertLead at 100 leads per call
-	private static final Integer MAX_LEADS_PER_CALL = 100;
-
 	// **** PUBLIC **** //
 	/**
-	 * @description Converts every input's lead in as few DML operations as convertLead's per-call cap allows, using the
-	 * first input's settings, so a bulk run can't exhaust the DML statement limit
+	 * @description Converts every input's lead in a single DML operation, using the first input's settings, so a bulk
+	 * run can't exhaust the DML statement limit
 	 * @param inputs One input per flow interview
 	 * @return One output per input, in the same order
 	 */
@@ -31,62 +27,17 @@ public inherited sharing class InvocableDmlConvertLead {
 
 	// **** PRIVATE **** //
 	/**
-	 * @description One call per chunk, since convertLead rejects more leads than its cap
-	 * @param leadsToConvert Every lead to convert
-	 * @param settings The input whose settings apply to every chunk
-	 * @return Each lead's result, by lead Id
-	 */
-	private static Map<Id, Database.LeadConvertResult> convertChunks(
-		List<Database.LeadConvert> leadsToConvert,
-		InvocableDml.Input settings
-	) {
-		Database.DmlOptions options = settings?.toDmlOptions();
-		System.AccessLevel accessLevel = settings?.toAccessLevel();
-		Map<Id, Database.LeadConvertResult> resultsByLeadId = new Map<Id, Database.LeadConvertResult>{};
-		for (Integer start = 0; start < leadsToConvert?.size(); start += MAX_LEADS_PER_CALL) {
-			List<Database.LeadConvert> chunk = InvocableDmlConvertLead.getChunk(leadsToConvert, start);
-			List<Database.LeadConvertResult> results = DatabaseLayer.Dml?.doConvert(chunk, options, accessLevel);
-			InvocableDmlConvertLead.mapResults(chunk, results, resultsByLeadId);
-		}
-		return resultsByLeadId;
-	}
-
-	/**
-	 * @description Goes through DatabaseLayer.Dml, so plugins and MockDml apply to flows too. A failure in a later chunk
-	 * rolls back the earlier ones, so the action fails as a whole, like a single call
+	 * @description Goes through DatabaseLayer.Dml, so plugins and MockDml apply to flows too
 	 * @param inputs One input per flow interview; the first one's settings apply to all
 	 * @return Each lead's result, by lead Id
 	 */
 	private static Map<Id, Database.LeadConvertResult> convertLeads(List<InvocableDmlConvertLead.Input> inputs) {
 		List<Database.LeadConvert> leadsToConvert = InvocableDmlConvertLead.initLeadConverts(inputs);
 		InvocableDml.Input settings = inputs?.get(0)?.toSettings();
-		Boolean isChunked = leadsToConvert?.size() > MAX_LEADS_PER_CALL;
-		System.Savepoint savepoint = isChunked ? DatabaseLayer.Dml?.setSavepoint() : null;
-		try {
-			return InvocableDmlConvertLead.convertChunks(leadsToConvert, settings);
-		} catch (Exception error) {
-			if (savepoint != null) {
-				DatabaseLayer.Dml?.rollback(savepoint);
-			}
-			throw error;
-		}
-	}
-
-	/**
-	 * @description Copies up to the per-call cap of leads, since Apex lists have no slice method
-	 * @param leadsToConvert Every lead to convert
-	 * @param start The index of the chunk's first lead
-	 * @return The chunk's leads
-	 */
-	private static List<Database.LeadConvert> getChunk(List<Database.LeadConvert> leadsToConvert, Integer start) {
-		List<Database.LeadConvert> chunk = new List<Database.LeadConvert>{};
-		Integer size = leadsToConvert?.size();
-		Integer stop = Math.min(start + MAX_LEADS_PER_CALL, size);
-		for (Integer index = start; index < stop; index++) {
-			Database.LeadConvert leadToConvert = leadsToConvert?.get(index);
-			chunk?.add(leadToConvert);
-		}
-		return chunk;
+		Database.DmlOptions options = settings?.toDmlOptions();
+		System.AccessLevel accessLevel = settings?.toAccessLevel();
+		List<Database.LeadConvertResult> results = DatabaseLayer.Dml?.doConvert(leadsToConvert, options, accessLevel);
+		return InvocableDmlConvertLead.mapResults(leadsToConvert, results);
 	}
 
 	/**
@@ -126,21 +77,22 @@ public inherited sharing class InvocableDmlConvertLead {
 	}
 
 	/**
-	 * @description Results come back in the chunk's order, so each lines up with its lead by position
-	 * @param chunk The leads converted in one call
-	 * @param results That call's results
-	 * @param resultsByLeadId Collects each lead's result, by lead Id
+	 * @description Results come back in conversion order, so each lines up with its lead by position
+	 * @param leadsToConvert The leads converted
+	 * @param results The conversion's results
+	 * @return Each lead's result, by lead Id
 	 */
-	private static void mapResults(
-		List<Database.LeadConvert> chunk,
-		List<Database.LeadConvertResult> results,
-		Map<Id, Database.LeadConvertResult> resultsByLeadId
+	private static Map<Id, Database.LeadConvertResult> mapResults(
+		List<Database.LeadConvert> leadsToConvert,
+		List<Database.LeadConvertResult> results
 	) {
-		for (Integer index = 0; index < chunk?.size(); index++) {
-			Id leadId = chunk?.get(index)?.getLeadId();
+		Map<Id, Database.LeadConvertResult> resultsByLeadId = new Map<Id, Database.LeadConvertResult>{};
+		for (Integer index = 0; index < leadsToConvert?.size(); index++) {
+			Id leadId = leadsToConvert?.get(index)?.getLeadId();
 			Database.LeadConvertResult result = results?.get(index);
 			resultsByLeadId?.put(leadId, result);
 		}
+		return resultsByLeadId;
 	}
 
 	// **** INNER **** //
