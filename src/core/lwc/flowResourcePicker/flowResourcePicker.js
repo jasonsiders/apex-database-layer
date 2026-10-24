@@ -370,7 +370,9 @@ export default class FlowResourcePicker extends LightningElement {
 	 */
 	handleFocusOut(event) {
 		const combobox = this.template.querySelector(".slds-combobox");
-		if (!combobox?.contains(event.relatedTarget)) {
+		// Swapping the pill for the input blurs the pill's edit link, which isn't focus leaving
+		const isPillSwap = event.target.classList.contains("picker-pill-edit");
+		if (!isPillSwap && !combobox?.contains(event.relatedTarget)) {
 			this._isTouched = true;
 			this._commitText();
 		}

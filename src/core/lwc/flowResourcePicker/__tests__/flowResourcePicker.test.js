@@ -18,16 +18,13 @@ jest.mock("lightning/uiObjectInfoApi", () => ({
 		disconnect() {}
 
 		update({ objectApiNames }) {
-			// Like Lightning Data Service, waits until there are objects to describe
 			const requests = (objectApiNames ?? []).map((objectApiName) =>
 				mockDescribe(objectApiName).then(
 					(result) => ({ statusCode: 200, result }),
 					() => ({ statusCode: 404, result: [{ errorCode: "NOT_FOUND" }] })
 				)
 			);
-			if (objectApiNames) {
-				Promise.all(requests).then((results) => this.dataCallback({ data: { results } }));
-			}
+			Promise.all(requests).then((results) => this.dataCallback({ data: { results } }));
 		}
 	}
 }));
@@ -97,6 +94,14 @@ async function blur(element) {
 	element.shadowRoot
 		.querySelector(".slds-combobox")
 		.dispatchEvent(new FocusEvent("focusout", { relatedTarget: null }));
+	await flush();
+}
+
+// In the browser, clicking the link focuses it, and swapping the pill for the input then blurs it
+async function editPill(element) {
+	const edit = element.shadowRoot.querySelector(".picker-pill-edit");
+	edit.click();
+	edit.dispatchEvent(new FocusEvent("focusout", { bubbles: true, relatedTarget: null }));
 	await flush();
 }
 
@@ -333,8 +338,7 @@ describe("c-flow-resource-picker", () => {
 
 	it("discards an unfinished merge field when focus leaves", async () => {
 		const { element, onChange } = await render({ value: "textVar", valueDataType: "reference" });
-		element.shadowRoot.querySelector(".picker-pill-edit").click();
-		await flush();
+		await editPill(element);
 
 		await type(element, "{!accountVar.");
 		await blur(element);
@@ -381,9 +385,8 @@ describe("c-flow-resource-picker", () => {
 		});
 
 		for (const text of ["abc", "{!accountsVar}", "{!textVar}", "{!deletedVar}"]) {
-			element.shadowRoot.querySelector(".picker-pill-edit").click();
 			// eslint-disable-next-line no-await-in-loop
-			await flush();
+			await editPill(element);
 			// eslint-disable-next-line no-await-in-loop
 			await type(element, text);
 			// eslint-disable-next-line no-await-in-loop
@@ -392,8 +395,7 @@ describe("c-flow-resource-picker", () => {
 		}
 		expect(onChange).not.toHaveBeenCalled();
 
-		element.shadowRoot.querySelector(".picker-pill-edit").click();
-		await flush();
+		await editPill(element);
 		await type(element, "{!contactVar}");
 		await blur(element);
 		expect(lastChange(onChange)).toMatchObject({ value: "contactVar", objectType: "Contact" });
@@ -446,8 +448,7 @@ describe("c-flow-resource-picker", () => {
 			valueDataType: "String"
 		});
 
-		element.shadowRoot.querySelector(".picker-pill-edit").click();
-		await flush();
+		await editPill(element);
 		await type(element, "{!$GlobalConstant.False}");
 		await blur(element);
 		expect(lastChange(onChange)).toEqual({
@@ -504,8 +505,7 @@ describe("c-flow-resource-picker", () => {
 	it("edits a pill's reference when clicked", async () => {
 		const { element } = await render({ value: "accountVar.Owner.Email", valueDataType: "reference" });
 
-		element.shadowRoot.querySelector(".picker-pill-edit").click();
-		await flush();
+		await editPill(element);
 
 		expect(input(element).value).toBe("{!accountVar.Owner.Email}");
 		expect(optionLabels(element)).toEqual(["Email"]);
@@ -541,8 +541,7 @@ describe("c-flow-resource-picker", () => {
 		expect(element.valueDataType).toBe("reference");
 		expect(element.builderContext).toEqual(CONTEXT.builderContext);
 
-		element.shadowRoot.querySelector(".picker-pill-edit").click();
-		await flush();
+		await editPill(element);
 		const mouseDown = new CustomEvent("mousedown", { cancelable: true });
 		element.shadowRoot.querySelector('[role="listbox"]').dispatchEvent(mouseDown);
 
@@ -627,14 +626,26 @@ describe("c-flow-resource-picker", () => {
 		expect(pillLabel(element)).toBe("textVar");
 	});
 
-	it("survives describe failures", async () => {
+	it("shows an empty drill-down when a record can't be described, and still lets the user back out", async () => {
 		mockDescribe.mockImplementation(() => Promise.reject(new Error("nope")));
-		const { element } = await render({ builderContext: { ...CONTEXT.builderContext, recordLookups: [] } });
+		const { element, onChange } = await render({
+			builderContext: { ...CONTEXT.builderContext, recordLookups: [] }
+		});
 		await open(element);
 
 		option(element, "contactVar").click();
 		await flush();
 
+		expect(input(element).value).toBe("{!contactVar.");
 		expect(options(element)).toHaveLength(0);
+		expect(element.shadowRoot.querySelector(".picker-empty").textContent).toContain(
+			"couldn't find any matching resources"
+		);
+		element.shadowRoot
+			.querySelector('lightning-breadcrumb[data-index="-1"]')
+			.dispatchEvent(new CustomEvent("click"));
+		await flush();
+		expect(optionLabels(element)).toContain("textVar");
+		expect(onChange).not.toHaveBeenCalled();
 	});
 });
