@@ -92,7 +92,7 @@ public abstract inherited sharing class InvocableDml {
 
 	/**
 	 * @description A DML operation rejects a record listed twice, ex: when two interviews update the same parent, so
-	 * records that match pool as one
+	 * each record is listed once, and the first input's copy wins
 	 * @param outputs One output per input
 	 * @param matchField The field that identifies a record, or null to match on Id
 	 * @return The pooled records
@@ -277,7 +277,7 @@ public abstract inherited sharing class InvocableDml {
 		}
 
 		/**
-		 * @description Takes each record's result, and the pooled record itself, which holds any merged values and Id
+		 * @description Takes each record's result, and the record the DML operation saved, which holds its Id
 		 * @param records The pooled records
 		 * @param results The results of the pooled DML operation, in record order
 		 */
@@ -314,7 +314,7 @@ public abstract inherited sharing class InvocableDml {
 		}
 	}
 
-	/** @description Every input's records, with those that match merged into one **/
+	/** @description Every input's records, each listed once **/
 	private class RecordPool {
 		/** @description Identifies a record; null matches on Id **/
 		private SObjectField matchField;
@@ -334,8 +334,8 @@ public abstract inherited sharing class InvocableDml {
 		}
 
 		/**
-		 * @description Adds a record, or merges it into the pooled record it matches; a record without a key, ex: a
-		 * new one, matches nothing
+		 * @description Adds a record, unless it matches one already pooled, whose copy wins; a record without a key, ex:
+		 * a new one, matches nothing
 		 * @param record The record to add
 		 * @return The record's position in the pool
 		 */
@@ -346,8 +346,6 @@ public abstract inherited sharing class InvocableDml {
 			Integer position = this.positionsByKey?.get(key);
 			if (position == null) {
 				position = this.append(record, key);
-			} else {
-				this.mergeInto(position, record);
 			}
 			return position;
 		}
@@ -365,38 +363,6 @@ public abstract inherited sharing class InvocableDml {
 				this.positionsByKey?.put(key, position);
 			}
 			return position;
-		}
-
-		/**
-		 * @description Copies a record's fields onto the pooled record it matches, so no input's changes are lost; on a
-		 * field both set, the later input wins
-		 * @param position The pooled record's position
-		 * @param record The record to merge in
-		 */
-		private void mergeInto(Integer position, SObject record) {
-			SObject pooled = this.records?.get(position);
-			Map<String, Object> fields = record?.getPopulatedFieldsAsMap();
-			// shortcut: a later full copy, ex: from Get Records, overwrites an earlier input's change with its stale
-			// value; merge only changed fields if flows hit it
-			for (String fieldName : fields?.keySet()) {
-				Object value = fields?.get(fieldName);
-				this.setField(pooled, fieldName, value);
-			}
-		}
-
-		/**
-		 * @description Sets one field on a pooled record. Apex can't put some values a queried record holds, ex: formulas,
-		 * audit fields, and related records, so those keep the pooled record's value, as queried
-		 * @param pooled The pooled record
-		 * @param fieldName The field or relationship's API name
-		 * @param value The field's value, or the related records
-		 */
-		private void setField(SObject pooled, String fieldName, Object value) {
-			try {
-				pooled?.put(fieldName, value);
-			} catch (System.SObjectException ignored) {
-				// DML wouldn't save the later input's value anyway
-			}
 		}
 	}
 }

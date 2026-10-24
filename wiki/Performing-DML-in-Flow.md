@@ -108,6 +108,6 @@ Apex's `Database.upsert`, `Database.delete`, and `Database.undelete` methods don
 
 When many flow interviews run an action at once (ex: a record-triggered flow on a 200-record update), the action processes every interview's records in a single DML operation, which keeps the batch within DML limits.
 
-One DML operation can only have one set of settings, so the **first** interview's settings apply to every interview in the batch. Use static values, not variables or formulas, for the settings inputs, so that every interview has the same settings, and the action behaves the same way however the interviews are batched.
+One DML operation can only have one set of settings, so the **first** interview's settings apply to every interview in the batch. It also can't list a record twice, so when interviews share a record (ex: two contacts' interviews update the same account), the **first** interview's copy is saved, and every interview that shares it gets that record and result. Use static values, not variables or formulas, for the settings inputs, so that every interview has the same settings, and the action behaves the same way however the interviews are batched.
 
 With **All or None** set to `true`, one invalid record fails the shared operation, and every interview in the batch fails with it. When interviews must succeed or fail independently, set **All or None** to `false`, and check each **Result** for errors.
