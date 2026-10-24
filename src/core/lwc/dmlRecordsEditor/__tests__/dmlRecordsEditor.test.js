@@ -92,8 +92,21 @@ const MATCH_FIELDS = [
 	{ apiName: "Erp_Id__c", label: "ERP ID", isExternalId: true }
 ];
 
-function changePicker(element, name, detail) {
-	picker(element, name).dispatchEvent(new CustomEvent("change", { detail: { name, ...detail } }));
+// Chooses through the picker's own menu, like a user, so the editor gets the event the picker really sends
+async function choose(element, name, label) {
+	const root = picker(element, name).shadowRoot;
+	const pillEdit = root.querySelector(".picker-pill-edit");
+	if (pillEdit) {
+		pillEdit.click();
+		pillEdit.dispatchEvent(new FocusEvent("focusout", { bubbles: true, relatedTarget: null }));
+		await flush();
+	}
+	const field = root.querySelector('input[role="combobox"]');
+	field.value = label;
+	field.dispatchEvent(new CustomEvent("input"));
+	await flush();
+	root.querySelector(`[role="option"][data-label="${label}"]`).click();
+	await flush();
 }
 
 describe("c-dml-records-editor", () => {
@@ -214,7 +227,7 @@ describe("c-dml-records-editor", () => {
 	it("saves the chosen records, and types the action's generic inputs and outputs to their object", async () => {
 		const { element, events } = await render();
 
-		changePicker(element, "record", { value: "accountVar", valueDataType: "reference", objectType: "Account" });
+		await choose(element, "record", "accountVar");
 
 		expect(events).toEqual([
 			{
@@ -238,6 +251,7 @@ describe("c-dml-records-editor", () => {
 		change("allowDuplicates", { value: "$GlobalConstant.True" });
 		change("localeOptions", { value: "en_US" });
 		change("localeOptions", { value: "" });
+		await choose(element, "assignmentRuleId", "textVar");
 
 		const saved = (name, newValue, newValueDataType) => ({
 			type: "configuration_editor_input_value_changed",
@@ -248,7 +262,8 @@ describe("c-dml-records-editor", () => {
 			saved("allOrNone", "$GlobalConstant.False", "Boolean"),
 			saved("allowDuplicates", "$GlobalConstant.True", "Boolean"),
 			saved("localeOptions", "en_US", "String"),
-			{ type: "configuration_editor_input_value_deleted", detail: { name: "localeOptions" } }
+			{ type: "configuration_editor_input_value_deleted", detail: { name: "localeOptions" } },
+			saved("assignmentRuleId", "textVar", "reference")
 		]);
 	});
 
@@ -271,8 +286,7 @@ describe("c-dml-records-editor", () => {
 		await flush();
 		expect(picker(element, "record").errorMessage).toBe("Enter a value.");
 
-		changePicker(element, "record", { value: "accountVar", valueDataType: "reference", objectType: "Account" });
-		await flush();
+		await choose(element, "record", "accountVar");
 		expect(picker(element, "record").errorMessage).toBeUndefined();
 	});
 
@@ -318,13 +332,7 @@ describe("c-dml-records-editor", () => {
 			"InvocableDmlUpdateRecords"
 		);
 
-		changePicker(element, "record", {
-			value: "accountsVar",
-			valueDataType: "reference",
-			objectType: "Account",
-			isCollection: true
-		});
-		await flush();
+		await choose(element, "record", "accountsVar");
 
 		expect(events.slice(0, 2)).toEqual([
 			{ type: "configuration_editor_input_value_deleted", detail: { name: "record" } },
@@ -382,7 +390,7 @@ describe("c-dml-records-editor", () => {
 		]);
 		expect(element.validate()).toContainEqual({ key: "externalIdField", errorString: "Enter a value." });
 
-		changePicker(element, "externalIdField", { value: "Erp_Id__c", valueDataType: "String" });
+		await choose(element, "externalIdField", "Erp_Id__c");
 		expect(events.at(-1)).toEqual({
 			type: "configuration_editor_input_value_changed",
 			detail: { name: "externalIdField", newValue: "Erp_Id__c", newValueDataType: "String" }
@@ -394,8 +402,7 @@ describe("c-dml-records-editor", () => {
 			[{ name: "externalIdField", value: "Email", valueDataType: "String" }],
 			"InvocableDmlUpsertRecords"
 		);
-		changePicker(element, "record", { value: "contactVar", valueDataType: "reference", objectType: "Contact" });
-		await flush();
+		await choose(element, "record", "contactVar");
 		expect(getMatchFields.getLastConfig()).toEqual({ objectApiName: "Contact" });
 		getMatchFields.emit(MATCH_FIELDS);
 		await flush();
@@ -423,12 +430,10 @@ describe("c-dml-records-editor", () => {
 		element.genericTypeMappings = [{ typeName: "T__record", typeValue: "Account" }];
 		await flush();
 
-		changePicker(element, "record", { value: "accountVar", valueDataType: "reference", objectType: "Account" });
-		await flush();
+		await choose(element, "record", "accountVar");
 		expect(events.map((event) => event.detail.name)).not.toContain("externalIdField");
 
-		changePicker(element, "record", { value: "contactVar", valueDataType: "reference", objectType: "Contact" });
-		await flush();
+		await choose(element, "record", "contactVar");
 		expect(events).toContainEqual({
 			type: "configuration_editor_input_value_deleted",
 			detail: { name: "externalIdField" }
