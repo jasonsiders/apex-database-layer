@@ -402,6 +402,7 @@ export default class DmlRecordsEditor extends LightningElement {
 	 */
 	handleRecordsChange(event) {
 		const { isCollection, objectType, value } = event.detail;
+		this._dropMatchField(objectType);
 		this._objectType = objectType ?? this._objectType;
 		if (!this.action.howManyLabel && value != null) {
 			this._setHowMany(isCollection ? MULTIPLE : ONE);
@@ -426,6 +427,20 @@ export default class DmlRecordsEditor extends LightningElement {
 	 */
 	_dispatch(type, detail) {
 		this.dispatchEvent(new CustomEvent(type, { bubbles: true, cancelable: false, composed: true, detail }));
+	}
+
+	/**
+	 * @description Removes the match field when the records switch to another object, which wouldn't have it; the mode
+	 * stays, so validate() asks for a new field
+	 * @param {String} objectType The records' object, if known
+	 */
+	_dropMatchField(objectType) {
+		const previousType = this.matchObjectType;
+		const isNewObject = Boolean(previousType && objectType) && objectType !== previousType;
+		if (isNewObject && this._values[EXTERNAL_ID_FIELD]?.value != null) {
+			this._matchMode = this.matchMode;
+			this._deleteInput(EXTERNAL_ID_FIELD);
+		}
 	}
 
 	/**

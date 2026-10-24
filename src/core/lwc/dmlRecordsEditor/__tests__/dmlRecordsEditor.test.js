@@ -415,6 +415,31 @@ describe("c-dml-records-editor", () => {
 		expect(picker(element, "externalIdField")).toBeNull();
 	});
 
+	it("drops the match field when the records switch to another object, and asks for a new one", async () => {
+		const { element, events } = await render(
+			[{ name: "externalIdField", value: "Legacy_Id__c", valueDataType: "String" }],
+			"InvocableDmlUpsertRecords"
+		);
+		element.genericTypeMappings = [{ typeName: "T__record", typeValue: "Account" }];
+		await flush();
+
+		changePicker(element, "record", { value: "accountVar", valueDataType: "reference", objectType: "Account" });
+		await flush();
+		expect(events.map((event) => event.detail.name)).not.toContain("externalIdField");
+
+		changePicker(element, "record", { value: "contactVar", valueDataType: "reference", objectType: "Contact" });
+		await flush();
+		expect(events).toContainEqual({
+			type: "configuration_editor_input_value_deleted",
+			detail: { name: "externalIdField" }
+		});
+		// Flow Builder re-sends the inputs without the deleted one
+		element.inputVariables = [{ name: "record", value: "contactVar", valueDataType: "reference" }];
+		await flush();
+		expect(radios(element).find((radio) => radio.checked).label).toBe("External ID");
+		expect(element.validate()).toEqual([{ key: "externalIdField", errorString: "Enter a value." }]);
+	});
+
 	it("only looks up match fields for Upsert Records", async () => {
 		const { element } = await render([], "InvocableDmlUpdateRecords");
 		element.genericTypeMappings = [{ typeName: "T__record", typeValue: "Account" }];
