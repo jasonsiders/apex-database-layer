@@ -60,6 +60,7 @@ Spy implementation for tracking plugin method invocations during testing.
 
 **Properties:**
 
+- `lastDmlRequest` (Dml.Request): The most recent DML request passed to the pre-processing method
 - `numPreCalls` (Integer): Number of times the pre-processing method was called
 - `numPostCalls` (Integer): Number of times the post-processing method was called
 - `numErrorCalls` (Integer): Number of times the error processing method was called

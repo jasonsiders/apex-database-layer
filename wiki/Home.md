@@ -14,6 +14,7 @@ You get the following out of the box:
 - Easily [generate test records](./Generating-Test-Records) without using DML or SOQL.
 - [Switch between real & mock database operations](./The-DatabaseLayer-Class#useMocks) in Apex Tests, with a single line of code
 - An optional [Plugin Framework](./The-Plugin-Framework) allows you to fine-tune the platform to your exact use case.
+- [Flow actions](./Performing-DML-in-Flow) that perform DML through `DatabaseLayer.Dml`, with the settings that Flow's data elements hide.
 - Simplicity: The framework uses just a couple of Apex classes (and a custom metadata type, to support Plugins).
 
 Best of all, the framework is built 100% on the Salesforce platform, using standard Salesforce technology. It's open source, and free, and it always will be.

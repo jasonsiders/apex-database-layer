@@ -1,0 +1,522 @@
+import {
+	filterSections,
+	getChildSections,
+	getRootSections,
+	parseInput,
+	resolveItem,
+	toBooleanConstant
+} from "c/flowResourceMenu";
+import CONTEXT from "./data/context.json";
+import ACCOUNT from "./data/accountDescribe.json";
+import USER from "./data/userDescribe.json";
+
+const DESCRIBES = { Account: ACCOUNT, User: USER };
+const describeObject = jest.fn((objectApiName) => Promise.resolve(DESCRIBES[objectApiName]));
+const context = { ...CONTEXT, objectLabels: { Account: { label: "Account", labelPlural: "Accounts" } } };
+
+const BOOLEAN = { dataType: "Boolean" };
+const RECORD = { dataType: "SObject", isCollection: false };
+const RECORDS = { dataType: "SObject", isCollection: true };
+const TEXT = { dataType: "String" };
+
+function labelsBySection(sections) {
+	return Object.fromEntries(sections.map((section) => [section.label, section.items.map((item) => item.label)]));
+}
+
+function findItem(sections, value) {
+	return sections.flatMap((section) => section.items).find((item) => item.value === value);
+}
+
+describe("c-flow-resource-menu", () => {
+	describe("getRootSections", () => {
+		it("lists only text resources, and containers of them, for a text input, in Flow Builder's order", () => {
+			const sections = getRootSections(context, TEXT);
+
+			expect(labelsBySection(sections)).toEqual({
+				"Quick Resources": ["Current Item from Loop Loop Accounts"],
+				Action: ["Outputs from Insert Records"],
+				Choices: ["choiceA"],
+				Constants: ["constText"],
+				"Record Variables": ["accountVar", "contactVar"],
+				"Screen Components": ["nameInput"],
+				"Simple Variables": ["textVar"],
+				Stages: ["Stage One"],
+				"Text Templates": ["tmplText"],
+				"Global Constants": ["Blank Value (Empty String)"],
+				"Global Variables": [
+					"API",
+					"Running Flow Interview",
+					"Running Org",
+					"Running User",
+					"Running User Profile",
+					"Running User Role"
+				]
+			});
+		});
+
+		it("lists only boolean resources, and containers of them, for a boolean input", () => {
+			const sections = getRootSections(context, BOOLEAN);
+
+			expect(labelsBySection(sections)).toEqual({
+				"Quick Resources": ["Current Item from Loop Loop Accounts"],
+				Action: ["Outputs from Insert Records"],
+				Formulas: ["formulaBool"],
+				"Record Variables": ["accountVar", "contactVar"],
+				"Screen Components": ["agreeBox"],
+				"Simple Variables": ["boolVar"],
+				"Global Constants": ["False", "True"],
+				"Global Variables": ["Running User", "Running User Profile", "Running User Role"]
+			});
+		});
+
+		it("makes records selectable, not drillable, for a record input", () => {
+			const sections = getRootSections(context, RECORD);
+
+			expect(labelsBySection(sections)).toEqual({
+				"Quick Resources": ["Current Item from Loop Loop Accounts"],
+				Action: ["Outputs from Insert Records"],
+				"Record Variables": ["accountVar", "contactVar"]
+			});
+			const accountVar = findItem(sections, "accountVar");
+			expect(accountVar).toMatchObject({ isSelectable: true, isDrillable: false, objectType: "Account" });
+			expect(findItem(sections, "Insert_Records")).toMatchObject({ isSelectable: false, isDrillable: true });
+		});
+
+		it("lists records of either shape for a record input that takes either", () => {
+			const sections = labelsBySection(getRootSections(context, { dataType: "SObject" }));
+
+			expect(sections["Record Collections"]).toEqual(["accountsVar"]);
+			expect(sections["Record Variables"]).toEqual(["accountVar", "contactVar"]);
+		});
+
+		it("lists record collections for a record collection input", () => {
+			const sections = getRootSections(context, RECORDS);
+
+			expect(labelsBySection(sections)).toEqual({
+				Action: ["Outputs from Insert Records"],
+				"Get Records": ["Accounts from Get Accounts"],
+				"Record Collections": ["accountsVar"]
+			});
+			expect(findItem(sections, "Get_Accounts")).toMatchObject({
+				icon: "utility:record_collection",
+				isCollection: true,
+				objectType: "Account"
+			});
+		});
+
+		it("restricts records to the input's object, when it has one", () => {
+			const sections = getRootSections(context, { ...RECORD, objectType: "Contact" });
+
+			expect(labelsBySection(sections)).toEqual({ "Record Variables": ["contactVar"] });
+		});
+
+		it("lists picklist values first, as literals", () => {
+			const picklistValues = [
+				{ label: "User Mode", value: "USER_MODE" },
+				{ label: "System Mode", value: "SYSTEM_MODE" }
+			];
+			const sections = getRootSections(context, { ...TEXT, picklistValues });
+
+			expect(sections[0].label).toBe("Picklist Values");
+			expect(sections[0].items).toEqual([
+				expect.objectContaining({
+					label: "User Mode",
+					value: "USER_MODE",
+					isLiteral: true,
+					isSelectable: true
+				}),
+				expect.objectContaining({
+					label: "System Mode",
+					value: "SYSTEM_MODE",
+					isLiteral: true,
+					isSelectable: true
+				})
+			]);
+		});
+
+		it("falls back to the object's API name when its labels aren't known yet", () => {
+			const sections = getRootSections({ ...context, objectLabels: {} }, RECORDS);
+
+			expect(findItem(sections, "Get_Accounts").label).toBe("Account from Get Accounts");
+		});
+
+		it("types a loop's current item from the action output it iterates over", () => {
+			const loops = [
+				{ name: "Loop_Outputs", label: "Loop Outputs", collectionReference: "Insert_Records.recordCollection" }
+			];
+			const builderContext = { ...context.builderContext, loops };
+
+			const sections = getRootSections({ ...context, builderContext }, RECORD);
+
+			expect(findItem(sections, "Loop_Outputs")).toMatchObject({ objectType: "Account", isSelectable: true });
+		});
+
+		it("lists Collection Filter outputs like the collections they filter, and loops over them", () => {
+			const collectionProcessors = [
+				{
+					name: "Filter_Open",
+					label: "Filter Open",
+					elementSubtype: "FilterCollectionProcessor",
+					collectionReference: "Get_Accounts"
+				},
+				{ name: "Sort_Open", label: "Sort Open", elementSubtype: "SortCollectionProcessor" }
+			];
+			const loops = [{ name: "Loop_Open", label: "Loop Open", collectionReference: "Filter_Open" }];
+			const builderContext = { ...context.builderContext, collectionProcessors, loops };
+
+			const collections = getRootSections({ ...context, builderContext }, RECORDS);
+			const records = getRootSections({ ...context, builderContext }, RECORD);
+
+			expect(labelsBySection(collections)["Collection Filter"]).toEqual(["Accounts from Filter Open"]);
+			expect(findItem(collections, "Filter_Open")).toMatchObject({
+				objectType: "Account",
+				isCollection: true,
+				isSelectable: true
+			});
+			expect(findItem(records, "Loop_Open")).toMatchObject({ objectType: "Account", isSelectable: true });
+		});
+
+		it("lists only picklist values for a picklist-only input", () => {
+			const target = { ...TEXT, isPicklistOnly: true, picklistValues: [{ label: "Email", value: "Email" }] };
+
+			const sections = getRootSections(context, target);
+
+			expect(labelsBySection(sections)).toEqual({ "Picklist Values": ["Email"] });
+		});
+
+		it("handles an empty builder context", () => {
+			const sections = getRootSections({ builderContext: {}, automaticOutputVariables: {} }, TEXT);
+
+			expect(sections.map((section) => section.label)).toEqual(["Global Constants", "Global Variables"]);
+		});
+	});
+
+	describe("position in the flow", () => {
+		it("lists outputs only from elements that can run before the one being edited", () => {
+			const sections = labelsBySection(getRootSections({ ...context, elementName: "Create_Account" }, TEXT));
+
+			expect(sections.Action).toEqual(["Outputs from Insert Records"]);
+			expect(sections["Quick Resources"]).toBeUndefined();
+			expect(sections["Screen Components"]).toBeUndefined();
+		});
+
+		it("lists a loop's current item, and the element's own outputs, inside the loop", () => {
+			const sections = labelsBySection(getRootSections({ ...context, elementName: "Insert_Records" }, TEXT));
+
+			expect(sections["Quick Resources"]).toEqual(["Current Item from Loop Loop Accounts"]);
+			expect(sections.Action).toEqual(["Outputs from Insert Records"]);
+		});
+
+		it("omits an element's own outputs when it can't run twice", () => {
+			const sections = labelsBySection(getRootSections({ ...context, elementName: "Get_Accounts" }, RECORDS));
+
+			expect(sections).toEqual({ "Record Collections": ["accountsVar"] });
+		});
+
+		it("follows scheduled paths, decision outcomes, and wait events", () => {
+			const builderContext = {
+				start: { scheduledPaths: [{ connector: { targetReference: "Act" } }] },
+				actionCalls: [
+					{
+						name: "Act",
+						label: "Act",
+						storeOutputAutomatically: true,
+						connector: { targetReference: "Decide" }
+					}
+				],
+				decisions: [{ name: "Decide", rules: [{ connector: { targetReference: "Hold" } }] }],
+				waits: [{ name: "Hold", waitEvents: [{ connector: { targetReference: "Target" } }] }],
+				recordCreates: [{ name: "Target" }]
+			};
+			const automaticOutputVariables = {
+				Act: [{ name: "message", label: "Message", dataType: "string", maxOccurs: 1 }]
+			};
+
+			const sections = getRootSections({ builderContext, automaticOutputVariables, elementName: "Target" }, TEXT);
+
+			expect(labelsBySection(sections).Action).toEqual(["Outputs from Act"]);
+		});
+
+		it("offers the triggering record, and its prior values, in record-triggered flows", () => {
+			const start = {
+				...context.builderContext.start,
+				object: "Account",
+				triggerType: "RecordAfterSave",
+				recordTriggerType: "CreateAndUpdate"
+			};
+			const builderContext = { ...context.builderContext, start };
+
+			const sections = getRootSections({ ...context, builderContext, elementName: "Create_Account" }, RECORD);
+
+			expect(labelsBySection(sections)["Quick Resources"]).toEqual([
+				"Triggering Account",
+				"Prior Values of Triggering Account"
+			]);
+			expect(findItem(sections, "$Record")).toMatchObject({
+				objectType: "Account",
+				icon: "utility:record_alt",
+				isSelectable: true
+			});
+		});
+
+		it("omits prior values when records are only created", async () => {
+			const start = { object: "Account", triggerType: "RecordAfterSave", recordTriggerType: "Create" };
+			const builderContext = { ...context.builderContext, start };
+
+			const sections = getRootSections({ ...context, builderContext, objectLabels: {} }, TEXT);
+
+			expect(labelsBySection(sections)["Quick Resources"]).toEqual([
+				"Triggering Account",
+				"Current Item from Loop Loop Accounts"
+			]);
+			const item = await resolveItem("$Record.Name", { ...context, builderContext }, describeObject);
+			expect(item).toMatchObject({ pathLabel: "$Record > Account Name" });
+		});
+	});
+
+	describe("getChildSections", () => {
+		it("lists a record's relationship fields, then its fields sorted by type and label", async () => {
+			const accountVar = findItem(getRootSections(context, null), "accountVar");
+
+			const sections = await getChildSections(accountVar, context, null, describeObject);
+
+			expect(labelsBySection(sections)).toEqual({
+				"Relationship Fields": ["Owner ID", "Parent Account ID", "Owner ID", "Parent Account ID"],
+				"Record Fields": [
+					"Deleted",
+					"Annual Revenue",
+					"Last Activity",
+					"Created Date",
+					"Employees",
+					"Industry",
+					"Account ID",
+					"Account Name"
+				]
+			});
+			expect(findItem(sections, "accountVar.IsDeleted")).toMatchObject({
+				dataType: "Boolean",
+				icon: "utility:toggle"
+			});
+		});
+
+		it("lists only text fields, and relationships, for a text input", async () => {
+			const accountVar = findItem(getRootSections(context, TEXT), "accountVar");
+
+			const sections = await getChildSections(accountVar, context, TEXT, describeObject);
+
+			expect(labelsBySection(sections)).toEqual({
+				"Relationship Fields": ["Owner ID", "Parent Account ID", "Owner ID", "Parent Account ID"],
+				"Record Fields": ["Account ID", "Account Name"]
+			});
+			expect(sections[0].items[0]).toMatchObject({
+				value: "accountVar.Owner",
+				objectType: "User",
+				isDrillable: true,
+				isSelectable: false,
+				pathLabel: "accountVar > Owner ID"
+			});
+			expect(sections[0].items[2]).toMatchObject({
+				value: "accountVar.OwnerId",
+				icon: "utility:text",
+				isSelectable: true
+			});
+		});
+
+		it("lists only matching fields, and relationships, for a boolean input", async () => {
+			const accountVar = findItem(getRootSections(context, BOOLEAN), "accountVar");
+
+			const sections = await getChildSections(accountVar, context, BOOLEAN, describeObject);
+
+			expect(labelsBySection(sections)).toEqual({
+				"Relationship Fields": ["Owner ID", "Parent Account ID"],
+				"Record Fields": ["Deleted"]
+			});
+		});
+
+		it("lists an action's outputs", async () => {
+			const action = findItem(getRootSections(context, TEXT), "Insert_Records");
+
+			const sections = await getChildSections(action, context, TEXT, describeObject);
+
+			expect(labelsBySection(sections)).toEqual({ Outputs: ["Record", "Message"] });
+			expect(findItem(sections, "Insert_Records.record")).toMatchObject({
+				isDrillable: true,
+				objectType: "Account"
+			});
+			expect(findItem(sections, "Insert_Records.message")).toMatchObject({
+				isSelectable: true,
+				pathLabel: "Outputs from Insert Records > Message"
+			});
+		});
+
+		it("lists an action's record outputs for a record input", async () => {
+			const action = findItem(getRootSections(context, RECORDS), "Insert_Records");
+
+			const sections = await getChildSections(action, context, RECORDS, describeObject);
+
+			expect(labelsBySection(sections)).toEqual({ Outputs: ["Record Collection"] });
+		});
+
+		it("lists a global variable's fields", async () => {
+			const user = findItem(getRootSections(context, TEXT), "$User");
+
+			const sections = await getChildSections(user, context, BOOLEAN, describeObject);
+
+			expect(labelsBySection(sections)).toEqual({ "Running User": ["IsActive"] });
+			expect(sections[0].items[0]).toMatchObject({ value: "$User.IsActive", pathLabel: "$User > IsActive" });
+		});
+
+		it("lists nothing inside a resource for a picklist-only input", async () => {
+			const user = findItem(getRootSections(context, TEXT), "$User");
+
+			expect(await getChildSections(user, context, { ...TEXT, isPicklistOnly: true }, describeObject)).toEqual(
+				[]
+			);
+		});
+
+		it("lists every $Api endpoint", async () => {
+			const api = findItem(getRootSections(context, TEXT), "$Api");
+
+			const sections = await getChildSections(api, context, TEXT, describeObject);
+
+			const values = sections[0].items.map((item) => item.value);
+			expect(values).toContain("$Api.Enterprise_Server_URL_25");
+			expect(values).toContain("$Api.Partner_Server_URL_680");
+			expect(values).toHaveLength(136);
+		});
+
+		it("returns nothing for items that can't be drilled into", async () => {
+			const textVar = findItem(getRootSections(context, TEXT), "textVar");
+
+			expect(await getChildSections(textVar, context, TEXT, describeObject)).toEqual([]);
+		});
+
+		it("returns no fields for a record collection, since Flow can't reference them", async () => {
+			const lookup = findItem(getRootSections(context, RECORDS), "Get_Accounts");
+
+			expect(await getChildSections(lookup, context, TEXT, describeObject)).toEqual([]);
+		});
+	});
+
+	describe("filterSections", () => {
+		it("matches labels and values, ignoring case, and drops empty sections", () => {
+			const sections = filterSections(getRootSections(context, TEXT), "ACC");
+
+			expect(labelsBySection(sections)).toEqual({
+				"Quick Resources": ["Current Item from Loop Loop Accounts"],
+				"Record Variables": ["accountVar"]
+			});
+		});
+
+		it("finds global resources by their $ prefix", () => {
+			const sections = filterSections(getRootSections(context, BOOLEAN), "$");
+
+			expect(sections.map((section) => section.label)).toEqual(["Global Constants", "Global Variables"]);
+		});
+
+		it("returns every section for a blank search", () => {
+			const sections = getRootSections(context, TEXT);
+
+			expect(filterSections(sections, "")).toEqual(sections);
+		});
+	});
+
+	describe("resolveItem", () => {
+		it("resolves a drilled reference, with labels for each step", async () => {
+			const item = await resolveItem("accountVar.Owner.Email", context, describeObject);
+
+			expect(item).toMatchObject({
+				value: "accountVar.Owner.Email",
+				pathLabel: "accountVar > Owner ID > Email",
+				icon: "utility:text"
+			});
+		});
+
+		it("describes only the objects on the way to the reference", async () => {
+			describeObject.mockClear();
+			await resolveItem("accountVar.Owner", context, describeObject);
+
+			expect(describeObject.mock.calls).toEqual([["Account"]]);
+		});
+
+		it("resolves global constants and variables", async () => {
+			expect(await resolveItem("$GlobalConstant.True", context, describeObject)).toMatchObject({
+				pathLabel: "True"
+			});
+			expect(await resolveItem("$User.Email", context, describeObject)).toMatchObject({
+				pathLabel: "$User > Email"
+			});
+		});
+
+		it("returns null for a field of a record collection", async () => {
+			expect(await resolveItem("Get_Accounts.Name", context, describeObject)).toBeNull();
+		});
+
+		it("returns null for unknown references", async () => {
+			expect(await resolveItem("missingVar", context, describeObject)).toBeNull();
+			expect(await resolveItem("accountVar.Missing__c", context, describeObject)).toBeNull();
+			expect(await resolveItem("textVar.Length", context, describeObject)).toBeNull();
+		});
+	});
+
+	describe("parseInput", () => {
+		it("splits a partial merge field into its parent path and search term", () => {
+			expect(parseInput("{!accountVar.Owner.Em")).toEqual({
+				isReference: true,
+				isComplete: false,
+				path: "accountVar.Owner.Em",
+				parentPath: "accountVar.Owner",
+				searchTerm: "Em"
+			});
+			expect(parseInput("{!acc")).toEqual({
+				isReference: true,
+				isComplete: false,
+				path: "acc",
+				parentPath: "",
+				searchTerm: "acc"
+			});
+		});
+
+		it("recognizes a complete merge field", () => {
+			expect(parseInput(" {!accountVar.Name} ")).toEqual({
+				isReference: true,
+				isComplete: true,
+				path: "accountVar.Name",
+				parentPath: "accountVar",
+				searchTerm: "Name"
+			});
+		});
+
+		it("treats anything else as a search term", () => {
+			expect(parseInput("hello")).toEqual({
+				isReference: false,
+				isComplete: false,
+				path: "hello",
+				parentPath: "",
+				searchTerm: "hello"
+			});
+			expect(parseInput(undefined)).toEqual({
+				isReference: false,
+				isComplete: false,
+				path: "",
+				parentPath: "",
+				searchTerm: ""
+			});
+		});
+	});
+
+	describe("toBooleanConstant", () => {
+		it("reads booleans, boolean text, and boolean constants as Flow's global constants", () => {
+			expect(toBooleanConstant(true)).toBe("$GlobalConstant.True");
+			expect(toBooleanConstant(" FALSE ")).toBe("$GlobalConstant.False");
+			expect(toBooleanConstant("$GlobalConstant.True")).toBe("$GlobalConstant.True");
+		});
+
+		it("returns null for anything else", () => {
+			expect(toBooleanConstant("yes")).toBeNull();
+			expect(toBooleanConstant("constructor")).toBeNull();
+			expect(toBooleanConstant("$GlobalConstant.EmptyString")).toBeNull();
+			expect(toBooleanConstant(undefined)).toBeNull();
+		});
+	});
+});

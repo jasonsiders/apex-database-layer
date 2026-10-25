@@ -1,0 +1,120 @@
+<template>
+	<div lwc:if={action.howManyLabel} class="editor-section">
+		<lightning-radio-group
+			class="slds-var-p-horizontal_xx-small slds-var-m-bottom_x-small"
+			label={action.howManyLabel}
+			options={howManyOptions}
+			type="radio"
+			value={howMany}
+			onchange={handleHowManyChange}
+		></lightning-radio-group>
+	</div>
+	<div class="editor-section slds-border_top">
+		<h3 class="slds-text-heading_small slds-var-m-bottom_small">{records.heading}</h3>
+		<c-flow-resource-picker
+			data-name={records.name}
+			name={records.name}
+			label={records.label}
+			type="SObject"
+			is-collection={records.isCollection}
+			placeholder="Search records..."
+			required
+			value={records.value}
+			value-data-type={records.valueDataType}
+			error-message={records.errorMessage}
+			builder-context={builderContext}
+			element-name={elementName}
+			automatic-output-variables={automaticOutputVariables}
+			onchange={handleRecordsChange}
+		></c-flow-resource-picker>
+		<p class="slds-text-body_regular slds-var-m-top_medium">{records.hint}</p>
+	</div>
+	<div lwc:if={action.hasMatchField} class="editor-section slds-border_top">
+		<h3 class="slds-text-heading_small slds-var-m-bottom_small">Update Existing Record</h3>
+		<p class="slds-text-body_regular slds-var-p-vertical_small">
+			At run time, the action uses the specified field to either insert a record or update an existing record.
+		</p>
+		<fieldset class="slds-form-element slds-var-p-vertical_small">
+			<legend class="slds-form-element__legend slds-form-element__label">
+				Field to use to identify existing record
+			</legend>
+			<div class="slds-form-element__control">
+				<template for:each={matchModes} for:item="mode">
+					<div key={mode.value} class="slds-grid">
+						<!-- Native radios, unlike lightning-input's, share one shadow root, so the browser groups
+							them for arrow keys and screen readers -->
+						<span class="slds-radio">
+							<input
+								type="radio"
+								id={mode.value}
+								name="matchMode"
+								value={mode.value}
+								checked={mode.isChecked}
+								onchange={handleMatchModeChange}
+							/>
+							<label class="slds-radio__label" for={mode.value}>
+								<span class="slds-radio_faux"></span>
+								<span class="slds-form-element__label">{mode.label}</span>
+							</label>
+						</span>
+						<lightning-helptext lwc:if={mode.helpText} content={mode.helpText}></lightning-helptext>
+					</div>
+				</template>
+				<div lwc:if={matchField} class="slds-var-m-top_small">
+					<c-flow-resource-picker
+						data-name="externalIdField"
+						name="externalIdField"
+						label={matchField.label}
+						is-picklist-only
+						required
+						placeholder={matchField.placeholder}
+						picklist-values={matchField.picklistValues}
+						value={matchField.value}
+						value-data-type={matchField.valueDataType}
+						error-message={matchField.errorMessage}
+						onchange={handleMatchFieldChange}
+					></c-flow-resource-picker>
+				</div>
+			</div>
+		</fieldset>
+	</div>
+	<div lwc:if={action.options.length} class="editor-section slds-border_top">
+		<lightning-accordion class="options-accordion" allow-multiple-sections-open>
+			<lightning-accordion-section name="options" label="DML Options">
+				<template for:each={options} for:item="option">
+					<div
+						key={option.name}
+						class="slds-var-p-around_x-small slds-var-m-bottom_x-small slds-var-m-left_small"
+					>
+						<c-flow-resource-picker
+							lwc:if={option.allowsResources}
+							data-name={option.name}
+							name={option.name}
+							label={option.label}
+							help-text={option.helpText}
+							type={option.type}
+							value={option.value}
+							value-data-type={option.valueDataType}
+							builder-context={builderContext}
+							element-name={elementName}
+							automatic-output-variables={automaticOutputVariables}
+							onchange={handleInputChange}
+						></c-flow-resource-picker>
+						<lightning-combobox
+							lwc:else
+							class="option-combobox"
+							data-name={option.name}
+							data-type={option.type}
+							name={option.name}
+							label={option.label}
+							field-level-help={option.helpText}
+							options={option.picklistValues}
+							value={option.value}
+							onchange={handleOptionChange}
+						></lightning-combobox>
+					</div>
+				</template>
+			</lightning-accordion-section>
+		</lightning-accordion>
+	</div>
+</template>

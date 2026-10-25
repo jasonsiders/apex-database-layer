@@ -1,0 +1,158 @@
+/**
+ * @description Flow action that upserts records via `DatabaseLayer.Dml`, exposing the external ID field, access level,
+ * and all-or-none behavior
+ */
+public inherited sharing class InvocableDmlUpsertRecords extends InvocableDml {
+	/** @description Only invoke and getMatchFields create instances, so callers go through them, like Flow does **/
+	@SuppressWarnings('PMD.EmptyStatementBlock')
+	private InvocableDmlUpsertRecords() {
+		// Nothing to initialize
+	}
+
+	// **** PUBLIC **** //
+	/**
+	 * @description Upserts every input's records in a single DML operation, using the first input's settings, so a
+	 * bulk run can't exhaust the DML statement limit
+	 * @param inputs One input per flow interview
+	 * @return One output per input, in the same order
+	 */
+	@InvocableMethod(
+		category='Database Layer'
+		configurationEditor='c-dml-records-editor'
+		description='Insert or update one or more records, matched by ID or an external ID field, with control over the access level and partial success.'
+		iconName='slds:standard:record'
+		label='DML: Upsert Record(s)'
+	)
+	public static List<InvocableDml.Output> invoke(List<InvocableDml.Input> inputs) {
+		return new InvocableDmlUpsertRecords()?.run(inputs);
+	}
+
+	/**
+	 * @description Lists the fields the action's editor offers to match records on, like Flow Builder's own upsert;
+	 * Apex, unlike UI API, can tell which standard fields are ID lookups
+	 * @param objectApiName The object to upsert, ex: "Account"
+	 * @return The object's accessible external ID fields and standard ID lookup fields, except Id
+	 * @throws System.AuraHandledException When the object doesn't exist
+	 */
+	@AuraEnabled(cacheable=true)
+	public static List<InvocableDmlUpsertRecords.MatchField> getMatchFields(String objectApiName) {
+		return new InvocableDmlUpsertRecords()?.initMatchFields(objectApiName);
+	}
+
+	// **** PROTECTED **** //
+	/**
+	 * @description Goes through DatabaseLayer.Dml, so plugins and MockDml apply to flows too
+	 * @param records The records to upsert
+	 * @param settings The input whose settings apply to the operation
+	 * @return The results, in record order
+	 */
+	protected override List<InvocableDmlResult> doDml(List<SObject> records, InvocableDml.Input settings) {
+		Boolean allOrNone = settings?.getAllOrNone();
+		System.AccessLevel accessLevel = settings?.getAccessLevel();
+		SObjectField externalIdField = this.getExternalIdField(records, settings);
+		List<Database.UpsertResult> results = DatabaseLayer.Dml
+			?.doUpsert(records, externalIdField, allOrNone, accessLevel);
+		return InvocableDmlResult.fromList(results);
+	}
+
+	// **** PRIVATE **** //
+	/**
+	 * @description Flow passes the field by name; an unknown name throws, since matching on Ids could duplicate records
+	 * @param records Every input's records; the first one supplies the object
+	 * @param settings The input whose external ID field applies to the operation
+	 * @return The external ID field, or null to identify records by Id
+	 * @throws System.IllegalArgumentException When the object has no field by that name
+	 */
+	private SObjectField getExternalIdField(List<SObject> records, InvocableDml.Input settings) {
+		SObjectField field;
+		String fieldName = settings?.externalIdField?.trim();
+		if (String.isNotBlank(fieldName)) {
+			SObjectType objectType = records?.get(0)?.getSObjectType();
+			Map<String, SObjectField> fields = objectType
+				?.getDescribe(SObjectDescribeOptions.DEFERRED)
+				?.fields
+				?.getMap();
+			field = fields?.get(fieldName);
+			if (field == null) {
+				throw new IllegalArgumentException('Invalid external ID field for ' + objectType + ': ' + fieldName);
+			}
+		}
+		return field;
+	}
+
+	/**
+	 * @description The editor calls this through Lightning, which only shows an AuraHandledException's message
+	 * @param objectApiName The object to describe
+	 * @return The object's fields
+	 * @throws System.AuraHandledException When the object doesn't exist
+	 */
+	private List<SObjectField> describeFields(String objectApiName) {
+		List<String> objectApiNames = new List<String>{ objectApiName };
+		try {
+			List<DescribeSObjectResult> objects = Schema.describeSObjects(
+				objectApiNames,
+				SObjectDescribeOptions.DEFERRED
+			);
+			return objects?.get(0)?.fields?.getMap()?.values();
+		} catch (System.InvalidParameterValueException error) {
+			String message = error?.getMessage();
+			throw new System.AuraHandledException(message);
+		}
+	}
+
+	/**
+	 * @description Lists the fields the editor offers to match records on
+	 * @param objectApiName The object to upsert, ex: "Account"
+	 * @return The object's accessible external ID fields and standard ID lookup fields, except Id
+	 * @throws System.AuraHandledException When the object doesn't exist
+	 */
+	private List<InvocableDmlUpsertRecords.MatchField> initMatchFields(String objectApiName) {
+		List<InvocableDmlUpsertRecords.MatchField> matchFields = new List<InvocableDmlUpsertRecords.MatchField>{};
+		for (SObjectField field : this.describeFields(objectApiName)) {
+			DescribeFieldResult describe = field?.getDescribe();
+			if (this.isMatchable(describe)) {
+				InvocableDmlUpsertRecords.MatchField matchField = new InvocableDmlUpsertRecords.MatchField(describe);
+				matchFields?.add(matchField);
+			}
+		}
+		return matchFields;
+	}
+
+	/**
+	 * @description Upserts can match on external ID fields and standard ID lookup fields; Id is the default, so the
+	 * editor offers it separately
+	 * @param field The field to check
+	 * @return Whether the running user can upsert on the field
+	 */
+	private Boolean isMatchable(DescribeFieldResult field) {
+		Boolean isStandardLookup =
+			field?.isIdLookup() == true &&
+			field?.isCustom() == false &&
+			field?.getName() != 'Id';
+		return field?.isAccessible() == true && (field?.isExternalId() == true || isStandardLookup);
+	}
+
+	// **** INNER **** //
+	/** @description A field the editor offers to match records on **/
+	public class MatchField {
+		/** @description The editor lists fields by API name, like Flow Builder **/
+		@AuraEnabled
+		public String apiName;
+		/** @description Splits the editor's External ID and Standard Field lists **/
+		@AuraEnabled
+		public Boolean isExternalId;
+		/** @description Shown under the API name **/
+		@AuraEnabled
+		public String label;
+
+		/**
+		 * @description Copies the describe details the editor needs
+		 * @param field The field's describe
+		 */
+		private MatchField(DescribeFieldResult field) {
+			this.apiName = field?.getName();
+			this.isExternalId = field?.isExternalId();
+			this.label = field?.getLabel();
+		}
+	}
+}

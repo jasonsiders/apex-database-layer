@@ -10,6 +10,8 @@
 - **Dml**
     - [Performing DML Operations](./Performing-DML-Operations)
     - [Mocking DML Operations](./Mocking-DML-Operations)
+- **Invocables**
+    - [Performing DML in Flow](./Performing-DML-in-Flow)
 - **Soql**
     - [Performing SOQL Queries](./Performing-SOQL-Queries)
     - [Mocking SOQL Queries](./Mocking-SOQL-Queries)
@@ -42,6 +44,10 @@
     - [MockDml.History](./The-MockDml.History-Class)
     - [MockDml.SavepointHistory](./The-MockDml.SavepointHistory-Class)
     - [MockDml.Savepoint](./The-MockDml.Savepoint-Class)
+- [**InvocableDml**](./The-InvocableDml-Class)
+    - [InvocableDml.Input](./The-InvocableDml.Input-Class)
+    - [InvocableDml.Output](./The-InvocableDml.Output-Class)
+- [**InvocableDmlResult**](./The-InvocableDmlResult-Class)
 - [**MockRecord**](./The-MockRecord-Class)
 - [**Cmdt**](./The-Cmdt-Class)
     - [Cmdt.Repository](./The-Cmdt.Repository-Class)
