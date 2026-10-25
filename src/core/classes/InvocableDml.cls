@@ -70,7 +70,7 @@ public abstract inherited sharing class InvocableDml {
 	private static List<InvocableDml.Output> initOutputs(List<InvocableDml.Input> inputs) {
 		List<InvocableDml.Output> outputs = new List<InvocableDml.Output>{};
 		for (InvocableDml.Input input : inputs) {
-			InvocableDml.Output output = input?.initOutput();
+			InvocableDml.Output output = input?.toOutput();
 			outputs?.add(output);
 		}
 		return outputs;
@@ -214,7 +214,7 @@ public abstract inherited sharing class InvocableDml {
 		 * @description Treats the single record and the collection alike, so the rest of the action handles one list
 		 * @return An output holding this input's records until they're processed
 		 */
-		private InvocableDml.Output initOutput() {
+		private InvocableDml.Output toOutput() {
 			List<SObject> records = this.record == null ? new List<SObject>{} : new List<SObject>{ this.record };
 			records?.addAll(this.recordCollection ?? new List<SObject>{});
 			return new InvocableDml.Output(records);
