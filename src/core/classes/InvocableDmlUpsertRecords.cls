@@ -3,6 +3,15 @@
  * and all-or-none behavior
  */
 public inherited sharing class InvocableDmlUpsertRecords extends InvocableDml {
+	/**
+	 * @description Only the invocable method and the editor's getMatchFields create instances, so callers go through
+	 * them, like Flow does
+	 */
+	@SuppressWarnings('PMD.EmptyStatementBlock')
+	private InvocableDmlUpsertRecords() {
+		// Nothing to initialize
+	}
+
 	// **** PUBLIC **** //
 	/**
 	 * @description Upserts every input's records in a single DML operation, using the first input's settings, so a
@@ -50,15 +59,6 @@ public inherited sharing class InvocableDmlUpsertRecords extends InvocableDml {
 	}
 
 	// **** PRIVATE **** //
-	/**
-	 * @description Only the invocable method and the editor's getMatchFields create instances, so callers go through
-	 * them, like Flow does
-	 */
-	@SuppressWarnings('PMD.EmptyStatementBlock')
-	private InvocableDmlUpsertRecords() {
-		// Nothing to initialize
-	}
-
 	/**
 	 * @description Flow passes the field by name; an unknown name throws, since matching on Ids could duplicate records
 	 * @param records Every input's records; the first one supplies the object

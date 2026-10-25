@@ -3,6 +3,14 @@
  * behavior, and duplicate rule settings
  */
 public inherited sharing class InvocableDmlConvertLead {
+	/**
+	 * @description Only the invocable method creates instances, so callers go through it, like Flow does
+	 */
+	@SuppressWarnings('PMD.EmptyStatementBlock')
+	private InvocableDmlConvertLead() {
+		// Nothing to initialize
+	}
+
 	// **** PUBLIC **** //
 	/**
 	 * @description Converts every input's lead in a single DML operation, using the first input's settings, so a bulk
@@ -21,14 +29,6 @@ public inherited sharing class InvocableDmlConvertLead {
 	}
 
 	// **** PRIVATE **** //
-	/**
-	 * @description Only the invocable method creates instances, so callers go through it, like Flow does
-	 */
-	@SuppressWarnings('PMD.EmptyStatementBlock')
-	private InvocableDmlConvertLead() {
-		// Nothing to initialize
-	}
-
 	/**
 	 * @description Converts every input's lead in a single DML operation, using the first input's settings
 	 * @param inputs One input per flow interview

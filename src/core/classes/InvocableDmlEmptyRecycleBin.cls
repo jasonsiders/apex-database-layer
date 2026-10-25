@@ -2,6 +2,14 @@
  * @description Flow action that permanently deletes records from the Recycle Bin via `DatabaseLayer.Dml`
  */
 public inherited sharing class InvocableDmlEmptyRecycleBin extends InvocableDml {
+	/**
+	 * @description Only the invocable method creates instances, so callers go through it, like Flow does
+	 */
+	@SuppressWarnings('PMD.EmptyStatementBlock')
+	private InvocableDmlEmptyRecycleBin() {
+		// Nothing to initialize
+	}
+
 	// **** PUBLIC **** //
 	/**
 	 * @description Permanently deletes every input's records in a single DML operation, so a bulk run can't exhaust
@@ -30,14 +38,5 @@ public inherited sharing class InvocableDmlEmptyRecycleBin extends InvocableDml 
 	protected override List<InvocableDmlResult> doDml(List<SObject> records, InvocableDml.Input settings) {
 		List<Database.EmptyRecycleBinResult> results = DatabaseLayer.Dml?.emptyRecycleBin(records);
 		return InvocableDmlResult.fromList(results);
-	}
-
-	// **** PRIVATE **** //
-	/**
-	 * @description Only the invocable method creates instances, so callers go through it, like Flow does
-	 */
-	@SuppressWarnings('PMD.EmptyStatementBlock')
-	private InvocableDmlEmptyRecycleBin() {
-		// Nothing to initialize
 	}
 }

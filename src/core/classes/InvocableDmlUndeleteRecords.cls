@@ -3,6 +3,14 @@
  * behavior
  */
 public inherited sharing class InvocableDmlUndeleteRecords extends InvocableDml {
+	/**
+	 * @description Only the invocable method creates instances, so callers go through it, like Flow does
+	 */
+	@SuppressWarnings('PMD.EmptyStatementBlock')
+	private InvocableDmlUndeleteRecords() {
+		// Nothing to initialize
+	}
+
 	// **** PUBLIC **** //
 	/**
 	 * @description Undeletes every input's records in a single DML operation, using the first input's settings, so a
@@ -33,14 +41,5 @@ public inherited sharing class InvocableDmlUndeleteRecords extends InvocableDml 
 		System.AccessLevel accessLevel = settings?.getAccessLevel();
 		List<Database.UndeleteResult> results = DatabaseLayer.Dml?.doUndelete(records, allOrNone, accessLevel);
 		return InvocableDmlResult.fromList(results);
-	}
-
-	// **** PRIVATE **** //
-	/**
-	 * @description Only the invocable method creates instances, so callers go through it, like Flow does
-	 */
-	@SuppressWarnings('PMD.EmptyStatementBlock')
-	private InvocableDmlUndeleteRecords() {
-		// Nothing to initialize
 	}
 }
