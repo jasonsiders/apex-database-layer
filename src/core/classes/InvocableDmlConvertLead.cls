@@ -29,7 +29,7 @@ public inherited sharing class InvocableDmlConvertLead {
 	/**
 	 * @description Goes through DatabaseLayer.Dml, so plugins and MockDml apply to flows too
 	 * @param inputs One input per flow interview; the first one's settings apply to all
-	 * @return The results, in input order
+	 * @return One result per input, in the same order
 	 */
 	private static List<Database.LeadConvertResult> convertLeads(List<InvocableDmlConvertLead.Input> inputs) {
 		List<Database.LeadConvert> leadsToConvert = InvocableDmlConvertLead.initLeadConverts(inputs);
@@ -40,7 +40,7 @@ public inherited sharing class InvocableDmlConvertLead {
 	}
 
 	/**
-	 * @description Each input converts one lead, so they pool into one conversion
+	 * @description Each input converts its own lead, with its own options
 	 * @param inputs One input per flow interview
 	 * @return One lead to convert per input, in the same order
 	 */
@@ -54,9 +54,9 @@ public inherited sharing class InvocableDmlConvertLead {
 	}
 
 	/**
-	 * @description Each input converts one lead, so outputs map one-to-one with results
-	 * @param results The results of the conversion
-	 * @return One output per result, in the same order
+	 * @description Results come back in conversion order, which is input order
+	 * @param results The conversion's results
+	 * @return One output per input, in the same order
 	 */
 	private static List<InvocableDmlConvertLead.Output> initOutputs(List<Database.LeadConvertResult> results) {
 		List<InvocableDmlConvertLead.Output> outputs = new List<InvocableDmlConvertLead.Output>{};
@@ -73,7 +73,7 @@ public inherited sharing class InvocableDmlConvertLead {
 		/** @description Text, not an enum, since Flow can't pass System.AccessLevel **/
 		@InvocableVariable(
 			label='Access Level'
-			description='USER_MODE (default) enforces the running user\'s object permissions, field-level security, and sharing rules. SYSTEM_MODE ignores them.'
+			description='USER_MODE (default) enforces the running user\'s object permissions, field-level security, and sharing rules. SYSTEM_MODE ignores object permissions and field-level security, but sharing rules still apply.'
 		)
 		public String accessLevel;
 		/** @description Maps to Database.LeadConvert.setAccountId **/

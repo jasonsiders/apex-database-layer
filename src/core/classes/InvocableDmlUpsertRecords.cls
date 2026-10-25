@@ -1,11 +1,12 @@
 /**
- * @description Flow action that upserts records via `DatabaseLayer.Dml`, exposing the external ID field, access level, and
- * all-or-none behavior
+ * @description Flow action that upserts records via `DatabaseLayer.Dml`, exposing the external ID field, access level,
+ * and all-or-none behavior
  */
 public inherited sharing class InvocableDmlUpsertRecords extends InvocableDml {
 	// **** PUBLIC **** //
 	/**
-	 * @description Upserts every input's records in a single DML operation, using the first input's settings
+	 * @description Upserts every input's records in a single DML operation, using the first input's settings, so a
+	 * bulk run can't exhaust the DML statement limit
 	 * @param inputs One input per flow interview
 	 * @return One output per input, in the same order
 	 */
@@ -25,6 +26,7 @@ public inherited sharing class InvocableDmlUpsertRecords extends InvocableDml {
 	 * Apex, unlike UI API, can tell which standard fields are ID lookups
 	 * @param objectApiName The object to upsert, ex: "Account"
 	 * @return The object's accessible external ID fields and standard ID lookup fields, except Id
+	 * @throws System.AuraHandledException When the object doesn't exist
 	 */
 	@AuraEnabled(cacheable=true)
 	public static List<InvocableDmlUpsertRecords.MatchField> getMatchFields(String objectApiName) {
@@ -47,25 +49,39 @@ public inherited sharing class InvocableDmlUpsertRecords extends InvocableDml {
 	 * @return The results, in record order
 	 */
 	protected override List<InvocableDmlResult> doDml(List<SObject> records, InvocableDml.Input settings) {
-		SObjectField externalIdField = this.getMatchField(records, settings);
 		Boolean allOrNone = settings?.toAllOrNone();
 		System.AccessLevel accessLevel = settings?.toAccessLevel();
+		SObjectField externalIdField = InvocableDmlUpsertRecords.getExternalIdField(records, settings);
 		List<Database.UpsertResult> results = DatabaseLayer.Dml
 			?.doUpsert(records, externalIdField, allOrNone, accessLevel);
 		return InvocableDmlResult.fromList(results);
 	}
 
+	// **** PRIVATE **** //
 	/**
-	 * @description Upserts identify records by the external ID field, so inputs that share a value pool as one record
-	 * @param records Every input's records
-	 * @param settings The input whose settings apply to the operation
-	 * @return The external ID field, or null to match on Id
+	 * @description Flow passes the field by name; an unknown name throws, since matching on Ids could duplicate records
+	 * @param records Every input's records; the first one supplies the object
+	 * @param settings The input whose external ID field applies to the operation
+	 * @return The external ID field, or null to identify records by Id
+	 * @throws System.IllegalArgumentException When the object has no field by that name
 	 */
-	protected override SObjectField getMatchField(List<SObject> records, InvocableDml.Input settings) {
-		return InvocableDmlUpsertRecords.getExternalIdField(records, settings?.externalIdField);
+	private static SObjectField getExternalIdField(List<SObject> records, InvocableDml.Input settings) {
+		SObjectField field;
+		String fieldName = settings?.externalIdField?.trim();
+		if (String.isNotBlank(fieldName)) {
+			SObjectType objectType = records?.get(0)?.getSObjectType();
+			Map<String, SObjectField> fields = objectType
+				?.getDescribe(SObjectDescribeOptions.DEFERRED)
+				?.fields
+				?.getMap();
+			field = fields?.get(fieldName);
+			if (field == null) {
+				throw new IllegalArgumentException('Invalid external ID field for ' + objectType + ': ' + fieldName);
+			}
+		}
+		return field;
 	}
 
-	// **** PRIVATE **** //
 	/**
 	 * @description The editor calls this through Lightning, which only shows an AuraHandledException's message
 	 * @param objectApiName The object to describe
@@ -81,7 +97,8 @@ public inherited sharing class InvocableDmlUpsertRecords extends InvocableDml {
 			);
 			return objects?.get(0)?.fields?.getMap()?.values();
 		} catch (System.InvalidParameterValueException error) {
-			throw new System.AuraHandledException(error?.getMessage());
+			String message = error?.getMessage();
+			throw new System.AuraHandledException(message);
 		}
 	}
 
@@ -97,30 +114,6 @@ public inherited sharing class InvocableDmlUpsertRecords extends InvocableDml {
 			field?.isCustom() == false &&
 			field?.getName() != 'Id';
 		return field?.isAccessible() == true && (field?.isExternalId() == true || isStandardLookup);
-	}
-
-	/**
-	 * @description Flow passes the field by name; an unknown name throws, since upserting on Ids instead could duplicate
-	 * records
-	 * @param records The records to upsert; the first one supplies the object
-	 * @param fieldName The external ID field API name, or blank to match on Id
-	 * @return The field, or null when the name is blank
-	 */
-	private static SObjectField getExternalIdField(List<SObject> records, String fieldName) {
-		SObjectField field;
-		if (String.isNotBlank(fieldName)) {
-			SObjectType objectType = records?.get(0)?.getSObjectType();
-			Map<String, SObjectField> fields = objectType
-				?.getDescribe(SObjectDescribeOptions.DEFERRED)
-				?.fields
-				?.getMap();
-			String trimmedName = fieldName?.trim();
-			field = fields?.get(trimmedName);
-			if (field == null) {
-				throw new IllegalArgumentException('Invalid external ID field for ' + objectType + ': ' + fieldName);
-			}
-		}
-		return field;
 	}
 
 	// **** INNER **** //

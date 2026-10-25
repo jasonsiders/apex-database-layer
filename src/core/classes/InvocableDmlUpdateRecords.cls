@@ -5,7 +5,8 @@
 public inherited sharing class InvocableDmlUpdateRecords extends InvocableDml {
 	// **** PUBLIC **** //
 	/**
-	 * @description Updates every input's records in a single DML operation, using the first input's settings
+	 * @description Updates every input's records in a single DML operation, using the first input's settings, so a
+	 * bulk run can't exhaust the DML statement limit
 	 * @param inputs One input per flow interview
 	 * @return One output per input, in the same order
 	 */

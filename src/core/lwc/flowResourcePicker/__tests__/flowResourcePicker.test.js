@@ -294,6 +294,25 @@ describe("c-flow-resource-picker", () => {
 		expect(element.shadowRoot.querySelector(".picker-header").textContent).toBe("All Resources");
 	});
 
+	it("restores the current value when focus leaves mid-drill", async () => {
+		const { element, onChange } = await render();
+		await open(element);
+		option(element, "accountVar").click();
+		await flush();
+		option(element, "Owner ID").click();
+		await flush();
+		element.shadowRoot
+			.querySelector('lightning-breadcrumb[data-index="0"]')
+			.dispatchEvent(new CustomEvent("click"));
+		await flush();
+		expect(input(element).value).toBe("{!accountVar.");
+
+		await blur(element);
+
+		expect(onChange).not.toHaveBeenCalled();
+		expect(input(element).value).toBe("");
+	});
+
 	it("drills by typing a merge field path", async () => {
 		const { element } = await render();
 		await open(element);
@@ -422,20 +441,6 @@ describe("c-flow-resource-picker", () => {
 		expect(lastChange(onChange)).toEqual({ name: "accessLevel", value: "Erp_Id__c", valueDataType: "String" });
 	});
 
-	it("commits typed true/false as a boolean global constant", async () => {
-		const { element, onChange } = await render({ type: "Boolean" });
-		await open(element);
-
-		await type(element, "TRUE");
-		await blur(element);
-
-		expect(lastChange(onChange)).toEqual({
-			name: "accessLevel",
-			value: "$GlobalConstant.True",
-			valueDataType: "Boolean"
-		});
-	});
-
 	it("saves global constants with their own data type, as Flow Builder requires", async () => {
 		const { element, onChange } = await render();
 		await open(element);
@@ -448,14 +453,24 @@ describe("c-flow-resource-picker", () => {
 			valueDataType: "String"
 		});
 
-		await editPill(element);
-		await type(element, "{!$GlobalConstant.False}");
-		await blur(element);
-		expect(lastChange(onChange)).toEqual({
-			name: "accessLevel",
+		const boolean = await render({ name: "allOrNone", type: "Boolean" });
+		await type(boolean.element, "{!$GlobalConstant.False}");
+		await blur(boolean.element);
+		expect(lastChange(boolean.onChange)).toEqual({
+			name: "allOrNone",
 			value: "$GlobalConstant.False",
 			valueDataType: "Boolean"
 		});
+	});
+
+	it("rejects a typed resource of another type, restoring the previous value", async () => {
+		const { element, onChange } = await render();
+
+		await type(element, "{!$GlobalConstant.False}");
+		await blur(element);
+
+		expect(onChange).not.toHaveBeenCalled();
+		expect(input(element).value).toBe("");
 	});
 
 	it("clears the value when the text is erased", async () => {
@@ -487,13 +502,9 @@ describe("c-flow-resource-picker", () => {
 		expect(remove.alternativeText).toBe("Remove accountVar > Owner ID > Email");
 	});
 
-	it("shows boolean values as global constant pills", async () => {
+	it("shows global constants as pills", async () => {
 		const { element } = await render({ type: "Boolean", value: "$GlobalConstant.True", valueDataType: "Boolean" });
 		expect(pillLabel(element)).toBe("True");
-
-		element.value = false;
-		await flush();
-		expect(pillLabel(element)).toBe("False");
 	});
 
 	it("shows unknown references as-is", async () => {

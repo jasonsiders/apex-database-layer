@@ -76,13 +76,17 @@ function headings(element) {
 }
 
 function radios(element) {
-	return [...element.shadowRoot.querySelectorAll("lightning-input")].filter((input) => input.type === "radio");
+	return [...element.shadowRoot.querySelectorAll('input[type="radio"]')].map((input) => ({
+		input,
+		label: input.closest(".slds-radio").textContent.trim(),
+		checked: input.checked
+	}));
 }
 
 async function chooseMatchMode(element, label) {
-	radios(element)
-		.find((radio) => radio.label === label)
-		.dispatchEvent(new CustomEvent("change"));
+	const { input } = radios(element).find((radio) => radio.label === label);
+	input.checked = true;
+	input.dispatchEvent(new CustomEvent("change"));
 	await flush();
 }
 
@@ -175,6 +179,24 @@ describe("c-dml-records-editor", () => {
 		expect(optionInput(element, "accessLevel").value).toBe("USER_MODE");
 		expect(optionInput(element, "allOrNone").value).toBe("$GlobalConstant.True");
 		expect(optionInput(element, "allowDuplicates").value).toBe("$GlobalConstant.False");
+	});
+
+	it("shows a resource saved outside the editor, instead of a default", async () => {
+		const { element } = await render([
+			{ name: "allowFieldTruncation", value: "truncateVar", valueDataType: "reference" },
+			{ name: "accessLevel", value: "levelVar", valueDataType: "reference" },
+			{ name: "allOrNone", value: "$GlobalConstant.False", valueDataType: "reference" }
+		]);
+
+		const truncation = optionInput(element, "allowFieldTruncation");
+		expect(truncation.value).toBe("truncateVar");
+		expect(truncation.options[0]).toEqual({ label: "{!truncateVar}", value: "truncateVar" });
+		const accessLevel = optionInput(element, "accessLevel");
+		expect(accessLevel.value).toBe("levelVar");
+		expect(accessLevel.options.map((choice) => choice.value)).toEqual(["levelVar", "USER_MODE", "SYSTEM_MODE"]);
+		// A boolean constant is a value, not a resource
+		expect(optionInput(element, "allOrNone").value).toBe("$GlobalConstant.False");
+		expect(optionInput(element, "allOrNone").options).toHaveLength(2);
 	});
 
 	it("only lets Assignment Rule ID take a resource, since rule IDs differ between orgs", async () => {
@@ -305,7 +327,7 @@ describe("c-dml-records-editor", () => {
 	it("accepts a complete configuration", async () => {
 		const { element } = await render([
 			{ name: "record", value: "accountVar", valueDataType: "reference" },
-			{ name: "accessLevel", value: "system_mode", valueDataType: "String" },
+			{ name: "accessLevel", value: "SYSTEM_MODE", valueDataType: "String" },
 			{ name: "allOrNone", value: false, valueDataType: "Boolean" },
 			{ name: "allowDuplicates", value: "$GlobalConstant.True", valueDataType: "Boolean" },
 			{ name: "triggerUserEmail", value: "boolVar", valueDataType: "reference" }
@@ -373,6 +395,15 @@ describe("c-dml-records-editor", () => {
 			["Record ID", true],
 			["External ID", false],
 			["Standard Field", false]
+		]);
+		// One native group, so arrow keys move between the modes and screen readers announce one group
+		const inputs = radios(element).map((radio) => radio.input);
+		expect(new Set(inputs.map((input) => input.name))).toEqual(new Set(["matchMode"]));
+		expect(new Set(inputs.map((input) => input.getRootNode())).size).toBe(1);
+		expect(inputs.map((input) => input.labels?.[0]?.textContent.trim())).toEqual([
+			"Record ID",
+			"External ID",
+			"Standard Field"
 		]);
 		expect(picker(element, "externalIdField")).toBeNull();
 		expect(element.validate()).toEqual([{ key: "record", errorString: "Enter a value." }]);
