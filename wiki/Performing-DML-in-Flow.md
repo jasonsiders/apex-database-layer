@@ -12,6 +12,8 @@ Because the actions use `DatabaseLayer.Dml`, [plugins](./Plugin:-Dml.PreAndPostP
 | Empty Recycle Bin | `InvocableDmlEmptyRecycleBin` | `emptyRecycleBin`          |
 | Convert Lead      | `InvocableDmlConvertLead`     | `doConvert`                |
 
+The record actions extend [`InvocableDml`](./The-InvocableDml-Class), which you can extend to build your own.
+
 ---
 
 ## Record Actions
@@ -57,7 +59,7 @@ Apex's `Database.upsert`, `Database.delete`, and `Database.undelete` methods don
 | Result            | `InvocableDmlResult`            | The record's outcome. For a collection, the first record's outcome.                                            |
 | Result Collection | `InvocableDmlResult` Collection | Each record's outcome, in the same order as the records.                                                       |
 
-`InvocableDmlResult` is an Apex-defined type with these fields:
+[`InvocableDmlResult`](./The-InvocableDmlResult-Class) is an Apex-defined type with these fields:
 
 - `errors`: each error, formatted as `STATUS_CODE: Message (Field1, Field2)`
 - `id`: the record's ID, or blank if an insert failed. For Convert Lead, the lead's ID.
