@@ -411,10 +411,14 @@ describe("c-dml-records-editor", () => {
 		await chooseMatchMode(element, "External ID");
 		const field = picker(element, "externalIdField");
 		expect(field).toMatchObject({
+			label: "External ID Field",
 			placeholder: "Search external ID fields...",
 			isPicklistOnly: true,
 			required: true
 		});
+		// Beneath every mode, not just the chosen one, like a native element's dependent input
+		const lastRadio = radios(element).at(-1).input;
+		expect(lastRadio.compareDocumentPosition(field) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 		expect(field.picklistValues.map((option) => [option.label, option.description])).toEqual([
 			["Erp_Id__c", "ERP ID"],
 			["Legacy_Id__c", "Legacy ID"]
@@ -440,6 +444,7 @@ describe("c-dml-records-editor", () => {
 
 		expect(radios(element).find((radio) => radio.checked).label).toBe("Standard Field");
 		expect(picker(element, "externalIdField")).toMatchObject({
+			label: "Standard Field",
 			value: "Email",
 			placeholder: "Search standard fields..."
 		});

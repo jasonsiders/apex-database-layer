@@ -40,44 +40,41 @@
 			</legend>
 			<div class="slds-form-element__control">
 				<template for:each={matchModes} for:item="mode">
-					<div key={mode.value}>
-						<div class="slds-grid">
-							<!-- Native radios, unlike lightning-input's, share one shadow root, so the browser groups
-								them for arrow keys and screen readers -->
-							<span class="slds-radio">
-								<input
-									type="radio"
-									id={mode.value}
-									name="matchMode"
-									value={mode.value}
-									checked={mode.isChecked}
-									onchange={handleMatchModeChange}
-								/>
-								<label class="slds-radio__label" for={mode.value}>
-									<span class="slds-radio_faux"></span>
-									<span class="slds-form-element__label">{mode.label}</span>
-								</label>
-							</span>
-							<lightning-helptext lwc:if={mode.helpText} content={mode.helpText}></lightning-helptext>
-						</div>
-						<div lwc:if={mode.field} class="slds-var-m-left_small slds-size_small">
-							<c-flow-resource-picker
-								data-name="externalIdField"
-								name="externalIdField"
-								label={mode.label}
-								variant="label-hidden"
-								is-picklist-only
-								required
-								placeholder={mode.placeholder}
-								picklist-values={mode.field.picklistValues}
-								value={mode.field.value}
-								value-data-type={mode.field.valueDataType}
-								error-message={mode.field.errorMessage}
-								onchange={handleMatchFieldChange}
-							></c-flow-resource-picker>
-						</div>
+					<div key={mode.value} class="slds-grid">
+						<!-- Native radios, unlike lightning-input's, share one shadow root, so the browser groups
+							them for arrow keys and screen readers -->
+						<span class="slds-radio">
+							<input
+								type="radio"
+								id={mode.value}
+								name="matchMode"
+								value={mode.value}
+								checked={mode.isChecked}
+								onchange={handleMatchModeChange}
+							/>
+							<label class="slds-radio__label" for={mode.value}>
+								<span class="slds-radio_faux"></span>
+								<span class="slds-form-element__label">{mode.label}</span>
+							</label>
+						</span>
+						<lightning-helptext lwc:if={mode.helpText} content={mode.helpText}></lightning-helptext>
 					</div>
 				</template>
+				<div lwc:if={matchField} class="slds-var-m-top_small slds-size_small">
+					<c-flow-resource-picker
+						data-name="externalIdField"
+						name="externalIdField"
+						label={matchField.label}
+						is-picklist-only
+						required
+						placeholder={matchField.placeholder}
+						picklist-values={matchField.picklistValues}
+						value={matchField.value}
+						value-data-type={matchField.valueDataType}
+						error-message={matchField.errorMessage}
+						onchange={handleMatchFieldChange}
+					></c-flow-resource-picker>
+				</div>
 			</div>
 		</fieldset>
 	</div>

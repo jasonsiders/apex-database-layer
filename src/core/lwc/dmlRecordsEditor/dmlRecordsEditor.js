@@ -32,12 +32,14 @@ const MATCH_MODES = [
 	{
 		label: "External ID",
 		value: EXTERNAL_ID,
+		fieldLabel: "External ID Field",
 		helpText: "Select the field to use as the external ID.",
 		placeholder: "Search external ID fields..."
 	},
 	{
 		label: "Standard Field",
 		value: STANDARD_FIELD,
+		fieldLabel: "Standard Field",
 		helpText:
 			"Select a field with its idLookup property equal to true. For example, the Case Number field on the Case object. Only supported fields are available.",
 		placeholder: "Search standard fields..."
@@ -237,16 +239,15 @@ export default class DmlRecordsEditor extends LightningElement {
 		return this._matchMode ?? (value == null ? RECORD_ID : fieldMode);
 	}
 
+	get matchField() {
+		const mode = MATCH_MODES.find((candidate) => candidate.value === this.matchMode);
+		// Records match on their ID without a field
+		return mode.value === RECORD_ID ? null : this._initMatchField(mode);
+	}
+
 	get matchModes() {
 		const matchMode = this.matchMode;
-		return MATCH_MODES.map((mode) => {
-			const isChecked = mode.value === matchMode;
-			return {
-				...mode,
-				isChecked,
-				field: isChecked && mode.value !== RECORD_ID ? this._initMatchField(mode) : null
-			};
-		});
+		return MATCH_MODES.map((mode) => ({ ...mode, isChecked: mode.value === matchMode }));
 	}
 
 	get matchObjectType() {
@@ -456,7 +457,8 @@ export default class DmlRecordsEditor extends LightningElement {
 	 */
 	_initMatchField(mode) {
 		const isExternalId = mode.value === EXTERNAL_ID;
-		const [field] = this._initFields([{ name: EXTERNAL_ID_FIELD }]);
+		const definition = { name: EXTERNAL_ID_FIELD, label: mode.fieldLabel, placeholder: mode.placeholder };
+		const [field] = this._initFields([definition]);
 		const picklistValues = this._matchFields.filter((option) => option.isExternalId === isExternalId);
 		return { ...field, picklistValues };
 	}
