@@ -155,7 +155,7 @@ public class InvocableDmlResult {
 	 * @param databaseErrors The record's errors
 	 */
 	private InvocableDmlResult(Id recordId, Boolean isSuccess, List<Database.Error> databaseErrors) {
-		this.errors = InvocableDmlResult.formatErrors(databaseErrors);
+		this.errors = this.formatErrors(databaseErrors);
 		this.id = recordId;
 		this.isSuccess = isSuccess;
 	}
@@ -165,7 +165,7 @@ public class InvocableDmlResult {
 	 * @param error The error to format
 	 * @return The error, as `STATUS_CODE: Message (Field1, Field2)`
 	 */
-	private static String formatError(Database.Error error) {
+	private String formatError(Database.Error error) {
 		List<String> fields = error?.getFields() ?? new List<String>{};
 		String fieldList = String.join(fields, ', ');
 		String suffix = fields?.isEmpty() == true ? '' : ' (' + fieldList + ')';
@@ -177,10 +177,10 @@ public class InvocableDmlResult {
 	 * @param databaseErrors The errors to format; null for a successful EmptyRecycleBinResult
 	 * @return The formatted errors, in the same order
 	 */
-	private static List<String> formatErrors(List<Database.Error> databaseErrors) {
+	private List<String> formatErrors(List<Database.Error> databaseErrors) {
 		List<String> errors = new List<String>{};
 		for (Database.Error databaseError : databaseErrors ?? new List<Database.Error>{}) {
-			String error = InvocableDmlResult.formatError(databaseError);
+			String error = this.formatError(databaseError);
 			errors?.add(error);
 		}
 		return errors;

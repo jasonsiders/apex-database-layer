@@ -17,22 +17,31 @@ public inherited sharing class InvocableDmlConvertLead {
 		label='Convert Lead'
 	)
 	public static List<InvocableDmlConvertLead.Output> invoke(List<InvocableDmlConvertLead.Input> inputs) {
+		return new InvocableDmlConvertLead()?.run(inputs);
+	}
+
+	// **** PRIVATE **** //
+	/**
+	 * @description Converts every input's lead in a single DML operation, using the first input's settings
+	 * @param inputs One input per flow interview
+	 * @return One output per input, in the same order
+	 */
+	private List<InvocableDmlConvertLead.Output> run(List<InvocableDmlConvertLead.Input> inputs) {
 		List<InvocableDmlConvertLead.Output> outputs = new List<InvocableDmlConvertLead.Output>{};
 		if (inputs?.isEmpty() == false) {
-			List<Database.LeadConvertResult> results = InvocableDmlConvertLead.convertLeads(inputs);
-			outputs = InvocableDmlConvertLead.initOutputs(results);
+			List<Database.LeadConvertResult> results = this.convertLeads(inputs);
+			outputs = this.initOutputs(results);
 		}
 		return outputs;
 	}
 
-	// **** PRIVATE **** //
 	/**
 	 * @description Goes through DatabaseLayer.Dml, so plugins and MockDml apply to flows too
 	 * @param inputs One input per flow interview; the first one's settings apply to all
 	 * @return One result per input, in the same order
 	 */
-	private static List<Database.LeadConvertResult> convertLeads(List<InvocableDmlConvertLead.Input> inputs) {
-		List<Database.LeadConvert> leadsToConvert = InvocableDmlConvertLead.initLeadConverts(inputs);
+	private List<Database.LeadConvertResult> convertLeads(List<InvocableDmlConvertLead.Input> inputs) {
+		List<Database.LeadConvert> leadsToConvert = this.initLeadConverts(inputs);
 		InvocableDml.Input settings = inputs?.get(0)?.toSettings();
 		Database.DmlOptions options = settings?.initDmlOptions();
 		System.AccessLevel accessLevel = settings?.getAccessLevel();
@@ -44,7 +53,7 @@ public inherited sharing class InvocableDmlConvertLead {
 	 * @param inputs One input per flow interview
 	 * @return One lead to convert per input, in the same order
 	 */
-	private static List<Database.LeadConvert> initLeadConverts(List<InvocableDmlConvertLead.Input> inputs) {
+	private List<Database.LeadConvert> initLeadConverts(List<InvocableDmlConvertLead.Input> inputs) {
 		List<Database.LeadConvert> leadsToConvert = new List<Database.LeadConvert>{};
 		for (InvocableDmlConvertLead.Input input : inputs) {
 			Database.LeadConvert leadToConvert = input?.toLeadConvert();
@@ -58,7 +67,7 @@ public inherited sharing class InvocableDmlConvertLead {
 	 * @param results The conversion's results
 	 * @return One output per input, in the same order
 	 */
-	private static List<InvocableDmlConvertLead.Output> initOutputs(List<Database.LeadConvertResult> results) {
+	private List<InvocableDmlConvertLead.Output> initOutputs(List<Database.LeadConvertResult> results) {
 		List<InvocableDmlConvertLead.Output> outputs = new List<InvocableDmlConvertLead.Output>{};
 		for (Database.LeadConvertResult result : results) {
 			InvocableDmlConvertLead.Output output = new InvocableDmlConvertLead.Output(result);

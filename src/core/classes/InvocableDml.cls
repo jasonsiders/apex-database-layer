@@ -17,12 +17,12 @@ public abstract inherited sharing class InvocableDml {
 	 * @return One output per input, in the same order
 	 */
 	public List<InvocableDml.Output> run(List<InvocableDml.Input> inputs) {
-		List<InvocableDml.Output> outputs = InvocableDml.initOutputs(inputs);
-		List<SObject> records = InvocableDml.collectRecords(outputs);
+		List<InvocableDml.Output> outputs = this.initOutputs(inputs);
+		List<SObject> records = this.collectRecords(outputs);
 		if (records?.isEmpty() == false) {
 			InvocableDml.Input settings = inputs?.get(0);
 			List<InvocableDmlResult> results = this.doDml(records, settings);
-			InvocableDml.distributeResults(outputs, results);
+			this.distributeResults(outputs, results);
 		}
 		return outputs;
 	}
@@ -42,7 +42,7 @@ public abstract inherited sharing class InvocableDml {
 	 * @param outputs One output per input
 	 * @return Every record, in output order
 	 */
-	private static List<SObject> collectRecords(List<InvocableDml.Output> outputs) {
+	private List<SObject> collectRecords(List<InvocableDml.Output> outputs) {
 		List<SObject> records = new List<SObject>{};
 		for (InvocableDml.Output output : outputs) {
 			records?.addAll(output?.recordCollection);
@@ -55,7 +55,7 @@ public abstract inherited sharing class InvocableDml {
 	 * @param outputs One output per input
 	 * @param results The results of the DML operation, in record order
 	 */
-	private static void distributeResults(List<InvocableDml.Output> outputs, List<InvocableDmlResult> results) {
+	private void distributeResults(List<InvocableDml.Output> outputs, List<InvocableDmlResult> results) {
 		Iterator<InvocableDmlResult> remaining = results?.iterator();
 		for (InvocableDml.Output output : outputs) {
 			output?.addResults(remaining);
@@ -67,7 +67,7 @@ public abstract inherited sharing class InvocableDml {
 	 * @param inputs One input per flow interview
 	 * @return One output per input, in the same order
 	 */
-	private static List<InvocableDml.Output> initOutputs(List<InvocableDml.Input> inputs) {
+	private List<InvocableDml.Output> initOutputs(List<InvocableDml.Input> inputs) {
 		List<InvocableDml.Output> outputs = new List<InvocableDml.Output>{};
 		for (InvocableDml.Input input : inputs) {
 			InvocableDml.Output output = input?.toOutput();

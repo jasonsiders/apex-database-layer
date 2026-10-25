@@ -30,15 +30,7 @@ public inherited sharing class InvocableDmlUpsertRecords extends InvocableDml {
 	 */
 	@AuraEnabled(cacheable=true)
 	public static List<InvocableDmlUpsertRecords.MatchField> getMatchFields(String objectApiName) {
-		List<InvocableDmlUpsertRecords.MatchField> matchFields = new List<InvocableDmlUpsertRecords.MatchField>{};
-		for (SObjectField field : InvocableDmlUpsertRecords.describeFields(objectApiName)) {
-			DescribeFieldResult describe = field?.getDescribe();
-			if (InvocableDmlUpsertRecords.isMatchable(describe)) {
-				InvocableDmlUpsertRecords.MatchField matchField = new InvocableDmlUpsertRecords.MatchField(describe);
-				matchFields?.add(matchField);
-			}
-		}
-		return matchFields;
+		return new InvocableDmlUpsertRecords()?.initMatchFields(objectApiName);
 	}
 
 	// **** PROTECTED **** //
@@ -51,7 +43,7 @@ public inherited sharing class InvocableDmlUpsertRecords extends InvocableDml {
 	protected override List<InvocableDmlResult> doDml(List<SObject> records, InvocableDml.Input settings) {
 		Boolean allOrNone = settings?.getAllOrNone();
 		System.AccessLevel accessLevel = settings?.getAccessLevel();
-		SObjectField externalIdField = InvocableDmlUpsertRecords.getExternalIdField(records, settings);
+		SObjectField externalIdField = this.getExternalIdField(records, settings);
 		List<Database.UpsertResult> results = DatabaseLayer.Dml
 			?.doUpsert(records, externalIdField, allOrNone, accessLevel);
 		return InvocableDmlResult.fromList(results);
@@ -65,7 +57,7 @@ public inherited sharing class InvocableDmlUpsertRecords extends InvocableDml {
 	 * @return The external ID field, or null to identify records by Id
 	 * @throws System.IllegalArgumentException When the object has no field by that name
 	 */
-	private static SObjectField getExternalIdField(List<SObject> records, InvocableDml.Input settings) {
+	private SObjectField getExternalIdField(List<SObject> records, InvocableDml.Input settings) {
 		SObjectField field;
 		String fieldName = settings?.externalIdField?.trim();
 		if (String.isNotBlank(fieldName)) {
@@ -88,7 +80,7 @@ public inherited sharing class InvocableDmlUpsertRecords extends InvocableDml {
 	 * @return The object's fields
 	 * @throws System.AuraHandledException When the object doesn't exist
 	 */
-	private static List<SObjectField> describeFields(String objectApiName) {
+	private List<SObjectField> describeFields(String objectApiName) {
 		List<String> objectApiNames = new List<String>{ objectApiName };
 		try {
 			List<DescribeSObjectResult> objects = Schema.describeSObjects(
@@ -103,12 +95,30 @@ public inherited sharing class InvocableDmlUpsertRecords extends InvocableDml {
 	}
 
 	/**
+	 * @description Lists the fields the editor offers to match records on
+	 * @param objectApiName The object to upsert, ex: "Account"
+	 * @return The object's accessible external ID fields and standard ID lookup fields, except Id
+	 * @throws System.AuraHandledException When the object doesn't exist
+	 */
+	private List<InvocableDmlUpsertRecords.MatchField> initMatchFields(String objectApiName) {
+		List<InvocableDmlUpsertRecords.MatchField> matchFields = new List<InvocableDmlUpsertRecords.MatchField>{};
+		for (SObjectField field : this.describeFields(objectApiName)) {
+			DescribeFieldResult describe = field?.getDescribe();
+			if (this.isMatchable(describe)) {
+				InvocableDmlUpsertRecords.MatchField matchField = new InvocableDmlUpsertRecords.MatchField(describe);
+				matchFields?.add(matchField);
+			}
+		}
+		return matchFields;
+	}
+
+	/**
 	 * @description Upserts can match on external ID fields and standard ID lookup fields; Id is the default, so the
 	 * editor offers it separately
 	 * @param field The field to check
 	 * @return Whether the running user can upsert on the field
 	 */
-	private static Boolean isMatchable(DescribeFieldResult field) {
+	private Boolean isMatchable(DescribeFieldResult field) {
 		Boolean isStandardLookup =
 			field?.isIdLookup() == true &&
 			field?.isCustom() == false &&
