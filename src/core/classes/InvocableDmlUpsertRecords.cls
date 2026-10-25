@@ -49,8 +49,8 @@ public inherited sharing class InvocableDmlUpsertRecords extends InvocableDml {
 	 * @return The results, in record order
 	 */
 	protected override List<InvocableDmlResult> doDml(List<SObject> records, InvocableDml.Input settings) {
-		Boolean allOrNone = settings?.toAllOrNone();
-		System.AccessLevel accessLevel = settings?.toAccessLevel();
+		Boolean allOrNone = settings?.getAllOrNone();
+		System.AccessLevel accessLevel = settings?.getAccessLevel();
 		SObjectField externalIdField = InvocableDmlUpsertRecords.getExternalIdField(records, settings);
 		List<Database.UpsertResult> results = DatabaseLayer.Dml
 			?.doUpsert(records, externalIdField, allOrNone, accessLevel);

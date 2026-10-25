@@ -70,7 +70,7 @@ public abstract inherited sharing class InvocableDml {
 	private static List<InvocableDml.Output> initOutputs(List<InvocableDml.Input> inputs) {
 		List<InvocableDml.Output> outputs = new List<InvocableDml.Output>{};
 		for (InvocableDml.Input input : inputs) {
-			InvocableDml.Output output = input?.toOutput();
+			InvocableDml.Output output = input?.initOutput();
 			outputs?.add(output);
 		}
 		return outputs;
@@ -159,7 +159,7 @@ public abstract inherited sharing class InvocableDml {
 		 * @description Defaults to true, matching DML statements
 		 * @return Whether any failure should roll back every record
 		 */
-		public Boolean toAllOrNone() {
+		public Boolean getAllOrNone() {
 			return this.allOrNone ?? true;
 		}
 
@@ -169,7 +169,7 @@ public abstract inherited sharing class InvocableDml {
 		 * @return The matching System.AccessLevel
 		 * @throws System.IllegalArgumentException When the value isn't blank, USER_MODE, or SYSTEM_MODE
 		 */
-		public System.AccessLevel toAccessLevel() {
+		public System.AccessLevel getAccessLevel() {
 			String name = String.isBlank(this.accessLevel) ? 'USER_MODE' : this.accessLevel;
 			System.AccessLevel level = InvocableDml.ACCESS_LEVELS?.get(name);
 			if (level == null) {
@@ -182,7 +182,7 @@ public abstract inherited sharing class InvocableDml {
 		 * @description Unset booleans default to false, matching a new Database.DmlOptions, except OptAllOrNone
 		 * @return The DML options
 		 */
-		public Database.DmlOptions toDmlOptions() {
+		public Database.DmlOptions initDmlOptions() {
 			Database.DmlOptions options = new Database.DmlOptions();
 			options.AllowFieldTruncation = this.allowFieldTruncation ?? false;
 			options.AssignmentRuleHeader.AssignmentRuleId = this.assignmentRuleId;
@@ -193,7 +193,7 @@ public abstract inherited sharing class InvocableDml {
 			options.EmailHeader.TriggerOtherEmail = this.triggerOtherEmail ?? false;
 			options.EmailHeader.TriggerUserEmail = this.triggerUserEmail ?? false;
 			options.LocaleOptions = this.localeOptions;
-			options.OptAllOrNone = this.toAllOrNone();
+			options.OptAllOrNone = this.getAllOrNone();
 			return options;
 		}
 
@@ -201,7 +201,7 @@ public abstract inherited sharing class InvocableDml {
 		 * @description Treats the single record and the collection alike, so the rest of the action handles one list
 		 * @return An output holding this input's records until they're processed
 		 */
-		private InvocableDml.Output toOutput() {
+		private InvocableDml.Output initOutput() {
 			List<SObject> records = this.record == null ? new List<SObject>{} : new List<SObject>{ this.record };
 			records?.addAll(this.recordCollection ?? new List<SObject>{});
 			return new InvocableDml.Output(records);

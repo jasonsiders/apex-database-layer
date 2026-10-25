@@ -34,8 +34,8 @@ public inherited sharing class InvocableDmlConvertLead {
 	private static List<Database.LeadConvertResult> convertLeads(List<InvocableDmlConvertLead.Input> inputs) {
 		List<Database.LeadConvert> leadsToConvert = InvocableDmlConvertLead.initLeadConverts(inputs);
 		InvocableDml.Input settings = inputs?.get(0)?.toSettings();
-		Database.DmlOptions options = settings?.toDmlOptions();
-		System.AccessLevel accessLevel = settings?.toAccessLevel();
+		Database.DmlOptions options = settings?.initDmlOptions();
+		System.AccessLevel accessLevel = settings?.getAccessLevel();
 		return DatabaseLayer.Dml?.doConvert(leadsToConvert, options, accessLevel);
 	}
 

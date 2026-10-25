@@ -29,8 +29,8 @@ public inherited sharing class InvocableDmlDeleteRecords extends InvocableDml {
 	 * @return The results, in record order
 	 */
 	protected override List<InvocableDmlResult> doDml(List<SObject> records, InvocableDml.Input settings) {
-		Boolean allOrNone = settings?.toAllOrNone();
-		System.AccessLevel accessLevel = settings?.toAccessLevel();
+		Boolean allOrNone = settings?.getAllOrNone();
+		System.AccessLevel accessLevel = settings?.getAccessLevel();
 		List<Database.DeleteResult> results = DatabaseLayer.Dml?.doDelete(records, allOrNone, accessLevel);
 		return InvocableDmlResult.fromList(results);
 	}

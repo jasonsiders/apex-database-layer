@@ -29,8 +29,8 @@ public inherited sharing class InvocableDmlInsertRecords extends InvocableDml {
 	 * @return The results, in record order
 	 */
 	protected override List<InvocableDmlResult> doDml(List<SObject> records, InvocableDml.Input settings) {
-		Database.DmlOptions options = settings?.toDmlOptions();
-		System.AccessLevel accessLevel = settings?.toAccessLevel();
+		Database.DmlOptions options = settings?.initDmlOptions();
+		System.AccessLevel accessLevel = settings?.getAccessLevel();
 		List<Database.SaveResult> results = DatabaseLayer.Dml?.doInsert(records, options, accessLevel);
 		return InvocableDmlResult.fromList(results);
 	}
