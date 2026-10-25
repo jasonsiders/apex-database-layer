@@ -15,7 +15,7 @@ public inherited sharing class InvocableDmlDeleteRecords extends InvocableDml {
 		configurationEditor='c-dml-records-editor'
 		description='Delete one or more records, with control over the access level and partial success.'
 		iconName='slds:standard:record_delete'
-		label='Delete Records'
+		label='DML: Delete Record(s)'
 	)
 	public static List<InvocableDml.Output> invoke(List<InvocableDml.Input> inputs) {
 		return new InvocableDmlDeleteRecords()?.run(inputs);

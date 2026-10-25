@@ -2,5 +2,5 @@
 <StaticResource xmlns="http://soap.sforce.com/2006/04/metadata">
     <cacheControl>Public</cacheControl>
     <contentType>image/svg+xml</contentType>
-    <description>Flow Builder icon for the Undelete Records action</description>
+    <description>Flow Builder icon for the DML: Undelete Record(s) action</description>
 </StaticResource>

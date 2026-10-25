@@ -14,7 +14,7 @@ public inherited sharing class InvocableDmlEmptyRecycleBin extends InvocableDml 
 		configurationEditor='c-dml-records-editor'
 		description='Permanently delete one or more records that are already in the Recycle Bin.'
 		iconName='slds:standard:recycle_bin'
-		label='Empty Recycle Bin'
+		label='DML: Empty Recycle Bin'
 	)
 	public static List<InvocableDml.Output> invoke(List<InvocableDml.Input> inputs) {
 		return new InvocableDmlEmptyRecycleBin()?.run(inputs);

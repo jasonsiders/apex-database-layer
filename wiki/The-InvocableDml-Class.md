@@ -1,4 +1,4 @@
-The base class of the record [flow actions](./Performing-DML-in-Flow): Insert Records, Update Records, Upsert Records, Delete Records, Undelete Records, and Empty Recycle Bin. It combines a batch of flow interviews into one DML operation, and returns each interview's records and results to it.
+The base class of the record [flow actions](./Performing-DML-in-Flow): Insert Record(s), Update Record(s), Upsert Record(s), Delete Record(s), Undelete Record(s), and Empty Recycle Bin. It combines a batch of flow interviews into one DML operation, and returns each interview's records and results to it.
 
 Each action extends `InvocableDml`, and implements `doDml` to perform its operation through [`DatabaseLayer.Dml`](./The-Dml-Class). Convert Lead takes a lead ID instead of records, so it doesn't extend this class.
 
@@ -27,7 +27,7 @@ Performs the action's DML operation. `run` calls it once, with every input's rec
 
 ```apex
 public inherited sharing class InvocableDmlInsertRecords extends InvocableDml {
-	@InvocableMethod(category='Database Layer' label='Insert Records')
+	@InvocableMethod(category='Database Layer' label='DML: Insert Record(s)')
 	public static List<InvocableDml.Output> invoke(List<InvocableDml.Input> inputs) {
 		return new InvocableDmlInsertRecords().run(inputs);
 	}

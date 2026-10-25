@@ -15,7 +15,7 @@ public inherited sharing class InvocableDmlUpdateRecords extends InvocableDml {
 		configurationEditor='c-dml-records-editor'
 		description='Update one or more records, with control over the access level, partial success, and DML options.'
 		iconName='slds:standard:record_update'
-		label='Update Records'
+		label='DML: Update Record(s)'
 	)
 	public static List<InvocableDml.Output> invoke(List<InvocableDml.Input> inputs) {
 		return new InvocableDmlUpdateRecords()?.run(inputs);

@@ -15,7 +15,7 @@ public inherited sharing class InvocableDmlUndeleteRecords extends InvocableDml 
 		configurationEditor='c-dml-records-editor'
 		description='Restore one or more records from the Recycle Bin, with control over the access level and partial success.'
 		iconName='resource:InvocableDmlUndeleteRecordsIcon:icon'
-		label='Undelete Records'
+		label='DML: Undelete Record(s)'
 	)
 	public static List<InvocableDml.Output> invoke(List<InvocableDml.Input> inputs) {
 		return new InvocableDmlUndeleteRecords()?.run(inputs);

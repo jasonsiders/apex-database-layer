@@ -15,7 +15,7 @@ public inherited sharing class InvocableDmlInsertRecords extends InvocableDml {
 		configurationEditor='c-dml-records-editor'
 		description='Insert one or more records, with control over the access level, partial success, and DML options.'
 		iconName='slds:standard:record_create'
-		label='Insert Records'
+		label='DML: Insert Record(s)'
 	)
 	public static List<InvocableDml.Output> invoke(List<InvocableDml.Input> inputs) {
 		return new InvocableDmlInsertRecords()?.run(inputs);

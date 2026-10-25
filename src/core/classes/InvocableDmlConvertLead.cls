@@ -14,7 +14,7 @@ public inherited sharing class InvocableDmlConvertLead {
 		category='Database Layer'
 		description='Convert one or more leads, with control over the access level, partial success, and duplicate rules.'
 		iconName='slds:standard:lead'
-		label='Convert Lead'
+		label='DML: Convert Lead'
 	)
 	public static List<InvocableDmlConvertLead.Output> invoke(List<InvocableDmlConvertLead.Input> inputs) {
 		return new InvocableDmlConvertLead()?.run(inputs);
