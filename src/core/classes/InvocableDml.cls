@@ -85,69 +85,82 @@ public abstract inherited sharing class InvocableDml {
 			description='USER_MODE (default) enforces the running user\'s object permissions, field-level security, and sharing rules. SYSTEM_MODE ignores object permissions and field-level security, but sharing rules still apply.'
 		)
 		public String accessLevel;
+
 		/** @description Defaults to true, matching DML statements, so failures aren't silently ignored **/
 		@InvocableVariable(
 			label='All or None'
 			description='When true (default), any failure rolls back every record and fails the action. When false, valid records are processed, and failures are reported in the results.'
 		)
 		public Boolean allOrNone;
+
 		/** @description Maps to Database.DmlOptions.DuplicateRuleHeader.AllowSave **/
 		@InvocableVariable(
 			label='Allow Duplicates'
 			description='Save records that a duplicate rule would otherwise alert on.'
 		)
 		public Boolean allowDuplicates;
+
 		/** @description Maps to Database.DmlOptions.AllowFieldTruncation **/
 		@InvocableVariable(
 			label='Allow Field Truncation'
 			description='Truncate text values that are too long for their field, instead of failing.'
 		)
 		public Boolean allowFieldTruncation;
+
 		/** @description Maps to Database.DmlOptions.AssignmentRuleHeader.AssignmentRuleId **/
 		@InvocableVariable(
 			label='Assignment Rule ID'
 			description='The ID of a specific Lead or Case assignment rule to run. Rule IDs differ between orgs, so use a resource, ex: an ID from Get Records on Assignment Rule, instead of typing one in.'
 		)
 		public Id assignmentRuleId;
+
 		/** @description Text, not an SObjectField, since Flow can't pass one; upserts only **/
 		@InvocableVariable(
 			label='External ID Field'
 			description='The API name of the external ID field that matches records to upsert, ex: "External_Id__c". When blank, records match on their ID.'
 		)
 		public String externalIdField;
+
 		/** @description Maps to Database.DmlOptions.LocaleOptions **/
 		@InvocableVariable(
 			label='Locale Options'
 			description='The language of any labels returned by the operation, ex: "en_US".'
 		)
 		public String localeOptions;
+
 		/** @description Separate from the collection, since Flow can't pass a single record to a collection input **/
 		@InvocableVariable(label='Record' description='A single record.')
 		public SObject record;
+
 		/** @description The action's editor sets this or the single record, never both **/
 		@InvocableVariable(label='Record Collection' description='A collection of records.')
 		public List<SObject> recordCollection;
+
 		/** @description Maps to Database.DmlOptions.DuplicateRuleHeader.RunAsCurrentUser **/
 		@InvocableVariable(
 			label='Run Duplicate Rules as Current User'
 			description='Enforce the running user\'s sharing rules when duplicate rules look for duplicates.'
 		)
 		public Boolean runDuplicateRulesAsCurrentUser;
+
 		/** @description Maps to Database.DmlOptions.EmailHeader.TriggerAutoResponseEmail **/
 		@InvocableVariable(
 			label='Trigger Auto-Response Email'
 			description='Send auto-response emails for new Leads and Cases.'
 		)
 		public Boolean triggerAutoResponseEmail;
+
 		/** @description Maps to Database.DmlOptions.EmailHeader.TriggerOtherEmail **/
 		@InvocableVariable(label='Trigger Other Email' description='Send email to recipients outside the org.')
 		public Boolean triggerOtherEmail;
+
 		/** @description Maps to Database.DmlOptions.EmailHeader.TriggerUserEmail **/
 		@InvocableVariable(
 			label='Trigger User Email'
 			description='Send email to users in the org, ex: when a Case or Task is assigned.'
 		)
 		public Boolean triggerUserEmail;
+
 		/** @description Maps to Database.DmlOptions.AssignmentRuleHeader.UseDefaultRule **/
 		@InvocableVariable(
 			label='Use Default Assignment Rule'
@@ -213,15 +226,18 @@ public abstract inherited sharing class InvocableDml {
 		/** @description Lets single-record flows use the record without a collection **/
 		@InvocableVariable(label='Record' description='The processed record. For a collection, the first record.')
 		public SObject record;
+
 		/** @description Processed records, in input order, since Flow can't see Ids set on its inputs **/
 		@InvocableVariable(
 			label='Record Collection'
 			description='The processed records, in input order. Inserted and upserted records include their new IDs.'
 		)
 		public List<SObject> recordCollection;
+
 		/** @description Lets single-record flows check the outcome without a collection **/
 		@InvocableVariable(label='Result' description='The result for the record. For a collection, the first result.')
 		public InvocableDmlResult result;
+
 		/** @description One result per record, in input order, for partial-success handling **/
 		@InvocableVariable(label='Result Collection' description='One result per record, in input order.')
 		public List<InvocableDmlResult> resultCollection;

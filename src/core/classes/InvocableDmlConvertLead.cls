@@ -76,30 +76,35 @@ public inherited sharing class InvocableDmlConvertLead {
 			description='USER_MODE (default) enforces the running user\'s object permissions, field-level security, and sharing rules. SYSTEM_MODE ignores object permissions and field-level security, but sharing rules still apply.'
 		)
 		public String accessLevel;
+
 		/** @description Maps to Database.LeadConvert.setAccountId **/
 		@InvocableVariable(
 			label='Account ID'
 			description='An existing account to merge the lead into. When blank, the conversion creates an account.'
 		)
 		public Id accountId;
+
 		/** @description Defaults to true, matching DML statements, so failures aren't silently ignored **/
 		@InvocableVariable(
 			label='All or None'
 			description='When true (default), any failure rolls back every lead and fails the action. When false, valid leads are converted, and failures are reported in the results.'
 		)
 		public Boolean allOrNone;
+
 		/** @description Maps to Database.DmlOptions.DuplicateRuleHeader.AllowSave **/
 		@InvocableVariable(
 			label='Allow Duplicates'
 			description='Save accounts and contacts that a duplicate rule would otherwise alert on.'
 		)
 		public Boolean allowDuplicates;
+
 		/** @description Maps to Database.LeadConvert.setContactId **/
 		@InvocableVariable(
 			label='Contact ID'
 			description='An existing contact to merge the lead into. When blank, the conversion creates a contact.'
 		)
 		public Id contactId;
+
 		/** @description Maps to Database.LeadConvert.setConvertedStatus, which conversion requires **/
 		@InvocableVariable(
 			label='Converted Status'
@@ -107,42 +112,50 @@ public inherited sharing class InvocableDmlConvertLead {
 			required=true
 		)
 		public String convertedStatus;
+
 		/** @description Maps to Database.LeadConvert.setDoNotCreateOpportunity **/
 		@InvocableVariable(label='Don\'t Create Opportunity' description='Convert the lead without an opportunity.')
 		public Boolean doNotCreateOpportunity;
+
 		/** @description Maps to Database.LeadConvert.setLeadId **/
 		@InvocableVariable(label='Lead ID' description='The lead to convert.' required=true)
 		public Id leadId;
+
 		/** @description Maps to Database.LeadConvert.setOpportunityId **/
 		@InvocableVariable(
 			label='Opportunity ID'
 			description='An existing opportunity to merge the lead into. When blank, the conversion creates an opportunity.'
 		)
 		public Id opportunityId;
+
 		/** @description Maps to Database.LeadConvert.setOpportunityName **/
 		@InvocableVariable(
 			label='Opportunity Name'
 			description='The new opportunity\'s name. When blank, it defaults to the lead\'s company.'
 		)
 		public String opportunityName;
+
 		/** @description Maps to Database.LeadConvert.setOverwriteLeadSource **/
 		@InvocableVariable(
 			label='Overwrite Lead Source'
 			description='Replace the contact\'s lead source with the lead\'s.'
 		)
 		public Boolean overwriteLeadSource;
+
 		/** @description Maps to Database.LeadConvert.setOwnerId **/
 		@InvocableVariable(
 			label='Owner ID'
 			description='The owner of the new account, contact, and opportunity. When blank, the lead\'s owner.'
 		)
 		public Id ownerId;
+
 		/** @description Maps to Database.DmlOptions.DuplicateRuleHeader.RunAsCurrentUser **/
 		@InvocableVariable(
 			label='Run Duplicate Rules as Current User'
 			description='Enforce the running user\'s sharing rules when duplicate rules look for duplicates.'
 		)
 		public Boolean runDuplicateRulesAsCurrentUser;
+
 		/** @description Maps to Database.LeadConvert.setSendNotificationEmail **/
 		@InvocableVariable(label='Send Notification Email' description='Email the owner set by Owner ID.')
 		public Boolean sendNotificationEmail;
@@ -185,15 +198,18 @@ public inherited sharing class InvocableDmlConvertLead {
 		/** @description Maps to Database.LeadConvertResult.getAccountId **/
 		@InvocableVariable(label='Account ID' description='The account the lead was converted to.')
 		public Id accountId;
+
 		/** @description Maps to Database.LeadConvertResult.getContactId **/
 		@InvocableVariable(label='Contact ID' description='The contact the lead was converted to.')
 		public Id contactId;
+
 		/** @description Maps to Database.LeadConvertResult.getOpportunityId **/
 		@InvocableVariable(
 			label='Opportunity ID'
 			description='The opportunity the lead was converted to. Blank when no opportunity was created.'
 		)
 		public Id opportunityId;
+
 		/** @description Lets flows check the outcome when All or None is false **/
 		@InvocableVariable(label='Result' description='The result of converting the lead. Its ID is the lead\'s.')
 		public InvocableDmlResult result;
