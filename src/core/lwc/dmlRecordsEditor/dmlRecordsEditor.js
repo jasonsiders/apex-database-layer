@@ -33,7 +33,7 @@ const MATCH_MODES = [
 		label: "External ID",
 		value: EXTERNAL_ID,
 		fieldLabel: "External ID Field",
-		helpText: "Select the field to use as the external ID.",
+		helpText: "Select the field to use as an upsert key. Only supported external ID fields are available.",
 		placeholder: "Search external ID fields..."
 	},
 	{
@@ -41,7 +41,7 @@ const MATCH_MODES = [
 		value: STANDARD_FIELD,
 		fieldLabel: "Standard Field",
 		helpText:
-			"Select a field with its idLookup property equal to true. For example, the Case Number field on the Case object. Only supported fields are available.",
+			"Certain standard fields can be used as an upsert key. For example, the Case Number field on the Case object. Only supported standard fields are available.",
 		placeholder: "Search standard fields..."
 	}
 ];
