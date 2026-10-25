@@ -16,7 +16,6 @@ public class InvocableDmlResult {
 	@AuraEnabled
 	public Boolean isSuccess;
 
-	// **** PUBLIC **** //
 	/** @description Apex-defined types need a no-arg constructor for Flow to create them **/
 	public InvocableDmlResult() {
 		this.errors = new List<String>{};
@@ -72,6 +71,19 @@ public class InvocableDmlResult {
 		this.isCreated = result?.isCreated();
 	}
 
+	/**
+	 * @description Every Database result type has these, but they share no interface
+	 * @param recordId The record's Id
+	 * @param isSuccess Whether the operation succeeded for the record
+	 * @param databaseErrors The record's errors
+	 */
+	private InvocableDmlResult(Id recordId, Boolean isSuccess, List<Database.Error> databaseErrors) {
+		this.errors = this.formatErrors(databaseErrors);
+		this.id = recordId;
+		this.isSuccess = isSuccess;
+	}
+
+	// **** PUBLIC **** //
 	/**
 	 * @description Database result types share no interface, so each gets its own overload; this one takes
 	 * a delete operation's results
@@ -148,18 +160,6 @@ public class InvocableDmlResult {
 	}
 
 	// **** PRIVATE **** //
-	/**
-	 * @description Every Database result type has these, but they share no interface
-	 * @param recordId The record's Id
-	 * @param isSuccess Whether the operation succeeded for the record
-	 * @param databaseErrors The record's errors
-	 */
-	private InvocableDmlResult(Id recordId, Boolean isSuccess, List<Database.Error> databaseErrors) {
-		this.errors = this.formatErrors(databaseErrors);
-		this.id = recordId;
-		this.isSuccess = isSuccess;
-	}
-
 	/**
 	 * @description Keeps the status code and fields, which a bare message would lose
 	 * @param error The error to format
