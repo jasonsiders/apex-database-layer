@@ -433,9 +433,10 @@ async function getRecordSections(item, context, describeObject) {
  * @returns {Array} "Relationship Fields" and "Record Fields" sections
  */
 function initRecordSections(fields, item) {
-	const sorted = [...fields].sort(compareLabels);
-	const lookups = sorted.filter((field) => field.relationshipName && field.referenceToInfos?.length);
-	const others = sorted.filter((field) => !lookups.includes(field));
+	const isLookup = (field) => field.relationshipName && field.referenceToInfos?.length;
+	const lookups = fields.filter(isLookup).sort(compareLabels);
+	// compareTypes already breaks ties by label, so the other fields need no label sort first
+	const others = fields.filter((field) => !isLookup(field));
 	const relationships = lookups.map((field) => initRelationshipItem(field, item));
 	const lookupIds = lookups.map((field) => initFieldItem(field, item));
 	const recordFields = others.map((field) => initFieldItem(field, item)).sort(compareTypes);
@@ -822,14 +823,9 @@ function findSources(elements, target) {
 			sourcesByTarget.set(next, [...sources, element.name]);
 		});
 	});
-	const sources = new Set();
-	const queue = [target];
-	for (let index = 0; index < queue.length; index++) {
-		const unseen = (sourcesByTarget.get(queue[index]) ?? []).filter((source) => !sources.has(source));
-		unseen.forEach((source) => sources.add(source));
-		queue.push(...unseen);
-	}
-	return sources;
+	const getSources = (name) => sourcesByTarget.get(name) ?? [];
+	const firstSources = getSources(target);
+	return walk(firstSources, getSources);
 }
 
 /**
@@ -839,18 +835,14 @@ function findSources(elements, target) {
  * @returns {Set} The API names of elements that run once per item
  */
 function findLoopBody(elementsByName, loop) {
-	const body = new Set();
-	const queue = [loop.nextValueConnector?.targetReference].filter(Boolean);
-	// An index, not shift(), keeps the walk linear in large flows
-	for (let index = 0; index < queue.length; index++) {
-		const current = queue[index];
-		if (current !== loop.name && !body.has(current)) {
-			body.add(current);
-			const element = elementsByName.get(current) ?? {};
-			const targets = getTargets(element);
-			queue.push(...targets);
-		}
-	}
+	const firstTargets = [loop.nextValueConnector?.targetReference].filter(Boolean);
+	const getNext = (name) => {
+		const element = elementsByName.get(name) ?? {};
+		// Reaching the loop again ends an iteration
+		return name === loop.name ? [] : getTargets(element);
+	};
+	const body = walk(firstTargets, getNext);
+	body.delete(loop.name);
 	return body;
 }
 
@@ -874,6 +866,24 @@ function getTargets(element) {
 }
 
 /**
+ * @description Collects every element reachable from the first ones, following one step at a time.
+ * @param {Array} firstNames The API names to start from
+ * @param {Function} getNext Lists the API names one step on from an element
+ * @returns {Set} The API names reached, including the first ones
+ */
+function walk(firstNames, getNext) {
+	const reached = new Set(firstNames);
+	const queue = [...reached];
+	// An index, not shift(), keeps the walk linear in large flows
+	for (let index = 0; index < queue.length; index++) {
+		const unseen = getNext(queue[index]).filter((name) => !reached.has(name));
+		unseen.forEach((name) => reached.add(name));
+		queue.push(...unseen);
+	}
+	return reached;
+}
+
+/**
  * @description Works out which elements' outputs are available to the element being edited, like Flow Builder: only
  * those that can run before it, and loop items only inside the loop. Unknown elements see everything.
  * @param {Object} builderContext The CPE's builder context
@@ -888,16 +898,11 @@ function initScope(builderContext, elementName) {
 	const elementsByName = new Map(entries);
 	const isKnown = Boolean(elementName) && elementsByName.has(elementName);
 	const sources = isKnown ? findSources(elements, elementName) : null;
-	const loopBodies = new Map();
-	const getLoopBody = (loop) => {
-		if (!loopBodies.has(loop.name)) {
-			const body = findLoopBody(elementsByName, loop);
-			loopBodies.set(loop.name, body);
-		}
-		return loopBodies.get(loop.name);
-	};
+	const loops = sources ? (builderContext.loops ?? []) : [];
+	const containingLoops = loops.filter((loop) => findLoopBody(elementsByName, loop).has(elementName));
+	const loopNames = new Set(containingLoops.map((loop) => loop.name));
 	return {
-		isInLoop: (loop) => !sources || getLoopBody(loop).has(elementName),
+		isInLoop: (loop) => !sources || loopNames.has(loop.name),
 		isUpstream: (name) => !sources || sources.has(name)
 	};
 }

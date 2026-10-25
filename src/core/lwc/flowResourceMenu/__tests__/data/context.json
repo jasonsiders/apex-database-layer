@@ -2,9 +2,9 @@
 	"builderContext": {
 		"actionCalls": [
 			{
-				"name": "Insert_Spike",
-				"label": "Insert Spike",
-				"actionName": "SpikeInsert",
+				"name": "Insert_Records",
+				"label": "Insert Records",
+				"actionName": "InvocableDmlInsertRecords",
 				"actionType": "apex",
 				"storeOutputAutomatically": true,
 				"connector": {
@@ -38,10 +38,10 @@
 				"collectionReference": "Get_Accounts",
 				"assignNextValueToReference": null,
 				"nextValueConnector": {
-					"targetReference": "Insert_Spike"
+					"targetReference": "Insert_Records"
 				},
 				"noMoreValuesConnector": {
-					"targetReference": "Create_Native"
+					"targetReference": "Create_Account"
 				}
 			}
 		],
@@ -138,8 +138,8 @@
 		],
 		"recordCreates": [
 			{
-				"name": "Create_Native",
-				"label": "Create Native",
+				"name": "Create_Account",
+				"label": "Create Account",
 				"inputReference": "accountVar",
 				"connector": {
 					"targetReference": "Screen_One"
@@ -148,7 +148,7 @@
 		]
 	},
 	"automaticOutputVariables": {
-		"Insert_Spike": [
+		"Insert_Records": [
 			{
 				"name": "message",
 				"label": "Message",

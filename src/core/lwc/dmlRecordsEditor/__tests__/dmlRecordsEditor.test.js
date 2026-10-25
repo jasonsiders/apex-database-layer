@@ -221,11 +221,11 @@ describe("c-dml-records-editor", () => {
 	it("tells each picker which element is being edited", async () => {
 		const { element } = await render();
 
-		element.elementInfo = { apiName: "Insert_Spike", type: "Action", actionName: "InvocableDmlInsertRecords" };
+		element.elementInfo = { apiName: "Insert_Records", type: "Action", actionName: "InvocableDmlInsertRecords" };
 		await flush();
 
 		const pickers = [...element.shadowRoot.querySelectorAll("c-flow-resource-picker")];
-		expect(pickers.map((child) => child.elementName)).toEqual(pickers.map(() => "Insert_Spike"));
+		expect(pickers.map((child) => child.elementName)).toEqual(pickers.map(() => "Insert_Records"));
 	});
 
 	it("shows the saved configuration", async () => {

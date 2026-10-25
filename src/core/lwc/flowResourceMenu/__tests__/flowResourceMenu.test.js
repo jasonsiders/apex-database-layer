@@ -34,7 +34,7 @@ describe("c-flow-resource-menu", () => {
 
 			expect(labelsBySection(sections)).toEqual({
 				"Quick Resources": ["Current Item from Loop Loop Accounts"],
-				Action: ["Outputs from Insert Spike"],
+				Action: ["Outputs from Insert Records"],
 				Choices: ["choiceA"],
 				Constants: ["constText"],
 				"Record Variables": ["accountVar", "contactVar"],
@@ -59,7 +59,7 @@ describe("c-flow-resource-menu", () => {
 
 			expect(labelsBySection(sections)).toEqual({
 				"Quick Resources": ["Current Item from Loop Loop Accounts"],
-				Action: ["Outputs from Insert Spike"],
+				Action: ["Outputs from Insert Records"],
 				Formulas: ["formulaBool"],
 				"Record Variables": ["accountVar", "contactVar"],
 				"Screen Components": ["agreeBox"],
@@ -74,12 +74,12 @@ describe("c-flow-resource-menu", () => {
 
 			expect(labelsBySection(sections)).toEqual({
 				"Quick Resources": ["Current Item from Loop Loop Accounts"],
-				Action: ["Outputs from Insert Spike"],
+				Action: ["Outputs from Insert Records"],
 				"Record Variables": ["accountVar", "contactVar"]
 			});
 			const accountVar = findItem(sections, "accountVar");
 			expect(accountVar).toMatchObject({ isSelectable: true, isDrillable: false, objectType: "Account" });
-			expect(findItem(sections, "Insert_Spike")).toMatchObject({ isSelectable: false, isDrillable: true });
+			expect(findItem(sections, "Insert_Records")).toMatchObject({ isSelectable: false, isDrillable: true });
 		});
 
 		it("lists records of either shape for a record input that takes either", () => {
@@ -93,7 +93,7 @@ describe("c-flow-resource-menu", () => {
 			const sections = getRootSections(context, RECORDS);
 
 			expect(labelsBySection(sections)).toEqual({
-				Action: ["Outputs from Insert Spike"],
+				Action: ["Outputs from Insert Records"],
 				"Get Records": ["Accounts from Get Accounts"],
 				"Record Collections": ["accountsVar"]
 			});
@@ -142,7 +142,7 @@ describe("c-flow-resource-menu", () => {
 
 		it("types a loop's current item from the action output it iterates over", () => {
 			const loops = [
-				{ name: "Loop_Outputs", label: "Loop Outputs", collectionReference: "Insert_Spike.recordCollection" }
+				{ name: "Loop_Outputs", label: "Loop Outputs", collectionReference: "Insert_Records.recordCollection" }
 			];
 			const builderContext = { ...context.builderContext, loops };
 
@@ -193,18 +193,18 @@ describe("c-flow-resource-menu", () => {
 
 	describe("position in the flow", () => {
 		it("lists outputs only from elements that can run before the one being edited", () => {
-			const sections = labelsBySection(getRootSections({ ...context, elementName: "Create_Native" }, TEXT));
+			const sections = labelsBySection(getRootSections({ ...context, elementName: "Create_Account" }, TEXT));
 
-			expect(sections.Action).toEqual(["Outputs from Insert Spike"]);
+			expect(sections.Action).toEqual(["Outputs from Insert Records"]);
 			expect(sections["Quick Resources"]).toBeUndefined();
 			expect(sections["Screen Components"]).toBeUndefined();
 		});
 
 		it("lists a loop's current item, and the element's own outputs, inside the loop", () => {
-			const sections = labelsBySection(getRootSections({ ...context, elementName: "Insert_Spike" }, TEXT));
+			const sections = labelsBySection(getRootSections({ ...context, elementName: "Insert_Records" }, TEXT));
 
 			expect(sections["Quick Resources"]).toEqual(["Current Item from Loop Loop Accounts"]);
-			expect(sections.Action).toEqual(["Outputs from Insert Spike"]);
+			expect(sections.Action).toEqual(["Outputs from Insert Records"]);
 		});
 
 		it("omits an element's own outputs when it can't run twice", () => {
@@ -246,7 +246,7 @@ describe("c-flow-resource-menu", () => {
 			};
 			const builderContext = { ...context.builderContext, start };
 
-			const sections = getRootSections({ ...context, builderContext, elementName: "Create_Native" }, RECORD);
+			const sections = getRootSections({ ...context, builderContext, elementName: "Create_Account" }, RECORD);
 
 			expect(labelsBySection(sections)["Quick Resources"]).toEqual([
 				"Triggering Account",
@@ -334,23 +334,23 @@ describe("c-flow-resource-menu", () => {
 		});
 
 		it("lists an action's outputs", async () => {
-			const action = findItem(getRootSections(context, TEXT), "Insert_Spike");
+			const action = findItem(getRootSections(context, TEXT), "Insert_Records");
 
 			const sections = await getChildSections(action, context, TEXT, describeObject);
 
 			expect(labelsBySection(sections)).toEqual({ Outputs: ["Record", "Message"] });
-			expect(findItem(sections, "Insert_Spike.record")).toMatchObject({
+			expect(findItem(sections, "Insert_Records.record")).toMatchObject({
 				isDrillable: true,
 				objectType: "Account"
 			});
-			expect(findItem(sections, "Insert_Spike.message")).toMatchObject({
+			expect(findItem(sections, "Insert_Records.message")).toMatchObject({
 				isSelectable: true,
-				pathLabel: "Outputs from Insert Spike > Message"
+				pathLabel: "Outputs from Insert Records > Message"
 			});
 		});
 
 		it("lists an action's record outputs for a record input", async () => {
-			const action = findItem(getRootSections(context, RECORDS), "Insert_Spike");
+			const action = findItem(getRootSections(context, RECORDS), "Insert_Records");
 
 			const sections = await getChildSections(action, context, RECORDS, describeObject);
 

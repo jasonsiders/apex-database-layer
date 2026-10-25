@@ -588,7 +588,7 @@ describe("c-flow-resource-picker", () => {
 			recordTriggerType: "Update"
 		};
 		const { element } = await render({
-			elementName: "Create_Native",
+			elementName: "Create_Account",
 			builderContext: { ...CONTEXT.builderContext, start }
 		});
 

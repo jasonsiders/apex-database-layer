@@ -436,8 +436,7 @@ export default class DmlRecordsEditor extends LightningElement {
 	_initOption(field) {
 		const value = field.value ?? field.defaultValue;
 		const isResource = field.valueDataType === REFERENCE && toBooleanConstant(value) == null;
-		// The picker shows its own resources
-		const resource = isResource && !field.allowsResources ? value : null;
+		const resource = isResource ? value : null;
 		const resourceChoices = resource ? [{ label: `{!${resource}}`, value: resource }] : [];
 		const isBoolean = field.type === "Boolean";
 		const listChoices = field.name === LOCALE_OPTIONS ? this._locales : (field.picklistValues ?? []);
@@ -548,13 +547,14 @@ export default class DmlRecordsEditor extends LightningElement {
 	 */
 	_setGenericTypes(detail) {
 		const hasObject = detail.value != null && Boolean(detail.objectType);
-		const typeNames = hasObject ? GENERIC_TYPES : [];
-		typeNames.forEach((typeName) => {
-			this._dispatch("configuration_editor_generic_type_mapping_changed", {
-				typeName,
-				typeValue: detail.objectType
+		if (hasObject) {
+			GENERIC_TYPES.forEach((typeName) => {
+				this._dispatch("configuration_editor_generic_type_mapping_changed", {
+					typeName,
+					typeValue: detail.objectType
+				});
 			});
-		});
+		}
 	}
 
 	/**
