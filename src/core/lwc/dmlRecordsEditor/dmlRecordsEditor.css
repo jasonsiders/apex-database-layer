@@ -14,3 +14,8 @@
 	display: block;
 	max-width: 23rem;
 }
+
+/* Flow's own collapsible sections, ex: Show advanced options, don't indent their headers */
+.options-accordion {
+	--slds-c-accordion-section-spacing-inline-start: 0;
+}
