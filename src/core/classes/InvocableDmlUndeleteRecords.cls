@@ -3,9 +3,7 @@
  * behavior
  */
 public inherited sharing class InvocableDmlUndeleteRecords extends InvocableDml {
-	/**
-	 * @description Only the invocable method creates instances, so callers go through it, like Flow does
-	 */
+	/** @description Only the invocable method creates instances, so callers go through it, like Flow does **/
 	@SuppressWarnings('PMD.EmptyStatementBlock')
 	private InvocableDmlUndeleteRecords() {
 		// Nothing to initialize

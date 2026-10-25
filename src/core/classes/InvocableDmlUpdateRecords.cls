@@ -3,9 +3,7 @@
  * behavior, and every `Database.DmlOptions` setting
  */
 public inherited sharing class InvocableDmlUpdateRecords extends InvocableDml {
-	/**
-	 * @description Only the invocable method creates instances, so callers go through it, like Flow does
-	 */
+	/** @description Only the invocable method creates instances, so callers go through it, like Flow does **/
 	@SuppressWarnings('PMD.EmptyStatementBlock')
 	private InvocableDmlUpdateRecords() {
 		// Nothing to initialize

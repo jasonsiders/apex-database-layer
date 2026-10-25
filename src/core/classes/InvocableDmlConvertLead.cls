@@ -3,9 +3,7 @@
  * behavior, and duplicate rule settings
  */
 public inherited sharing class InvocableDmlConvertLead {
-	/**
-	 * @description Only the invocable method creates instances, so callers go through it, like Flow does
-	 */
+	/** @description Only the invocable method creates instances, so callers go through it, like Flow does **/
 	@SuppressWarnings('PMD.EmptyStatementBlock')
 	private InvocableDmlConvertLead() {
 		// Nothing to initialize

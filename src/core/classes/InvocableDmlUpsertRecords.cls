@@ -3,10 +3,7 @@
  * and all-or-none behavior
  */
 public inherited sharing class InvocableDmlUpsertRecords extends InvocableDml {
-	/**
-	 * @description Only the invocable method and the editor's getMatchFields create instances, so callers go through
-	 * them, like Flow does
-	 */
+	/** @description Only invoke and getMatchFields create instances, so callers go through them, like Flow does **/
 	@SuppressWarnings('PMD.EmptyStatementBlock')
 	private InvocableDmlUpsertRecords() {
 		// Nothing to initialize

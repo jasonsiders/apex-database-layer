@@ -2,9 +2,7 @@
  * @description Flow action that permanently deletes records from the Recycle Bin via `DatabaseLayer.Dml`
  */
 public inherited sharing class InvocableDmlEmptyRecycleBin extends InvocableDml {
-	/**
-	 * @description Only the invocable method creates instances, so callers go through it, like Flow does
-	 */
+	/** @description Only the invocable method creates instances, so callers go through it, like Flow does **/
 	@SuppressWarnings('PMD.EmptyStatementBlock')
 	private InvocableDmlEmptyRecycleBin() {
 		// Nothing to initialize
