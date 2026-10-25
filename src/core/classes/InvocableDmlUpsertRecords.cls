@@ -51,6 +51,15 @@ public inherited sharing class InvocableDmlUpsertRecords extends InvocableDml {
 
 	// **** PRIVATE **** //
 	/**
+	 * @description Only the invocable method and the editor's getMatchFields create instances, so callers go through
+	 * them, like Flow does
+	 */
+	@SuppressWarnings('PMD.EmptyStatementBlock')
+	private InvocableDmlUpsertRecords() {
+		// Nothing to initialize
+	}
+
+	/**
 	 * @description Flow passes the field by name; an unknown name throws, since matching on Ids could duplicate records
 	 * @param records Every input's records; the first one supplies the object
 	 * @param settings The input whose external ID field applies to the operation

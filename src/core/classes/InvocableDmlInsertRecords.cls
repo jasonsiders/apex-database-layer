@@ -34,4 +34,13 @@ public inherited sharing class InvocableDmlInsertRecords extends InvocableDml {
 		List<Database.SaveResult> results = DatabaseLayer.Dml?.doInsert(records, options, accessLevel);
 		return InvocableDmlResult.fromList(results);
 	}
+
+	// **** PRIVATE **** //
+	/**
+	 * @description Only the invocable method creates instances, so callers go through it, like Flow does
+	 */
+	@SuppressWarnings('PMD.EmptyStatementBlock')
+	private InvocableDmlInsertRecords() {
+		// Nothing to initialize
+	}
 }

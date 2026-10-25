@@ -34,4 +34,13 @@ public inherited sharing class InvocableDmlUpdateRecords extends InvocableDml {
 		List<Database.SaveResult> results = DatabaseLayer.Dml?.doUpdate(records, options, accessLevel);
 		return InvocableDmlResult.fromList(results);
 	}
+
+	// **** PRIVATE **** //
+	/**
+	 * @description Only the invocable method creates instances, so callers go through it, like Flow does
+	 */
+	@SuppressWarnings('PMD.EmptyStatementBlock')
+	private InvocableDmlUpdateRecords() {
+		// Nothing to initialize
+	}
 }

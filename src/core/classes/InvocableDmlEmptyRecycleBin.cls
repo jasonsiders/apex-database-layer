@@ -31,4 +31,13 @@ public inherited sharing class InvocableDmlEmptyRecycleBin extends InvocableDml 
 		List<Database.EmptyRecycleBinResult> results = DatabaseLayer.Dml?.emptyRecycleBin(records);
 		return InvocableDmlResult.fromList(results);
 	}
+
+	// **** PRIVATE **** //
+	/**
+	 * @description Only the invocable method creates instances, so callers go through it, like Flow does
+	 */
+	@SuppressWarnings('PMD.EmptyStatementBlock')
+	private InvocableDmlEmptyRecycleBin() {
+		// Nothing to initialize
+	}
 }

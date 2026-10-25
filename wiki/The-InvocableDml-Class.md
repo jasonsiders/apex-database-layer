@@ -16,7 +16,7 @@ Records are passed to the DML operation as they are. Like Apex DML, the operatio
 InvocableDml.Input input = new InvocableDml.Input();
 input.recordCollection = new List<Account>{ new Account(Name = 'Acme') };
 List<InvocableDml.Input> inputs = new List<InvocableDml.Input>{ input };
-List<InvocableDml.Output> outputs = new InvocableDmlInsertRecords().run(inputs);
+List<InvocableDml.Output> outputs = InvocableDmlInsertRecords.invoke(inputs);
 ```
 
 ### `doDml`
