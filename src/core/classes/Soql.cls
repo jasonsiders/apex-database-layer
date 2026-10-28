@@ -1118,7 +1118,8 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		global Soql.Builder addHaving(Soql.Aggregation agg, Soql.Operator operator, Object value) {
 			// Shorthand overload constructs the AggregateCondition for the caller
-			Soql.Condition condition = new Soql.Condition(agg?.toString(), operator, value);
+			String aggregate = agg?.toString();
+			Soql.Condition condition = new Soql.Condition(aggregate, operator, value);
 			this.addBindsFromValue(value);
 			this.havingCriteria?.addCondition(condition);
 			return this;

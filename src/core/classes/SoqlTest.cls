@@ -59,18 +59,17 @@ private class SoqlTest {
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
 			?.addSelect(User.Name)
 			?.addWhere(User.IsActive, Soql.EQUALS, true)
+			?.setAccessLevel(System.AccessLevel.SYSTEM_MODE)
 			?.toSoql();
-		String originalQuery = soql?.toString();
+		String expected = 'SELECT Id, Name FROM User WHERE IsActive = true';
 
 		Test.startTest();
 		Integer count = soql?.countQuery();
-		List<User> users = (List<User>) soql?.query();
+		List<User> users = (List<User>) SoqlTest.validateQuery(soql, expected);
 		Test.stopTest();
 
 		Integer userCount = users?.size();
-		String finalQuery = soql?.toString();
 		Assert.areEqual(userCount, count, 'Wrong # of countQuery results');
-		Assert.areEqual(originalQuery, finalQuery, 'countQuery() modified the SELECT clause');
 	}
 
 	@IsTest
