@@ -55,6 +55,23 @@ private class SoqlTest {
 	}
 
 	@IsTest
+	private static void shouldNotModifySelectClausesOnCountQuery() {
+		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
+			?.addSelect(User.Name)
+			?.addWhere(User.IsActive, Soql.EQUALS, true)
+			?.toSoql();
+		String originalQuery = soql?.toString();
+
+		Test.startTest();
+		Integer count = soql?.countQuery();
+		List<User> users = (List<User>) soql?.query();
+		Test.stopTest();
+
+		Assert.areEqual(users?.size(), count, 'Wrong # of countQuery results');
+		Assert.areEqual(originalQuery, soql?.toString(), 'countQuery() modified the SELECT clause');
+	}
+
+	@IsTest
 	private static void shouldHandleCountQueryErrors() {
 		SObjectType illegalEntity = null; // Will cause a System.QueryException when run
 		Soql soql = DatabaseLayer.Soql.newQuery(illegalEntity)?.toSoql();
@@ -65,7 +82,7 @@ private class SoqlTest {
 			Assert.fail('Illegal query did not throw an error');
 		} catch (System.QueryException error) {
 			String msg = error?.getMessage();
-			Assert.isTrue(msg?.contains(soql?.toString()), 'Did not append query to the error');
+			Assert.isTrue(msg?.contains('Query: [SELECT COUNT() FROM'), 'Did not append query to the error');
 		}
 		Test.stopTest();
 	}

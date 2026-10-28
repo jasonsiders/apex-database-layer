@@ -155,6 +155,15 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		return new Soql.Request(this, operation);
 	}
 
+	/**
+	 * @description COUNT() queries cannot select fields, so this builds one without changing the caller's SELECT clause
+	 * @return The SOQL query string, with COUNT() as its only SELECT clause
+	 */
+	private String toCountQueryString() {
+		String countClause = new Soql.Aggregation(Soql.Function.COUNT)?.toString();
+		return this.buildQueryString(countClause);
+	}
+
 	// **** ENUMS *** //
 	/**
 	 * @description SOQL aggregate and date functions available for use in SELECT clauses.
@@ -542,10 +551,8 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @return The complete SOQL query string
 		 */
 		global virtual override String toString() {
-			// Outputs a SOQL Query string, following the syntax defined here:
-			// https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_select.htm#:~:text=SOQL%20query%20syntax%20consists%20of,typeOfField%20whenExpression%5B...%5D
-			List<String> queryArgs = new List<String>{ this.getSelect(), this.getFrom(), this.getOptionalArgs() };
-			return String.format('SELECT {0} FROM {1} {2}', queryArgs)?.trim();
+			String selectClause = this.getSelect();
+			return this.buildQueryString(selectClause);
 		}
 
 		/**
@@ -1262,6 +1269,18 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			this.addBind(key, value);
 		}
 
+		/**
+		 * @description Shared by toString() and count queries, which supply their own SELECT clause
+		 * @param selectClause The SELECT clause to use
+		 * @return The complete SOQL query string
+		 */
+		protected String buildQueryString(String selectClause) {
+			// Outputs a SOQL Query string, following the syntax defined here:
+			// https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_select.htm#:~:text=SOQL%20query%20syntax%20consists%20of,typeOfField%20whenExpression%5B...%5D
+			List<String> queryArgs = new List<String>{ selectClause, this.getFrom(), this.getOptionalArgs() };
+			return String.format('SELECT {0} FROM {1} {2}', queryArgs)?.trim();
+		}
+
 		protected String constructClause(String prefix, Object value) {
 			// Returns a specific SOQL clause (ex., "WHERE {value}"), provided that `value` is not null
 			String output = value?.toString();
@@ -1921,7 +1940,9 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		global String queryString {
 			get {
-				return this.query?.toString();
+				return (this.operation == Soql.Operation.COUNT_QUERY)
+					? this.query?.toCountQueryString()
+					: this.query?.toString();
 			}
 		}
 		protected transient System.AccessLevel accessLevel { get; private set; }
@@ -1990,10 +2011,6 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @return Integer count of matching records
 		 */
 		protected virtual Integer doCountQuery() {
-			// Note: A count query must not contain any fields, other than COUNT() aggregation
-			// Avoid errors and simplify query construction by handling this in a temporary copy of the current query
-			Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT);
-			this.query?.deselectAll()?.addSelect(count)?.toSoql();
 			return Database.countQueryWithBinds(this.queryString, this.binds, this.accessLevel);
 		}
 
