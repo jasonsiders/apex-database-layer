@@ -82,7 +82,7 @@ private class SoqlTest {
 			Assert.fail('Illegal query did not throw an error');
 		} catch (System.QueryException error) {
 			String msg = error?.getMessage();
-			Assert.isTrue(msg?.contains(soql?.toCountQueryString()), 'Did not append query to the error');
+			Assert.isTrue(msg?.contains('Query: [SELECT COUNT() FROM'), 'Did not append query to the error');
 		}
 		Test.stopTest();
 	}
