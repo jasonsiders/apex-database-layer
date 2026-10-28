@@ -953,6 +953,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @return This Builder instance for method chaining
 		 */
 		global Soql.Builder setWhereCriteria(Soql.ConditionalLogic criteria) {
+			this.addBindsFromCriteria(criteria);
 			this.whereCriteria = criteria;
 			return this;
 		}
@@ -963,6 +964,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @return This Builder instance for method chaining
 		 */
 		global Soql.Builder setHavingCriteria(Soql.ConditionalLogic criteria) {
+			this.addBindsFromCriteria(criteria);
 			this.havingCriteria = criteria;
 			return this;
 		}
@@ -1005,6 +1007,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @return This Builder instance for method chaining
 		 */
 		global Soql.Builder addWhere(Soql.Criteria criteria) {
+			this.addBindsFromCriteria(criteria);
 			this.whereCriteria?.addCondition(criteria);
 			return this;
 		}
@@ -1109,6 +1112,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		global Soql.Builder addHaving(Soql.Aggregation agg, Soql.Operator operator, Object value) {
 			// Shorthand overload constructs the AggregateCondition for the caller
 			Soql.Condition condition = new Soql.Condition(agg?.toString(), operator, value);
+			this.addBindsFromCriteria(condition);
 			this.havingCriteria?.addCondition(condition);
 			return this;
 		}
@@ -1203,6 +1207,22 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			// Add all binds from a child query to the current query
 			Map<String, Object> childBinds = childQuery?.binds ?? new Map<String, Object>();
 			this.binds?.putAll(childBinds);
+		}
+
+		/**
+		 * @description Registers binds from the value of a Condition, or of every Condition nested in a ConditionalLogic
+		 * @param criteria The WHERE or HAVING criteria
+		 */
+		private void addBindsFromCriteria(Soql.Criteria criteria) {
+			if (criteria instanceof Soql.ConditionalLogic) {
+				List<Soql.Criteria> children = ((Soql.ConditionalLogic) criteria).criterion;
+				for (Soql.Criteria child : children) {
+					this.addBindsFromCriteria(child);
+				}
+			} else if (criteria instanceof Soql.Condition) {
+				Object value = ((Soql.Condition) criteria).value;
+				this.addBindsFromValue(value);
+			}
 		}
 
 		/**

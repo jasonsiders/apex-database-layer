@@ -26,6 +26,8 @@ Adds conditions to the HAVING clause of the query.
 
 - `Soql.Builder addHaving(Soql.Aggregation agg, Soql.Operator operator, Object value)`
 
+Binds from a `Soql.Binder` or `Soql.InnerQuery` value are added to the query automatically.
+
 ### `addSelect`
 
 Adds fields or `Soql.Selectable` objects to the SELECT clause of the query. `Soql.Selectable` types include `Soql.Aggregation`, `Soql.ParentField`, and `Soql.Subquery` objects.
@@ -48,7 +50,7 @@ Adds conditions to the WHERE clause of the query.
 - `Soql.Builder addWhere(SObjectField field, Soql.Operator operator, Object value)`
 - `Soql.Builder addWhere(Soql.ParentField field, Soql.Operator operator, Object value)`
 
-`value` accepts any type, including `null`, a [`Soql.Binder`](./The-Soql.Binder-Class), or a [`Soql.InnerQuery`](./The-Soql.InnerQuery-Class). Binds from a `Soql.Binder` or `Soql.InnerQuery` are added to the query automatically.
+`value` accepts any type, including `null`, a [`Soql.Binder`](./The-Soql.Binder-Class), or a [`Soql.InnerQuery`](./The-Soql.InnerQuery-Class). Binds from a `Soql.Binder` or `Soql.InnerQuery` are added to the query automatically, including those in any condition nested in a `Soql.ConditionalLogic` passed to `addWhere`, `setWhereCriteria`, or `setHavingCriteria`.
 
 ### `deselect`
 
