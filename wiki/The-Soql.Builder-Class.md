@@ -12,6 +12,8 @@ Adds binding variables to the query. Binding variables are used to dynamically i
 - `Soql.Builder addBind(String key, Object value)`
 - `Soql.Builder addBind(Soql.Binder binder)`
 
+You rarely need to call this directly. Binds from a `Soql.Binder` or `Soql.InnerQuery` value passed to any WHERE or HAVING method, including conditions nested in a `Soql.ConditionalLogic`, are added automatically. Binds are captured when the criteria are added, so a condition added to a `Soql.ConditionalLogic` after it is passed to the query needs `addBind`.
+
 ### `addGroupBy`
 
 Adds fields to the GROUP BY clause of the query.
@@ -25,8 +27,6 @@ Adds fields to the GROUP BY clause of the query.
 Adds conditions to the HAVING clause of the query.
 
 - `Soql.Builder addHaving(Soql.Aggregation agg, Soql.Operator operator, Object value)`
-
-Binds from a `Soql.Binder` or `Soql.InnerQuery` value are added to the query automatically.
 
 ### `addSelect`
 
@@ -50,7 +50,7 @@ Adds conditions to the WHERE clause of the query.
 - `Soql.Builder addWhere(SObjectField field, Soql.Operator operator, Object value)`
 - `Soql.Builder addWhere(Soql.ParentField field, Soql.Operator operator, Object value)`
 
-`value` accepts any type, including `null`, a [`Soql.Binder`](./The-Soql.Binder-Class), or a [`Soql.InnerQuery`](./The-Soql.InnerQuery-Class). Binds from a `Soql.Binder` or `Soql.InnerQuery` are added to the query automatically, including those in any condition nested in a `Soql.ConditionalLogic` passed to `addWhere`, `setWhereCriteria`, or `setHavingCriteria`.
+`value` accepts any type, including `null`, a [`Soql.Binder`](./The-Soql.Binder-Class), or a [`Soql.InnerQuery`](./The-Soql.InnerQuery-Class). Binds from a `Soql.Binder` or `Soql.InnerQuery` are added to the query automatically.
 
 ### `deselect`
 

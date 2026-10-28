@@ -1112,7 +1112,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		global Soql.Builder addHaving(Soql.Aggregation agg, Soql.Operator operator, Object value) {
 			// Shorthand overload constructs the AggregateCondition for the caller
 			Soql.Condition condition = new Soql.Condition(agg?.toString(), operator, value);
-			this.addBindsFromCriteria(condition);
+			this.addBindsFromValue(value);
 			this.havingCriteria?.addCondition(condition);
 			return this;
 		}
@@ -1210,7 +1210,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		/**
-		 * @description Registers binds from the value of a Condition, or of every Condition nested in a ConditionalLogic
+		 * @description Conditions nested in a ConditionalLogic skip addBindsFromValue, so their binds are collected here
 		 * @param criteria The WHERE or HAVING criteria
 		 */
 		private void addBindsFromCriteria(Soql.Criteria criteria) {
