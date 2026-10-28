@@ -549,6 +549,23 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		/**
+		 * @description Converts the builder to a SOQL COUNT() query string, leaving its SELECT clause unchanged.
+		 * @return The SOQL query string, with COUNT() as its only SELECT clause
+		 */
+		public String toCountQueryString() {
+			// A count query must not contain any fields, other than the COUNT() aggregation
+			Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT);
+			Set<String> originalSelectClauses = this.resolvedSelectClauses;
+			Boolean originalSelectAllPending = this.selectAllPending;
+			this.resolvedSelectClauses = new Set<String>{ count?.toString() };
+			this.selectAllPending = false;
+			String countQueryString = this.toString();
+			this.resolvedSelectClauses = originalSelectClauses;
+			this.selectAllPending = originalSelectAllPending;
+			return countQueryString;
+		}
+
+		/**
 		 * @description Adds multiple bind variables from a map.
 		 * @param bindMap Map of bind variable keys to values
 		 * @return This Builder instance for method chaining
@@ -1876,7 +1893,9 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		global String queryString {
 			get {
-				return this.query?.toString();
+				return (this.operation == Soql.Operation.COUNT_QUERY)
+					? this.query?.toCountQueryString()
+					: this.query?.toString();
 			}
 		}
 		protected transient System.AccessLevel accessLevel { get; private set; }
@@ -1945,10 +1964,6 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @return Integer count of matching records
 		 */
 		protected virtual Integer doCountQuery() {
-			// Note: A count query must not contain any fields, other than COUNT() aggregation
-			// Avoid errors and simplify query construction by handling this in a temporary copy of the current query
-			Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT);
-			this.query?.deselectAll()?.addSelect(count)?.toSoql();
 			return Database.countQueryWithBinds(this.queryString, this.binds, this.accessLevel);
 		}
 
