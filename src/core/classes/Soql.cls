@@ -960,6 +960,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @return This Builder instance for method chaining
 		 */
 		global Soql.Builder setWhereCriteria(Soql.ConditionalLogic criteria) {
+			this.addBindsFromCriteria(criteria);
 			this.whereCriteria = criteria;
 			return this;
 		}
@@ -970,6 +971,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @return This Builder instance for method chaining
 		 */
 		global Soql.Builder setHavingCriteria(Soql.ConditionalLogic criteria) {
+			this.addBindsFromCriteria(criteria);
 			this.havingCriteria = criteria;
 			return this;
 		}
@@ -1012,6 +1014,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @return This Builder instance for method chaining
 		 */
 		global Soql.Builder addWhere(Soql.Criteria criteria) {
+			this.addBindsFromCriteria(criteria);
 			this.whereCriteria?.addCondition(criteria);
 			return this;
 		}
@@ -1116,6 +1119,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		global Soql.Builder addHaving(Soql.Aggregation agg, Soql.Operator operator, Object value) {
 			// Shorthand overload constructs the AggregateCondition for the caller
 			Soql.Condition condition = new Soql.Condition(agg?.toString(), operator, value);
+			this.addBindsFromValue(value);
 			this.havingCriteria?.addCondition(condition);
 			return this;
 		}
@@ -1213,15 +1217,56 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		/**
+		 * @description Conditions nested in a ConditionalLogic skip addBindsFromValue, so their binds are collected here
+		 * @param criteria The WHERE or HAVING criteria
+		 */
+		private void addBindsFromCriteria(Soql.Criteria criteria) {
+			if (criteria instanceof Soql.ConditionalLogic) {
+				this.addBindsFromLogic((Soql.ConditionalLogic) criteria);
+			} else if (criteria instanceof Soql.Condition) {
+				this.addBindsFromCondition((Soql.Condition) criteria);
+			}
+		}
+
+		/**
+		 * @description Recurses so binds are found in ConditionalLogic nested to any depth
+		 * @param logic The ConditionalLogic whose children are searched
+		 */
+		private void addBindsFromLogic(Soql.ConditionalLogic logic) {
+			for (Soql.Criteria child : logic?.criterion) {
+				this.addBindsFromCriteria(child);
+			}
+		}
+
+		/**
+		 * @description Only a Condition's value can carry a Binder or InnerQuery
+		 * @param condition The Condition whose value is checked
+		 */
+		private void addBindsFromCondition(Soql.Condition condition) {
+			Object value = condition?.value;
+			this.addBindsFromValue(value);
+		}
+
+		/**
 		 * @description Registers binds carried by an InnerQuery or Binder value, so callers don't need to call addBind
-		 * @param value The WHERE condition value
+		 * @param value The WHERE or HAVING condition value
 		 */
 		private void addBindsFromValue(Object value) {
 			if (value instanceof Soql.InnerQuery) {
 				this.addBindsFromChildQuery((Soql.InnerQuery) value);
 			} else if (value instanceof Soql.Binder) {
-				this.addBind((Soql.Binder) value);
+				this.addBindFromBinder((Soql.Binder) value);
 			}
+		}
+
+		/**
+		 * @description A key-only Binder is a placeholder, so it keeps any value the caller already set with addBind
+		 * @param binder The Binder found in a WHERE or HAVING condition
+		 */
+		private void addBindFromBinder(Soql.Binder binder) {
+			String key = binder?.getKey();
+			Object value = binder?.getValue() ?? this.binds?.get(key);
+			this.addBind(key, value);
 		}
 
 		/**

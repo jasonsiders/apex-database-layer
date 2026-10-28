@@ -1561,6 +1561,134 @@ private class SoqlTest {
 	}
 
 	@IsTest
+	private static void shouldAddNestedConditionalLogicBindsToWhereClause() {
+		Id currentUserId = UserInfo.getUserId();
+		Soql.Binder profileName = new Soql.Binder('profileName', 'System Administrator');
+		Soql.Binder userId = new Soql.Binder('userId', currentUserId);
+		Soql.ParentField profileNameField = new Soql.ParentField(User.ProfileId, Profile.Name);
+		Soql.ConditionalLogic innerLogic = new Soql.ConditionalLogic()
+			?.addCondition(User.Id, Soql.EQUALS, userId)
+			?.addCondition(profileNameField, Soql.EQUALS, profileName);
+		Soql.ConditionalLogic outerLogic = new Soql.ConditionalLogic()
+			?.addCondition(User.IsActive, Soql.EQUALS, true)
+			?.addCondition(innerLogic)
+			?.setLogicType(Soql.LogicType.ANY_CONDITIONS);
+		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)?.addWhere(outerLogic)?.toSoql();
+		String expected = 'SELECT Id FROM User WHERE (IsActive = true OR (Id = :userId AND Profile.Name = :profileName))';
+
+		Test.startTest();
+		SoqlTest.validateQuery(soql, expected);
+		Test.stopTest();
+
+		Map<String, Object> expectedBinds = new Map<String, Object>{
+			'profileName' => 'System Administrator',
+			'userId' => currentUserId
+		};
+		Assert.areEqual(expectedBinds, soql?.binds, 'Did not add ConditionalLogic binds to Soql');
+	}
+
+	@IsTest
+	private static void shouldAddConditionalLogicInnerQueryBindsToParent() {
+		Id currentUserId = UserInfo.getUserId();
+		Soql.Binder owner = new Soql.Binder('ownerId', currentUserId);
+		Soql.ConditionalLogic innerLogic = new Soql.ConditionalLogic()?.addCondition(Case.OwnerId, Soql.EQUALS, owner);
+		Soql.InnerQuery innerQuery = new Soql.InnerQuery(Case.SObjectType)
+			?.addSelect(Case.AccountId)
+			?.addWhere(innerLogic)
+			?.toInnerQuery();
+		Soql.ConditionalLogic outerLogic = new Soql.ConditionalLogic()
+			?.addCondition(Account.Id, Soql.IN_COLLECTION, innerQuery);
+		Soql testQuery = DatabaseLayer.Soql.newQuery(Account.SObjectType)?.addWhere(outerLogic)?.toSoql();
+		String expected = 'SELECT Id FROM Account WHERE (Id IN (SELECT AccountId FROM Case WHERE (OwnerId = :ownerId)))';
+
+		Test.startTest();
+		SoqlTest.validateQuery(testQuery, expected);
+		Test.stopTest();
+
+		Map<String, Object> expectedBinds = new Map<String, Object>{ 'ownerId' => currentUserId };
+		Assert.areEqual(expectedBinds, testQuery?.binds, 'Did not add InnerQuery binds to Soql');
+	}
+
+	@IsTest
+	private static void shouldAddHavingBinds() {
+		Soql.Aggregation count = new Soql.Aggregation(Soql.Function.COUNT, User.Id);
+		Soql.Binder minCount = new Soql.Binder('minCount', 0);
+		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
+			?.addSelect(User.ProfileId)
+			?.addGroupBy(User.ProfileId)
+			?.addHaving(count, Soql.GREATER_THAN, minCount)
+			?.toSoql();
+		String expected = 'SELECT ProfileId FROM User GROUP BY ProfileId HAVING COUNT(Id) > :minCount';
+
+		Test.startTest();
+		SoqlTest.validateQuery(soql, expected);
+		Test.stopTest();
+
+		Map<String, Object> expectedBinds = new Map<String, Object>{ 'minCount' => 0 };
+		Assert.areEqual(expectedBinds, soql?.binds, 'Did not add HAVING binds to Soql');
+	}
+
+	@IsTest
+	private static void shouldAddHavingCriteriaBinds() {
+		String count = new Soql.Aggregation(Soql.Function.COUNT, User.Id)?.toString();
+		Soql.Binder minCount = new Soql.Binder('minCount', 0);
+		Soql.Binder maxCount = new Soql.Binder('maxCount', 100);
+		Soql.ConditionalLogic havingLogic = new Soql.ConditionalLogic()
+			?.addCondition(count, Soql.GREATER_THAN, minCount)
+			?.addCondition(count, Soql.LESS_OR_EQUAL, maxCount);
+		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
+			?.addSelect(User.ProfileId)
+			?.addGroupBy(User.ProfileId)
+			?.setHavingCriteria(havingLogic)
+			?.toSoql();
+		String expected = 'SELECT ProfileId FROM User GROUP BY ProfileId HAVING COUNT(Id) > :minCount AND COUNT(Id) <= :maxCount';
+
+		Test.startTest();
+		SoqlTest.validateQuery(soql, expected);
+		Test.stopTest();
+
+		Map<String, Object> expectedBinds = new Map<String, Object>{ 'maxCount' => 100, 'minCount' => 0 };
+		Assert.areEqual(expectedBinds, soql?.binds, 'Did not add HAVING criteria binds to Soql');
+	}
+
+	@IsTest
+	private static void shouldAllowExplicitBindOfConditionalLogicBinder() {
+		Id currentUserId = UserInfo.getUserId();
+		Soql.Binder userId = new Soql.Binder('userId', currentUserId);
+		Soql.ConditionalLogic logic = new Soql.ConditionalLogic()?.addCondition(User.Id, Soql.EQUALS, userId);
+		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)?.addWhere(logic)?.addBind(userId)?.toSoql();
+		String expected = 'SELECT Id FROM User WHERE (Id = :userId)';
+
+		Test.startTest();
+		SoqlTest.validateQuery(soql, expected);
+		Test.stopTest();
+
+		Map<String, Object> expectedBinds = new Map<String, Object>{ 'userId' => currentUserId };
+		Assert.areEqual(expectedBinds, soql?.binds, 'Explicit addBind changed the registered binds');
+	}
+
+	@IsTest
+	private static void shouldKeepExplicitBindForKeyOnlyBinder() {
+		Id currentUserId = UserInfo.getUserId();
+		Set<Id> userIds = new Set<Id>{ currentUserId };
+		Soql.Binder placeholder = new Soql.Binder('userIds');
+		Soql.ConditionalLogic logic = new Soql.ConditionalLogic()
+			?.addCondition(User.Id, Soql.IN_COLLECTION, placeholder);
+		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
+			?.addBind('userIds', userIds)
+			?.addWhere(logic)
+			?.toSoql();
+		String expected = 'SELECT Id FROM User WHERE (Id IN :userIds)';
+
+		Test.startTest();
+		SoqlTest.validateQuery(soql, expected);
+		Test.stopTest();
+
+		Map<String, Object> expectedBinds = new Map<String, Object>{ 'userIds' => userIds };
+		Assert.areEqual(expectedBinds, soql?.binds, 'Key-only Binder overwrote the explicit bind');
+	}
+
+	@IsTest
 	private static void shouldOrderByField() {
 		String value = new Soql.SortOrder(Account.CreatedDate, Soql.SortDirection.ASCENDING)?.toString();
 		Assert.areEqual('CreatedDate ASC NULLS LAST', value, 'Wrong value');
