@@ -12,7 +12,7 @@ Adds binding variables to the query. Binding variables are used to dynamically i
 - `Soql.Builder addBind(String key, Object value)`
 - `Soql.Builder addBind(Soql.Binder binder)`
 
-You rarely need to call this directly. Binds from a `Soql.Binder` or `Soql.InnerQuery` value passed to any WHERE or HAVING method, including conditions nested in a `Soql.ConditionalLogic`, are added automatically. Binds are captured when the criteria are added, so a condition added to a `Soql.ConditionalLogic` after it is passed to the query needs `addBind`.
+You rarely need to call this directly. Binds from a `Soql.Binder` or `Soql.InnerQuery` value passed to any WHERE or HAVING method, including conditions nested in a `Soql.ConditionalLogic`, are added automatically. Binds are captured when the criteria are added, so a change made afterward, such as a new condition on that `Soql.ConditionalLogic` or a `Binder.setValue` call, needs `addBind`. A key-only `Soql.Binder` keeps any value already set with `addBind`.
 
 ### `addGroupBy`
 

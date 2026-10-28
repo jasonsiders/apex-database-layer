@@ -1227,14 +1227,24 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 
 		/**
 		 * @description Registers binds carried by an InnerQuery or Binder value, so callers don't need to call addBind
-		 * @param value The WHERE condition value
+		 * @param value The WHERE or HAVING condition value
 		 */
 		private void addBindsFromValue(Object value) {
 			if (value instanceof Soql.InnerQuery) {
 				this.addBindsFromChildQuery((Soql.InnerQuery) value);
 			} else if (value instanceof Soql.Binder) {
-				this.addBind((Soql.Binder) value);
+				this.addBindFromBinder((Soql.Binder) value);
 			}
+		}
+
+		/**
+		 * @description A key-only Binder is a placeholder, so it keeps any value the caller already set with addBind
+		 * @param binder The Binder found in a WHERE or HAVING condition
+		 */
+		private void addBindFromBinder(Soql.Binder binder) {
+			String key = binder?.getKey();
+			Object value = binder?.getValue() ?? this.binds?.get(key);
+			this.addBind(key, value);
 		}
 
 		protected String constructClause(String prefix, Object value) {

@@ -1647,6 +1647,26 @@ private class SoqlTest {
 	}
 
 	@IsTest
+	private static void shouldKeepExplicitBindForKeyOnlyBinder() {
+		Set<Id> userIds = new Set<Id>{ UserInfo.getUserId() };
+		Soql.Binder placeholder = new Soql.Binder('userIds');
+		Soql.ConditionalLogic logic = new Soql.ConditionalLogic()
+			?.addCondition(User.Id, Soql.IN_COLLECTION, placeholder);
+		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)
+			?.addBind('userIds', userIds)
+			?.addWhere(logic)
+			?.toSoql();
+		String expected = 'SELECT Id FROM User WHERE (Id IN :userIds)';
+
+		Test.startTest();
+		SoqlTest.validateQuery(soql, expected);
+		Test.stopTest();
+
+		Map<String, Object> expectedBinds = new Map<String, Object>{ 'userIds' => userIds };
+		Assert.areEqual(expectedBinds, soql?.binds, 'Key-only Binder overwrote the explicit bind');
+	}
+
+	@IsTest
 	private static void shouldOrderByField() {
 		String value = new Soql.SortOrder(Account.CreatedDate, Soql.SortDirection.ASCENDING)?.toString();
 		Assert.areEqual('CreatedDate ASC NULLS LAST', value, 'Wrong value');
