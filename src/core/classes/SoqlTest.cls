@@ -1545,11 +1545,13 @@ private class SoqlTest {
 
 	@IsTest
 	private static void shouldAddNestedConditionalLogicBindsToWhereClause() {
+		Id currentUserId = UserInfo.getUserId();
 		Soql.Binder profileName = new Soql.Binder('profileName', 'System Administrator');
-		Soql.Binder userId = new Soql.Binder('userId', UserInfo.getUserId());
+		Soql.Binder userId = new Soql.Binder('userId', currentUserId);
+		Soql.ParentField profileNameField = new Soql.ParentField(User.ProfileId, Profile.Name);
 		Soql.ConditionalLogic innerLogic = new Soql.ConditionalLogic()
 			?.addCondition(User.Id, Soql.EQUALS, userId)
-			?.addCondition(new Soql.ParentField(User.ProfileId, Profile.Name), Soql.EQUALS, profileName);
+			?.addCondition(profileNameField, Soql.EQUALS, profileName);
 		Soql.ConditionalLogic outerLogic = new Soql.ConditionalLogic()
 			?.addCondition(User.IsActive, Soql.EQUALS, true)
 			?.addCondition(innerLogic)
@@ -1563,14 +1565,15 @@ private class SoqlTest {
 
 		Map<String, Object> expectedBinds = new Map<String, Object>{
 			'profileName' => 'System Administrator',
-			'userId' => UserInfo.getUserId()
+			'userId' => currentUserId
 		};
 		Assert.areEqual(expectedBinds, soql?.binds, 'Did not add ConditionalLogic binds to Soql');
 	}
 
 	@IsTest
 	private static void shouldAddConditionalLogicInnerQueryBindsToParent() {
-		Soql.Binder owner = new Soql.Binder('ownerId', UserInfo.getUserId());
+		Id currentUserId = UserInfo.getUserId();
+		Soql.Binder owner = new Soql.Binder('ownerId', currentUserId);
 		Soql.ConditionalLogic innerLogic = new Soql.ConditionalLogic()?.addCondition(Case.OwnerId, Soql.EQUALS, owner);
 		Soql.InnerQuery innerQuery = new Soql.InnerQuery(Case.SObjectType)
 			?.addSelect(Case.AccountId)
@@ -1585,7 +1588,7 @@ private class SoqlTest {
 		SoqlTest.validateQuery(testQuery, expected);
 		Test.stopTest();
 
-		Map<String, Object> expectedBinds = new Map<String, Object>{ 'ownerId' => UserInfo.getUserId() };
+		Map<String, Object> expectedBinds = new Map<String, Object>{ 'ownerId' => currentUserId };
 		Assert.areEqual(expectedBinds, testQuery?.binds, 'Did not add InnerQuery binds to Soql');
 	}
 
@@ -1633,7 +1636,8 @@ private class SoqlTest {
 
 	@IsTest
 	private static void shouldAllowExplicitBindOfConditionalLogicBinder() {
-		Soql.Binder userId = new Soql.Binder('userId', UserInfo.getUserId());
+		Id currentUserId = UserInfo.getUserId();
+		Soql.Binder userId = new Soql.Binder('userId', currentUserId);
 		Soql.ConditionalLogic logic = new Soql.ConditionalLogic()?.addCondition(User.Id, Soql.EQUALS, userId);
 		Soql soql = DatabaseLayer.Soql.newQuery(User.SObjectType)?.addWhere(logic)?.addBind(userId)?.toSoql();
 		String expected = 'SELECT Id FROM User WHERE (Id = :userId)';
@@ -1642,13 +1646,14 @@ private class SoqlTest {
 		SoqlTest.validateQuery(soql, expected);
 		Test.stopTest();
 
-		Map<String, Object> expectedBinds = new Map<String, Object>{ 'userId' => UserInfo.getUserId() };
+		Map<String, Object> expectedBinds = new Map<String, Object>{ 'userId' => currentUserId };
 		Assert.areEqual(expectedBinds, soql?.binds, 'Explicit addBind changed the registered binds');
 	}
 
 	@IsTest
 	private static void shouldKeepExplicitBindForKeyOnlyBinder() {
-		Set<Id> userIds = new Set<Id>{ UserInfo.getUserId() };
+		Id currentUserId = UserInfo.getUserId();
+		Set<Id> userIds = new Set<Id>{ currentUserId };
 		Soql.Binder placeholder = new Soql.Binder('userIds');
 		Soql.ConditionalLogic logic = new Soql.ConditionalLogic()
 			?.addCondition(User.Id, Soql.IN_COLLECTION, placeholder);

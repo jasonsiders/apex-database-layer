@@ -1215,14 +1215,29 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		private void addBindsFromCriteria(Soql.Criteria criteria) {
 			if (criteria instanceof Soql.ConditionalLogic) {
-				List<Soql.Criteria> children = ((Soql.ConditionalLogic) criteria).criterion;
-				for (Soql.Criteria child : children) {
-					this.addBindsFromCriteria(child);
-				}
+				this.addBindsFromLogic((Soql.ConditionalLogic) criteria);
 			} else if (criteria instanceof Soql.Condition) {
-				Object value = ((Soql.Condition) criteria).value;
-				this.addBindsFromValue(value);
+				this.addBindsFromCondition((Soql.Condition) criteria);
 			}
+		}
+
+		/**
+		 * @description Recurses so binds are found in ConditionalLogic nested to any depth
+		 * @param logic The ConditionalLogic whose children are searched
+		 */
+		private void addBindsFromLogic(Soql.ConditionalLogic logic) {
+			for (Soql.Criteria child : logic?.criterion) {
+				this.addBindsFromCriteria(child);
+			}
+		}
+
+		/**
+		 * @description Only a Condition's value can carry a Binder or InnerQuery
+		 * @param condition The Condition whose value is checked
+		 */
+		private void addBindsFromCondition(Soql.Condition condition) {
+			Object value = condition?.value;
+			this.addBindsFromValue(value);
 		}
 
 		/**
