@@ -67,8 +67,10 @@ private class SoqlTest {
 		List<User> users = (List<User>) soql?.query();
 		Test.stopTest();
 
-		Assert.areEqual(users?.size(), count, 'Wrong # of countQuery results');
-		Assert.areEqual(originalQuery, soql?.toString(), 'countQuery() modified the SELECT clause');
+		Integer userCount = users?.size();
+		String finalQuery = soql?.toString();
+		Assert.areEqual(userCount, count, 'Wrong # of countQuery results');
+		Assert.areEqual(originalQuery, finalQuery, 'countQuery() modified the SELECT clause');
 	}
 
 	@IsTest
@@ -82,7 +84,8 @@ private class SoqlTest {
 			Assert.fail('Illegal query did not throw an error');
 		} catch (System.QueryException error) {
 			String msg = error?.getMessage();
-			Assert.isTrue(msg?.contains('Query: [SELECT COUNT() FROM'), 'Did not append query to the error');
+			Boolean hasQuery = msg?.contains('Query: [SELECT COUNT() FROM');
+			Assert.isTrue(hasQuery, 'Did not append query to the error');
 		}
 		Test.stopTest();
 	}

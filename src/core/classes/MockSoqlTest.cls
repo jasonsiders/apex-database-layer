@@ -35,11 +35,9 @@ private class MockSoqlTest {
 			soql?.countQuery();
 			Assert.fail('The injected exception was not thrown');
 		} catch (System.QueryException error) {
-			Assert.areEqual(
-				true,
-				error?.getMessage()?.contains('Query: [SELECT COUNT() FROM Account]'),
-				'Did not append query to error'
-			);
+			String msg = error?.getMessage();
+			Boolean hasQuery = msg?.contains('Query: [SELECT COUNT() FROM Account]');
+			Assert.areEqual(true, hasQuery, 'Did not append query to error');
 			Assert.areEqual(0, Limits.getQueries(), 'Actually executed SOQL');
 		}
 		Test.stopTest();
