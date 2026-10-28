@@ -156,11 +156,10 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	}
 
 	/**
-	 * @description Converts the query to a SOQL COUNT() query string, leaving its SELECT clause unchanged.
+	 * @description COUNT() queries cannot select fields, so this builds one without changing the caller's SELECT clause
 	 * @return The SOQL query string, with COUNT() as its only SELECT clause
 	 */
 	private String toCountQueryString() {
-		// A count query must not contain any fields, other than the COUNT() aggregation
 		String countClause = new Soql.Aggregation(Soql.Function.COUNT)?.toString();
 		return this.buildQueryString(countClause);
 	}
@@ -1226,7 +1225,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		/**
-		 * @description Builds a SOQL query string from the given SELECT clause and the builder's other clauses.
+		 * @description Shared by toString() and count queries, which supply their own SELECT clause
 		 * @param selectClause The SELECT clause to use
 		 * @return The complete SOQL query string
 		 */
