@@ -763,8 +763,6 @@ global inherited sharing virtual class Dml {
 	 * @return List of Database.SaveResult objects
 	 */
 	global List<Database.SaveResult> doPublish(List<SObject> events, System.AccessLevel accessLevel) {
-		// Callback: "An Apex class that implements the EventPublishFailureCallback Interface or EventPublishSuccessCallback Interface."
-		// https://developer.salesforce.com/docs/atlas.en-us.apexref.meta/apexref/apex_class_System_eventbus.htm#apex_System_eventbus_publish_4
 		Dml.Request request = this.initRequest(Dml.Operation.DO_PUBLISH, events);
 		request.accessLevel = accessLevel;
 		return (List<Database.SaveResult>) request?.process();
