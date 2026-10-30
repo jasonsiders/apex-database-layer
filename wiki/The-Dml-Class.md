@@ -73,9 +73,9 @@ See [`Database.insertImmediate`](https://developer.salesforce.com/docs/atlas.en-
 
 ### `doPublish`
 
-Publishes the given list of platform events.
+Publishes the given list of platform events, in user mode by default.
 
-See [`EventBus.publish`](https://developer.salesforce.com/docs/atlas.en-us.apexref.meta/apexref/apex_class_System_eventbus.htm#apex_System_eventbus_publish) for the full list of method signatures.
+See [`EventBus.publishWithAccessLevel`](https://developer.salesforce.com/docs/platform/apex-ref/references/apex-ref/apex-class-system-eventbus.html#publishwithaccesslevelevents-accesslevel) for more information.
 
 ### `doUndelete`
 
