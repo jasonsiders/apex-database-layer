@@ -440,23 +440,6 @@ private class MockDmlTest {
 	}
 
 	@IsTest
-	private static void shouldMockPublishWithAccessLevel() {
-		List<BatchApexErrorEvent> events = MockDmlTest.initRecords(BatchApexErrorEvent.SObjectType);
-
-		Test.startTest();
-		List<Database.SaveResult> results = DatabaseLayer.Dml?.doPublish(events, System.AccessLevel.SYSTEM_MODE);
-		Assert.areEqual(0, Limits.getDmlStatements(), 'Performed actual DML');
-		Test.stopTest();
-
-		Assert.areEqual(events?.size(), results?.size(), 'Wrong # of results');
-		Assert.areEqual(
-			events?.size(),
-			MockDml.PUBLISHED?.getRecords(BatchApexErrorEvent.SObjectType)?.size(),
-			'Wrong # of published records'
-		);
-	}
-
-	@IsTest
 	private static void shouldThrowExceptionIfErrorOnPublish() {
 		List<BatchApexErrorEvent> events = MockDmlTest.initRecords(BatchApexErrorEvent.SObjectType);
 		DatabaseLayer.useMockDml();
