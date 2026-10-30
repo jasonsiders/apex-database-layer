@@ -788,6 +788,24 @@ private class DmlTest {
 	}
 
 	@IsTest
+	private static void shouldDoPublishWithAccessLevel() {
+		DatabaseLayerTestUtils.initDmlAndSoqlPlugins(DatabaseLayerTestUtils.SamplePlugin.class.getName());
+		BatchApexErrorEvent event = new BatchApexErrorEvent();
+
+		Test.startTest();
+		Database.SaveResult result = DatabaseLayer.Dml.doPublish(event, System.AccessLevel.SYSTEM_MODE);
+		Test.stopTest();
+
+		// The platform rejects BatchApexErrorEvent in either access mode
+		Assert.areEqual(false, result?.isSuccess(), 'Published a platform-only event');
+		Assert.areEqual(
+			System.AccessLevel.SYSTEM_MODE,
+			DatabaseLayerTestUtils.DmlPluginSpy?.lastDmlRequest?.accessLevel,
+			'Wrong access level'
+		);
+	}
+
+	@IsTest
 	private static void shouldDoConvert() {
 		Lead lead = DmlTest.initLead();
 		insert lead;

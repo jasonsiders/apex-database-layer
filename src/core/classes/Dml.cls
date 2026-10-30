@@ -757,18 +757,40 @@ global inherited sharing virtual class Dml {
 
 	// ** Publish Methods
 	/**
-	 * @description Publishes a list of platform events.
+	 * @description Publishes a list of platform events using the specified access level.
+	 * @param events List of platform event SObjects to publish
+	 * @param accessLevel System access level for the operation
+	 * @return List of Database.SaveResult objects
+	 */
+	global List<Database.SaveResult> doPublish(List<SObject> events, System.AccessLevel accessLevel) {
+		// Callback: "An Apex class that implements the EventPublishFailureCallback Interface or EventPublishSuccessCallback Interface."
+		// https://developer.salesforce.com/docs/atlas.en-us.apexref.meta/apexref/apex_class_System_eventbus.htm#apex_System_eventbus_publish_4
+		Dml.Request request = this.initRequest(Dml.Operation.DO_PUBLISH, events);
+		request.accessLevel = accessLevel;
+		return (List<Database.SaveResult>) request?.process();
+	}
+
+	/**
+	 * @description Publishes a list of platform events using default access level (user mode).
 	 * @param events List of platform event SObjects to publish
 	 * @return List of Database.SaveResult objects
 	 */
 	global List<Database.SaveResult> doPublish(List<SObject> events) {
-		// Callback: "An Apex class that implements the EventPublishFailureCallback Interface or EventPublishSuccessCallback Interface."
-		// https://developer.salesforce.com/docs/atlas.en-us.apexref.meta/apexref/apex_class_System_eventbus.htm#apex_System_eventbus_publish_4
-		return (List<Database.SaveResult>) this.initRequest(Dml.Operation.DO_PUBLISH, events)?.process();
+		return this.doPublish(events, DEFAULT_ACCESS_LEVEL);
 	}
 
 	/**
-	 * @description Publishes a single platform event.
+	 * @description Publishes a single platform event using the specified access level.
+	 * @param event Platform event SObject to publish
+	 * @param accessLevel System access level for the operation
+	 * @return Database.SaveResult object
+	 */
+	global Database.SaveResult doPublish(SObject event, System.AccessLevel accessLevel) {
+		return this.doPublish(new List<SObject>{ event }, accessLevel)?.get(0);
+	}
+
+	/**
+	 * @description Publishes a single platform event using default access level (user mode).
 	 * @param event Platform event SObject to publish
 	 * @return Database.SaveResult object
 	 */
@@ -1777,7 +1799,7 @@ global inherited sharing virtual class Dml {
 		}
 
 		protected virtual List<Database.SaveResult> doPublish() {
-			return EventBus.publish(this.records);
+			return EventBus.publishWithAccessLevel(this.records, this.accessLevel);
 		}
 
 		protected virtual List<Database.UndeleteResult> doUndelete() {
