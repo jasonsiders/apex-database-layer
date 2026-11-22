@@ -20,7 +20,161 @@ public inherited sharing class InvocableSoql {
 		return new InvocableSoqlPlanner()?.run(inputs);
 	}
 
+	/**
+	 * @description Lists the objects the action's editor offers, like Get Records. DEFERRED skips each object's fields
+	 * and child relationships, which the list doesn't need
+	 * @return The running user's queryable objects
+	 */
+	@AuraEnabled(cacheable=true)
+	public static List<InvocableSoql.ObjectOption> getObjects() {
+		List<InvocableSoql.ObjectOption> options = new List<InvocableSoql.ObjectOption>{};
+		for (SObjectType objectType : Schema.getGlobalDescribe()?.values()) {
+			DescribeSObjectResult describe = objectType?.getDescribe(SObjectDescribeOptions.DEFERRED);
+			if (describe?.isQueryable() == true && describe?.isDeprecatedAndHidden() == false) {
+				options?.add(new InvocableSoql.ObjectOption(describe));
+			}
+		}
+		return options;
+	}
+
+	/**
+	 * @description Lists an object's fields for the action's editor, with what it needs to offer them: types for
+	 * operators and values, relationships for drilling into parent fields, and picklist values
+	 * @param objectApiName The object, ex: "Contact"
+	 * @return The running user's accessible fields
+	 * @throws System.AuraHandledException When the object doesn't exist
+	 */
+	@AuraEnabled(cacheable=true)
+	public static List<InvocableSoql.FieldOption> getFields(String objectApiName) {
+		List<InvocableSoql.FieldOption> options = new List<InvocableSoql.FieldOption>{};
+		for (SObjectField field : InvocableSoql.describeFields(objectApiName)) {
+			DescribeFieldResult describe = field?.getDescribe();
+			if (describe?.isAccessible() == true) {
+				options?.add(new InvocableSoql.FieldOption(describe));
+			}
+		}
+		return options;
+	}
+
+	// **** PRIVATE **** //
+	/**
+	 * @description The editor calls this through Lightning, which only shows an AuraHandledException's message
+	 * @param objectApiName The object to describe
+	 * @return The object's fields
+	 * @throws System.AuraHandledException When the object doesn't exist
+	 */
+	private static List<SObjectField> describeFields(String objectApiName) {
+		List<String> objectApiNames = new List<String>{ objectApiName };
+		try {
+			List<DescribeSObjectResult> objects = Schema.describeSObjects(
+				objectApiNames,
+				SObjectDescribeOptions.DEFERRED
+			);
+			return objects?.get(0)?.fields?.getMap()?.values();
+		} catch (System.InvalidParameterValueException error) {
+			String message = error?.getMessage();
+			throw new System.AuraHandledException(message);
+		}
+	}
+
+	/**
+	 * @description Lists a field's active picklist values
+	 * @param entries The field's picklist entries; empty for other fields
+	 * @return The active values, in the field's order
+	 */
+	private static List<InvocableSoql.PicklistOption> initPicklistOptions(List<Schema.PicklistEntry> entries) {
+		List<InvocableSoql.PicklistOption> options = new List<InvocableSoql.PicklistOption>{};
+		for (Schema.PicklistEntry entry : entries) {
+			if (entry?.isActive() == true) {
+				options?.add(new InvocableSoql.PicklistOption(entry));
+			}
+		}
+		return options;
+	}
+
 	// **** INNER **** //
+	/** @description A field the editor offers, with what it needs to build conditions on it **/
+	public class FieldOption {
+		/** @description The field's API name **/
+		@AuraEnabled
+		public String apiName;
+		/** @description Conditions can only use filterable fields **/
+		@AuraEnabled
+		public Boolean isFilterable;
+		/** @description ORDER BY can only use sortable fields **/
+		@AuraEnabled
+		public Boolean isSortable;
+		/** @description Shown beside the API name **/
+		@AuraEnabled
+		public String label;
+		/** @description Offered as values for picklist conditions; active values only **/
+		@AuraEnabled
+		public List<InvocableSoql.PicklistOption> picklistValues;
+		/** @description The parent object, for drilling into a lookup; a polymorphic lookup's first object, like Apex **/
+		@AuraEnabled
+		public String referenceTo;
+		/** @description The lookup's relationship name, ex: "Account" for AccountId; blank for other fields **/
+		@AuraEnabled
+		public String relationshipName;
+		/** @description A `Schema.DisplayType` name, ex: "PICKLIST", which picks the operators and value type **/
+		@AuraEnabled
+		public String type;
+
+		/**
+		 * @description Copies the describe details the editor needs
+		 * @param field The field's describe
+		 */
+		private FieldOption(DescribeFieldResult field) {
+			List<SObjectType> parents = field?.getReferenceTo();
+			this.apiName = field?.getName();
+			this.isFilterable = field?.isFilterable();
+			this.isSortable = field?.isSortable();
+			this.label = field?.getLabel();
+			this.picklistValues = InvocableSoql.initPicklistOptions(field?.getPicklistValues());
+			this.referenceTo = parents?.isEmpty() == false ? String.valueOf(parents?.get(0)) : null;
+			this.relationshipName = field?.getRelationshipName();
+			this.type = field?.getType()?.name();
+		}
+	}
+
+	/** @description An object the editor offers **/
+	public class ObjectOption {
+		/** @description The object's API name **/
+		@AuraEnabled
+		public String apiName;
+		/** @description Shown in the list, like Get Records **/
+		@AuraEnabled
+		public String label;
+
+		/**
+		 * @description Copies the describe details the editor needs
+		 * @param describe The object's describe
+		 */
+		private ObjectOption(DescribeSObjectResult describe) {
+			this.apiName = describe?.getName();
+			this.label = describe?.getLabel();
+		}
+	}
+
+	/** @description A picklist value the editor offers **/
+	public class PicklistOption {
+		/** @description Shown in the list **/
+		@AuraEnabled
+		public String label;
+		/** @description Saved in the condition **/
+		@AuraEnabled
+		public String value;
+
+		/**
+		 * @description Copies a picklist entry
+		 * @param entry The entry
+		 */
+		private PicklistOption(Schema.PicklistEntry entry) {
+			this.label = entry?.getLabel();
+			this.value = entry?.getValue();
+		}
+	}
+
 	/**
 	 * @description The query, plus typed slots for its values. Flow can't pass values of any type through one input, so
 	 * the editor assigns each resource to a free slot of its type, and the query names the slot

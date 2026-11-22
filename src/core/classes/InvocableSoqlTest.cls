@@ -474,6 +474,63 @@ private class InvocableSoqlTest {
 		);
 	}
 
+	@IsTest
+	private static void shouldListQueryableObjects() {
+		Test.startTest();
+		List<InvocableSoql.ObjectOption> objects = InvocableSoql.getObjects();
+		Test.stopTest();
+
+		Map<String, InvocableSoql.ObjectOption> objectsByName = new Map<String, InvocableSoql.ObjectOption>{};
+		for (InvocableSoql.ObjectOption option : objects) {
+			objectsByName.put(option.apiName, option);
+		}
+		Assert.areEqual(
+			Account.SObjectType.getDescribe().getLabel(),
+			objectsByName.get('Account')?.label,
+			'Wrong label'
+		);
+		Assert.isFalse(objectsByName.containsKey('AggregateResult'), 'Listed an object that cannot be queried');
+	}
+
+	@IsTest
+	private static void shouldListFields() {
+		Test.startTest();
+		List<InvocableSoql.FieldOption> fields = InvocableSoql.getFields('Contact');
+		Test.stopTest();
+
+		Map<String, InvocableSoql.FieldOption> fieldsByName = new Map<String, InvocableSoql.FieldOption>{};
+		for (InvocableSoql.FieldOption option : fields) {
+			fieldsByName.put(option.apiName, option);
+		}
+		InvocableSoql.FieldOption accountId = fieldsByName.get('AccountId');
+		Assert.areEqual('Account', accountId?.relationshipName, 'Wrong relationship name');
+		Assert.areEqual('Account', accountId?.referenceTo, 'Wrong parent object');
+		Assert.areEqual('REFERENCE', accountId?.type, 'Wrong type');
+		InvocableSoql.FieldOption lastName = fieldsByName.get('LastName');
+		Assert.areEqual(Contact.LastName.getDescribe().getLabel(), lastName?.label, 'Wrong label');
+		Assert.isTrue(lastName?.isFilterable, 'LastName is filterable');
+		Assert.isTrue(lastName?.isSortable, 'LastName is sortable');
+		Assert.isNull(lastName?.relationshipName, 'LastName is not a lookup');
+		InvocableSoql.FieldOption leadSource = fieldsByName.get('LeadSource');
+		Assert.areEqual('PICKLIST', leadSource?.type, 'Wrong type');
+		Assert.isFalse(leadSource?.picklistValues?.isEmpty(), 'Missing picklist values');
+		Assert.isNotNull(leadSource?.picklistValues?.get(0)?.value, 'Missing picklist value');
+	}
+
+	@IsTest
+	private static void shouldThrowAuraHandledExceptionForUnknownObject() {
+		Test.startTest();
+		Exception caughtError;
+		try {
+			InvocableSoql.getFields('Not_An_Object__c');
+		} catch (System.AuraHandledException error) {
+			caughtError = error;
+		}
+		Test.stopTest();
+
+		Assert.isNotNull(caughtError, 'Did not throw a System.AuraHandledException');
+	}
+
 	// **** HELPERS **** //
 	private static InvocableSoqlQuery.Condition initCondition(String field, String operator, String value) {
 		InvocableSoqlQuery.Condition condition = new InvocableSoqlQuery.Condition();
