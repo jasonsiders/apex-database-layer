@@ -362,6 +362,25 @@ describe("c-soql-query-editor", () => {
 		expect(savedDefinition(events).conditionLogic).toBe("OR");
 	});
 
+	it("joins conditions with AND or OR, numbers them for custom logic, and disables an operator until its field is picked, like Get Records", async () => {
+		const conditions = [
+			{ field: "LastName", operator: "IS_NULL" },
+			{ field: null, operator: null }
+		];
+		const { element } = await render({ objectApiName: "Contact", fields: [], conditions, orderBy: [] });
+		const prefixes = () =>
+			rows(element, "condition").map((row) => row.querySelector(".editor-row-prefix").textContent.trim());
+		const logic = element.shadowRoot.querySelector('lightning-combobox[data-name="conditionLogic"]');
+
+		expect(prefixes()).toEqual(["", "AND"]);
+		const operators = rows(element, "condition").map((row) => row.querySelector('[data-role="operator"]'));
+		expect(operators.map((operator) => operator.disabled)).toEqual([false, true]);
+		await fire(logic, { value: "OR" });
+		expect(prefixes()).toEqual(["", "OR"]);
+		await fire(logic, { value: "CUSTOM" });
+		expect(prefixes()).toEqual(["1", "2"]);
+	});
+
 	it("keeps custom logic in step as conditions are added and removed", async () => {
 		const { element, events } = await render({
 			objectApiName: "Contact",

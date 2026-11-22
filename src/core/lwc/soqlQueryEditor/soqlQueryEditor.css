@@ -10,7 +10,7 @@
 	max-width: 23rem;
 }
 
-/* A condition, sort field, or stored field: its inputs stacked, with its number and remove button beside them */
+/* A condition, sort field, or stored field on one line, like Get Records: prefix, inputs, then remove button */
 .editor-row {
 	align-items: flex-start;
 	display: flex;
@@ -18,15 +18,34 @@
 }
 
 .editor-row-inputs {
-	display: flex;
 	flex: 1;
-	flex-direction: column;
-	gap: 0.25rem;
 	min-width: 0;
 }
 
-.editor-row-number {
-	min-width: 1rem;
+/* Columns keep their place when a row has no operator or value yet, so rows line up */
+.editor-row-columns {
+	align-items: start;
+	display: grid;
+	gap: 0.5rem;
+}
+
+/* Get Records' proportions: Field, Operator, Value */
+.condition-columns {
+	grid-template-columns: minmax(0, 3fr) minmax(0, 2fr) minmax(0, 3fr);
+}
+
+/* Sort By, Sort Order, Blank Values */
+.sort-columns {
+	grid-template-columns: minmax(0, 3fr) minmax(0, 2fr) minmax(0, 2fr);
+}
+
+/* Prefix and remove button sit level with the inputs, below their labels */
+.editor-row-prefix {
+	min-width: 2rem;
+	padding-top: 1.875rem;
+}
+
+.editor-row-remove {
 	padding-top: 1.5rem;
 }
 

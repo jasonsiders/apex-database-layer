@@ -610,11 +610,14 @@ export default class SoqlQueryEditor extends LightningElement {
 		const target = this._initTarget(field, condition.operator);
 		const slotValue = condition.slot ? this._values[condition.slot]?.value : null;
 		const literal = condition.dateLiteral ?? condition.values?.[0] ?? condition.value;
+		// Like Get Records, later rows read AND or OR, and custom logic numbers every row
+		const joiner = index > 0 ? this.logicMode : "";
 		return {
 			key: `${index}:${condition.field}`,
 			index,
-			number: index + 1,
+			prefix: this.isCustomLogic ? String(index + 1) : joiner,
 			field: condition.field,
+			isOperatorDisabled: !condition.field,
 			operator: condition.operator,
 			operatorOptions,
 			hasValue: Boolean(target),
