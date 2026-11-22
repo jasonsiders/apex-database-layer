@@ -376,8 +376,9 @@ private class InvocableSoqlPlannerTest {
 		Test.startTest();
 		String insensitive = InvocableSoqlPlanner.toKey('ABC', false);
 		String sensitive = InvocableSoqlPlanner.toKey('ABC', true);
-		Boolean isInsensitiveMatch = InvocableSoqlPlanner.isLikeMatch('%bc', 'xABC', false);
-		Boolean isSensitiveMatch = InvocableSoqlPlanner.isLikeMatch('%bc', 'xABC', true);
+		String candidate = InvocableSoqlPlanner.toKey('xABC', false);
+		Boolean isInsensitiveMatch = new InvocableSoqlPlanner.LikePattern('%bc', false).matches(candidate);
+		Boolean isSensitiveMatch = new InvocableSoqlPlanner.LikePattern('%bc', true).matches('xABC');
 		Test.stopTest();
 
 		Assert.areEqual('abc', insensitive, 'Wrong case-insensitive key');

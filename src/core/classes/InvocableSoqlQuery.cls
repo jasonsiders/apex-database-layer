@@ -3,11 +3,10 @@
  * value, and resolves each interview's values for it
  */
 public inherited sharing class InvocableSoqlQuery {
+	// **** CONSTANTS **** //
 	private static final String BIND_PREFIX = 'bind';
 	/** @description Only condition numbers, AND, OR, NOT, and parentheses, so custom logic can't add SOQL **/
 	private static final Pattern CUSTOM_LOGIC_PATTERN = Pattern.compile('(?i)^(\\s|\\d+|AND|OR|NOT|\\(|\\))*$');
-	/** @description Date literals are rendered as-is, since SOQL can't bind them, so only their shape is allowed **/
-	private static final Pattern DATE_LITERAL_PATTERN = Pattern.compile('^[A-Z_0-9]+(:\\d+)?$');
 	private static final Set<String> COLLECTION_OPERATORS = new Set<String>{ 'IN', 'NOT_IN' };
 	/** @description SOQL can't bind INCLUDES or EXCLUDES values, so they're literals only **/
 	private static final Set<String> LITERAL_OPERATORS = new Set<String>{ 'EXCLUDES', 'INCLUDES' };
@@ -76,6 +75,8 @@ public inherited sharing class InvocableSoqlQuery {
 	// **** RESOLVED **** //
 	/** @description Each condition's field, in condition order, for coercing values and splitting merged results **/
 	private transient List<DescribeFieldResult> conditionFields;
+	/** @description Each condition's field path, split once, since a merged query reads it from every row **/
+	private transient List<List<String>> conditionPaths;
 	private transient DescribeSObjectResult objectDescribe;
 
 	// **** PUBLIC **** //
@@ -113,12 +114,14 @@ public inherited sharing class InvocableSoqlQuery {
 	 * @return The field's value, or null if a parent is blank
 	 */
 	public Object getFieldValue(SObject record, Integer index) {
-		List<String> names = this.conditions?.get(index)?.field?.split('\\.');
-		String fieldName = names?.remove(names?.size() - 1);
+		List<String> names = this.conditionPaths?.get(index);
+		Integer lastIndex = names?.size() - 1;
 		SObject parent = record;
-		for (String relationshipName : names) {
+		for (Integer position = 0; position < lastIndex; position++) {
+			String relationshipName = names?.get(position);
 			parent = parent?.getSObject(relationshipName);
 		}
+		String fieldName = names?.get(lastIndex);
 		return parent?.get(fieldName);
 	}
 
@@ -127,7 +130,7 @@ public inherited sharing class InvocableSoqlQuery {
 	 * @param index The condition's index
 	 * @return The operator's name
 	 */
-	public String getOperator(Integer index) {
+	private String getOperator(Integer index) {
 		return this.conditions?.get(index)?.operator;
 	}
 
@@ -147,15 +150,25 @@ public inherited sharing class InvocableSoqlQuery {
 	 * @return Whether interviews that differ only in this condition can share one query
 	 */
 	public Boolean isMergeable(Integer index) {
-		String logic = this.conditionLogic?.trim() ?? 'AND';
-		Boolean isAllConditions = logic == '' || logic.equalsIgnoreCase('AND');
+		Boolean isAllConditions = this.getLogicName() == 'AND';
 		// Equality on a multi-select picklist compares the whole set of values, which a split can't reproduce
 		Boolean isMultiPicklist = this.conditionFields?.get(index)?.getType() == Schema.DisplayType.MULTIPICKLIST;
+		String operator = this.getOperator(index);
 		return isAllConditions &&
 			this.rowLimit == null &&
 			this.rowOffset == null &&
-			!isMultiPicklist &&
-			InvocableSoqlQuery.MERGEABLE_OPERATORS?.contains(this.getOperator(index)) == true;
+			isMultiPicklist == false &&
+			InvocableSoqlQuery.MERGEABLE_OPERATORS?.contains(operator) == true;
+	}
+
+	/**
+	 * @description Contains, Starts With, Ends With, and Like bind a LIKE pattern; the rest bind values
+	 * @param index The condition's index
+	 * @return Whether the condition's value is a LIKE pattern
+	 */
+	public Boolean isPattern(Integer index) {
+		String operator = this.getOperator(index);
+		return InvocableSoqlQuery.TOKENS?.get(operator) == 'LIKE';
 	}
 
 	/**
@@ -227,7 +240,8 @@ public inherited sharing class InvocableSoqlQuery {
 	 * @return A list of the field's type
 	 */
 	private List<Object> coerceList(Iterable<Object> values, Type valueType) {
-		Type listType = Type.forName('List<' + valueType?.getName() + '>');
+		String listTypeName = 'List<' + valueType?.getName() + '>';
+		Type listType = Type.forName(listTypeName);
 		List<Object> coerced = (List<Object>) listType?.newInstance();
 		for (Object value : values) {
 			Object element = this.coerceValue(value, valueType);
@@ -244,8 +258,17 @@ public inherited sharing class InvocableSoqlQuery {
 	 * @return The value as the field's type
 	 */
 	private Object coerceValue(Object value, Type valueType) {
+		InvocableSoqlQuery.checkWholeNumber(value, valueType);
 		Boolean isId = valueType == Id.class && value != null;
-		return isId ? Id.valueOf(String.valueOf(value)) : JSON.deserialize(JSON.serialize(value), valueType);
+		// JSON reads a time without a zone, ex: "10:30", in the user's time zone; Time fields hold the time as typed
+		Boolean isLocalTime =
+			value instanceof String &&
+			valueType == Time.class &&
+			((String) value).endsWith('Z') == false;
+		Object zoned = isLocalTime ? value + 'Z' : value;
+		String text = String.valueOf(value);
+		String serialized = JSON.serialize(zoned);
+		return isId ? Id.valueOf(text) : JSON.deserialize(serialized, valueType);
 	}
 
 	/**
@@ -257,15 +280,33 @@ public inherited sharing class InvocableSoqlQuery {
 		this.conditions = this.conditions ?? new List<InvocableSoqlQuery.Condition>{};
 		this.objectDescribe = this.describeObject();
 		this.conditionFields = new List<DescribeFieldResult>{};
+		this.conditionPaths = new List<List<String>>{};
 		for (InvocableSoqlQuery.Condition condition : this.conditions) {
 			condition?.validate();
 			DescribeFieldResult field = this.describeField(condition?.field);
 			this.conditionFields?.add(field);
+			List<String> path = condition?.field?.split('\\.');
+			this.conditionPaths?.add(path);
 		}
+		this.describeOtherFields();
 		// Renders the WHERE clause once, so bad condition logic fails before any query runs
 		List<Object> blankValues = new List<Object>(this.conditions?.size());
 		new InvocableSoqlQuery.Filter(this, blankValues, true)?.toString();
 		return this;
+	}
+
+	/**
+	 * @description Checks the selected and sorted fields, like the condition fields, since each becomes SOQL text
+	 * @throws System.IllegalArgumentException When a field doesn't exist
+	 */
+	private void describeOtherFields() {
+		List<String> paths = new List<String>(this.fields ?? new List<String>{});
+		for (InvocableSoqlQuery.SortOrder sortOrder : this.orderBy ?? new List<InvocableSoqlQuery.SortOrder>{}) {
+			paths?.add(sortOrder?.field);
+		}
+		for (String path : paths) {
+			this.describeField(path);
+		}
 	}
 
 	/**
@@ -276,7 +317,8 @@ public inherited sharing class InvocableSoqlQuery {
 	 */
 	private DescribeFieldResult describeField(String path) {
 		List<String> names = path?.split('\\.') ?? new List<String>{ null };
-		String fieldName = names?.remove(names?.size() - 1);
+		Integer lastIndex = names?.size() - 1;
+		String fieldName = names?.remove(lastIndex);
 		DescribeSObjectResult parent = this.objectDescribe;
 		for (String relationshipName : names) {
 			parent = this.describeParent(parent, relationshipName, path);
@@ -314,7 +356,8 @@ public inherited sharing class InvocableSoqlQuery {
 		SObjectType parentType;
 		for (SObjectField field : child?.fields?.getMap()?.values()) {
 			DescribeFieldResult describe = field?.getDescribe();
-			Boolean isMatch = relationshipName?.equalsIgnoreCase(describe?.getRelationshipName()) == true;
+			String candidate = describe?.getRelationshipName();
+			Boolean isMatch = relationshipName?.equalsIgnoreCase(candidate) == true;
 			parentType = isMatch ? describe?.getReferenceTo()?.get(0) : parentType;
 		}
 		if (parentType == null) {
@@ -372,6 +415,15 @@ public inherited sharing class InvocableSoqlQuery {
 	}
 
 	/**
+	 * @description The condition logic, upper-cased; blank means AND
+	 * @return AND, OR, or custom logic
+	 */
+	private String getLogicName() {
+		String logic = this.conditionLogic?.trim()?.toUpperCase();
+		return String.isBlank(logic) ? 'AND' : logic;
+	}
+
+	/**
 	 * @description Fields of other types bind as text, ex: picklists
 	 * @param index The condition's index
 	 * @return The Apex type the condition's field binds as
@@ -390,7 +442,8 @@ public inherited sharing class InvocableSoqlQuery {
 		Map<String, Object> binds = new Map<String, Object>{};
 		for (Integer index = 0; index < this.conditions?.size(); index++) {
 			if (this.conditions?.get(index)?.isBound() == true) {
-				binds?.put(InvocableSoqlQuery.BIND_PREFIX + index, values?.get(index));
+				Object value = values?.get(index);
+				binds?.put(InvocableSoqlQuery.BIND_PREFIX + index, value);
 			}
 		}
 		return binds;
@@ -424,225 +477,27 @@ public inherited sharing class InvocableSoqlQuery {
 		InvocableSoqlQuery.Condition condition = this.conditions?.get(index);
 		Boolean isBound = condition?.isBound() == true;
 		Boolean hasSlot = isBound && condition?.slot != null;
-		Object staticValue = isBound && !hasSlot ? condition?.getStaticValue() : null;
+		Object staticValue = (isBound && hasSlot == false) ? condition?.getStaticValue() : null;
 		Object value = hasSlot ? input?.getSlotValue(condition?.slot) : staticValue;
 		return isBound ? this.prepareValue(index, value) : null;
 	}
 
-	// **** INNER **** //
-	/** @description A filter on one field **/
-	public class Condition {
-		/** @description A date literal, ex: "LAST_N_DAYS:30", used instead of a value **/
-		public String dateLiteral;
-		/** @description The field API name, including parent fields, ex: "Account.Name" **/
-		public String field;
-		/** @description A key of `TOKENS`, ex: EQUALS **/
-		public String operator;
-		/** @description The slot holding the value, ex: "text1", when it comes from a flow resource **/
-		public String slot;
-		/** @description A static value, as text, when it doesn't come from a slot **/
-		public String value;
-		/** @description Static values, for IN, NOT_IN, INCLUDES, and EXCLUDES **/
-		public List<String> values;
-
-		/**
-		 * @description Null checks, date literals, INCLUDES, and EXCLUDES are rendered in place; everything else binds
-		 * @return Whether the condition binds a value
-		 */
-		public Boolean isBound() {
-			Boolean isLiteral =
-				InvocableSoqlQuery.LITERAL_OPERATORS?.contains(this.operator) == true ||
-				InvocableSoqlQuery.NULL_OPERATORS?.contains(this.operator) == true;
-			return !isLiteral && String.isBlank(this.dateLiteral);
-		}
-
-		/**
-		 * @description The definition holds collections in `values`, and anything else in `value`
-		 * @return The static value or values
-		 */
-		private Object getStaticValue() {
-			return this.values ?? (Object) this.value;
-		}
-
-		/**
-		 * @description Renders the operand: a bind or value, a date literal, INCLUDES or EXCLUDES values, or null
-		 * @param index The condition's index, which names its bind
-		 * @param value The condition's value
-		 * @param isLiteral Whether to render values in place of binds
-		 * @return The operand
-		 */
-		private String renderOperand(Integer index, Object value, Boolean isLiteral) {
-			Boolean isNullCheck = InvocableSoqlQuery.NULL_OPERATORS?.contains(this.operator) == true;
-			Boolean isLiteralOnly = InvocableSoqlQuery.LITERAL_OPERATORS?.contains(this.operator) == true;
-			Boolean isPattern = InvocableSoqlQuery.TOKENS?.get(this.operator) == 'LIKE';
-			String formatted = isPattern
-				? InvocableSoqlQuery.formatPattern(value)
-				: InvocableSoqlQuery.formatLiteral(value);
-			String bound = isLiteral ? formatted : ':' + BIND_PREFIX + index;
-			String literal = isLiteralOnly ? InvocableSoqlQuery.formatLiteral(this.values) : bound;
-			String dated = String.isNotBlank(this.dateLiteral) ? this.dateLiteral : literal;
-			return isNullCheck ? 'null' : dated;
-		}
-
-		/**
-		 * @description Renders the condition, ex: `Name = :bind0`
-		 * @param index The condition's index, which names its bind
-		 * @param value The condition's value
-		 * @param isLiteral Whether to render values in place of binds
-		 * @return The condition, as SOQL
-		 */
-		private String render(Integer index, Object value, Boolean isLiteral) {
-			String token = InvocableSoqlQuery.TOKENS?.get(this.operator);
-			String operand = this.renderOperand(index, value, isLiteral);
-			return this.field + ' ' + token + ' ' + operand;
-		}
-
-		/**
-		 * @description Checks the parts that become SOQL text: the operator and any date literal
-		 * @throws System.IllegalArgumentException When the operator is unknown, or the date literal is malformed
-		 */
-		private void validate() {
-			if (InvocableSoqlQuery.TOKENS?.containsKey(this.operator) == false) {
-				throw new IllegalArgumentException('Invalid operator: ' + this.operator);
-			}
-			if (
-				this.dateLiteral != null && !InvocableSoqlQuery.DATE_LITERAL_PATTERN.matcher(this.dateLiteral).matches()
-			) {
-				throw new IllegalArgumentException('Invalid date literal: ' + this.dateLiteral);
-			}
-		}
-	}
-
-	/** @description An ORDER BY field **/
-	public class SortOrder {
-		/** @description ASCENDING (default) or DESCENDING **/
-		public String direction;
-		/** @description The field API name, including parent fields **/
-		public String field;
-		/** @description NULLS_FIRST or NULLS_LAST; blank uses `Soql.SortOrder`'s default **/
-		public String nullOrder;
-
-		/**
-		 * @description Converts to the builder's sort order
-		 * @return The sort order
-		 */
-		private Soql.SortOrder toSortOrder() {
-			Soql.SortDirection sortDirection = Soql.SortDirection.valueOf(this.direction ?? 'ASCENDING');
-			Soql.SortOrder order = new Soql.SortOrder(this.field, sortDirection);
-			return String.isBlank(this.nullOrder) ? order : order?.setNullOrder(Soql.NullOrder.valueOf(this.nullOrder));
-		}
-	}
-
 	/**
-	 * @description The WHERE clause, rendered from the condition logic. `Soql.ConditionalLogic` only joins with one of
-	 * AND or OR, so custom logic needs its own criteria
+	 * @description JSON would truncate a fraction for a whole-number field, ex: `< 42.5` would run as `< 42`, so it fails
+	 * instead
+	 * @param value A value for a condition
+	 * @param valueType The field's Apex type
+	 * @throws System.IllegalArgumentException When a whole-number field gets a value with a fraction
 	 */
-	private class Filter implements Soql.Criteria {
-		private Boolean isLiteral;
-		private InvocableSoqlQuery query;
-		private List<Object> values;
-
-		/**
-		 * @description Holds what rendering needs
-		 * @param query The query
-		 * @param values One value per condition
-		 * @param isLiteral Whether to render values in place of binds
-		 */
-		private Filter(InvocableSoqlQuery query, List<Object> values, Boolean isLiteral) {
-			this.isLiteral = isLiteral;
-			this.query = query;
-			this.values = values;
-		}
-
-		/**
-		 * @description Renders the logic token by token, replacing each condition number with its condition. SOQL only
-		 * allows NOT at the start of a group, ex: `A AND (NOT B)`, so each NOT and its operand are wrapped in parentheses.
-		 * Soql omits a blank WHERE
-		 * @return The WHERE clause's criteria
-		 */
-		public override String toString() {
-			String output = '';
-			Integer depth = 0;
-			// The depth of each NOT still waiting for its operand to end
-			List<Integer> openNots = new List<Integer>{};
-			Matcher tokens = InvocableSoqlQuery.TOKEN_PATTERN.matcher(this.getLogic());
-			while (tokens?.find() == true) {
-				String token = tokens?.group()?.toUpperCase();
-				depth += (token == '(') ? 1 : 0;
-				depth -= (token == ')') ? 1 : 0;
-				output = InvocableSoqlQuery.appendToken(output, this.renderToken(token));
-				Boolean isOperandEnd = token == ')' || token?.isNumeric() == true;
-				output = isOperandEnd ? this.closeNots(output, openNots, depth) : output;
-				if (token == 'NOT') {
-					openNots?.add(depth);
-				}
-			}
-			return output;
-		}
-
-		/**
-		 * @description Closes each NOT whose operand just ended at this depth
-		 * @param output The criteria so far
-		 * @param openNots The depth of each open NOT, innermost last; closed ones are removed
-		 * @param depth The current parenthesis depth
-		 * @return The criteria, with a closing parenthesis per closed NOT
-		 */
-		private String closeNots(String output, List<Integer> openNots, Integer depth) {
-			String closed = output;
-			while (openNots?.isEmpty() == false && openNots?.get(openNots?.size() - 1) == depth) {
-				openNots?.remove(openNots?.size() - 1);
-				closed = InvocableSoqlQuery.appendToken(closed, ')');
-			}
-			return closed;
-		}
-
-		/**
-		 * @description Renders one token of the logic
-		 * @param token A condition number, AND, OR, NOT, or a parenthesis
-		 * @return The token as SOQL
-		 */
-		private String renderToken(String token) {
-			String keyword = (token == 'NOT') ? '(NOT' : token;
-			return token?.isNumeric() == true ? this.renderCondition(token) : keyword;
-		}
-
-		/**
-		 * @description AND and OR join every condition; anything else is custom logic
-		 * @return The logic, by condition number, ex: "1 AND 2"
-		 * @throws System.IllegalArgumentException When custom logic holds anything but numbers, AND, OR, NOT, and
-		 * parentheses
-		 */
-		private String getLogic() {
-			String logic = this.query?.conditionLogic?.trim()?.toUpperCase() ?? '';
-			String joiner = String.isBlank(logic) ? 'AND' : logic;
-			List<String> numbers = new List<String>{};
-			for (Integer index = 1; index <= this.query?.conditions?.size(); index++) {
-				numbers?.add(String.valueOf(index));
-			}
-			Boolean isPreset = joiner == 'AND' || joiner == 'OR';
-			if (!isPreset && !InvocableSoqlQuery.CUSTOM_LOGIC_PATTERN.matcher(logic).matches()) {
-				throw new IllegalArgumentException('Invalid condition logic: ' + this.query?.conditionLogic);
-			}
-			return isPreset ? String.join(numbers, ' ' + joiner + ' ') : logic;
-		}
-
-		/**
-		 * @description Renders a condition by its number in the logic
-		 * @param conditionNumber The condition's number, starting at 1
-		 * @return The condition, as SOQL
-		 * @throws System.IllegalArgumentException When no condition has that number
-		 */
-		private String renderCondition(String conditionNumber) {
-			Integer index = Integer.valueOf(conditionNumber) - 1;
-			if (index < 0 || index >= this.query?.conditions?.size()) {
-				throw new IllegalArgumentException('Invalid condition logic: ' + this.query?.conditionLogic);
-			}
-			Object value = this.values?.get(index);
-			return this.query?.conditions?.get(index)?.render(index, value, this.isLiteral);
+	private static void checkWholeNumber(Object value, Type valueType) {
+		Boolean isWholeType = valueType == Integer.class || valueType == Long.class;
+		String text = String.valueOf(value);
+		Decimal amount = (isWholeType && value != null) ? Decimal.valueOf(text) : null;
+		if (amount != null && amount != amount.round(System.RoundingMode.DOWN)) {
+			throw new IllegalArgumentException('Whole-number fields take no fractions: ' + value);
 		}
 	}
 
-	// **** STATIC HELPERS **** //
 	/**
 	 * @description Joins tokens with spaces, except inside parentheses, ex: `(A OR B)`
 	 * @param output The criteria so far
@@ -697,8 +552,234 @@ public inherited sharing class InvocableSoqlQuery {
 	private static String formatList(Iterable<Object> values) {
 		List<String> literals = new List<String>{};
 		for (Object value : values) {
-			literals?.add(InvocableSoqlQuery.formatLiteral(value));
+			String literal = InvocableSoqlQuery.formatLiteral(value);
+			literals?.add(literal);
 		}
 		return '(' + String.join(literals, ', ') + ')';
+	}
+
+	// **** INNER **** //
+	/** @description A filter on one field **/
+	public class Condition {
+		/** @description A date literal, ex: "LAST_N_DAYS:30", used instead of a value **/
+		public String dateLiteral;
+		/** @description The field API name, including parent fields, ex: "Account.Name" **/
+		public String field;
+		/** @description A key of `TOKENS`, ex: EQUALS **/
+		public String operator;
+		/** @description The slot holding the value, ex: "text1", when it comes from a flow resource **/
+		public String slot;
+		/** @description A static value, as text, when it doesn't come from a slot **/
+		public String value;
+		/** @description Static values, for IN, NOT_IN, INCLUDES, and EXCLUDES **/
+		public List<String> values;
+
+		/**
+		 * @description Null checks, date literals, INCLUDES, and EXCLUDES are rendered in place; everything else binds
+		 * @return Whether the condition binds a value
+		 */
+		public Boolean isBound() {
+			Boolean isLiteral =
+				InvocableSoqlQuery.LITERAL_OPERATORS?.contains(this.operator) == true ||
+				InvocableSoqlQuery.NULL_OPERATORS?.contains(this.operator) == true;
+			return isLiteral == false && String.isBlank(this.dateLiteral);
+		}
+
+		/**
+		 * @description The definition holds collections in `values`, and anything else in `value`
+		 * @return The static value or values
+		 */
+		private Object getStaticValue() {
+			return this.values ?? (Object) this.value;
+		}
+
+		/**
+		 * @description Renders the operand: a bind or value, a date literal, INCLUDES or EXCLUDES values, or null
+		 * @param index The condition's index, which names its bind
+		 * @param value The condition's value
+		 * @param isLiteral Whether to render values in place of binds
+		 * @return The operand
+		 */
+		private String renderOperand(Integer index, Object value, Boolean isLiteral) {
+			// Values are only formatted for the debug string; the query binds them
+			String operand;
+			if (InvocableSoqlQuery.NULL_OPERATORS?.contains(this.operator) == true) {
+				operand = 'null';
+			} else if (String.isNotBlank(this.dateLiteral)) {
+				operand = this.dateLiteral;
+			} else if (InvocableSoqlQuery.LITERAL_OPERATORS?.contains(this.operator) == true) {
+				operand = InvocableSoqlQuery.formatLiteral(this.values);
+			} else if (isLiteral == false) {
+				operand = ':' + InvocableSoqlQuery.BIND_PREFIX + index;
+			} else if (InvocableSoqlQuery.TOKENS?.get(this.operator) == 'LIKE') {
+				operand = InvocableSoqlQuery.formatPattern(value);
+			} else {
+				operand = InvocableSoqlQuery.formatLiteral(value);
+			}
+			return operand;
+		}
+
+		/**
+		 * @description Renders the condition, ex: `Name = :bind0`
+		 * @param index The condition's index, which names its bind
+		 * @param value The condition's value
+		 * @param isLiteral Whether to render values in place of binds
+		 * @return The condition, as SOQL
+		 */
+		private String render(Integer index, Object value, Boolean isLiteral) {
+			String token = InvocableSoqlQuery.TOKENS?.get(this.operator);
+			String operand = this.renderOperand(index, value, isLiteral);
+			return this.field + ' ' + token + ' ' + operand;
+		}
+
+		/**
+		 * @description Checks the parts that become SOQL text: the operator and any date literal
+		 * @throws System.IllegalArgumentException When the operator is unknown, or the date literal is malformed
+		 */
+		private void validate() {
+			if (InvocableSoqlQuery.TOKENS?.containsKey(this.operator) == false) {
+				throw new IllegalArgumentException('Invalid operator: ' + this.operator);
+			}
+			// Date literals are rendered as-is, since SOQL can't bind them, so only SOQL's own literals are allowed
+			if (this.dateLiteral != null && !Soql.DATE_LITERAL_PATTERN.matcher(this.dateLiteral).matches()) {
+				throw new IllegalArgumentException('Invalid date literal: ' + this.dateLiteral);
+			}
+		}
+	}
+
+	/** @description An ORDER BY field **/
+	public class SortOrder {
+		/** @description ASCENDING (default) or DESCENDING **/
+		public String direction;
+		/** @description The field API name, including parent fields **/
+		public String field;
+		/** @description NULLS_FIRST or NULLS_LAST; blank uses `Soql.SortOrder`'s default **/
+		public String nullOrder;
+
+		/**
+		 * @description Converts to the builder's sort order
+		 * @return The sort order
+		 */
+		private Soql.SortOrder toSortOrder() {
+			Soql.SortDirection sortDirection = Soql.SortDirection.valueOf(this.direction ?? 'ASCENDING');
+			Soql.SortOrder order = new Soql.SortOrder(this.field, sortDirection);
+			Soql.NullOrder nullOrderType = String.isBlank(this.nullOrder)
+				? null
+				: Soql.NullOrder.valueOf(this.nullOrder);
+			return (nullOrderType == null) ? order : order?.setNullOrder(nullOrderType);
+		}
+	}
+
+	/**
+	 * @description The WHERE clause, rendered from the condition logic. `Soql.ConditionalLogic` only joins with one of
+	 * AND or OR, so custom logic needs its own criteria
+	 */
+	private class Filter implements Soql.Criteria {
+		private Boolean isLiteral;
+		private InvocableSoqlQuery query;
+		private List<Object> values;
+
+		/**
+		 * @description Holds what rendering needs
+		 * @param query The query
+		 * @param values One value per condition
+		 * @param isLiteral Whether to render values in place of binds
+		 */
+		private Filter(InvocableSoqlQuery query, List<Object> values, Boolean isLiteral) {
+			this.isLiteral = isLiteral;
+			this.query = query;
+			this.values = values;
+		}
+
+		/**
+		 * @description Renders the logic token by token, replacing each condition number with its condition. SOQL only
+		 * allows NOT at the start of a group, ex: `A AND (NOT B)`, so each NOT and its operand are wrapped in parentheses.
+		 * Soql omits a blank WHERE
+		 * @return The WHERE clause's criteria
+		 */
+		public override String toString() {
+			String output = '';
+			Integer depth = 0;
+			// The depth of each NOT still waiting for its operand to end
+			List<Integer> openNots = new List<Integer>{};
+			Matcher tokens = InvocableSoqlQuery.TOKEN_PATTERN.matcher(this.getLogic());
+			while (tokens?.find() == true) {
+				String token = tokens?.group()?.toUpperCase();
+				depth += (token == '(') ? 1 : 0;
+				depth -= (token == ')') ? 1 : 0;
+				String rendered = this.renderToken(token);
+				output = InvocableSoqlQuery.appendToken(output, rendered);
+				Boolean isOperandEnd = token == ')' || token?.isNumeric() == true;
+				output = isOperandEnd ? this.closeNots(output, openNots, depth) : output;
+				if (token == 'NOT') {
+					openNots?.add(depth);
+				}
+			}
+			return output;
+		}
+
+		/**
+		 * @description Closes each NOT whose operand just ended at this depth
+		 * @param output The criteria so far
+		 * @param openNots The depth of each open NOT, innermost last; closed ones are removed
+		 * @param depth The current parenthesis depth
+		 * @return The criteria, with a closing parenthesis per closed NOT
+		 */
+		private String closeNots(String output, List<Integer> openNots, Integer depth) {
+			String closed = output;
+			Integer lastIndex = openNots?.size() - 1;
+			while (lastIndex >= 0 && openNots?.get(lastIndex) == depth) {
+				openNots?.remove(lastIndex);
+				closed = InvocableSoqlQuery.appendToken(closed, ')');
+				lastIndex--;
+			}
+			return closed;
+		}
+
+		/**
+		 * @description Renders one token of the logic
+		 * @param token A condition number, AND, OR, NOT, or a parenthesis
+		 * @return The token as SOQL
+		 */
+		private String renderToken(String token) {
+			String keyword = (token == 'NOT') ? '(NOT' : token;
+			return token?.isNumeric() == true ? this.renderCondition(token) : keyword;
+		}
+
+		/**
+		 * @description AND and OR join every condition; anything else is custom logic
+		 * @return The logic, by condition number, ex: "1 AND 2"
+		 * @throws System.IllegalArgumentException When custom logic holds anything but numbers, AND, OR, NOT, and
+		 * parentheses
+		 */
+		private String getLogic() {
+			String logic = this.query?.getLogicName();
+			List<String> numbers = new List<String>{};
+			for (Integer index = 1; index <= this.query?.conditions?.size(); index++) {
+				String conditionNumber = String.valueOf(index);
+				numbers?.add(conditionNumber);
+			}
+			Boolean isPreset = logic == 'AND' || logic == 'OR';
+			Boolean isValidCustom = InvocableSoqlQuery.CUSTOM_LOGIC_PATTERN.matcher(logic).matches();
+			if (isPreset == false && isValidCustom == false) {
+				throw new IllegalArgumentException('Invalid condition logic: ' + this.query?.conditionLogic);
+			}
+			return isPreset ? String.join(numbers, ' ' + logic + ' ') : logic;
+		}
+
+		/**
+		 * @description Renders a condition by its number in the logic
+		 * @param conditionNumber The condition's number, starting at 1
+		 * @return The condition, as SOQL
+		 * @throws System.IllegalArgumentException When no condition has that number
+		 */
+		private String renderCondition(String conditionNumber) {
+			Integer index = Integer.valueOf(conditionNumber) - 1;
+			if (index < 0 || index >= this.query?.conditions?.size()) {
+				throw new IllegalArgumentException('Invalid condition logic: ' + this.query?.conditionLogic);
+			}
+			Object value = this.values?.get(index);
+			return this.query?.conditions?.get(index)?.render(index, value, this.isLiteral);
+		}
 	}
 }

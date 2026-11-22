@@ -6,9 +6,6 @@
  * values; see `InvocableSoqlQuery.isMergeable` for when merging applies
  */
 public inherited sharing class InvocableSoqlPlanner {
-	/** @description Operators whose rows are split by exact value; the rest are LIKE patterns **/
-	private static final Set<String> EQUALITY_OPERATORS = new Set<String>{ 'EQUALS', 'IN' };
-
 	/** @description Interviews that share a query definition and access level, by both **/
 	private Map<String, InvocableSoqlPlanner.Batch> batches = new Map<String, InvocableSoqlPlanner.Batch>{};
 
@@ -19,22 +16,42 @@ public inherited sharing class InvocableSoqlPlanner {
 	 * @return One output per input, in the same order
 	 */
 	public List<InvocableSoql.Output> run(List<InvocableSoql.Input> inputs) {
+		List<InvocableSoqlPlanner.Variant> variants = this.addInputs(inputs);
+		for (InvocableSoqlPlanner.Batch batch : this.batches?.values()) {
+			batch?.run();
+		}
+		return this.initOutputs(variants);
+	}
+
+	// **** PRIVATE **** //
+	/**
+	 * @description Adds each interview to its batch
+	 * @param inputs One input per flow interview
+	 * @return Each interview's variant, in input order
+	 */
+	private List<InvocableSoqlPlanner.Variant> addInputs(List<InvocableSoql.Input> inputs) {
 		List<InvocableSoqlPlanner.Variant> variants = new List<InvocableSoqlPlanner.Variant>{};
 		for (InvocableSoql.Input input : inputs) {
 			InvocableSoqlPlanner.Variant variant = this.addInput(input);
 			variants?.add(variant);
 		}
-		for (InvocableSoqlPlanner.Batch batch : this.batches?.values()) {
-			batch?.run();
-		}
+		return variants;
+	}
+
+	/**
+	 * @description Gives each interview its variant's rows and query string
+	 * @param variants Each interview's variant, in input order
+	 * @return One output per interview, in the same order
+	 */
+	private List<InvocableSoql.Output> initOutputs(List<InvocableSoqlPlanner.Variant> variants) {
 		List<InvocableSoql.Output> outputs = new List<InvocableSoql.Output>{};
 		for (InvocableSoqlPlanner.Variant variant : variants) {
-			outputs?.add(variant?.toOutput());
+			InvocableSoql.Output output = new InvocableSoql.Output(variant?.records, variant?.queryString);
+			outputs?.add(output);
 		}
 		return outputs;
 	}
 
-	// **** PRIVATE **** //
 	/**
 	 * @description Adds an interview to the batch for its query and access level
 	 * @param input The interview's input
@@ -55,27 +72,14 @@ public inherited sharing class InvocableSoqlPlanner {
 	 * `InvocableSoqlQuery.coerce`, so their case-insensitive form is still unique
 	 * @param value A field value, or a value the field was compared to
 	 * @param isCaseSensitive Whether the field compares text case-sensitively
-	 * @return The value's key
+	 * @return The value's key, or null for a null value
 	 */
 	@TestVisible
 	private static String toKey(Object value, Boolean isCaseSensitive) {
 		String text = (value instanceof Decimal)
 			? ((Decimal) value)?.stripTrailingZeros()?.toPlainString()
 			: String.valueOf(value);
-		return (value == null || isCaseSensitive == true) ? text : text?.toLowerCase();
-	}
-
-	/**
-	 * @description Matches a simple LIKE pattern in Apex, the way SOQL would
-	 * @param pattern A simple pattern, per `InvocableSoqlPlanner.LikePattern`
-	 * @param value A field value
-	 * @param isCaseSensitive Whether the field compares text case-sensitively
-	 * @return Whether the value matches
-	 */
-	@TestVisible
-	private static Boolean isLikeMatch(String pattern, Object value, Boolean isCaseSensitive) {
-		InvocableSoqlPlanner.LikePattern parsed = new InvocableSoqlPlanner.LikePattern(pattern, isCaseSensitive);
-		return parsed?.matches(value);
+		return (isCaseSensitive == true) ? text : text?.toLowerCase();
 	}
 
 	/**
@@ -120,9 +124,9 @@ public inherited sharing class InvocableSoqlPlanner {
 		 */
 		private InvocableSoqlPlanner.Variant addInput(InvocableSoql.Input input) {
 			List<Object> values = this.query?.resolveValues(input);
-			String key = JSON.serialize(values);
-			InvocableSoqlPlanner.Variant variant = this.variants?.get(key) ??
-				new InvocableSoqlPlanner.Variant(this.query, this.accessLevel, values);
+			InvocableSoqlPlanner.Variant candidate = new InvocableSoqlPlanner.Variant(values);
+			String key = String.join(candidate?.valueKeys, '\n');
+			InvocableSoqlPlanner.Variant variant = this.variants?.get(key) ?? candidate;
 			this.variants?.put(key, variant);
 			return variant;
 		}
@@ -134,16 +138,26 @@ public inherited sharing class InvocableSoqlPlanner {
 		private Integer findVaryingIndex() {
 			List<InvocableSoqlPlanner.Variant> variants = this.variants?.values();
 			List<Integer> varying = new List<Integer>{};
-			for (Integer index = 0; index < variants?.get(0)?.values?.size(); index++) {
-				Set<String> keys = new Set<String>{};
-				for (InvocableSoqlPlanner.Variant variant : variants) {
-					keys?.add(JSON.serialize(variant?.values?.get(index)));
-				}
-				if (keys?.size() > 1) {
+			for (Integer index = 0; index < variants?.get(0)?.valueKeys?.size(); index++) {
+				if (this.isVarying(index) == true) {
 					varying?.add(index);
 				}
 			}
 			return (varying?.size() == 1) ? varying?.get(0) : null;
+		}
+
+		/**
+		 * @description Whether variants hold different values for a condition
+		 * @param index The condition's index
+		 * @return Whether its values differ
+		 */
+		private Boolean isVarying(Integer index) {
+			Set<String> keys = new Set<String>{};
+			for (InvocableSoqlPlanner.Variant variant : this.variants?.values()) {
+				String key = variant?.valueKeys?.get(index);
+				keys?.add(key);
+			}
+			return keys?.size() > 1;
 		}
 
 		/**
@@ -154,22 +168,34 @@ public inherited sharing class InvocableSoqlPlanner {
 		 */
 		private List<InvocableSoqlPlanner.Variant> getMergeable(Integer index) {
 			List<InvocableSoqlPlanner.Variant> mergeable = new List<InvocableSoqlPlanner.Variant>{};
-			Boolean isMergeable = index != null && this.query?.isMergeable(index) == true;
-			Boolean isPattern =
-				isMergeable && !InvocableSoqlPlanner.EQUALITY_OPERATORS?.contains(this.query?.getOperator(index));
-			List<InvocableSoqlPlanner.Variant> candidates = isMergeable ? this.variants?.values() : mergeable;
-			for (InvocableSoqlPlanner.Variant variant : candidates) {
-				Object value = variant?.values?.get(index);
-				Boolean isSimple = !isPattern || new InvocableSoqlPlanner.LikePattern((String) value, false)?.isSimple;
-				if (value != null && isSimple == true) {
-					mergeable?.add(variant);
+			if (index != null && this.query?.isMergeable(index) == true) {
+				for (InvocableSoqlPlanner.Variant variant : this.variants?.values()) {
+					Object value = variant?.values?.get(index);
+					if (this.isMergeableValue(index, value) == true) {
+						mergeable?.add(variant);
+					}
 				}
 			}
 			return mergeable;
 		}
 
 		/**
-		 * @description Merges what it can into one query, then runs the remaining variants one query each
+		 * @description A null value runs alone, and so does a LIKE pattern that a split can't reproduce
+		 * @param index The varying condition's index
+		 * @param value A variant's value for it
+		 * @return Whether a merged query can serve the variant
+		 */
+		private Boolean isMergeableValue(Integer index, Object value) {
+			Boolean isPattern = this.query?.isPattern(index);
+			Boolean isSimple = (isPattern && value != null)
+				? new InvocableSoqlPlanner.LikePattern((String) value, false)?.isSimple
+				: true;
+			return value != null && isSimple == true;
+		}
+
+		/**
+		 * @description Merges what it can into one query, runs the remaining variants one query each, then renders each
+		 * variant's query string once for all its interviews
 		 */
 		private void run() {
 			Integer index = this.findVaryingIndex();
@@ -178,7 +204,8 @@ public inherited sharing class InvocableSoqlPlanner {
 				this.runMerged(index, mergeable);
 			}
 			for (InvocableSoqlPlanner.Variant variant : this.variants?.values()) {
-				variant?.runIfPending();
+				variant.records = variant?.records ?? this.query?.toSoql(variant?.values, this.accessLevel)?.query();
+				variant.queryString = this.query?.toQueryString(variant?.values);
 			}
 		}
 
@@ -191,16 +218,10 @@ public inherited sharing class InvocableSoqlPlanner {
 		private void runMerged(Integer index, List<InvocableSoqlPlanner.Variant> mergeable) {
 			InvocableSoqlPlanner.Splitter splitter = new InvocableSoqlPlanner.Splitter(this.query, index, mergeable);
 			List<Object> values = mergeable?.get(0)?.values?.clone();
-			values?.set(index, splitter?.getMergedValue());
+			Object mergedValue = splitter?.getMergedValue();
+			values?.set(index, mergedValue);
 			List<SObject> rows = this.query?.toSoql(values, this.accessLevel)?.query();
-			for (InvocableSoqlPlanner.Variant variant : mergeable) {
-				variant.records = new List<SObject>{};
-			}
-			for (SObject row : rows) {
-				for (InvocableSoqlPlanner.Variant variant : splitter?.match(row)) {
-					variant?.records?.add(row);
-				}
-			}
+			splitter?.split(rows);
 		}
 	}
 
@@ -208,48 +229,58 @@ public inherited sharing class InvocableSoqlPlanner {
 	 * @description A simple LIKE pattern: text with an optional `%` at either end, ex: `abc%`. Escaped wildcards, ex:
 	 * `\%`, are literal text. Any other wildcard makes the pattern complex, which only SOQL can match
 	 */
+	@TestVisible
 	private class LikePattern {
-		private Boolean isCaseSensitive;
 		private Boolean isLeading;
 		private Boolean isSimple;
 		private Boolean isTrailing;
-		private String text;
+		/** @description The literal text, as a key, so each row is only compared, not normalized again **/
+		private String key;
 
 		/**
 		 * @description Parses the pattern
 		 * @param pattern The pattern, as bound
 		 * @param isCaseSensitive Whether the field compares text case-sensitively
 		 */
+		@TestVisible
 		private LikePattern(String pattern, Boolean isCaseSensitive) {
-			this.isCaseSensitive = isCaseSensitive;
+			this.parse(pattern, isCaseSensitive);
+		}
+
+		/**
+		 * @description Matches like SOQL would
+		 * @param candidate A field value's key, from `InvocableSoqlPlanner.toKey`
+		 * @return Whether the value matches
+		 */
+		@TestVisible
+		private Boolean matches(String candidate) {
+			Boolean isMatch;
+			if (this.isLeading && this.isTrailing) {
+				isMatch = candidate?.contains(this.key);
+			} else if (this.isLeading) {
+				isMatch = candidate?.endsWith(this.key);
+			} else if (this.isTrailing) {
+				isMatch = candidate?.startsWith(this.key);
+			} else {
+				isMatch = candidate?.equals(this.key);
+			}
+			return isMatch == true;
+		}
+
+		/**
+		 * @description Reads the pattern's wildcards and literal text
+		 * @param pattern The pattern, as bound
+		 * @param isCaseSensitive Whether the field compares text case-sensitively
+		 */
+		private void parse(String pattern, Boolean isCaseSensitive) {
 			this.isLeading = pattern?.startsWith('%') == true;
 			String rest = this.isLeading ? pattern?.substring(1) : pattern;
 			this.isTrailing = rest?.endsWith('%') == true && rest?.endsWith('\\%') == false;
 			String body = this.isTrailing ? rest?.removeEnd('%') : rest;
 			String unescaped = body?.replace('\\\\', '')?.replace('\\%', '')?.replace('\\_', '');
 			this.isSimple = unescaped?.containsAny('%_\\') == false;
-			this.text = this.unescape(body);
-		}
-
-		/**
-		 * @description Matches like SOQL, ignoring case unless the field is case-sensitive
-		 * @param value A field value
-		 * @return Whether the value matches
-		 */
-		private Boolean matches(Object value) {
-			String candidate = InvocableSoqlPlanner.toKey(value, this.isCaseSensitive);
-			String expected = InvocableSoqlPlanner.toKey(this.text, this.isCaseSensitive);
-			Boolean isMatch;
-			if (this.isLeading && this.isTrailing) {
-				isMatch = candidate?.contains(expected);
-			} else if (this.isLeading) {
-				isMatch = candidate?.endsWith(expected);
-			} else if (this.isTrailing) {
-				isMatch = candidate?.startsWith(expected);
-			} else {
-				isMatch = candidate?.equals(expected);
-			}
-			return isMatch == true;
+			String text = this.unescape(body);
+			this.key = InvocableSoqlPlanner.toKey(text, isCaseSensitive);
 		}
 
 		/**
@@ -261,7 +292,8 @@ public inherited sharing class InvocableSoqlPlanner {
 		private String unescape(String body) {
 			List<String> pieces = new List<String>{};
 			for (String piece : body?.split('\\\\\\\\', -1) ?? new List<String>{}) {
-				pieces?.add(piece?.replace('\\%', '%')?.replace('\\_', '_'));
+				String literal = piece?.replace('\\%', '%')?.replace('\\_', '_');
+				pieces?.add(literal);
 			}
 			return String.join(pieces, '\\');
 		}
@@ -272,9 +304,10 @@ public inherited sharing class InvocableSoqlPlanner {
 		private Integer index;
 		private Boolean isCaseSensitive;
 		private Boolean isPattern;
+		/** @description Each variant's LIKE pattern, by position; empty for EQUALS and IN **/
 		private List<InvocableSoqlPlanner.LikePattern> patterns = new List<InvocableSoqlPlanner.LikePattern>{};
 		private InvocableSoqlQuery query;
-		/** @description Each EQUALS or IN value's variants, by key; indexes, so a duplicate value adds a row once **/
+		/** @description Each EQUALS or IN value's variants, by key; positions, so a duplicate value adds a row once **/
 		private Map<String, Set<Integer>> variantsByKey = new Map<String, Set<Integer>>{};
 		private List<InvocableSoqlPlanner.Variant> variants;
 
@@ -287,7 +320,7 @@ public inherited sharing class InvocableSoqlPlanner {
 		private Splitter(InvocableSoqlQuery query, Integer index, List<InvocableSoqlPlanner.Variant> variants) {
 			this.index = index;
 			this.isCaseSensitive = query?.isCaseSensitive(index);
-			this.isPattern = !InvocableSoqlPlanner.EQUALITY_OPERATORS?.contains(query?.getOperator(index));
+			this.isPattern = query?.isPattern(index);
 			this.query = query;
 			this.variants = variants;
 			for (Integer position = 0; position < variants?.size(); position++) {
@@ -304,9 +337,33 @@ public inherited sharing class InvocableSoqlPlanner {
 			List<Object> merged = new List<Object>{};
 			for (InvocableSoqlPlanner.Variant variant : this.variants) {
 				Object value = variant?.values?.get(this.index);
-				merged?.addAll(InvocableSoqlPlanner.toList(value));
+				List<Object> values = InvocableSoqlPlanner.toList(value);
+				merged?.addAll(values);
 			}
 			return this.query?.coerce(this.index, merged);
+		}
+
+		/**
+		 * @description Gives each variant the rows that match its value, in query order
+		 * @param rows The merged query's rows
+		 */
+		private void split(List<SObject> rows) {
+			for (InvocableSoqlPlanner.Variant variant : this.variants) {
+				variant.records = new List<SObject>{};
+			}
+			for (SObject row : rows) {
+				this.addRow(row);
+			}
+		}
+
+		/**
+		 * @description Adds a row to each variant it belongs to
+		 * @param row A row from the merged query
+		 */
+		private void addRow(SObject row) {
+			for (InvocableSoqlPlanner.Variant variant : this.match(row)) {
+				variant?.records?.add(row);
+			}
 		}
 
 		/**
@@ -316,51 +373,57 @@ public inherited sharing class InvocableSoqlPlanner {
 		 */
 		private List<InvocableSoqlPlanner.Variant> match(SObject row) {
 			Object fieldValue = this.query?.getFieldValue(row, this.index);
-			return this.isPattern ? this.matchPatterns(fieldValue) : this.matchKeys(fieldValue);
+			String key = InvocableSoqlPlanner.toKey(fieldValue, this.isCaseSensitive);
+			return this.isPattern ? this.matchPatterns(key) : this.matchKeys(key);
 		}
 
 		/**
-		 * @description Indexes a variant's value: a pattern, or a key per EQUALS or IN value
+		 * @description Indexes a variant's value: its pattern, or a key per EQUALS or IN value
 		 * @param position The variant's position in `variants`
 		 */
 		private void addVariant(Integer position) {
 			Object value = this.variants?.get(position)?.values?.get(this.index);
-			InvocableSoqlPlanner.LikePattern pattern = this.isPattern
-				? new InvocableSoqlPlanner.LikePattern((String) value, this.isCaseSensitive)
-				: null;
-			this.patterns?.add(pattern);
-			for (Object element : (this.isPattern ? new List<Object>{} : InvocableSoqlPlanner.toList(value))) {
-				String key = InvocableSoqlPlanner.toKey(element, this.isCaseSensitive);
-				Set<Integer> positions = this.variantsByKey?.get(key) ?? new Set<Integer>{};
-				positions?.add(position);
-				this.variantsByKey?.put(key, positions);
+			if (this.isPattern == true) {
+				InvocableSoqlPlanner.LikePattern pattern = new InvocableSoqlPlanner.LikePattern(
+					(String) value,
+					this.isCaseSensitive
+				);
+				this.patterns?.add(pattern);
+			} else {
+				for (Object element : InvocableSoqlPlanner.toList(value)) {
+					String key = InvocableSoqlPlanner.toKey(element, this.isCaseSensitive);
+					Set<Integer> positions = this.variantsByKey?.get(key) ?? new Set<Integer>{};
+					positions?.add(position);
+					this.variantsByKey?.put(key, positions);
+				}
 			}
 		}
 
 		/**
 		 * @description Looks up the row's value by key
-		 * @param fieldValue The row's value for the varying field
+		 * @param key The row's key for the varying field
 		 * @return The variants with that value
 		 */
-		private List<InvocableSoqlPlanner.Variant> matchKeys(Object fieldValue) {
-			String key = InvocableSoqlPlanner.toKey(fieldValue, this.isCaseSensitive);
+		private List<InvocableSoqlPlanner.Variant> matchKeys(String key) {
 			List<InvocableSoqlPlanner.Variant> matches = new List<InvocableSoqlPlanner.Variant>{};
 			for (Integer position : this.variantsByKey?.get(key) ?? new Set<Integer>{}) {
-				matches?.add(this.variants?.get(position));
+				InvocableSoqlPlanner.Variant variant = this.variants?.get(position);
+				matches?.add(variant);
 			}
 			return matches;
 		}
 
 		/**
 		 * @description Tests the row's value against each variant's pattern
-		 * @param fieldValue The row's value for the varying field
+		 * @param key The row's key for the varying field
 		 * @return The variants whose pattern matches
 		 */
-		private List<InvocableSoqlPlanner.Variant> matchPatterns(Object fieldValue) {
+		private List<InvocableSoqlPlanner.Variant> matchPatterns(String key) {
 			List<InvocableSoqlPlanner.Variant> matches = new List<InvocableSoqlPlanner.Variant>{};
 			for (Integer position = 0; position < this.patterns?.size(); position++) {
-				if (this.patterns?.get(position)?.matches(fieldValue) == true) {
-					matches?.add(this.variants?.get(position));
+				if (this.patterns?.get(position)?.matches(key) == true) {
+					InvocableSoqlPlanner.Variant variant = this.variants?.get(position);
+					matches?.add(variant);
 				}
 			}
 			return matches;
@@ -369,41 +432,23 @@ public inherited sharing class InvocableSoqlPlanner {
 
 	/** @description A distinct set of values in a batch: the interviews that share it share its query and rows **/
 	private class Variant {
-		private System.AccessLevel accessLevel;
-		private InvocableSoqlQuery query;
+		private String queryString;
 		/** @description Null until a query fills it, so the batch can tell which variants still need one **/
 		private List<SObject> records;
-		private String queryString;
+		/** @description Each value as JSON, to tell variants apart and find the condition that differs **/
+		private List<String> valueKeys = new List<String>{};
 		private List<Object> values;
 
 		/**
-		 * @description Holds what running the query needs
-		 * @param query The query
-		 * @param accessLevel The access level
+		 * @description Serializes each value once, for comparing variants
 		 * @param values One value per condition
 		 */
-		private Variant(InvocableSoqlQuery query, System.AccessLevel accessLevel, List<Object> values) {
-			this.accessLevel = accessLevel;
-			this.query = query;
+		private Variant(List<Object> values) {
 			this.values = values;
-		}
-
-		/**
-		 * @description Runs the variant's own query, unless a merged query already filled its rows
-		 */
-		private void runIfPending() {
-			if (this.records == null) {
-				this.records = this.query?.toSoql(this.values, this.accessLevel)?.query();
+			for (Object value : values) {
+				String valueKey = JSON.serialize(value);
+				this.valueKeys?.add(valueKey);
 			}
-		}
-
-		/**
-		 * @description Interviews that share the variant share its query string, rendered once
-		 * @return An output for one of the variant's interviews
-		 */
-		private InvocableSoql.Output toOutput() {
-			this.queryString = this.queryString ?? this.query?.toQueryString(this.values);
-			return new InvocableSoql.Output(this.records, this.queryString);
 		}
 	}
 }

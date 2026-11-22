@@ -1,6 +1,7 @@
 import { LightningElement, api, wire } from "lwc";
 import { getObjectInfos } from "lightning/uiObjectInfoApi";
 import {
+	DATE_LITERAL_PATTERN,
 	filterSections,
 	getChildSections,
 	getRootSections,
@@ -11,8 +12,6 @@ import {
 	resolveItem
 } from "c/flowResourceMenu";
 
-// SOQL's date literals, ex: TODAY or LAST_N_DAYS:30
-const DATE_LITERAL_PATTERN = /^[A-Z_0-9]+(:\d+)?$/;
 const GLOBAL_CONSTANT_PREFIX = "$GlobalConstant.";
 // The text each typed input takes as a literal of its type; anything else is text
 const LITERAL_PATTERNS = {
@@ -68,7 +67,8 @@ function toValueDataType(item) {
  */
 export default class FlowResourcePicker extends LightningElement {
 	/**
-	 * @description Whether a collection input also takes record collections of any object, ex: for their IDs
+	 * @description Whether a collection input also takes record collections, ex: for their IDs; `objectType` limits
+	 * them to one object
 	 * @type {Boolean}
 	 */
 	@api acceptsRecords = false;

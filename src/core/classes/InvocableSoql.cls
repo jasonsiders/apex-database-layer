@@ -32,7 +32,8 @@ public inherited sharing class InvocableSoql {
 		for (SObjectType objectType : Schema.getGlobalDescribe()?.values()) {
 			DescribeSObjectResult describe = objectType?.getDescribe(SObjectDescribeOptions.DEFERRED);
 			if (describe?.isQueryable() == true && describe?.isDeprecatedAndHidden() == false) {
-				options?.add(new InvocableSoql.ObjectOption(describe));
+				InvocableSoql.ObjectOption option = new InvocableSoql.ObjectOption(describe);
+				options?.add(option);
 			}
 		}
 		return options;
@@ -51,7 +52,8 @@ public inherited sharing class InvocableSoql {
 		for (SObjectField field : InvocableSoql.describeFields(objectApiName)) {
 			DescribeFieldResult describe = field?.getDescribe();
 			if (describe?.isAccessible() == true) {
-				options?.add(new InvocableSoql.FieldOption(describe));
+				InvocableSoql.FieldOption option = new InvocableSoql.FieldOption(describe);
+				options?.add(option);
 			}
 		}
 		return options;
@@ -87,7 +89,8 @@ public inherited sharing class InvocableSoql {
 		List<InvocableSoql.PicklistOption> options = new List<InvocableSoql.PicklistOption>{};
 		for (Schema.PicklistEntry entry : entries) {
 			if (entry?.isActive() == true) {
-				options?.add(new InvocableSoql.PicklistOption(entry));
+				InvocableSoql.PicklistOption option = new InvocableSoql.PicklistOption(entry);
+				options?.add(option);
 			}
 		}
 		return options;
@@ -102,6 +105,9 @@ public inherited sharing class InvocableSoql {
 		/** @description Conditions can only use filterable fields **/
 		@AuraEnabled
 		public Boolean isFilterable;
+		/** @description A lookup to several objects, ex: Task.WhoId, takes record collections of any object **/
+		@AuraEnabled
+		public Boolean isPolymorphic;
 		/** @description ORDER BY can only use sortable fields **/
 		@AuraEnabled
 		public Boolean isSortable;
@@ -127,12 +133,15 @@ public inherited sharing class InvocableSoql {
 		 */
 		private FieldOption(DescribeFieldResult field) {
 			List<SObjectType> parents = field?.getReferenceTo();
+			List<Schema.PicklistEntry> entries = field?.getPicklistValues();
+			SObjectType firstParent = parents?.isEmpty() == false ? parents?.get(0) : null;
 			this.apiName = field?.getName();
 			this.isFilterable = field?.isFilterable();
+			this.isPolymorphic = parents?.size() > 1;
 			this.isSortable = field?.isSortable();
 			this.label = field?.getLabel();
-			this.picklistValues = InvocableSoql.initPicklistOptions(field?.getPicklistValues());
-			this.referenceTo = parents?.isEmpty() == false ? String.valueOf(parents?.get(0)) : null;
+			this.picklistValues = InvocableSoql.initPicklistOptions(entries);
+			this.referenceTo = firstParent?.toString();
 			this.relationshipName = field?.getRelationshipName();
 			this.type = field?.getType()?.name();
 		}

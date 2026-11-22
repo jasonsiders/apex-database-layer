@@ -1,4 +1,6 @@
 import { createElement } from "lwc";
+import { readFileSync } from "fs";
+import path from "path";
 import SoqlQueryEditor from "c/soqlQueryEditor";
 import getObjects from "@salesforce/apex/InvocableSoql.getObjects";
 import getFields from "@salesforce/apex/InvocableSoql.getFields";
@@ -73,12 +75,12 @@ async function fire(target, detail) {
 }
 
 async function pickField(element, index, value) {
-	const path = rows(element, "condition")[index].querySelector("c-soql-field-path");
+	const fieldPath = rows(element, "condition")[index].querySelector("c-soql-field-path");
 	const objectApiName = "Contact";
 	const field = value.includes(".")
 		? FIELDS.Account.find((candidate) => candidate.apiName === value.split(".")[1])
 		: FIELDS[objectApiName].find((candidate) => candidate.apiName === value);
-	await fire(path, { value, field });
+	await fire(fieldPath, { value, field });
 }
 
 function withCondition(condition) {
@@ -194,7 +196,13 @@ describe("c-soql-query-editor", () => {
 		const { element, events } = await render(withCondition({ field: "AccountId", operator: "IN" }));
 
 		const picker = valuePicker(element, 0);
-		expect(picker).toMatchObject({ type: "String", isCollection: true, acceptsRecords: true });
+		// AccountId holds Account IDs, so only Account collections can match:
+		expect(picker).toMatchObject({
+			type: "String",
+			isCollection: true,
+			acceptsRecords: true,
+			objectType: "Account"
+		});
 		await fire(picker, {
 			value: "accountsVar",
 			valueDataType: "reference",
@@ -343,6 +351,48 @@ describe("c-soql-query-editor", () => {
 		expect(savedDefinition(events).conditionLogic).toBe("OR");
 	});
 
+	it("keeps custom logic in step as conditions are added and removed", async () => {
+		const { element, events } = await render({
+			objectApiName: "Contact",
+			fields: [],
+			conditions: [
+				{ field: "LastName", operator: "IS_NULL" },
+				{ field: "LeadSource", operator: "IS_NULL" },
+				{ field: "Birthdate", operator: "IS_NULL" }
+			],
+			conditionLogic: "1 OR (2 AND 3)",
+			orderBy: []
+		});
+
+		element.shadowRoot.querySelector('lightning-button[data-name="addCondition"]').click();
+		await flush();
+		expect(savedDefinition(events).conditionLogic).toBe("1 OR (2 AND 3) AND 4");
+
+		rows(element, "condition")[0].querySelector("lightning-button-icon").click();
+		await flush();
+		// The removed condition's number can't be guessed, so it's flagged for the user to fix:
+		expect(savedDefinition(events).conditionLogic).toBe("? OR (1 AND 2) AND 3");
+		// The added condition is still empty, so it's flagged too:
+		expect(element.validate().map((error) => error.key)).toEqual(["condition-2", "conditionLogic"]);
+
+		const custom = element.shadowRoot.querySelector('lightning-input[data-name="customLogic"]');
+		await fire(custom, { value: "1 AND 2" });
+		// Condition 3 isn't named, so it wouldn't apply:
+		expect(element.validate().map((error) => error.key)).toEqual(["condition-2", "conditionLogic"]);
+	});
+
+	it("saves typed booleans in lowercase, which Apex reads", async () => {
+		const { element, events } = await render(withCondition({ field: "DoNotCall", operator: "EQUALS" }));
+
+		await fire(valuePicker(element, 0), { value: "TRUE", valueDataType: "Boolean" });
+
+		expect(savedDefinition(events).conditions[0]).toEqual({
+			field: "DoNotCall",
+			operator: "EQUALS",
+			value: "true"
+		});
+	});
+
 	it("flags a missing object, and incomplete conditions", async () => {
 		const { element } = await render();
 		expect(element.validate()).toEqual([{ key: "objectApiName", errorString: "Enter a value." }]);
@@ -392,6 +442,21 @@ describe("c-soql-query-editor", () => {
 		await fire(input("rowLimit"), { value: "" });
 		await fire(input("usage"), { value: "" });
 		expect(savedDefinition(events)).toMatchObject({ rowLimit: null, usage: null });
+	});
+
+	it("only assigns slots that InvocableSoql.Input declares", () => {
+		// Every slot type the editor can assign: one per value type, plus collections for the kinds that offer IN
+		const prefixes = ["text", "number", "date", "dateTime", "time", "boolean"].concat(
+			["text", "number", "date", "dateTime", "record"].map((prefix) => `${prefix}Collection`)
+		);
+		const source = readFileSync(path.resolve(__dirname, "../../../classes/InvocableSoql.cls"), "utf8");
+		const declared = new Set([...source.matchAll(/public [\w<>]+ (\w+\d+);/g)].map((match) => match[1]));
+
+		const expected = prefixes.flatMap((prefix) =>
+			Array.from({ length: 10 }, (_, index) => `${prefix}${index + 1}`)
+		);
+		expect(expected.filter((name) => !declared.has(name))).toEqual([]);
+		expect(declared.size).toBe(expected.length);
 	});
 
 	it("starts over from a definition that isn't valid JSON", async () => {

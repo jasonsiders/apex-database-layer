@@ -123,6 +123,12 @@ describe("c-flow-resource-menu", () => {
 			});
 		});
 
+		it("restricts the record collections a text collection input accepts to its object, when it has one", () => {
+			const sections = getRootSections(context, { ...TEXTS, acceptsRecords: true, objectType: "Contact" });
+
+			expect(labelsBySection(sections)).toEqual({ "Simple Variables": ["textCollectionVar"] });
+		});
+
 		it("restricts records to the input's object, when it has one", () => {
 			const sections = getRootSections(context, { ...RECORD, objectType: "Contact" });
 

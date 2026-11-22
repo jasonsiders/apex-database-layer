@@ -86,6 +86,20 @@ private class InvocableSoqlTest {
 	}
 
 	@IsTest
+	private static void shouldKeepTypedTimesAsTyped() {
+		InvocableSoqlQuery query = InvocableSoqlTest.initQuery('BusinessHours', null);
+		// A typed time has no zone; JSON alone would read it in the running user's time zone:
+		query.conditions.add(InvocableSoqlTest.initCondition('MondayStartTime', 'GREATER_OR_EQUAL', '09:30'));
+
+		Test.startTest();
+		InvocableSoql.Output output = InvocableSoqlTest.invoke(InvocableSoqlTest.initInput(query));
+		Test.stopTest();
+
+		String expected = 'SELECT Id, MondayStartTime FROM BusinessHours WHERE MondayStartTime >= 09:30:00.000Z';
+		Assert.areEqual(expected, output?.queryString, 'Wrong query');
+	}
+
+	@IsTest
 	private static void shouldMatchRecordCollectionByIds() {
 		List<Account> accounts = new List<Account>{ new Account(Name = 'Acme'), new Account(Name = 'Beta') };
 		insert accounts;
@@ -407,6 +421,18 @@ private class InvocableSoqlTest {
 		unknownOperator.conditions.add(InvocableSoqlTest.initCondition('Name', 'SOUNDS_LIKE', 'x'));
 		InvocableSoqlQuery unknownSlot = InvocableSoqlTest.initQuery('Account', null);
 		unknownSlot.conditions.add(InvocableSoqlTest.initSlotCondition('Name', 'EQUALS', 'text99'));
+		InvocableSoqlQuery unknownSelectField = InvocableSoqlTest.initQuery(
+			'Account',
+			new List<String>{ 'Name, (SELECT Id FROM Contacts)' }
+		);
+		InvocableSoqlQuery unknownSortField = InvocableSoqlTest.initQuery('Account', null);
+		InvocableSoqlQuery.SortOrder badSort = new InvocableSoqlQuery.SortOrder();
+		badSort.field = 'Nope__c';
+		unknownSortField.orderBy = new List<InvocableSoqlQuery.SortOrder>{ badSort };
+		InvocableSoqlQuery malformedDateLiteral = InvocableSoqlTest.initQuery('Account', null);
+		InvocableSoqlQuery.Condition fakeLiteral = InvocableSoqlTest.initCondition('CreatedDate', 'EQUALS', null);
+		fakeLiteral.dateLiteral = 'FOO_BAR:3';
+		malformedDateLiteral.conditions.add(fakeLiteral);
 		InvocableSoqlQuery missingObject = InvocableSoqlTest.initQuery(null, null);
 		InvocableSoql.Input missingDefinition = new InvocableSoql.Input();
 
@@ -416,6 +442,9 @@ private class InvocableSoqlTest {
 			InvocableSoqlTest.invokeAndCatch(InvocableSoqlTest.initInput(unknownParent)),
 			InvocableSoqlTest.invokeAndCatch(InvocableSoqlTest.initInput(unknownOperator)),
 			InvocableSoqlTest.invokeAndCatch(InvocableSoqlTest.initInput(unknownSlot)),
+			InvocableSoqlTest.invokeAndCatch(InvocableSoqlTest.initInput(unknownSelectField)),
+			InvocableSoqlTest.invokeAndCatch(InvocableSoqlTest.initInput(unknownSortField)),
+			InvocableSoqlTest.invokeAndCatch(InvocableSoqlTest.initInput(malformedDateLiteral)),
 			InvocableSoqlTest.invokeAndCatch(InvocableSoqlTest.initInput(missingObject)),
 			InvocableSoqlTest.invokeAndCatch(missingDefinition)
 		};
@@ -455,6 +484,20 @@ private class InvocableSoqlTest {
 		Assert.areEqual(1, output?.records?.size(), 'Wrong # of records');
 		Assert.isTrue(output?.queryString?.contains('AccountId = \'' + account.Id + '\''), output?.queryString);
 		Assert.isTrue(output?.queryString?.endsWith('Account.NumberOfEmployees IN (50, 60)'), output?.queryString);
+	}
+
+	@IsTest
+	private static void shouldRejectFractionsForWholeNumberFields() {
+		InvocableSoqlQuery query = InvocableSoqlTest.initQuery('Account', null);
+		query.conditions.add(InvocableSoqlTest.initSlotCondition('NumberOfEmployees', 'LESS_THAN', 'number1'));
+		InvocableSoql.Input input = InvocableSoqlTest.initInput(query);
+		input.number1 = 42.5;
+
+		Test.startTest();
+		Exception caughtError = InvocableSoqlTest.invokeAndCatch(input);
+		Test.stopTest();
+
+		Assert.isInstanceOfType(caughtError, IllegalArgumentException.class, 'Wrong error: ' + caughtError);
 	}
 
 	@IsTest
@@ -506,6 +549,7 @@ private class InvocableSoqlTest {
 		Assert.areEqual('Account', accountId?.relationshipName, 'Wrong relationship name');
 		Assert.areEqual('Account', accountId?.referenceTo, 'Wrong parent object');
 		Assert.areEqual('REFERENCE', accountId?.type, 'Wrong type');
+		Assert.isFalse(accountId?.isPolymorphic, 'AccountId only looks up to Account');
 		InvocableSoql.FieldOption lastName = fieldsByName.get('LastName');
 		Assert.areEqual(Contact.LastName.getDescribe().getLabel(), lastName?.label, 'Wrong label');
 		Assert.isTrue(lastName?.isFilterable, 'LastName is filterable');
@@ -515,6 +559,19 @@ private class InvocableSoqlTest {
 		Assert.areEqual('PICKLIST', leadSource?.type, 'Wrong type');
 		Assert.isFalse(leadSource?.picklistValues?.isEmpty(), 'Missing picklist values');
 		Assert.isNotNull(leadSource?.picklistValues?.get(0)?.value, 'Missing picklist value');
+	}
+
+	@IsTest
+	private static void shouldFlagPolymorphicLookups() {
+		Test.startTest();
+		List<InvocableSoql.FieldOption> fields = InvocableSoql.getFields('Task');
+		Test.stopTest();
+
+		InvocableSoql.FieldOption whoId;
+		for (InvocableSoql.FieldOption option : fields) {
+			whoId = (option.apiName == 'WhoId') ? option : whoId;
+		}
+		Assert.isTrue(whoId?.isPolymorphic, 'WhoId looks up to Contacts and Leads');
 	}
 
 	@IsTest

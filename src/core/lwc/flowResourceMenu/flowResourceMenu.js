@@ -18,6 +18,13 @@ const LABEL_COLLATOR = new Intl.Collator(undefined, { sensitivity: "base" });
 const TYPE_ORDER = ["Boolean", "Currency", "Date", "DateTime", "Multipicklist", "Number", "Picklist", "String", "Time"];
 // Flow passes these resources to an input of the key's type, ex: a Currency field to a Number input
 const COMPATIBLE_TYPES = { Number: ["Currency", "Number"], String: ["Picklist", "String"] };
+// SOQL's date literal grammar, ex: TODAY or LAST_N_DAYS:30, mirroring Soql.DATE_LITERAL_PATTERN in Apex
+export const DATE_LITERAL_PATTERN = new RegExp(
+	"^(YESTERDAY|TODAY|TOMORROW|(LAST|THIS|NEXT)_(WEEK|MONTH|QUARTER|YEAR|FISCAL_QUARTER|FISCAL_YEAR)|" +
+		"(LAST|NEXT)_90_DAYS|(LAST_N|NEXT_N)_(DAYS|WEEKS|MONTHS|QUARTERS|YEARS|FISCAL_QUARTERS|FISCAL_YEARS):\\d+|" +
+		"N_(DAYS|WEEKS|MONTHS|QUARTERS|YEARS|FISCAL_QUARTERS|FISCAL_YEARS)_AGO:\\d+)$",
+	"i"
+);
 
 // UI API field data types that Flow treats as something other than text
 const FLOW_TYPES_BY_FIELD_TYPE = {
@@ -331,15 +338,17 @@ export function isAssignable(item, target) {
 	const matchesObject = !target?.objectType || item.objectType === target.objectType;
 	const matchesShape = target?.isCollection == null || item.isCollection === target.isCollection;
 	const matchesRecord = item.dataType === SOBJECT && matchesShape && matchesObject;
-	// A collection input that accepts records takes record collections of any object, for their IDs
-	const matchesRecordIds = Boolean(target?.acceptsRecords) && item.dataType === SOBJECT && item.isCollection === true;
+	// A collection input that accepts records takes record collections of its object, if any, for their IDs
+	const isRecordCollection = item.dataType === SOBJECT && item.isCollection === true;
+	const matchesRecordIds = Boolean(target?.acceptsRecords) && isRecordCollection && matchesObject;
 	const isScalar = Boolean(item.dataType) && ![SOBJECT, "Apex"].includes(item.dataType);
 	const types = COMPATIBLE_TYPES[target?.dataType] ?? [target?.dataType];
 	const matchesScalarShape = Boolean(item.isCollection) === Boolean(target?.isCollection);
 	const matchesScalar = (isScalar && matchesScalarShape && types.includes(item.dataType)) || matchesRecordIds;
-	// Typing mustn't reach values that a picklist-only target doesn't list
+	// Typing mustn't reach values that a picklist-only target doesn't list; menu items came from the list
 	const isListed =
-		Boolean(item.isLiteral) && (target?.picklistValues ?? []).some(({ value }) => value === item.value);
+		Boolean(item.isLiteral) &&
+		(Boolean(item.isListed) || (target?.picklistValues ?? []).some(({ value }) => value === item.value));
 	const matchesMode = !target?.isPicklistOnly || isListed;
 	return !target || (matchesMode && (isRecordTarget ? matchesRecord : matchesScalar));
 }
@@ -647,7 +656,13 @@ function initOutputItems(action, context) {
  * @returns {Object} The picklist value's item
  */
 function initPicklistItem(picklistValue) {
-	return initItem({ icon: "utility:picklist_type", ...picklistValue, dataType: "String", isLiteral: true });
+	return initItem({
+		icon: "utility:picklist_type",
+		...picklistValue,
+		dataType: "String",
+		isListed: true,
+		isLiteral: true
+	});
 }
 
 /**

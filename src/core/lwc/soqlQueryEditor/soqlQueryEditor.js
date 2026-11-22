@@ -1,6 +1,6 @@
 import { LightningElement, api, wire } from "lwc";
 import getObjects from "@salesforce/apex/InvocableSoql.getObjects";
-import { REFERENCE, REQUIRED_ERROR, compareLabels } from "c/flowResourceMenu";
+import { DATE_LITERAL_PATTERN, REFERENCE, REQUIRED_ERROR, compareLabels, toBooleanConstant } from "c/flowResourceMenu";
 import { resolveField } from "c/soqlFieldPath";
 
 const ACCESS_LEVELS = [
@@ -8,8 +8,6 @@ const ACCESS_LEVELS = [
 	{ label: "System Mode", value: "SYSTEM_MODE" }
 ];
 const CUSTOM = "CUSTOM";
-// SOQL's date literals, ex: TODAY or LAST_N_DAYS:30, which the action renders in place instead of binding
-const DATE_LITERAL_PATTERN = /^[A-Z_0-9]+(:\d+)?$/;
 const DATE_LITERALS = [
 	"TODAY",
 	"YESTERDAY",
@@ -79,7 +77,10 @@ const OPERATOR_LABELS = {
 	NOT_IN: "Not In",
 	STARTS_WITH: "Starts With"
 };
+// Operators that take a collection, and those that take INCLUDES or EXCLUDES picklist values
+const COLLECTION_OPERATORS = ["IN", "NOT_IN"];
 const COMPARISONS = ["LESS_THAN", "GREATER_THAN", "LESS_OR_EQUAL", "GREATER_OR_EQUAL"];
+const MULTI_VALUE_OPERATORS = ["INCLUDES", "EXCLUDES"];
 const NULL_CHECKS = ["IS_NULL", "IS_NOT_NULL"];
 // The operators each kind of field offers, in Get Records' order
 const OPERATORS = {
@@ -91,6 +92,13 @@ const OPERATORS = {
 	// Flow has no Time collections, so Time fields can't use IN
 	time: ["EQUALS", "NOT_EQUALS", ...COMPARISONS, ...NULL_CHECKS]
 };
+// Combobox options for each kind's operators, built once
+const OPERATOR_OPTIONS = Object.fromEntries(
+	Object.entries(OPERATORS).map(([kind, operators]) => [
+		kind,
+		operators.map((operator) => ({ label: OPERATOR_LABELS[operator], value: operator }))
+	])
+);
 const KINDS = {
 	BOOLEAN: "boolean",
 	CURRENCY: "ordered",
@@ -116,13 +124,22 @@ const SLOT_PREFIXES = {
 	String: "text",
 	Time: "time"
 };
-const RECORD_SLOTS = Array.from({ length: SLOT_COUNT }, (_, index) => `${RECORD_SLOT_PREFIX}${index + 1}`);
+const RECORD_SLOTS = toSlotNames(RECORD_SLOT_PREFIX);
 const USAGES = [
 	// Flow Builder can't save a blank literal, so choosing None removes the option
 	{ label: "--None--", value: "" },
 	{ label: "All Rows (include deleted and archived records)", value: "ALL_ROWS" },
 	{ label: "For Update (lock the records for this transaction)", value: "FOR_UPDATE" }
 ];
+
+/**
+ * @description Names a slot type's slots, ex: `text1` to `text10`, matching `InvocableSoql.Input`
+ * @param {String} prefix The slot type, ex: `text`
+ * @returns {Array} The slot names
+ */
+function toSlotNames(prefix) {
+	return Array.from({ length: SLOT_COUNT }, (_, index) => `${prefix}${index + 1}`);
+}
 
 /**
  * @description The kind of field, which picks its operators and value type
@@ -218,10 +235,6 @@ export default class SoqlQueryEditor extends LightningElement {
 		return this._definition.fields.map((field, index) => ({ key: `${index}:${field}`, index, value: field }));
 	}
 
-	get hasConditions() {
-		return this._definition.conditions.length > 0;
-	}
-
 	get isCustomLogic() {
 		return this.logicMode === CUSTOM;
 	}
@@ -299,7 +312,8 @@ export default class SoqlQueryEditor extends LightningElement {
 		const conditionErrors = this._definition.conditions.map((condition, index) =>
 			this._validateCondition(condition, index)
 		);
-		const errors = [objectError, ...conditionErrors, this._validateLogic()].filter(Boolean);
+		const logicError = this._validateLogic();
+		const errors = [objectError, ...conditionErrors, logicError].filter(Boolean);
 		const errorEntries = errors.map((error) => [error.key, error.errorString]);
 		this._errors = Object.fromEntries(errorEntries);
 		return errors;
@@ -331,10 +345,15 @@ export default class SoqlQueryEditor extends LightningElement {
 	}
 
 	/**
-	 * @description Adds an empty condition
+	 * @description Adds an empty condition; custom logic gains ` AND n`, so the new condition applies, like Flow
+	 * Builder
 	 */
 	handleAddCondition() {
-		this._updateDefinition({ conditions: [...this._definition.conditions, { field: null, operator: null }] });
+		const conditions = [...this._definition.conditions, { field: null, operator: null }];
+		const logic = this._definition.conditionLogic;
+		const appended = logic?.trim() ? `${logic} AND ${conditions.length}` : String(conditions.length);
+		const conditionLogic = this.isCustomLogic ? appended : logic;
+		this._updateDefinition({ conditions, conditionLogic });
 	}
 
 	/**
@@ -405,7 +424,8 @@ export default class SoqlQueryEditor extends LightningElement {
 	 * @param {CustomEvent} event Change on the limit input
 	 */
 	handleLimitChange(event) {
-		this._updateDefinition({ rowLimit: this._toInteger(event.detail.value) });
+		const rowLimit = this._toInteger(event.detail.value);
+		this._updateDefinition({ rowLimit });
 	}
 
 	/**
@@ -429,7 +449,8 @@ export default class SoqlQueryEditor extends LightningElement {
 		if (objectApiName !== this.objectApiName) {
 			this._definition.conditions.forEach((condition) => this._releaseSlot(condition));
 			this._isCustomLogic = false;
-			this._updateDefinition({ ...parseDefinition(), objectApiName });
+			const emptyDefinition = parseDefinition();
+			this._updateDefinition({ ...emptyDefinition, objectApiName });
 			this._setGenericTypes(objectApiName);
 		}
 	}
@@ -439,7 +460,8 @@ export default class SoqlQueryEditor extends LightningElement {
 	 * @param {CustomEvent} event Change on the offset input
 	 */
 	handleOffsetChange(event) {
-		this._updateDefinition({ rowOffset: this._toInteger(event.detail.value) });
+		const rowOffset = this._toInteger(event.detail.value);
+		this._updateDefinition({ rowOffset });
 	}
 
 	/**
@@ -465,8 +487,17 @@ export default class SoqlQueryEditor extends LightningElement {
 	 */
 	handleRemoveCondition(event) {
 		const index = Number(event.target.dataset.index);
+		const removed = index + 1;
 		this._releaseSlot(this._definition.conditions[index]);
-		this._updateDefinition({ conditions: this._definition.conditions.filter((_, position) => position !== index) });
+		// Later conditions move up a number; a reference to the removed one becomes `?`, which validate() flags
+		const renumber = (text) => {
+			const number = Number(text);
+			return number === removed ? "?" : String(number > removed ? number - 1 : number);
+		};
+		const logic = this._definition.conditionLogic;
+		const conditions = this._definition.conditions.filter((_, position) => position !== index);
+		const conditionLogic = this.isCustomLogic ? logic.replace(/\d+/g, renumber) : logic;
+		this._updateDefinition({ conditions, conditionLogic });
 	}
 
 	/**
@@ -475,7 +506,8 @@ export default class SoqlQueryEditor extends LightningElement {
 	 */
 	handleRemoveField(event) {
 		const index = Number(event.target.dataset.index);
-		this._updateDefinition({ fields: this._definition.fields.filter((_, position) => position !== index) });
+		const fields = this._definition.fields.filter((_, position) => position !== index);
+		this._updateDefinition({ fields });
 	}
 
 	/**
@@ -484,7 +516,8 @@ export default class SoqlQueryEditor extends LightningElement {
 	 */
 	handleRemoveSort(event) {
 		const index = Number(event.target.dataset.index);
-		this._updateDefinition({ orderBy: this._definition.orderBy.filter((_, position) => position !== index) });
+		const orderBy = this._definition.orderBy.filter((_, position) => position !== index);
+		this._updateDefinition({ orderBy });
 	}
 
 	/**
@@ -526,8 +559,7 @@ export default class SoqlQueryEditor extends LightningElement {
 		const used = this._definition.conditions
 			.filter((condition, position) => position !== index)
 			.map((condition) => condition.slot);
-		const names = Array.from({ length: SLOT_COUNT }, (_, position) => `${prefix}${position + 1}`);
-		return names.find((name) => !used.includes(name)) ?? null;
+		return toSlotNames(prefix).find((name) => !used.includes(name)) ?? null;
 	}
 
 	/**
@@ -550,7 +582,7 @@ export default class SoqlQueryEditor extends LightningElement {
 	 */
 	_initCondition(condition, index) {
 		const field = this._fields[condition.field];
-		const operators = condition.field ? OPERATORS[toKind(field)] : [];
+		const operatorOptions = condition.field ? OPERATOR_OPTIONS[toKind(field)] : [];
 		const target = this._initTarget(field, condition.operator);
 		const slotValue = condition.slot ? this._values[condition.slot]?.value : null;
 		const literal = condition.dateLiteral ?? condition.values?.[0] ?? condition.value;
@@ -560,7 +592,7 @@ export default class SoqlQueryEditor extends LightningElement {
 			number: index + 1,
 			field: condition.field,
 			operator: condition.operator,
-			operatorOptions: operators.map((operator) => ({ label: OPERATOR_LABELS[operator], value: operator })),
+			operatorOptions,
 			hasValue: Boolean(target),
 			target: target ?? {},
 			value: slotValue ?? literal,
@@ -570,17 +602,20 @@ export default class SoqlQueryEditor extends LightningElement {
 	}
 
 	/**
-	 * @description Saves a typed or picked value in the definition: a date literal, an INCLUDES or EXCLUDES value, or
-	 * any other literal
+	 * @description Saves a typed or picked value in the definition: a date literal, an INCLUDES or EXCLUDES value, a
+	 * boolean, or any other literal
 	 * @param {Object} condition The condition
 	 * @param {String} value The value, or null to clear it
 	 * @returns {Object} The condition, with the value
 	 */
 	_initLiteral(condition, value) {
-		const text = GLOBAL_CONSTANT_VALUES[value] ?? value;
-		const isDateField = ["DATE", "DATETIME"].includes(this._fields[condition.field]?.type);
+		const fieldType = this._fields[condition.field]?.type;
+		// A typed boolean saves in lowercase, ex: TRUE as true, which is all Apex's JSON parser reads
+		const constant = fieldType === "BOOLEAN" ? (toBooleanConstant(value) ?? value) : value;
+		const text = GLOBAL_CONSTANT_VALUES[constant] ?? value;
+		const isDateField = ["DATE", "DATETIME"].includes(fieldType);
 		const isDateLiteral = isDateField && DATE_LITERAL_PATTERN.test(text ?? "");
-		const isMultiValue = ["INCLUDES", "EXCLUDES"].includes(condition.operator);
+		const isMultiValue = MULTI_VALUE_OPERATORS.includes(condition.operator);
 		const base = { field: condition.field, operator: condition.operator };
 		const literal = isMultiValue ? { values: [text] } : { value: text };
 		const saved = isDateLiteral ? { dateLiteral: text } : literal;
@@ -589,24 +624,25 @@ export default class SoqlQueryEditor extends LightningElement {
 
 	/**
 	 * @description The value input a condition needs: none for null checks; picklist values only for INCLUDES and
-	 * EXCLUDES; a collection for IN and NOT IN, which takes record collections on ID fields; else one value
+	 * EXCLUDES; a collection for IN and NOT IN, which also takes record collections of the field's object on ID
+	 * fields, or of any object on polymorphic lookups; else one value
 	 * @param {Object} field The condition's field
 	 * @param {String} operator The condition's operator
 	 * @returns {Object} Properties for `c-flow-resource-picker`, or null when the operator takes no value
 	 */
 	_initTarget(field, operator) {
-		const kind = toKind(field);
 		const type = FLOW_TYPES[field?.type] ?? "String";
-		const isCollection = ["IN", "NOT_IN"].includes(operator);
-		const isPicklistOnly = ["INCLUDES", "EXCLUDES"].includes(operator);
+		const isCollection = COLLECTION_OPERATORS.includes(operator);
 		const isDate = type === "Date" || type === "DateTime";
-		const fieldValues = (field?.picklistValues ?? []).map(({ label, value }) => ({ label, value }));
-		const picklistValues = isDate && !isCollection ? DATE_LITERALS : fieldValues;
+		const picklistValues = isDate ? DATE_LITERALS : (field?.picklistValues ?? []);
+		// An ID field holds this object's IDs; a lookup holds its parent's, unless it looks up to several objects
+		const recordObject = field?.type === "ID" ? this.objectApiName : field?.referenceTo;
 		const target = {
-			acceptsRecords: isCollection && kind === "id",
+			acceptsRecords: isCollection && toKind(field) === "id",
 			allowsDateLiterals: isDate,
 			isCollection,
-			isPicklistOnly,
+			isPicklistOnly: MULTI_VALUE_OPERATORS.includes(operator),
+			objectType: field?.isPolymorphic ? null : recordObject,
 			picklistValues: isCollection ? [] : picklistValues,
 			type
 		};
@@ -651,23 +687,10 @@ export default class SoqlQueryEditor extends LightningElement {
 	async _resolveFields() {
 		const { objectApiName, conditions } = this._definition;
 		const paths = conditions.map((condition) => condition.field).filter(Boolean);
-		const fields = await Promise.all(paths.map((path) => resolveField(objectApiName, path)));
+		const requests = paths.map((path) => resolveField(objectApiName, path));
+		const fields = await Promise.all(requests);
 		const entries = paths.map((path, index) => [path, fields[index]]);
 		this._fields = { ...this._fields, ...Object.fromEntries(entries) };
-	}
-
-	/**
-	 * @description Saves the definition as JSON, without rows still being filled in
-	 */
-	_saveDefinition() {
-		const { fields, orderBy } = this._definition;
-		const definition = {
-			...this._definition,
-			fields: fields.filter(Boolean),
-			orderBy: orderBy.filter((sortOrder) => sortOrder.field)
-		};
-		this._savedJson = JSON.stringify(definition);
-		this._saveInput("queryDefinition", this._savedJson, "String");
 	}
 
 	/**
@@ -745,13 +768,19 @@ export default class SoqlQueryEditor extends LightningElement {
 	}
 
 	/**
-	 * @description Merges changes into the definition, then saves it; a fixed input clears its own error, since errors
-	 * only refresh in validate()
+	 * @description Merges changes into the definition, then saves it as JSON, without rows still being filled in
 	 * @param {Object} changes The definition's new properties
 	 */
 	_updateDefinition(changes) {
 		this._definition = { ...this._definition, ...changes };
-		this._saveDefinition();
+		const { fields, orderBy } = this._definition;
+		const definition = {
+			...this._definition,
+			fields: fields.filter(Boolean),
+			orderBy: orderBy.filter((sortOrder) => sortOrder.field)
+		};
+		this._savedJson = JSON.stringify(definition);
+		this._saveInput("queryDefinition", this._savedJson, "String");
 	}
 
 	/**
@@ -769,17 +798,17 @@ export default class SoqlQueryEditor extends LightningElement {
 	}
 
 	/**
-	 * @description Checks custom logic: only condition numbers, AND, OR, NOT, and parentheses, with each number naming
-	 * a condition
+	 * @description Checks custom logic: only condition numbers, AND, OR, NOT, and parentheses, naming each condition
+	 * exactly, since a condition the logic leaves out doesn't apply
 	 * @returns {Object} An error, or null
 	 */
 	_validateLogic() {
 		const logic = this._definition.conditionLogic ?? "";
-		const numbers = logic.match(/\d+/g) ?? [];
-		const count = this._definition.conditions.length;
+		const numbers = new Set((logic.match(/\d+/g) ?? []).map(Number));
+		const expected = this._definition.conditions.map((condition, index) => index + 1);
 		const isValidText = /^(\s|\d+|AND|OR|NOT|\(|\))*$/i.test(logic);
-		const isInRange = numbers.every((number) => Number(number) >= 1 && Number(number) <= count);
-		const isValid = !this.isCustomLogic || (logic.trim() !== "" && isValidText && isInRange);
+		const isExact = numbers.size === expected.length && expected.every((number) => numbers.has(number));
+		const isValid = !this.isCustomLogic || (logic.trim() !== "" && isValidText && isExact);
 		return isValid
 			? null
 			: { key: "conditionLogic", errorString: "Enter valid condition logic, ex: 1 AND (2 OR 3)." };

@@ -44,7 +44,7 @@ describe("c-soql-field-path", () => {
 	});
 
 	it("lists relationships to drill into, then fields, by API name", async () => {
-		const { element } = await render({ filter: "filterable", required: true });
+		const { element } = await render({ filter: "filterable" });
 
 		const [step] = steps(element);
 		const values = step.picklistValues.map((option) => option.value);
@@ -53,7 +53,6 @@ describe("c-soql-field-path", () => {
 		// Long text fields can't filter:
 		expect(values).not.toContain("Description");
 		expect(step.label).toBe("Field");
-		expect(step.required).toBe(true);
 		expect(step.isPicklistOnly).toBe(true);
 	});
 
@@ -64,7 +63,6 @@ describe("c-soql-field-path", () => {
 		expect(onChange).not.toHaveBeenCalled();
 		expect(steps(element)).toHaveLength(2);
 		expect(steps(element)[1].variant).toBe("label-hidden");
-		expect(steps(element)[1].required).toBe(false);
 
 		await pick(element, 1, "Owner >");
 		await pick(element, 2, "Name");
@@ -98,12 +96,6 @@ describe("c-soql-field-path", () => {
 		const values = steps(element)[0].picklistValues.map((option) => option.value);
 		expect(values).not.toContain("Interests__c");
 		expect(values).toContain("Birthdate");
-	});
-
-	it("shows its error on the last step", async () => {
-		const { element } = await render({ value: "Account.Name", errorMessage: "Enter a value." });
-
-		expect(steps(element).map((step) => step.errorMessage)).toEqual([null, "Enter a value."]);
 	});
 
 	it("shows nothing to pick when an object can't be described", async () => {

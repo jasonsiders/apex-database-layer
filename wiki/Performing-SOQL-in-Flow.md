@@ -48,7 +48,7 @@ A condition's value is a flow resource or a value typed into the picker:
 - **Resources** need no Assignment element. The editor saves each one to a typed slot input, ex: `text1` or `recordCollection2`, and the query refers to the slot by name. The action takes up to 10 resources of each type.
 - **Typed values** are saved in the query, as the field's type, ex: `42` for a number field.
 - **Date literals**, ex: `TODAY` or `LAST_N_DAYS:30`, are listed for date and date/time fields, and can be typed.
-- **In** and **Not In** take a collection resource. On an ID or lookup field, they also take a record collection of any object, and match the records' IDs. A record without an ID fails the action, since it can't match anything.
+- **In** and **Not In** take a collection resource. On an ID or lookup field, they also take a record collection of the field's object (or of any object, for a lookup to several objects, ex: Task.WhoId), and match the records' IDs. A record without an ID fails the action, since it can't match anything.
 - **Includes** and **Excludes** take one of the field's picklist values, since SOQL can't bind them.
 
 The action binds every value, typed or not, so no value becomes part of the SOQL text. Each value is converted to its field's type, ex: a flow number to an integer field's `Integer`, and a 15-character ID to its 18-character form.

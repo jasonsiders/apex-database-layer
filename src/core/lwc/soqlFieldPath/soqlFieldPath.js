@@ -6,6 +6,8 @@ import { compareLabels } from "c/flowResourceMenu";
 const RELATIONSHIP_SUFFIX = " >";
 // Field describes, by object, shared by every picker and the editor; a failed describe is forgotten, so it retries
 const FIELDS_BY_OBJECT = new Map();
+// Each object's options, by object and filter, so pickers on the same object share one sorted list
+const OPTIONS_BY_KEY = new Map();
 const TYPE_ICONS = {
 	BOOLEAN: "utility:toggle",
 	CURRENCY: "utility:currency",
@@ -47,7 +49,23 @@ export async function resolveField(objectApiName, path) {
 	const fields = objectApiName && name ? await loadFields(objectApiName).catch(() => []) : [];
 	const parent = rest.length ? fields.find((candidate) => candidate.relationshipName === name) : null;
 	const field = rest.length ? null : fields.find((candidate) => candidate.apiName === name);
-	return parent ? resolveField(parent.referenceTo, rest.join(".")) : (field ?? null);
+	const restPath = rest.join(".");
+	return parent ? resolveField(parent.referenceTo, restPath) : (field ?? null);
+}
+
+/**
+ * @description Lists a level's options once per object and filter
+ * @param {String} objectApiName The level's object
+ * @param {Array} fields The object's fields
+ * @param {String} filter `filterable` or `sortable` to offer only fields that can filter or sort; blank for any
+ * @returns {Array} Options for `c-flow-resource-picker`
+ */
+function getOptions(objectApiName, fields, filter) {
+	const key = `${objectApiName}:${filter ?? ""}`;
+	if (!OPTIONS_BY_KEY.has(key) && fields.length) {
+		OPTIONS_BY_KEY.set(key, initOptions(fields, filter));
+	}
+	return OPTIONS_BY_KEY.get(key) ?? [];
 }
 
 /**
@@ -83,11 +101,6 @@ function initOptions(fields, filter) {
  */
 export default class SoqlFieldPath extends LightningElement {
 	/**
-	 * @description Shown below the last step, ex: from the editor's `validate()`
-	 * @type {String}
-	 */
-	@api errorMessage;
-	/**
 	 * @description `filterable` or `sortable` to offer only fields that can filter or sort
 	 * @type {String}
 	 */
@@ -97,11 +110,6 @@ export default class SoqlFieldPath extends LightningElement {
 	 * @type {String}
 	 */
 	@api label;
-	/**
-	 * @description Marks the label with an asterisk
-	 * @type {Boolean}
-	 */
-	@api required = false;
 
 	// Whether the last segment is a relationship being drilled into, not yet a field
 	_isPending = false;
@@ -113,13 +121,10 @@ export default class SoqlFieldPath extends LightningElement {
 
 	// **** GETTERS **** //
 	get levels() {
-		const lastIndex = this._levels.length - 1;
 		return this._levels.map((level, index) => ({
 			...level,
 			key: `${index}:${level.objectApiName}`,
-			errorMessage: index === lastIndex ? this.errorMessage : null,
 			label: index === 0 ? this.label : `${this.label} on ${level.objectApiName}`,
-			required: index === 0 && this.required,
 			variant: index === 0 ? null : "label-hidden"
 		}));
 	}
@@ -168,10 +173,9 @@ export default class SoqlFieldPath extends LightningElement {
 		this._isPending = isRelationship;
 		const isComplete = Boolean(segment) && !isRelationship;
 		const isCleared = this._segments.length === 0;
-		this._value = isComplete ? this._segments.join(".") : this._value;
-		this._value = isCleared ? null : this._value;
 		this._loadLevels();
 		if (isComplete || isCleared) {
+			this._value = isComplete ? this._segments.join(".") : null;
 			const field = isComplete ? await resolveField(this._objectApiName, this._value) : null;
 			this.dispatchEvent(new CustomEvent("change", { detail: { value: this._value, field } }));
 		}
@@ -194,7 +198,8 @@ export default class SoqlFieldPath extends LightningElement {
 			const lastIndex = this._segments.length - 1;
 			const isDrilled = Boolean(parent) && (index < lastIndex || (index === lastIndex && this._isPending));
 			const value = isDrilled ? segment + RELATIONSHIP_SUFFIX : segment;
-			levels.push({ index, objectApiName, picklistValues: initOptions(fields, this.filter), value });
+			const picklistValues = getOptions(objectApiName, fields, this.filter);
+			levels.push({ index, objectApiName, picklistValues, value });
 			objectApiName = isDrilled ? parent.referenceTo : null;
 		}
 		if (loadId === this._loadId) {
