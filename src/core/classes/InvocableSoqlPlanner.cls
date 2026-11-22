@@ -207,7 +207,7 @@ public inherited sharing class InvocableSoqlPlanner {
 			}
 			for (InvocableSoqlPlanner.Variant variant : this.variants?.values()) {
 				variant.records = variant?.records ?? this.query?.toSoql(variant?.values, this.accessLevel)?.query();
-				variant.queryString = this.query?.toQueryString(variant?.values);
+				variant.queryString = this.query?.toQueryString(variant?.values, this.accessLevel);
 			}
 		}
 

@@ -8,6 +8,8 @@ public inherited sharing class InvocableSoqlQuery {
 	// **** CONSTANTS **** //
 	/** @description The object a polymorphic relationship describes as, ex: Task.Who; SOQL allows only its fields **/
 	public static final String POLYMORPHIC_OBJECT = 'Name';
+	/** @description Ends a stored field that selects every field of its object, ex: "*" or "Account.Owner.*" **/
+	public static final String ALL_FIELDS = '*';
 	private static final String BIND_PREFIX = 'bind';
 	/** @description Only condition numbers, AND, OR, NOT, and parentheses, so custom logic can't add SOQL **/
 	private static final Pattern CUSTOM_LOGIC_PATTERN = Pattern.compile('(?i)^(\\s|\\d+|AND|OR|NOT|\\(|\\))*$');
@@ -198,17 +200,18 @@ public inherited sharing class InvocableSoqlQuery {
 	public Soql toSoql(List<Object> values, System.AccessLevel accessLevel) {
 		InvocableSoqlQuery.Filter whereClause = new InvocableSoqlQuery.Filter(this, values, false);
 		Map<String, Object> binds = this.initBinds(values);
-		return (Soql) this.initSoql(whereClause)?.addBind(binds)?.setAccessLevel(accessLevel);
+		return (Soql) this.initSoql(whereClause, accessLevel)?.addBind(binds);
 	}
 
 	/**
 	 * @description Renders the query with values in place of binds, for Flow's debug panel
 	 * @param values One value per condition, from `resolveValues`
+	 * @param accessLevel The access level to query in, which decides the fields that all-field selections include
 	 * @return The query, with values filled in
 	 */
-	public String toQueryString(List<Object> values) {
+	public String toQueryString(List<Object> values, System.AccessLevel accessLevel) {
 		InvocableSoqlQuery.Filter whereClause = new InvocableSoqlQuery.Filter(this, values, true);
-		return this.initSoql(whereClause)?.toString();
+		return this.initSoql(whereClause, accessLevel)?.toString();
 	}
 
 	// **** PRIVATE **** //
@@ -233,6 +236,20 @@ public inherited sharing class InvocableSoqlQuery {
 			fieldNames?.add(condition?.field);
 		}
 		for (String fieldName : fieldNames) {
+			this.addField(builder, fieldName);
+		}
+	}
+
+	/**
+	 * @description Adds a field to SELECT, or every field of its object for a path ending in `*`
+	 * @param builder The query being built
+	 * @param fieldName A field path, ex: "Account.Name", or "Account.*" for every field of the account
+	 */
+	private void addField(Soql builder, String fieldName) {
+		if (fieldName?.endsWith(InvocableSoqlQuery.ALL_FIELDS) == true) {
+			List<SObjectField> lookups = this.findLookups(fieldName);
+			builder?.selectAll(lookups);
+		} else {
 			builder?.addSelect(fieldName);
 		}
 	}
@@ -309,8 +326,41 @@ public inherited sharing class InvocableSoqlQuery {
 			paths?.add(sortOrder?.field);
 		}
 		for (String path : paths) {
+			this.describePath(path);
+		}
+	}
+
+	/**
+	 * @description Checks a selected or sorted path: its lookups for a path ending in `*`, or else its field
+	 * @param path A field path, ex: "Account.Name" or "Account.*"
+	 * @throws System.IllegalArgumentException When a relationship or field doesn't exist
+	 */
+	private void describePath(String path) {
+		if (path?.endsWith(InvocableSoqlQuery.ALL_FIELDS) == true) {
+			this.findLookups(path);
+		} else {
 			this.describeField(path);
 		}
+	}
+
+	/**
+	 * @description Follows a path's relationships, ex: "Account.Owner.*", to the lookups that lead to its object
+	 * @param path A path ending in `*`
+	 * @return The lookups, in order; empty for the queried object itself
+	 * @throws System.IllegalArgumentException When a relationship doesn't exist
+	 */
+	private List<SObjectField> findLookups(String path) {
+		String relationshipPath = path?.removeEnd(InvocableSoqlQuery.ALL_FIELDS)?.removeEnd('.');
+		Boolean isTop = String.isBlank(relationshipPath);
+		List<String> relationshipNames = isTop ? new List<String>{} : relationshipPath?.split('\\.');
+		List<SObjectField> lookups = new List<SObjectField>{};
+		DescribeSObjectResult parent = this.objectDescribe;
+		for (String relationshipName : relationshipNames) {
+			DescribeFieldResult lookup = this.findLookup(parent, relationshipName, path);
+			lookups?.add(lookup?.getSObjectField());
+			parent = this.describeReference(lookup);
+		}
+		return lookups;
 	}
 
 	/**
@@ -348,8 +398,7 @@ public inherited sharing class InvocableSoqlQuery {
 	}
 
 	/**
-	 * @description Finds the lookup with the relationship name, ex: AccountId for "Account". A polymorphic lookup, ex:
-	 * Who, describes as the Name object, since SOQL only allows its fields on one without TYPEOF
+	 * @description Finds a parent object's describe through a relationship, ex: Account's for "Account"
 	 * @param child The object holding the lookup
 	 * @param relationshipName The relationship name
 	 * @param path The whole field path, for the error
@@ -357,16 +406,39 @@ public inherited sharing class InvocableSoqlQuery {
 	 * @throws System.IllegalArgumentException When the object has no relationship by that name
 	 */
 	private DescribeSObjectResult describeParent(DescribeSObjectResult child, String relationshipName, String path) {
-		List<SObjectType> parentTypes;
+		DescribeFieldResult lookup = this.findLookup(child, relationshipName, path);
+		return this.describeReference(lookup);
+	}
+
+	/**
+	 * @description Finds the lookup with the relationship name, ex: AccountId for "Account"
+	 * @param child The object holding the lookup
+	 * @param relationshipName The relationship name
+	 * @param path The whole field path, for the error
+	 * @return The lookup's describe
+	 * @throws System.IllegalArgumentException When the object has no relationship by that name
+	 */
+	private DescribeFieldResult findLookup(DescribeSObjectResult child, String relationshipName, String path) {
+		DescribeFieldResult lookup;
 		for (SObjectField field : child?.fields?.getMap()?.values()) {
 			DescribeFieldResult describe = field?.getDescribe();
 			String candidate = describe?.getRelationshipName();
-			Boolean isMatch = relationshipName?.equalsIgnoreCase(candidate) == true;
-			parentTypes = isMatch ? describe?.getReferenceTo() : parentTypes;
+			lookup = (relationshipName?.equalsIgnoreCase(candidate) == true) ? describe : lookup;
 		}
-		if (parentTypes?.isEmpty() != false) {
+		if (lookup == null) {
 			throw new IllegalArgumentException('Invalid field for ' + this.objectApiName + ': ' + path);
 		}
+		return lookup;
+	}
+
+	/**
+	 * @description Describes the object a lookup points to. A polymorphic lookup, ex: Who, describes as the Name
+	 * object, since SOQL only allows its fields on one without TYPEOF
+	 * @param lookup The lookup's describe
+	 * @return The parent object's describe
+	 */
+	private DescribeSObjectResult describeReference(DescribeFieldResult lookup) {
+		List<SObjectType> parentTypes = lookup?.getReferenceTo();
 		String firstParent = String.valueOf(parentTypes?.get(0));
 		String parentName = (parentTypes?.size() > 1) ? InvocableSoqlQuery.POLYMORPHIC_OBJECT : firstParent;
 		List<String> parentNames = new List<String>{ parentName };
@@ -459,11 +531,12 @@ public inherited sharing class InvocableSoqlQuery {
 	/**
 	 * @description Builds everything but the binds, shared by the query and its debug string
 	 * @param whereClause The WHERE clause, with binds or values
+	 * @param accessLevel The access level to query in
 	 * @return The query
 	 */
-	private Soql initSoql(InvocableSoqlQuery.Filter whereClause) {
+	private Soql initSoql(InvocableSoqlQuery.Filter whereClause, System.AccessLevel accessLevel) {
 		SObjectType objectType = this.objectDescribe?.getSObjectType();
-		Soql builder = DatabaseLayer.Soql?.newQuery(objectType);
+		Soql builder = (Soql) DatabaseLayer.Soql?.newQuery(objectType)?.setAccessLevel(accessLevel);
 		this.addSelect(builder);
 		this.addOrderBy(builder);
 		Soql.Usage usageType = String.isBlank(this.usage) ? null : Soql.Usage.valueOf(this.usage);

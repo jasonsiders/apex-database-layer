@@ -295,6 +295,9 @@ private class SoqlTest {
 		Test.stopTest();
 
 		Assert.isTrue(soql?.selectClauses?.isEmpty(), 'Did not clear SELECT clauses');
+		Soql pending = DatabaseLayer.Soql.newQuery(User.SObjectType)?.selectAll(User.ProfileId)?.toSoql();
+		pending?.deselectAll();
+		Assert.isTrue(pending?.selectClauses?.isEmpty(), 'Did not clear pending parent fields');
 	}
 
 	@IsTest
@@ -352,6 +355,88 @@ private class SoqlTest {
 
 		Assert.areEqual(numAllFields, numSystemModeFields, 'SYSTEM_MODE should select every field');
 		Assert.isTrue(numUserModeFields < numAllFields, 'USER_MODE should omit inaccessible fields');
+	}
+
+	@IsTest
+	private static void shouldOmitInaccessibleParentFieldsFromSelectAll() {
+		Integer numAccountFields = SObjectType.Account?.fields?.getMap()?.size();
+		User restrictedUser = SoqlTest.buildRestrictedUser();
+		Set<String> userModeFields;
+
+		Test.startTest();
+		System.runAs(restrictedUser) {
+			userModeFields = DatabaseLayer.Soql.newQuery(Contact.SObjectType)
+				?.selectAll(Contact.AccountId)
+				?.toSoql()
+				?.selectClauses;
+		}
+		Test.stopTest();
+
+		Integer numUserModeFields = SoqlTest.countFieldsUnder(userModeFields, 'Account.');
+		Assert.isTrue(numUserModeFields < numAccountFields, 'USER_MODE should omit inaccessible parent fields');
+	}
+
+	@IsTest
+	private static void shouldSelectAllParentFields() {
+		Integer numContactFields = SObjectType.Contact?.fields?.getMap()?.size();
+		Integer numAccountFields = SObjectType.Account?.fields?.getMap()?.size();
+		Integer numUserFields = SObjectType.User?.fields?.getMap()?.size();
+		List<String> polymorphic = new List<String>{ 'Name' };
+		Integer numNameFields = Schema.describeSObjects(polymorphic)?.get(0)?.fields?.getMap()?.size();
+
+		Test.startTest();
+		Soql soql = DatabaseLayer.Soql.newQuery(Case.SObjectType)
+			?.setAccessLevel(System.AccessLevel.SYSTEM_MODE)
+			?.selectAll(Case.ContactId)
+			?.selectAll(Case.ContactId, Contact.AccountId)
+			?.selectAll('CreatedById')
+			?.selectAll(Case.OwnerId)
+			?.toSoql();
+		List<Case> cases = (List<Case>) soql?.query();
+		Test.stopTest();
+
+		Set<String> fields = soql?.selectClauses;
+		Assert.areEqual(numContactFields, SoqlTest.countFieldsUnder(fields, 'Contact.'), 'Wrong # of Contact fields');
+		Assert.areEqual(
+			numAccountFields,
+			SoqlTest.countFieldsUnder(fields, 'Contact.Account.'),
+			'Wrong # of Account fields'
+		);
+		Assert.areEqual(numUserFields, SoqlTest.countFieldsUnder(fields, 'CreatedBy.'), 'Wrong # of CreatedBy fields');
+		// A polymorphic lookup takes only the fields SOQL allows on one without TYPEOF:
+		Assert.areEqual(numNameFields, SoqlTest.countFieldsUnder(fields, 'Owner.'), 'Wrong # of Owner fields');
+		Assert.isTrue(fields?.contains('Id'), 'Did not keep the Id');
+		Assert.isTrue(cases?.isEmpty(), 'Wrong # of cases');
+	}
+
+	@IsTest
+	private static void shouldSelectAllFieldsOfDistantParents() {
+		Test.startTest();
+		Soql soql = DatabaseLayer.Soql.newQuery(Case.SObjectType)
+			?.setAccessLevel(System.AccessLevel.SYSTEM_MODE)
+			?.selectAll(Case.ContactId, Contact.AccountId, Account.OwnerId)
+			?.selectAll(Case.ContactId, Contact.AccountId, Account.OwnerId, User.ManagerId)
+			?.selectAll(Case.ContactId, Contact.AccountId, Account.OwnerId, User.ManagerId, User.ManagerId)
+			?.toSoql();
+		Test.stopTest();
+
+		Set<String> fields = soql?.selectClauses;
+		Assert.isTrue(fields?.contains('Contact.Account.Owner.Name'), 'Missing 3rd level fields');
+		Assert.isTrue(fields?.contains('Contact.Account.Owner.Manager.Name'), 'Missing 4th level fields');
+		Assert.isTrue(fields?.contains('Contact.Account.Owner.Manager.Manager.Name'), 'Missing 5th level fields');
+	}
+
+	@IsTest
+	private static void shouldRejectSelectAllOfFieldsThatAreNotLookups() {
+		Soql.Builder builder = DatabaseLayer.Soql.newQuery(Case.SObjectType);
+
+		Test.startTest();
+		Exception tokenError = SoqlTest.catchSelectAll(builder, Case.Subject, null);
+		Exception pathError = SoqlTest.catchSelectAll(builder, null, 'Contact.Bogus');
+		Test.stopTest();
+
+		Assert.isInstanceOfType(tokenError, IllegalArgumentException.class, 'Did not reject a non-lookup field');
+		Assert.isInstanceOfType(pathError, IllegalArgumentException.class, 'Did not reject an unknown path');
 	}
 
 	@IsTest
@@ -1888,6 +1973,27 @@ private class SoqlTest {
 	}
 
 	// **** HELPER **** //
+
+	private static Exception catchSelectAll(Soql.Builder builder, SObjectField field, String path) {
+		Exception caught;
+		try {
+			Soql.Builder unused = (field != null) ? builder?.selectAll(field) : builder?.selectAll(path);
+		} catch (Exception error) {
+			caught = error;
+		}
+		return caught;
+	}
+
+	private static Integer countFieldsUnder(Set<String> clauses, String prefix) {
+		// Counts fields directly on the relationship, not on its own parents, ex: Contact.Name but not Contact.Account.Name
+		Integer count = 0;
+		for (String clause : clauses ?? new Set<String>{}) {
+			String rest = clause?.removeStart(prefix);
+			Boolean isDirect = clause?.startsWith(prefix) == true && rest?.contains('.') == false;
+			count += isDirect ? 1 : 0;
+		}
+		return count;
+	}
 
 	private static User buildRestrictedUser() {
 		// Chatter Free grants no access to Account, so every one of its fields is inaccessible
