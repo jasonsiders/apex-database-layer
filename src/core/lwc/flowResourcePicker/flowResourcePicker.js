@@ -51,6 +51,25 @@ function toLiteralType(text, type, allowsDateLiterals) {
 }
 
 /**
+ * @description Reads typed text as a dotted path through host-supplied options, like `parseInput` reads a merge field,
+ * ex: `Account.Ow` searches `Account` for `Ow`
+ * @param {String} text The text in the picker's input
+ * @returns {Object} `{ isReference, isComplete, path, parentPath, searchTerm }`; a path ending in a dot is unfinished
+ */
+function parsePath(text) {
+	const path = text?.trim() ?? "";
+	const lastDot = path.lastIndexOf(".");
+	const hasPath = path !== "";
+	return {
+		isReference: hasPath,
+		isComplete: hasPath && !path.endsWith("."),
+		path,
+		parentPath: path.slice(0, Math.max(lastDot, 0)),
+		searchTerm: path.slice(lastDot + 1)
+	};
+}
+
+/**
  * @description The data type Flow Builder expects for a resource. Global constants keep their own type.
  * @param {Object} item The chosen resource
  * @returns {String} The constant's data type, or `reference`
@@ -157,6 +176,7 @@ export default class FlowResourcePicker extends LightningElement {
 	_isEditing = false;
 	_isTouched = false;
 	_isOpen = false;
+	_loadOptions;
 	_objectLabels = {};
 	_refreshId = 0;
 	_requestId = 0;
@@ -228,6 +248,10 @@ export default class FlowResourcePicker extends LightningElement {
 
 	get hasCrumbs() {
 		return this._trail.length > 0;
+	}
+
+	get hasHostOptions() {
+		return Boolean(this._loadOptions);
 	}
 
 	get hasOptions() {
@@ -328,6 +352,23 @@ export default class FlowResourcePicker extends LightningElement {
 	}
 
 	/**
+	 * @description Lists the host's own options in place of the flow's resources, ex: an object's fields:
+	 * `(parentPath) => Promise<{ parent, sections }>`. `parentPath` is a dotted path, blank at the top; `parent` is the
+	 * drilled-into option's `{ value, pathLabel }`, or null; each section is `{ label, items }`, and each item
+	 * `{ key, value, label, pathLabel, icon, description?, isDrillable?, isSelectable? }`. Typed text is a dotted path,
+	 * and picked options show as pills.
+	 * @type {Function}
+	 */
+	@api
+	get loadOptions() {
+		return this._loadOptions;
+	}
+	set loadOptions(value) {
+		this._loadOptions = value;
+		this._refreshSelection();
+	}
+
+	/**
 	 * @description The input's current value: a reference path, or a literal
 	 * @type {String}
 	 */
@@ -383,7 +424,7 @@ export default class FlowResourcePicker extends LightningElement {
 	handleCrumbClick(event) {
 		const index = Number(event.currentTarget.dataset.index);
 		const step = this._trail[index];
-		this._text = step ? `{!${step.value}.` : "";
+		this._text = step ? this._toDrillText(step.value) : "";
 		this._shouldFocus = true;
 		this._loadMenu();
 	}
@@ -463,7 +504,8 @@ export default class FlowResourcePicker extends LightningElement {
 	handlePillClick(event) {
 		event.preventDefault();
 		this._isEditing = true;
-		this._text = `{!${this._selection.value}}`;
+		const path = this._selection.value;
+		this._text = this._loadOptions ? path : `{!${path}}`;
 		this._shouldFocus = true;
 		this._open();
 	}
@@ -505,7 +547,7 @@ export default class FlowResourcePicker extends LightningElement {
 		if (item?.isSelectable) {
 			this._select(item);
 		} else if (item?.isDrillable) {
-			this._text = `{!${item.value}.`;
+			this._text = this._toDrillText(item.value);
 			this._loadMenu();
 		}
 	}
@@ -569,11 +611,10 @@ export default class FlowResourcePicker extends LightningElement {
 	 */
 	async _loadMenu() {
 		const requestId = ++this._requestId;
-		const { parentPath, path, searchTerm } = parseInput(this._text);
-		const parent = parentPath ? await resolveItem(parentPath, this.context, this._describeObject) : null;
-		const sections = parent
-			? await getChildSections(parent, this.context, this.target, this._describeObject)
-			: getRootSections(this.context, this.target);
+		const { parentPath, path, searchTerm } = this._parseText();
+		const { parent, sections } = this._loadOptions
+			? await this._loadOptions(parentPath)
+			: await this._loadResources(parentPath);
 		// An unresolved parent (ex: "$GlobalConstant") searches the root for the whole path instead
 		const term = parent || !parentPath ? searchTerm : path;
 		if (requestId === this._requestId) {
@@ -582,6 +623,19 @@ export default class FlowResourcePicker extends LightningElement {
 			// Flow Builder's field pickers highlight the first field; its resource menu highlights nothing
 			this._activeIndex = this.isPicklistOnly && this._sections.length > 0 ? 0 : -1;
 		}
+	}
+
+	/**
+	 * @description Lists the flow's resources in the drilled-into item, or at the root
+	 * @param {String} parentPath The drilled-into item's path, blank at the root
+	 * @returns {Promise<Object>} `{ parent, sections }`, where `parent` is null at the root or if it doesn't resolve
+	 */
+	async _loadResources(parentPath) {
+		const parent = parentPath ? await resolveItem(parentPath, this.context, this._describeObject) : null;
+		const sections = parent
+			? await getChildSections(parent, this.context, this.target, this._describeObject)
+			: getRootSections(this.context, this.target);
+		return { parent, sections };
 	}
 
 	/**
@@ -619,26 +673,48 @@ export default class FlowResourcePicker extends LightningElement {
 	}
 
 	/**
+	 * @description Finds the item for a reference: one of the host's options, or a flow resource
+	 * @param {String} path The reference path
+	 * @returns {Promise<Object>} The item, or null if the path doesn't name one
+	 */
+	async _findItem(path) {
+		const { parentPath } = parsePath(path);
+		const level = this._loadOptions ? await this._loadOptions(parentPath) : null;
+		const options = level?.sections.flatMap((section) => section.items);
+		return level
+			? (options.find((option) => option.value === path) ?? null)
+			: resolveItem(path, this.context, this._describeObject);
+	}
+
+	/**
 	 * @description Moves the highlight through the options, opening the menu first if it's closed.
 	 * @param {Number} offset 1 to move down, -1 to move up
 	 */
-	_moveActive(offset) {
-		const count = this.options.length;
+	async _moveActive(offset) {
 		const wasOpen = this._isOpen;
-		this._open();
+		// A closed menu loads first, so the highlight lands on its fresh options
+		await this._open();
+		const count = this.options.length;
 		const next = wasOpen ? (this._activeIndex + offset + count) % count : 0;
 		this._activeIndex = count ? next : -1;
 	}
 
 	/**
 	 * @description Opens the menu for the current text.
+	 * @returns {Promise} Settles once the menu has loaded
 	 */
 	_open() {
 		const wasOpen = this._isOpen;
 		this._isOpen = true;
-		if (!wasOpen) {
-			this._loadMenu();
-		}
+		return wasOpen ? Promise.resolve() : this._loadMenu();
+	}
+
+	/**
+	 * @description Reads the typed text: a dotted path through the host's options, or else a merge field or search term
+	 * @returns {Object} `{ isReference, isComplete, path, parentPath, searchTerm }`
+	 */
+	_parseText() {
+		return this._loadOptions ? parsePath(this._text) : parseInput(this._text);
 	}
 
 	/**
@@ -648,7 +724,8 @@ export default class FlowResourcePicker extends LightningElement {
 		const refreshId = ++this._refreshId;
 		const value = this._value;
 		const isConstant = String(value).startsWith(GLOBAL_CONSTANT_PREFIX);
-		const path = this._valueDataType === REFERENCE || isConstant ? value : null;
+		const isPath = this._valueDataType === REFERENCE || isConstant || this.hasHostOptions;
+		const path = isPath ? value : null;
 		this._text = path || value == null ? "" : String(value);
 		// Flow Builder sets builderContext, value, and valueDataType together, so only the last one's refresh resolves
 		await Promise.resolve();
@@ -666,7 +743,7 @@ export default class FlowResourcePicker extends LightningElement {
 	 * restoring the previous value.
 	 */
 	_saveText() {
-		const parsed = parseInput(this._text);
+		const parsed = this._parseText();
 		const referencePath = parsed.isComplete ? parsed.path : null;
 		const isUnfinished = parsed.isReference && !parsed.isComplete;
 		const hasText = this._text.trim() !== "";
@@ -689,7 +766,7 @@ export default class FlowResourcePicker extends LightningElement {
 	 */
 	async _resolveSelection(path) {
 		// A deleted resource or inaccessible object still shows, as its raw path, so the user can replace it
-		const item = await resolveItem(path, this.context, this._describeObject).catch(() => null);
+		const item = await this._findItem(path).catch(() => null);
 		return item ?? { value: path, pathLabel: path, icon: "utility:text" };
 	}
 
@@ -722,10 +799,20 @@ export default class FlowResourcePicker extends LightningElement {
 		this._text = "";
 		// The raw path that stands in for a missing resource has no data type, so the input never takes it
 		const item = await this._resolveSelection(path);
-		if (isAssignable(item, this.target)) {
+		const isAccepted = this._loadOptions ? Boolean(item.isSelectable) : isAssignable(item, this.target);
+		if (isAccepted) {
 			this._select(item);
 		} else {
 			this._refreshSelection();
 		}
+	}
+
+	/**
+	 * @description The text that drills into an item: a dotted path for the host's options, or else a merge field
+	 * @param {String} path The item's path
+	 * @returns {String} The text to show while drilled in, ex: `Account.` or `{!accountVar.`
+	 */
+	_toDrillText(path) {
+		return this._loadOptions ? `${path}.` : `{!${path}.`;
 	}
 }

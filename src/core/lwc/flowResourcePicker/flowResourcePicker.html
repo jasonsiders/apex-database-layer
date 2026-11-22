@@ -151,6 +151,9 @@
 								</ul>
 							</template>
 						</template>
+						<p lwc:elseif={hasHostOptions} class="picker-empty slds-var-p-around_small slds-text-align_center">
+							We couldn't find any matching fields.
+						</p>
 						<p lwc:else class="picker-empty slds-var-p-around_small slds-text-align_center">
 							We couldn't find any matching resources,<br />but you can enter a value.
 						</p>

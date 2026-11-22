@@ -1,9 +1,0 @@
-/* Each step takes the width it needs, wrapping in Flow's narrow panel */
-.field-path {
-	gap: 0.25rem;
-}
-
-.field-path-step {
-	flex: 1 1 10rem;
-	min-width: 10rem;
-}

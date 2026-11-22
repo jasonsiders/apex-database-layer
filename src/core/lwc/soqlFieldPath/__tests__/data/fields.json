@@ -155,6 +155,16 @@
 			"isFilterable": true,
 			"isSortable": true,
 			"picklistValues": []
+		},
+		{
+			"apiName": "ManagerId",
+			"label": "Manager ID",
+			"type": "REFERENCE",
+			"relationshipName": "Manager",
+			"referenceTo": "User",
+			"isFilterable": true,
+			"isSortable": true,
+			"picklistValues": []
 		}
 	]
 }

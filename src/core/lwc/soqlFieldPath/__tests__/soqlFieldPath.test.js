@@ -1,5 +1,5 @@
 import { createElement } from "lwc";
-import SoqlFieldPath, { loadFields, resolveField } from "c/soqlFieldPath";
+import SoqlFieldPath, { getFieldOptions, loadFields, resolveField } from "c/soqlFieldPath";
 import getFields from "@salesforce/apex/InvocableSoql.getFields";
 import FIELDS from "./data/fields.json";
 
@@ -22,13 +22,54 @@ async function render(props = {}) {
 	return { element, onChange };
 }
 
-function steps(element) {
+function pickers(element) {
 	return [...element.shadowRoot.querySelectorAll("c-flow-resource-picker")];
 }
 
-async function pick(element, index, value) {
-	steps(element)[index].dispatchEvent(new CustomEvent("change", { detail: { value, valueDataType: "String" } }));
+function menu(element) {
+	return pickers(element)[0].shadowRoot;
+}
+
+function input(element) {
+	return menu(element).querySelector('input[role="combobox"]');
+}
+
+function options(element) {
+	return [...menu(element).querySelectorAll('[role="option"]')];
+}
+
+function optionLabels(element) {
+	return options(element).map((option) => option.dataset.label);
+}
+
+function crumbs(element) {
+	return [...menu(element).querySelectorAll("lightning-breadcrumb")].map((crumb) => crumb.label);
+}
+
+function pillLabel(element) {
+	return menu(element).querySelector(".slds-pill__label")?.textContent;
+}
+
+async function open(element) {
+	input(element).dispatchEvent(new CustomEvent("focus"));
 	await flush();
+}
+
+async function choose(element, label) {
+	options(element)
+		.find((option) => option.dataset.label === label)
+		.click();
+	await flush();
+}
+
+async function type(element, text) {
+	input(element).value = text;
+	input(element).dispatchEvent(new CustomEvent("input"));
+	await flush();
+}
+
+function values(sections) {
+	return sections.flatMap((section) => section.items).map((item) => item.value);
 }
 
 describe("c-soql-field-path", () => {
@@ -43,65 +84,105 @@ describe("c-soql-field-path", () => {
 		jest.clearAllMocks();
 	});
 
-	it("lists relationships to drill into, then fields, by API name", async () => {
+	it("lists relationships to drill into, then fields by label, in one picker", async () => {
 		const { element } = await render({ filter: "filterable" });
 
-		const [step] = steps(element);
-		const values = step.picklistValues.map((option) => option.value);
-		expect(values[0]).toBe("Account >");
-		expect(values).toContain("LastName");
+		expect(pickers(element)).toHaveLength(1);
+		expect(pickers(element)[0].label).toBe("Field");
+		await open(element);
+
+		const headers = [...menu(element).querySelectorAll(".slds-listbox__option-header")];
+		expect(headers.map((header) => header.textContent.trim())).toEqual(["Relationship Fields", "Record Fields"]);
+		expect(optionLabels(element).slice(0, 2)).toEqual(["Account", "Account ID"]);
+		expect(optionLabels(element)).toContain("Last Name");
 		// Long text fields can't filter:
-		expect(values).not.toContain("Description");
-		expect(step.label).toBe("Field");
-		expect(step.isPicklistOnly).toBe(true);
+		expect(optionLabels(element)).not.toContain("Contact Description");
+		const icons = [...options(element)[0].querySelectorAll("lightning-icon")].map((icon) => icon.iconName);
+		expect(icons).toContain("utility:chevronright");
 	});
 
-	it("drills through relationships, and fires change once a field is picked", async () => {
+	it("drills through relationships in place, and fires change with the picked field", async () => {
 		const { element, onChange } = await render();
+		await open(element);
 
-		await pick(element, 0, "Account >");
+		await choose(element, "Account");
+		expect(input(element).value).toBe("Account.");
+		expect(crumbs(element)).toEqual(["All Resources", "Account"]);
 		expect(onChange).not.toHaveBeenCalled();
-		expect(steps(element)).toHaveLength(2);
-		expect(steps(element)[1].variant).toBe("label-hidden");
 
-		await pick(element, 1, "Owner >");
-		await pick(element, 2, "Name");
+		await choose(element, "Owner");
+		expect(crumbs(element)).toEqual(["All Resources", "Account", "Owner"]);
+		await choose(element, "Full Name");
 
 		expect(onChange.mock.calls.at(-1)[0].detail).toEqual({
 			value: "Account.Owner.Name",
 			field: expect.objectContaining({ apiName: "Name", label: "Full Name" })
 		});
+		expect(pickers(element)).toHaveLength(1);
+		expect(pillLabel(element)).toBe("Account > Owner > Full Name");
 	});
 
-	it("shows a saved path as one step per relationship", async () => {
-		const { element } = await render({ value: "Account.Owner.Name" });
+	it("drills and searches as a dotted path is typed", async () => {
+		const { element } = await render();
+		await open(element);
 
-		expect(steps(element).map((step) => step.value)).toEqual(["Account >", "Owner >", "Name"]);
+		await type(element, "Account.Own");
+
+		expect(optionLabels(element)).toEqual(["Owner", "Owner ID"]);
 	});
 
-	it("drops later steps when an earlier one changes, and fires null when the path is cleared", async () => {
-		const { element, onChange } = await render({ value: "Account.Name" });
+	it("shows a saved path as a pill, and edits it as its API path", async () => {
+		const { element } = await render({ value: "Account.Owner.IsActive" });
 
-		await pick(element, 0, "LastName");
-		expect(steps(element)).toHaveLength(1);
-		expect(onChange.mock.calls.at(-1)[0].detail).toMatchObject({ value: "LastName" });
+		expect(pillLabel(element)).toBe("Account > Owner > Active");
+		menu(element).querySelector(".picker-pill-edit").click();
+		await flush();
 
-		await pick(element, 0, null);
+		expect(input(element).value).toBe("Account.Owner.IsActive");
+	});
+
+	it("fires null when the field is cleared", async () => {
+		const { element, onChange } = await render({ value: "LastName" });
+
+		menu(element).querySelector(".picker-pill-remove").click();
+		await flush();
+
 		expect(onChange.mock.calls.at(-1)[0].detail).toEqual({ value: null, field: null });
-	});
-
-	it("shows only sortable fields for sorting", async () => {
-		const { element } = await render({ filter: "sortable" });
-
-		const values = steps(element)[0].picklistValues.map((option) => option.value);
-		expect(values).not.toContain("Interests__c");
-		expect(values).toContain("Birthdate");
 	});
 
 	it("shows nothing to pick when an object can't be described", async () => {
 		const { element } = await render({ objectApiName: "Missing__c" });
+		await open(element);
 
-		expect(steps(element)[0].picklistValues).toEqual([]);
+		expect(options(element)).toHaveLength(0);
+		expect(menu(element).querySelector(".picker-empty").textContent).toContain("couldn't find any matching fields");
+	});
+
+	describe("getFieldOptions", () => {
+		it("offers only sortable fields for sorting", async () => {
+			const { sections } = await getFieldOptions("Contact", "", "sortable");
+
+			expect(values(sections)).not.toContain("Interests__c");
+			expect(values(sections)).toContain("Birthdate");
+		});
+
+		it("stops offering relationships at SOQL's limit of 6", async () => {
+			const fifth = await getFieldOptions("Contact", "Account.Owner.Manager.Manager.Manager");
+			const sixth = await getFieldOptions("Contact", "Account.Owner.Manager.Manager.Manager.Manager");
+			const seventh = await getFieldOptions("Contact", "Account.Owner.Manager.Manager.Manager.Manager.Manager");
+
+			expect(values(fifth.sections)).toContain("Account.Owner.Manager.Manager.Manager.Manager");
+			expect(sixth.parent.pathLabel).toBe("Account > Owner > Manager > Manager > Manager > Manager");
+			expect(values(sixth.sections)).toEqual(
+				expect.arrayContaining(["Account.Owner.Manager.Manager.Manager.Manager.ManagerId"])
+			);
+			expect(sixth.sections.flatMap((section) => section.items).some((item) => item.isDrillable)).toBe(false);
+			expect(seventh).toEqual({ parent: null, sections: [] });
+		});
+
+		it("offers nothing under a path that isn't a relationship", async () => {
+			expect(await getFieldOptions("Contact", "Nope")).toEqual({ parent: null, sections: [] });
+		});
 	});
 
 	describe("resolveField", () => {

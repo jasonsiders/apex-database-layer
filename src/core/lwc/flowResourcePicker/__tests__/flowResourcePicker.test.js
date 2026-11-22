@@ -377,6 +377,96 @@ describe("c-flow-resource-picker", () => {
 		expect(input(element).value).toBe("{!accountVar.");
 	});
 
+	describe("with host-supplied options", () => {
+		const relationshipOption = {
+			key: "r:Account",
+			value: "Account",
+			label: "Account",
+			pathLabel: "Account",
+			icon: "utility:record_lookup",
+			isDrillable: true
+		};
+		const fieldOption = (value, label, pathLabel) => ({
+			key: `f:${value}`,
+			value,
+			label,
+			pathLabel,
+			icon: "utility:text",
+			isSelectable: true
+		});
+		const OPTIONS = {
+			"": {
+				parent: null,
+				sections: [
+					{ label: "Relationship Fields", items: [relationshipOption] },
+					{ label: "Record Fields", items: [fieldOption("LastName", "Last Name", "Last Name")] }
+				]
+			},
+			Account: {
+				parent: { value: "Account", pathLabel: "Account" },
+				sections: [
+					{
+						label: "Record Fields",
+						items: [fieldOption("Account.Name", "Account Name", "Account > Account Name")]
+					}
+				]
+			}
+		};
+		const loadOptions = (parentPath) => Promise.resolve(OPTIONS[parentPath] ?? { parent: null, sections: [] });
+		const renderWithOptions = () => render({ name: "field", loadOptions, builderContext: undefined });
+
+		it("lists the host's options instead of resources, and drills into them in place", async () => {
+			const { element } = await renderWithOptions();
+			await open(element);
+			expect(optionLabels(element)).toEqual(["Account", "Last Name"]);
+
+			await type(element, "Acc");
+			await press(element, "ArrowDown");
+			await press(element, "Enter");
+
+			expect(input(element).value).toBe("Account.");
+			expect(optionLabels(element)).toEqual(["Account Name"]);
+			const crumbs = [...element.shadowRoot.querySelectorAll("lightning-breadcrumb")].map((crumb) => crumb.label);
+			expect(crumbs).toEqual(["All Resources", "Account"]);
+
+			element.shadowRoot
+				.querySelector('lightning-breadcrumb[data-index="-1"]')
+				.dispatchEvent(new CustomEvent("click"));
+			await flush();
+			expect(input(element).value).toBe("");
+		});
+
+		it("saves a typed path that names an option, and discards one that doesn't or is unfinished", async () => {
+			const { element, onChange } = await renderWithOptions();
+			await open(element);
+
+			await type(element, "Account.Name");
+			await blur(element);
+			expect(lastChange(onChange)).toEqual({ name: "field", value: "Account.Name", valueDataType: "reference" });
+			expect(pillLabel(element)).toBe("Account > Account Name");
+
+			await editPill(element);
+			expect(input(element).value).toBe("Account.Name");
+			await type(element, "Account.Nope");
+			await blur(element);
+			await editPill(element);
+			await type(element, "Account.");
+			await blur(element);
+
+			expect(onChange).toHaveBeenCalledTimes(1);
+			expect(pillLabel(element)).toBe("Account > Account Name");
+		});
+
+		it("shows a saved path as a pill once its options load", async () => {
+			const { element } = await render({ name: "field", value: "Account.Name", builderContext: undefined });
+
+			element.loadOptions = loadOptions;
+			await flush();
+
+			expect(pillLabel(element)).toBe("Account > Account Name");
+		});
+	});
+
 	it("commits typed text when focus leaves", async () => {
 		const { element, onChange } = await render();
 		await open(element);

@@ -2,12 +2,11 @@ import { LightningElement, api } from "lwc";
 import getFields from "@salesforce/apex/InvocableSoql.getFields";
 import { compareLabels } from "c/flowResourceMenu";
 
-// A relationship's option ends with " >", like Flow Builder's drillable fields; API names have no spaces
-const RELATIONSHIP_SUFFIX = " >";
+// SOQL rejects a seventh relationship: "cannot query foreign key relationships more than 5 levels away from the root"
+const MAX_RELATIONSHIPS = 6;
 // Field describes, by object, shared by every picker and the editor; a failed describe is forgotten, so it retries
 const FIELDS_BY_OBJECT = new Map();
-// Each object's options, by object and filter, so pickers on the same object share one sorted list
-const OPTIONS_BY_KEY = new Map();
+const NO_OPTIONS = { parent: null, sections: [] };
 const TYPE_ICONS = {
 	BOOLEAN: "utility:toggle",
 	CURRENCY: "utility:currency",
@@ -45,59 +44,145 @@ export function loadFields(objectApiName) {
  * @returns {Promise<Object>} The field, or null if the path doesn't resolve
  */
 export async function resolveField(objectApiName, path) {
-	const [name, ...rest] = path?.split(".") ?? [];
-	const fields = objectApiName && name ? await loadFields(objectApiName).catch(() => []) : [];
-	const parent = rest.length ? fields.find((candidate) => candidate.relationshipName === name) : null;
-	const field = rest.length ? null : fields.find((candidate) => candidate.apiName === name);
-	const restPath = rest.join(".");
-	return parent ? resolveField(parent.referenceTo, restPath) : (field ?? null);
+	const segments = path?.split(".") ?? [];
+	const name = segments.pop();
+	const level = name ? await resolveLevel(objectApiName, segments) : null;
+	const fields = level ? await describeLevel(level) : [];
+	return fields.find((field) => field.apiName === name) ?? null;
 }
 
 /**
- * @description Lists a level's options once per object and filter
- * @param {String} objectApiName The level's object
- * @param {Array} fields The object's fields
+ * @description Lists the options under a path for `c-flow-resource-picker`'s `loadOptions`: the relationships to drill
+ * into, while SOQL allows another, and the fields to pick
+ * @param {String} objectApiName The object the path starts from
+ * @param {String} parentPath The relationships drilled into, ex: `Account.Owner`; blank for the object's own fields
  * @param {String} filter `filterable` or `sortable` to offer only fields that can filter or sort; blank for any
- * @returns {Array} Options for `c-flow-resource-picker`
+ * @returns {Promise<Object>} `{ parent, sections }`, or no options if the path isn't a chain of relationships
  */
-function getOptions(objectApiName, fields, filter) {
-	const key = `${objectApiName}:${filter ?? ""}`;
-	if (!OPTIONS_BY_KEY.has(key) && fields.length) {
-		OPTIONS_BY_KEY.set(key, initOptions(fields, filter));
+export async function getFieldOptions(objectApiName, parentPath, filter) {
+	const segments = parentPath ? parentPath.split(".") : [];
+	const level = await resolveLevel(objectApiName, segments);
+	const fields = level ? await describeLevel(level) : [];
+	return level ? { parent: level.option, sections: initSections(fields, level, filter) } : NO_OPTIONS;
+}
+
+/**
+ * @description Describes a level's object; one that can't be described has no fields
+ * @param {Object} level A level from `resolveLevel`
+ * @returns {Promise<Array>} The object's fields
+ */
+function describeLevel(level) {
+	return loadFields(level.objectApiName).catch(() => []);
+}
+
+/**
+ * @description Follows relationships from an object, stopping where SOQL does
+ * @param {String} objectApiName The object to start from
+ * @param {Array} segments Relationship names, ex: `["Account", "Owner"]`
+ * @returns {Promise<Object>} `{ objectApiName, option, depth }` for the last relationship's object, where `option` is
+ * its relationship's option (null for the starting object), or null if a segment isn't a relationship
+ */
+async function resolveLevel(objectApiName, segments) {
+	let level = objectApiName ? { objectApiName, option: null, depth: 0 } : null;
+	for (const segment of segments) {
+		// eslint-disable-next-line no-await-in-loop
+		const fields = level ? await describeLevel(level) : [];
+		const relationship = fields.find((field) => isRelationship(field) && field.relationshipName === segment);
+		level = relationship && level.depth < MAX_RELATIONSHIPS ? descend(level, relationship) : null;
 	}
-	return OPTIONS_BY_KEY.get(key) ?? [];
+	return level;
 }
 
 /**
- * @description Lists a level's options: relationships first, to drill into, then fields, by label
- * @param {Array} fields The object's fields
- * @param {String} filter `filterable` or `sortable` to offer only fields that can filter or sort; blank for any
- * @returns {Array} Options for `c-flow-resource-picker`
+ * @description The level below a relationship
+ * @param {Object} level The relationship's level
+ * @param {Object} relationship The lookup field
+ * @returns {Object} The related object's level
  */
-function initOptions(fields, filter) {
-	const isUsable = (field) => !filter || (filter === "filterable" ? field.isFilterable : field.isSortable);
-	const relationships = fields
-		.filter((field) => field.relationshipName && field.referenceTo)
-		.map((field) => ({
-			label: field.relationshipName + RELATIONSHIP_SUFFIX,
-			value: field.relationshipName + RELATIONSHIP_SUFFIX,
-			description: `${field.label} (${field.referenceTo})`,
-			icon: "utility:record_lookup"
-		}));
-	const options = fields.filter(isUsable).map((field) => ({
-		label: field.apiName,
-		value: field.apiName,
-		description: field.label,
-		icon: TYPE_ICONS[field.type] ?? "utility:text"
-	}));
-	return [...relationships.sort(compareLabels), ...options.sort(compareLabels)];
+function descend(level, relationship) {
+	const option = initRelationshipOption(relationship, level.option);
+	return { objectApiName: relationship.referenceTo, option, depth: level.depth + 1 };
 }
 
 /**
- * @description Picks a field of an object, or of a parent object through its relationships, ex: `Account.Owner.Name`.
- * Each step is a searchable picker; picking a relationship adds a step for its object. Fires `change` with
- * `{ value, field }` once a field is picked, and `{ value: null, field: null }` when the first step is cleared. An
- * unfinished path fires nothing, so the editor keeps the last field until another is picked.
+ * @description Whether a field is a lookup that a path can follow
+ * @param {Object} field The field
+ * @returns {Boolean} True if the field has a relationship to drill into
+ */
+function isRelationship(field) {
+	return Boolean(field.relationshipName && field.referenceTo);
+}
+
+/**
+ * @description Lists a level's options, like Flow Builder's field menus: relationships and lookup IDs, then the other
+ * fields, each by label
+ * @param {Array} fields The level's fields
+ * @param {Object} level The level from `resolveLevel`
+ * @param {String} filter `filterable` or `sortable` to offer only fields that can filter or sort; blank for any
+ * @returns {Array} "Relationship Fields" and "Record Fields" sections
+ */
+function initSections(fields, level, filter) {
+	const isUsable = (field) => !filter || (filter === "filterable" ? field.isFilterable : field.isSortable);
+	const canDrill = level.depth < MAX_RELATIONSHIPS;
+	const relationships = canDrill ? fields.filter(isRelationship) : [];
+	const relationshipOptions = relationships.map((field) => initRelationshipOption(field, level.option));
+	const fieldOptions = fields.filter(isUsable).map((field) => initFieldOption(field, level.option));
+	const lookupOptions = fieldOptions.filter((option) => option.isLookup);
+	const recordOptions = fieldOptions.filter((option) => !option.isLookup);
+	return [
+		{
+			label: "Relationship Fields",
+			items: [...relationshipOptions.sort(compareLabels), ...lookupOptions.sort(compareLabels)],
+			hasDivider: true
+		},
+		{ label: "Record Fields", items: recordOptions.sort(compareLabels), hasDivider: true }
+	];
+}
+
+/**
+ * @description Builds the option for a relationship, which drills into its object
+ * @param {Object} field The lookup field
+ * @param {Object} parent The drilled-into relationship's option, or null at the top
+ * @returns {Object} The option
+ */
+function initRelationshipOption(field, parent) {
+	const name = field.relationshipName;
+	const value = parent ? `${parent.value}.${name}` : name;
+	return {
+		key: `relationship:${value}`,
+		value,
+		label: name,
+		pathLabel: parent ? `${parent.pathLabel} > ${name}` : name,
+		description: `${field.label} (${field.referenceTo})`,
+		icon: "utility:record_lookup",
+		isDrillable: true
+	};
+}
+
+/**
+ * @description Builds the option for a field
+ * @param {Object} field The field
+ * @param {Object} parent The drilled-into relationship's option, or null at the top
+ * @returns {Object} The option
+ */
+function initFieldOption(field, parent) {
+	const value = parent ? `${parent.value}.${field.apiName}` : field.apiName;
+	return {
+		key: `field:${value}`,
+		value,
+		label: field.label,
+		pathLabel: parent ? `${parent.pathLabel} > ${field.label}` : field.label,
+		description: field.apiName,
+		icon: TYPE_ICONS[field.type] ?? "utility:text",
+		isLookup: isRelationship(field),
+		isSelectable: true
+	};
+}
+
+/**
+ * @description Picks a field of an object, or of a parent object through its relationships, ex: `Account.Owner.Name`,
+ * in one searchable picker that drills into relationships like Flow Builder's resource menu. Fires `change` with
+ * `{ value, field }` once a field is picked, and `{ value: null, field: null }` when it's cleared.
  */
 export default class SoqlFieldPath extends LightningElement {
 	/**
@@ -106,104 +191,36 @@ export default class SoqlFieldPath extends LightningElement {
 	 */
 	@api filter;
 	/**
-	 * @description The first step's label
+	 * @description The picker's label
 	 * @type {String}
 	 */
 	@api label;
-
-	// Whether the last segment is a relationship being drilled into, not yet a field
-	_isPending = false;
-	_levels = [];
-	_loadId = 0;
-	_objectApiName;
-	_segments = [];
-	_value;
-
-	// **** GETTERS **** //
-	get levels() {
-		return this._levels.map((level, index) => ({
-			...level,
-			key: `${index}:${level.objectApiName}`,
-			label: index === 0 ? this.label : `${this.label} on ${level.objectApiName}`,
-			variant: index === 0 ? null : "label-hidden"
-		}));
-	}
-
-	// **** API SETTERS **** //
 	/**
 	 * @description The object the path starts from
 	 * @type {String}
 	 */
-	@api
-	get objectApiName() {
-		return this._objectApiName;
-	}
-	set objectApiName(value) {
-		this._objectApiName = value;
-		this._loadLevels();
-	}
-
+	@api objectApiName;
 	/**
 	 * @description The picked field's path, ex: `Account.Name`
 	 * @type {String}
 	 */
-	@api
-	get value() {
-		return this._value;
-	}
-	set value(value) {
-		this._value = value;
-		this._segments = value ? value.split(".") : [];
-		this._isPending = false;
-		this._loadLevels();
-	}
+	@api value;
+
+	/**
+	 * @description Lists the options under a path, for the picker
+	 * @param {String} parentPath The relationships drilled into
+	 * @returns {Promise<Object>} `{ parent, sections }`
+	 */
+	loadOptions = (parentPath) => getFieldOptions(this.objectApiName, parentPath, this.filter);
 
 	// **** HANDLERS **** //
 	/**
-	 * @description Drills into a picked relationship, or finishes the path with a picked field; clearing a step drops
-	 * the steps after it
-	 * @param {CustomEvent} event Change on a step's picker
+	 * @description Fires `change` with the picked path and its field
+	 * @param {CustomEvent} event Change on the picker
 	 */
-	async handleLevelChange(event) {
-		const index = Number(event.target.dataset.index);
-		const picked = event.detail.value;
-		const isRelationship = picked?.endsWith(RELATIONSHIP_SUFFIX) ?? false;
-		const segment = isRelationship ? picked.slice(0, -RELATIONSHIP_SUFFIX.length) : picked;
-		this._segments = [...this._segments.slice(0, index), ...(segment ? [segment] : [])];
-		this._isPending = isRelationship;
-		const isComplete = Boolean(segment) && !isRelationship;
-		const isCleared = this._segments.length === 0;
-		this._loadLevels();
-		if (isComplete || isCleared) {
-			this._value = isComplete ? this._segments.join(".") : null;
-			const field = isComplete ? await resolveField(this._objectApiName, this._value) : null;
-			this.dispatchEvent(new CustomEvent("change", { detail: { value: this._value, field } }));
-		}
-	}
-
-	// **** PRIVATE **** //
-	/**
-	 * @description Builds a step per segment, plus an empty step after a relationship, describing each step's object
-	 */
-	async _loadLevels() {
-		const loadId = ++this._loadId;
-		const levels = [];
-		let objectApiName = this._objectApiName;
-		// One step per segment, plus one to pick into, until the path reaches a field or an unknown relationship
-		for (let index = 0; objectApiName && index <= this._segments.length; index++) {
-			// eslint-disable-next-line no-await-in-loop
-			const fields = await loadFields(objectApiName).catch(() => []);
-			const segment = this._segments[index];
-			const parent = segment ? fields.find((field) => field.relationshipName === segment) : null;
-			const lastIndex = this._segments.length - 1;
-			const isDrilled = Boolean(parent) && (index < lastIndex || (index === lastIndex && this._isPending));
-			const value = isDrilled ? segment + RELATIONSHIP_SUFFIX : segment;
-			const picklistValues = getOptions(objectApiName, fields, this.filter);
-			levels.push({ index, objectApiName, picklistValues, value });
-			objectApiName = isDrilled ? parent.referenceTo : null;
-		}
-		if (loadId === this._loadId) {
-			this._levels = levels;
-		}
+	async handleChange(event) {
+		const value = event.detail.value;
+		const field = await resolveField(this.objectApiName, value);
+		this.dispatchEvent(new CustomEvent("change", { detail: { value, field } }));
 	}
 }
