@@ -398,7 +398,8 @@ export default class SoqlQueryEditor extends LightningElement {
 			this._validateCondition(condition, index)
 		);
 		const logicError = this._validateLogic();
-		const errors = [objectError, ...conditionErrors, logicError].filter(Boolean);
+		const usageError = this._validateUsage();
+		const errors = [objectError, ...conditionErrors, logicError, usageError].filter(Boolean);
 		const errorEntries = errors.map((error) => [error.key, error.errorString]);
 		this._errors = Object.fromEntries(errorEntries);
 		return errors;
@@ -834,6 +835,10 @@ export default class SoqlQueryEditor extends LightningElement {
 			this._values = { ...this._values, [slot]: { name: slot, value: reference, valueDataType: REFERENCE } };
 			this._replaceCondition(index, { field: condition.field, operator: condition.operator, slot });
 			this._setGenericType(`T__${slot}`, objectType);
+		} else {
+			// Keeping the old value would save it in place of the picked resource, once Done clears the error
+			this._releaseSlot(condition);
+			this._replaceCondition(index, { field: condition.field, operator: condition.operator });
 		}
 	}
 
@@ -913,5 +918,21 @@ export default class SoqlQueryEditor extends LightningElement {
 		return isValid
 			? null
 			: { key: "conditionLogic", errorString: "Enter valid condition logic, ex: 1 AND (2 OR 3)." };
+	}
+
+	/**
+	 * @description Checks the Rows option: SOQL rejects sort fields with For Update
+	 * @returns {Object} An error, or null
+	 */
+	_validateUsage() {
+		const isSorted = this._definition.orderBy.some((sortOrder) => sortOrder.field);
+		const isLocked = this._definition.usage === "FOR_UPDATE";
+		return isSorted && isLocked
+			? {
+					key: "usage",
+					errorString:
+						"SOQL can't sort the records it locks. Remove the sort fields, or pick another Rows option."
+				}
+			: null;
 	}
 }

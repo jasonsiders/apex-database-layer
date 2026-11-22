@@ -219,7 +219,8 @@ private class InvocableSoqlTest {
 		Test.stopTest();
 
 		Assert.areEqual(1, customOutput?.records?.size(), 'Wrong custom logic records: ' + customOutput?.records);
-		String expected = 'SELECT Id, Name, Site FROM Account WHERE Name = \'Acme\' OR (Name = \'Beta\' AND (NOT Site = \'West\'))';
+		// Grouped, so a condition that a SOQL plugin adds applies to all of it:
+		String expected = 'SELECT Id, Name, Site FROM Account WHERE (Name = \'Acme\' OR (Name = \'Beta\' AND (NOT Site = \'West\')))';
 		Assert.areEqual(expected, customOutput?.queryString, 'Wrong custom logic query');
 		Assert.areEqual(2, anyOutput?.records?.size(), 'Wrong OR records: ' + anyOutput?.records);
 		Assert.isTrue(

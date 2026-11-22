@@ -157,13 +157,18 @@ public inherited sharing class InvocableSoqlQuery {
 	 */
 	public Boolean isMergeable(Integer index) {
 		Boolean isAllConditions = this.getLogicName() == 'AND';
+		Schema.DisplayType fieldType = this.conditionFields?.get(index)?.getType();
 		// Equality on a multi-select picklist compares the whole set of values, which a split can't reproduce
-		Boolean isMultiPicklist = this.conditionFields?.get(index)?.getType() == Schema.DisplayType.MULTIPICKLIST;
+		Boolean isMultiPicklist = fieldType == Schema.DisplayType.MULTIPICKLIST;
+		// With several currencies, SOQL compares converted amounts but returns each in its record's own currency
+		Boolean isConvertedCurrency =
+			fieldType == Schema.DisplayType.CURRENCY && UserInfo.isMultiCurrencyOrganization();
 		String operator = this.getOperator(index);
 		return isAllConditions &&
 			this.rowLimit == null &&
 			this.rowOffset == null &&
 			isMultiPicklist == false &&
+			isConvertedCurrency == false &&
 			InvocableSoqlQuery.MERGEABLE_OPERATORS?.contains(operator) == true;
 	}
 
@@ -270,6 +275,18 @@ public inherited sharing class InvocableSoqlQuery {
 			builder?.selectAll(lookups);
 		} else {
 			builder?.addSelect(fieldName);
+		}
+	}
+
+	/**
+	 * @description Adds the WHERE clause, unless there are no conditions, since a blank one would leave a dangling AND
+	 * before any condition a SOQL plugin adds
+	 * @param builder The query being built
+	 * @param whereClause The WHERE clause, with binds or values
+	 */
+	private void addWhere(Soql builder, InvocableSoqlQuery.Filter whereClause) {
+		if (this.conditions?.isEmpty() == false) {
+			builder?.addWhere(whereClause);
 		}
 	}
 
@@ -557,13 +574,10 @@ public inherited sharing class InvocableSoqlQuery {
 		SObjectType objectType = this.objectDescribe?.getSObjectType();
 		Soql builder = (Soql) DatabaseLayer.Soql?.newQuery(objectType)?.setAccessLevel(accessLevel);
 		this.addSelect(builder);
+		this.addWhere(builder, whereClause);
 		this.addOrderBy(builder);
 		Soql.Usage usageType = String.isBlank(this.usage) ? null : Soql.Usage.valueOf(this.usage);
-		return (Soql) builder
-			?.addWhere(whereClause)
-			?.setRowLimit(this.rowLimit)
-			?.setRowOffset(this.rowOffset)
-			?.setUsage(usageType);
+		return (Soql) builder?.setRowLimit(this.rowLimit)?.setRowOffset(this.rowOffset)?.setUsage(usageType);
 	}
 
 	/**
@@ -606,6 +620,24 @@ public inherited sharing class InvocableSoqlQuery {
 	private static String appendToken(String output, String token) {
 		Boolean isTight = output == '' || output?.endsWith('(') == true || token == ')';
 		return output + (isTight ? '' : ' ') + token;
+	}
+
+	/**
+	 * @description Whether logic joins anything with OR outside parentheses, ex: `1 OR 2` but not `1 AND (2 OR 3)`
+	 * @param logic The logic, by condition number
+	 * @return True if any OR is outside parentheses
+	 */
+	private static Boolean hasTopLevelOr(String logic) {
+		Integer depth = 0;
+		Boolean hasOr = false;
+		Matcher tokens = InvocableSoqlQuery.TOKEN_PATTERN.matcher(logic);
+		while (tokens?.find() == true) {
+			String token = tokens?.group()?.toUpperCase();
+			depth += (token == '(') ? 1 : 0;
+			depth -= (token == ')') ? 1 : 0;
+			hasOr = hasOr || (token == 'OR' && depth == 0);
+		}
+		return hasOr;
 	}
 
 	/**
@@ -815,7 +847,8 @@ public inherited sharing class InvocableSoqlQuery {
 		/**
 		 * @description Renders the logic token by token, replacing each condition number with its condition. SOQL only
 		 * allows NOT at the start of a group, ex: `A AND (NOT B)`, so each NOT and its operand are wrapped in
-		 * parentheses. Soql omits a blank WHERE
+		 * parentheses. Logic with OR outside parentheses is wrapped in its own, so a condition that a SOQL plugin adds
+		 * with AND applies to all of it
 		 * @return The WHERE clause's criteria
 		 */
 		public override String toString() {
@@ -823,7 +856,8 @@ public inherited sharing class InvocableSoqlQuery {
 			Integer depth = 0;
 			// The depth of each NOT still waiting for its operand to end
 			List<Integer> openNots = new List<Integer>{};
-			Matcher tokens = InvocableSoqlQuery.TOKEN_PATTERN.matcher(this.getLogic());
+			String logic = this.getLogic();
+			Matcher tokens = InvocableSoqlQuery.TOKEN_PATTERN.matcher(logic);
 			while (tokens?.find() == true) {
 				String token = tokens?.group()?.toUpperCase();
 				depth += (token == '(') ? 1 : 0;
@@ -836,7 +870,8 @@ public inherited sharing class InvocableSoqlQuery {
 					openNots?.add(depth);
 				}
 			}
-			return output;
+			Boolean isGrouped = InvocableSoqlQuery.hasTopLevelOr(logic);
+			return isGrouped ? '(' + output + ')' : output;
 		}
 
 		/**

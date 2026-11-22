@@ -241,6 +241,9 @@
 							value={usage}
 							onchange={handleUsageChange}
 						></lightning-combobox>
+						<p lwc:if={errors.usage} class="slds-form-element__help slds-text-color_error">
+							{errors.usage}
+						</p>
 					</div>
 				</lightning-accordion-section>
 			</lightning-accordion>

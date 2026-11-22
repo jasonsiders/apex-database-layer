@@ -22,7 +22,7 @@ In Flow Builder, add an **Action** element and search for `SOQL:`, under the **D
 2. **Filter Records**: add conditions, and choose whether all of them, any of them, or custom logic must be met. Each condition has a field, an operator, and a value.
 3. **Sort Records**: add the fields to sort by, each ascending or descending, with blank values first or last.
 4. **Select Fields to Store**: add the fields to include in the records. Records always include their ID, and every field used in a condition. **All Fields** stores every field of the object, or of a parent, ex: **Account > All Fields**, and replaces that object's fields already in the list. After it, that object offers only its relationships, to store its parents' fields. In user mode, it stores only the fields the running user can read.
-5. **Query Options**: set the access level, a limit, an offset, and **Rows**: **All Rows** includes deleted and archived records, and **For Update** locks the records for the rest of the transaction. SOQL allows one of the two at a time.
+5. **Query Options**: set the access level, a limit, an offset, and **Rows**: **All Rows** includes deleted and archived records, and **For Update** locks the records for the rest of the transaction, but can't sort them. SOQL allows one of the two at a time.
 
 To use a parent's field, pick its relationship, ex: **Account**, and the menu lists the parent's fields, like Flow Builder's resource menu. You can also type the path, ex: `Account.Owner.`. Relationships go as deep as SOQL allows: six. A relationship to several objects, ex: a task's **Who**, offers only the fields SOQL allows on it without `TYPEOF`, such as Name and Type.
 
@@ -88,7 +88,7 @@ When many flow interviews run the action at once (ex: a record-triggered flow on
     - The condition logic is **All Conditions Are Met (AND)**.
     - The query has no limit and no offset, which would cut rows from the merged query that belong to some interviews.
     - The condition's operator is Equals, In (including record collections), Contains, Starts With, Ends With, or Like with a simple pattern: text with an optional `%` at either end, ex: `Acme%`.
-    - The field isn't a multi-select picklist.
+    - The field isn't a multi-select picklist, or a currency field in an org with several currencies, where SOQL compares converted amounts but returns each record's own.
 
     The merged query takes every interview's value, then the action gives each interview the rows whose field matches its own value. It compares text the way SOQL does: ignoring case, except on case-sensitive fields.
 
@@ -144,7 +144,7 @@ The editor saves the query as JSON in the **Query Definition** input. `Invocable
 	"conditionLogic": "1 AND 2 AND (3 OR 4)",
 	"orderBy": [{ "field": "LastName", "direction": "ASCENDING", "nullOrder": "NULLS_LAST" }],
 	"rowLimit": 100,
-	"usage": "FOR_UPDATE"
+	"usage": "ALL_ROWS"
 }
 ```
 

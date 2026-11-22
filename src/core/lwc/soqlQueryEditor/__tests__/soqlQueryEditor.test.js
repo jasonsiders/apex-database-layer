@@ -299,14 +299,18 @@ describe("c-soql-query-editor", () => {
 		const conditions = Array.from({ length: 11 }, (_, index) => ({
 			field: "LastName",
 			operator: "EQUALS",
-			...(index < 10 ? { slot: `text${index + 1}` } : {})
+			...(index < 10 ? { slot: `text${index + 1}` } : { value: "Old" })
 		}));
 		const { element, events } = await render({ objectApiName: "Contact", fields: [], conditions, orderBy: [] });
 
 		await fire(valuePicker(element, 10), { value: "textVar", valueDataType: "reference" });
 
-		expect(events.some((event) => event.type === "configuration_editor_input_value_changed")).toBe(false);
+		const savedSlots = events.filter((event) => event.detail?.name?.startsWith("text"));
+		expect(savedSlots).toEqual([]);
 		expect(rows(element, "condition")[10].textContent).toContain("up to 10 resources");
+		// The old value is dropped rather than saved in place of the picked resource, so Done still flags the row:
+		expect(savedDefinition(events).conditions[10]).toEqual({ field: "LastName", operator: "EQUALS" });
+		expect(element.validate().map((error) => error.key)).toEqual(["condition-10"]);
 	});
 
 	it("removes a condition and its slot", async () => {
@@ -504,6 +508,21 @@ describe("c-soql-query-editor", () => {
 		await fire(input("rowLimit"), { value: "" });
 		await fire(input("usage"), { value: "" });
 		expect(savedDefinition(events)).toMatchObject({ rowLimit: null, usage: null });
+	});
+
+	it("flags sort fields with For Update, since SOQL can't sort the records it locks", async () => {
+		const sortOrder = { field: "LastName", direction: "ASCENDING", nullOrder: "NULLS_FIRST" };
+		const { element } = await render({
+			objectApiName: "Contact",
+			fields: [],
+			conditions: [],
+			orderBy: [sortOrder],
+			usage: "FOR_UPDATE"
+		});
+
+		expect(element.validate().map((error) => error.key)).toEqual(["usage"]);
+		await flush();
+		expect(element.shadowRoot.textContent).toContain("can't sort the records it locks");
 	});
 
 	it("only assigns slots that InvocableSoql.Input declares", () => {
