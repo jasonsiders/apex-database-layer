@@ -609,6 +609,28 @@ public inherited sharing class InvocableSoqlQuery {
 	}
 
 	/**
+	 * @description Checks custom logic's grammar: operands, ex: `1`, `NOT 1`, or `(1 OR 2)`, joined by AND or OR, with
+	 * balanced parentheses, since SOQL fails every query that isn't, on a syntax error that doesn't name the logic
+	 * @param logic The custom logic, holding only numbers, AND, OR, NOT, and parentheses
+	 * @return True if the logic is well formed
+	 */
+	private static Boolean isWellFormed(String logic) {
+		Integer depth = 0;
+		Boolean isOperandNext = true;
+		Boolean isValid = true;
+		Matcher tokens = InvocableSoqlQuery.TOKEN_PATTERN.matcher(logic);
+		while (tokens?.find() == true) {
+			String token = tokens?.group()?.toUpperCase();
+			Boolean isOperand = token == 'NOT' || token == '(' || token?.isNumeric() == true;
+			depth += (token == '(') ? 1 : 0;
+			depth -= (token == ')') ? 1 : 0;
+			isValid = isValid && isOperand == isOperandNext && depth >= 0;
+			isOperandNext = token == 'AND' || token == 'OR' || token == 'NOT' || token == '(';
+		}
+		return isValid && isOperandNext == false && depth == 0;
+	}
+
+	/**
 	 * @description Renders a LIKE pattern, escaping only quotes, since its backslashes are LIKE escapes, ex: `\%`
 	 * @param value The pattern
 	 * @return The literal
@@ -849,7 +871,7 @@ public inherited sharing class InvocableSoqlQuery {
 		 * @description AND and OR join every condition; anything else is custom logic
 		 * @return The logic, by condition number, ex: "1 AND 2"
 		 * @throws System.IllegalArgumentException When custom logic holds anything but numbers, AND, OR, NOT, and
-		 * parentheses
+		 * parentheses, or isn't well formed
 		 */
 		private String getLogic() {
 			String logic = this.query?.getLogicName();
@@ -859,7 +881,9 @@ public inherited sharing class InvocableSoqlQuery {
 				numbers?.add(conditionNumber);
 			}
 			Boolean isPreset = logic == 'AND' || logic == 'OR';
-			Boolean isValidCustom = InvocableSoqlQuery.CUSTOM_LOGIC_PATTERN.matcher(logic).matches();
+			Boolean isValidCustom =
+				InvocableSoqlQuery.CUSTOM_LOGIC_PATTERN.matcher(logic).matches() &&
+				InvocableSoqlQuery.isWellFormed(logic);
 			if (isPreset == false && isValidCustom == false) {
 				throw new IllegalArgumentException('Invalid condition logic: ' + this.query?.conditionLogic);
 			}

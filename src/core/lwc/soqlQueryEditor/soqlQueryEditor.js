@@ -171,6 +171,26 @@ function hasMixedOperators(logic) {
 }
 
 /**
+ * @description Whether custom logic is well formed: operands, ex: `1`, `NOT 1`, or `(1 OR 2)`, joined by AND or OR,
+ * with balanced parentheses, since SOQL fails every query that isn't
+ * @param {String} logic The custom logic
+ * @returns {Boolean} True if well formed
+ */
+function isWellFormed(logic) {
+	let depth = 0;
+	let isOperandNext = true;
+	let isValid = true;
+	for (const token of logic.toUpperCase().match(/\d+|AND|OR|NOT|\(|\)/g) ?? []) {
+		const isOperand = token === "NOT" || token === "(" || /^\d+$/.test(token);
+		depth += token === "(" ? 1 : 0;
+		depth -= token === ")" ? 1 : 0;
+		isValid = isValid && isOperand === isOperandNext && depth >= 0;
+		isOperandNext = ["AND", "OR", "NOT", "("].includes(token);
+	}
+	return isValid && !isOperandNext && depth === 0;
+}
+
+/**
  * @description The kind of field, which picks its operators and value type
  * @param {Object} field The field, from `InvocableSoql.getFields`
  * @returns {String} A key of `OPERATORS`
@@ -869,8 +889,8 @@ export default class SoqlQueryEditor extends LightningElement {
 	}
 
 	/**
-	 * @description Checks custom logic: only condition numbers, AND, OR, NOT, and parentheses, naming each condition
-	 * exactly, since a condition the logic leaves out doesn't apply, with AND and OR in separate parentheses
+	 * @description Checks custom logic: only condition numbers, AND, OR, NOT, and parentheses, well formed, naming each
+	 * condition exactly, since a condition the logic leaves out doesn't apply, with AND and OR in separate parentheses
 	 * @returns {Object} An error, or null
 	 */
 	_validateLogic() {
@@ -880,7 +900,7 @@ export default class SoqlQueryEditor extends LightningElement {
 		const isValidText = /^(\s|\d+|AND|OR|NOT|\(|\))*$/i.test(logic);
 		const isExact = numbers.size === expected.length && expected.every((number) => numbers.has(number));
 		const isGrouped = !hasMixedOperators(logic);
-		const isValid = !this.isCustomLogic || (logic.trim() !== "" && isValidText && isExact && isGrouped);
+		const isValid = !this.isCustomLogic || (isValidText && isWellFormed(logic) && isExact && isGrouped);
 		return isValid
 			? null
 			: { key: "conditionLogic", errorString: "Enter valid condition logic, ex: 1 AND (2 OR 3)." };
