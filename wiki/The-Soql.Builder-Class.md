@@ -105,8 +105,6 @@ DatabaseLayer.Soql.newQuery(Case.SObjectType)
 - `Soql.Builder selectAll(SObjectField relationship1)`
 - `Soql.Builder selectAll(SObjectField relationship1, SObjectField relationship2)`
 - `Soql.Builder selectAll(SObjectField relationship1, SObjectField relationship2, SObjectField relationship3)`
-- `Soql.Builder selectAll(SObjectField relationship1, SObjectField relationship2, SObjectField relationship3, SObjectField relationship4)`
-- `Soql.Builder selectAll(SObjectField relationship1, SObjectField relationship2, SObjectField relationship3, SObjectField relationship4, SObjectField relationship5)`
 - `Soql.Builder selectAll(List<SObjectField> relationshipFieldChain)`
 - `Soql.Builder selectAll(String lookupFieldPath)`
 

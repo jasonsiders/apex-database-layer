@@ -382,7 +382,11 @@ private class SoqlTest {
 		Integer numAccountFields = SObjectType.Account?.fields?.getMap()?.size();
 		Integer numUserFields = SObjectType.User?.fields?.getMap()?.size();
 		List<String> polymorphic = new List<String>{ 'Name' };
-		Integer numNameFields = Schema.describeSObjects(polymorphic)?.get(0)?.fields?.getMap()?.size();
+		List<DescribeSObjectResult> nameDescribes = Schema.describeSObjects(
+			polymorphic,
+			SObjectDescribeOptions.DEFERRED
+		);
+		Integer numNameFields = nameDescribes?.get(0)?.fields?.getMap()?.size();
 
 		Test.startTest();
 		Soql soql = DatabaseLayer.Soql.newQuery(Case.SObjectType)
@@ -411,12 +415,21 @@ private class SoqlTest {
 
 	@IsTest
 	private static void shouldSelectAllFieldsOfDistantParents() {
+		List<SObjectField> toManager = new List<SObjectField>{
+			Case.ContactId,
+			Contact.AccountId,
+			Account.OwnerId,
+			User.ManagerId
+		};
+		List<SObjectField> toManagersManager = new List<SObjectField>(toManager);
+		toManagersManager.add(User.ManagerId);
+
 		Test.startTest();
 		Soql soql = DatabaseLayer.Soql.newQuery(Case.SObjectType)
 			?.setAccessLevel(System.AccessLevel.SYSTEM_MODE)
 			?.selectAll(Case.ContactId, Contact.AccountId, Account.OwnerId)
-			?.selectAll(Case.ContactId, Contact.AccountId, Account.OwnerId, User.ManagerId)
-			?.selectAll(Case.ContactId, Contact.AccountId, Account.OwnerId, User.ManagerId, User.ManagerId)
+			?.selectAll(toManager)
+			?.selectAll(toManagersManager)
 			?.toSoql();
 		Test.stopTest();
 
@@ -1977,7 +1990,11 @@ private class SoqlTest {
 	private static Exception catchSelectAll(Soql.Builder builder, SObjectField field, String path) {
 		Exception caught;
 		try {
-			Soql.Builder unused = (field != null) ? builder?.selectAll(field) : builder?.selectAll(path);
+			if (field != null) {
+				builder?.selectAll(field);
+			} else {
+				builder?.selectAll(path);
+			}
 		} catch (Exception error) {
 			caught = error;
 		}

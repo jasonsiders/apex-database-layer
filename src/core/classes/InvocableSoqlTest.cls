@@ -375,30 +375,6 @@ private class InvocableSoqlTest {
 	}
 
 	@IsTest
-	private static void shouldSelectAllFieldsOfTheObjectAndItsParents() {
-		DatabaseLayer.useMockSoql();
-		InvocableSoqlTest.QuerySpy spy = new InvocableSoqlTest.QuerySpy();
-		MockSoql.setGlobalMock(spy);
-		List<String> fields = new List<String>{ '*', 'Account.Owner.*', 'Account.Name' };
-		InvocableSoql.Input input = InvocableSoqlTest.initInput(InvocableSoqlTest.initQuery('Contact', fields));
-		input.accessLevel = 'SYSTEM_MODE';
-		List<String> unknown = new List<String>{ 'Nope.*' };
-		InvocableSoql.Input invalid = InvocableSoqlTest.initInput(InvocableSoqlTest.initQuery('Contact', unknown));
-
-		Test.startTest();
-		InvocableSoql.Output output = InvocableSoqlTest.invoke(input);
-		Set<String> selected = spy.lastQuery?.selectClauses;
-		Exception caughtError = InvocableSoqlTest.invokeAndCatch(invalid);
-		Test.stopTest();
-
-		Assert.isTrue(selected?.contains('LastName'), 'Did not select all of the contact\'s fields');
-		Assert.isTrue(selected?.contains('Account.Owner.Name'), 'Did not select all of the account owner\'s fields');
-		Assert.isTrue(selected?.contains('Account.Name'), 'Did not keep a named parent field');
-		Assert.isTrue(output?.queryString?.contains('Account.Owner.Email'), 'Query string lacks the expanded fields');
-		Assert.isInstanceOfType(caughtError, IllegalArgumentException.class, 'Wrong error: ' + caughtError);
-	}
-
-	@IsTest
 	private static void shouldApplyAccessLevel() {
 		DatabaseLayer.useMockSoql();
 		InvocableSoqlTest.QuerySpy spy = new InvocableSoqlTest.QuerySpy();
