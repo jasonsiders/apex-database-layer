@@ -664,6 +664,48 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		/**
+		 * @description Adds all fields of a parent object to the SELECT clause, 5 relationships away.
+		 * @param relationship1 First lookup
+		 * @param relationship2 Second lookup
+		 * @param relationship3 Third lookup
+		 * @param relationship4 Fourth lookup
+		 * @param relationship5 Fifth lookup
+		 * @return This Builder instance for method chaining
+		 */
+		// One parameter per lookup, like Soql.ParentField's constructors, so callers can skip building a list
+		@SuppressWarnings('PMD.ExcessiveParameterList')
+		global Soql.Builder selectAll(
+			SObjectField relationship1,
+			SObjectField relationship2,
+			SObjectField relationship3,
+			SObjectField relationship4,
+			SObjectField relationship5
+		) {
+			return this.selectAll(
+				new List<SObjectField>{ relationship1, relationship2, relationship3, relationship4, relationship5 }
+			);
+		}
+
+		/**
+		 * @description Adds all fields of a parent object to the SELECT clause, 4 relationships away.
+		 * @param relationship1 First lookup
+		 * @param relationship2 Second lookup
+		 * @param relationship3 Third lookup
+		 * @param relationship4 Fourth lookup
+		 * @return This Builder instance for method chaining
+		 */
+		// One parameter per lookup, like Soql.ParentField's constructors, so callers can skip building a list
+		@SuppressWarnings('PMD.ExcessiveParameterList')
+		global Soql.Builder selectAll(
+			SObjectField relationship1,
+			SObjectField relationship2,
+			SObjectField relationship3,
+			SObjectField relationship4
+		) {
+			return this.selectAll(new List<SObjectField>{ relationship1, relationship2, relationship3, relationship4 });
+		}
+
+		/**
 		 * @description Adds all fields of a parent object to the SELECT clause, 3 relationships away.
 		 * @param relationship1 First lookup
 		 * @param relationship2 Second lookup

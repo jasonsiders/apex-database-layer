@@ -415,21 +415,12 @@ private class SoqlTest {
 
 	@IsTest
 	private static void shouldSelectAllFieldsOfDistantParents() {
-		List<SObjectField> toManager = new List<SObjectField>{
-			Case.ContactId,
-			Contact.AccountId,
-			Account.OwnerId,
-			User.ManagerId
-		};
-		List<SObjectField> toManagersManager = new List<SObjectField>(toManager);
-		toManagersManager.add(User.ManagerId);
-
 		Test.startTest();
 		Soql soql = DatabaseLayer.Soql.newQuery(Case.SObjectType)
 			?.setAccessLevel(System.AccessLevel.SYSTEM_MODE)
 			?.selectAll(Case.ContactId, Contact.AccountId, Account.OwnerId)
-			?.selectAll(toManager)
-			?.selectAll(toManagersManager)
+			?.selectAll(Case.ContactId, Contact.AccountId, Account.OwnerId, User.ManagerId)
+			?.selectAll(Case.ContactId, Contact.AccountId, Account.OwnerId, User.ManagerId, User.ManagerId)
 			?.toSoql();
 		Test.stopTest();
 
