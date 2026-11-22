@@ -232,6 +232,22 @@ describe("c-flow-resource-picker", () => {
 		expect(lastChange(onChange)).toEqual({ name: "accessLevel", value: "Legacy_Id__c", valueDataType: "String" });
 	});
 
+	it("highlights the current value in picklist-only mode, so Enter on open keeps it", async () => {
+		const picklistValues = [
+			{ label: "Account Contact Role", value: "AccountContactRole" },
+			{ label: "Contact", value: "Contact" }
+		];
+		const props = { isPicklistOnly: true, picklistValues, value: "Contact", valueDataType: "String" };
+		const { element, onChange } = await render(props);
+
+		await open(element);
+		expect(optionLabels(element)).toEqual(["Account Contact Role", "Contact"]);
+		expect(options(element).map((candidate) => candidate.getAttribute("aria-selected"))).toEqual(["false", "true"]);
+		await press(element, "Enter");
+
+		expect(onChange).not.toHaveBeenCalled();
+	});
+
 	it("stays closed in picklist-only mode when there's nothing to pick", async () => {
 		const { element } = await render({ isPicklistOnly: true, picklistValues: [] });
 

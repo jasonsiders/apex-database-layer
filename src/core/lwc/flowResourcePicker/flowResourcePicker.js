@@ -621,9 +621,18 @@ export default class FlowResourcePicker extends LightningElement {
 		if (requestId === this._requestId) {
 			this._sections = filterSections(sections, term);
 			this._trail = this._initTrail(parent);
-			// Flow Builder's field pickers highlight the first field; its resource menu highlights nothing
-			this._activeIndex = this.isPicklistOnly && this._sections.length > 0 ? 0 : -1;
+			this._activeIndex = this._findActiveIndex();
 		}
+	}
+
+	/**
+	 * @description The option to highlight. Like Flow Builder, a resource menu highlights nothing, and a field picker
+	 * highlights the current value if listed, else the first option, so Enter on open doesn't swap the value.
+	 * @returns {Number} The option's index, or -1 for none
+	 */
+	_findActiveIndex() {
+		const currentIndex = this.options.findIndex((item) => item.value === this._value);
+		return this.isPicklistOnly && this.options.length > 0 ? Math.max(currentIndex, 0) : -1;
 	}
 
 	/**
