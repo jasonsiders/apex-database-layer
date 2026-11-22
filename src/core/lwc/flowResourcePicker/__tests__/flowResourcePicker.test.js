@@ -248,6 +248,18 @@ describe("c-flow-resource-picker", () => {
 		expect(onChange).not.toHaveBeenCalled();
 	});
 
+	it("reopens its menu on a click after Escape closes it, with focus still in the input", async () => {
+		const { element } = await render();
+		await open(element);
+		await press(element, "Escape");
+		expect(input(element).getAttribute("aria-expanded")).toBe("false");
+
+		input(element).click();
+		await flush();
+
+		expect(input(element).getAttribute("aria-expanded")).toBe("true");
+	});
+
 	it("stays closed in picklist-only mode when there's nothing to pick", async () => {
 		const { element } = await render({ isPicklistOnly: true, picklistValues: [] });
 

@@ -400,6 +400,13 @@ export default class FlowResourcePicker extends LightningElement {
 
 	// **** HANDLERS **** //
 	/**
+	 * @description Reopens the menu on a click, like a combobox, since focus stays in the input after Escape closes it
+	 */
+	handleClick() {
+		this._open();
+	}
+
+	/**
 	 * @description Climbs back up the drill-down to the clicked step
 	 * @param {Event} event Click on a breadcrumb, whose `data-index` is -1 for All Resources
 	 */
