@@ -283,6 +283,8 @@ export default class SoqlQueryEditor extends LightningElement {
 	_errors = {};
 	// Each condition's field, by path, once resolved
 	_fields = {};
+	// Once Flow Builder validates, errors track each change, so a fixed problem's error clears
+	_hasValidated = false;
 	_inputVariables = [];
 	_isCustomLogic = false;
 	_objects = [];
@@ -393,16 +395,8 @@ export default class SoqlQueryEditor extends LightningElement {
 	 */
 	@api
 	validate() {
-		const objectError = this.objectApiName ? null : { key: "objectApiName", errorString: REQUIRED_ERROR };
-		const conditionErrors = this._definition.conditions.map((condition, index) =>
-			this._validateCondition(condition, index)
-		);
-		const logicError = this._validateLogic();
-		const usageError = this._validateUsage();
-		const errors = [objectError, ...conditionErrors, logicError, usageError].filter(Boolean);
-		const errorEntries = errors.map((error) => [error.key, error.errorString]);
-		this._errors = Object.fromEntries(errorEntries);
-		return errors;
+		this._hasValidated = true;
+		return this._refreshErrors();
 	}
 
 	// **** WIRED **** //
@@ -762,6 +756,23 @@ export default class SoqlQueryEditor extends LightningElement {
 	}
 
 	/**
+	 * @description Finds the query's problems, and shows each by its input
+	 * @returns {Array} `{ key, errorString }` for each problem; empty when the query is valid
+	 */
+	_refreshErrors() {
+		const objectError = this.objectApiName ? null : { key: "objectApiName", errorString: REQUIRED_ERROR };
+		const conditionErrors = this._definition.conditions.map((condition, index) =>
+			this._validateCondition(condition, index)
+		);
+		const logicError = this._validateLogic();
+		const usageError = this._validateUsage();
+		const errors = [objectError, ...conditionErrors, logicError, usageError].filter(Boolean);
+		const errorEntries = errors.map((error) => [error.key, error.errorString]);
+		this._errors = Object.fromEntries(errorEntries);
+		return errors;
+	}
+
+	/**
 	 * @description Removes a condition's slot input, once the condition stops using it
 	 * @param {Object} condition The condition
 	 */
@@ -825,8 +836,6 @@ export default class SoqlQueryEditor extends LightningElement {
 		const typePrefix = SLOT_PREFIXES[target.type] + (target.isCollection ? "Collection" : "");
 		const prefix = objectType ? RECORD_SLOT_PREFIX : typePrefix;
 		const slot = this._findFreeSlot(prefix, index);
-		const tooManyError = `This action takes up to ${SLOT_COUNT} resources of this type.`;
-		this._errors = { ...this._errors, [`condition-${index}`]: slot ? undefined : tooManyError };
 		if (slot) {
 			if (condition.slot !== slot) {
 				this._releaseSlot(condition);
@@ -840,6 +849,9 @@ export default class SoqlQueryEditor extends LightningElement {
 			this._releaseSlot(condition);
 			this._replaceCondition(index, { field: condition.field, operator: condition.operator });
 		}
+		// Set last, so the refreshed errors that replacing the condition brings don't hide it
+		const tooManyError = `This action takes up to ${SLOT_COUNT} resources of this type.`;
+		this._errors = { ...this._errors, [`condition-${index}`]: slot ? undefined : tooManyError };
 	}
 
 	/**
@@ -886,6 +898,9 @@ export default class SoqlQueryEditor extends LightningElement {
 		};
 		this._savedJson = JSON.stringify(definition);
 		this._saveInput("queryDefinition", this._savedJson, "String");
+		if (this._hasValidated) {
+			this._refreshErrors();
+		}
 	}
 
 	/**

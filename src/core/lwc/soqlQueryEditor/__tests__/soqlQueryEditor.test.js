@@ -302,12 +302,15 @@ describe("c-soql-query-editor", () => {
 			...(index < 10 ? { slot: `text${index + 1}` } : { value: "Old" })
 		}));
 		const { element, events } = await render({ objectApiName: "Contact", fields: [], conditions, orderBy: [] });
+		// After Done, errors track each change; the slot error must win over the emptied row's
+		expect(element.validate()).toEqual([]);
 
 		await fire(valuePicker(element, 10), { value: "textVar", valueDataType: "reference" });
 
 		const savedSlots = events.filter((event) => event.detail?.name?.startsWith("text"));
 		expect(savedSlots).toEqual([]);
 		expect(rows(element, "condition")[10].textContent).toContain("up to 10 resources");
+		expect(rows(element, "condition")[10].textContent).not.toContain("Enter a value.");
 		// The old value is dropped rather than saved in place of the picked resource, so Done still flags the row:
 		expect(savedDefinition(events).conditions[10]).toEqual({ field: "LastName", operator: "EQUALS" });
 		expect(element.validate().map((error) => error.key)).toEqual(["condition-10"]);
@@ -523,6 +526,30 @@ describe("c-soql-query-editor", () => {
 		expect(element.validate().map((error) => error.key)).toEqual(["usage"]);
 		await flush();
 		expect(element.shadowRoot.textContent).toContain("can't sort the records it locks");
+	});
+
+	it("clears errors as they're fixed once Done flags them, keeping each on its row", async () => {
+		const { element } = await render({
+			objectApiName: "Contact",
+			fields: [],
+			conditions: [
+				{ field: "LastName", operator: "EQUALS", value: "x" },
+				{ field: "LastName", operator: "EQUALS" }
+			],
+			conditionLogic: "1 AND (2",
+			orderBy: [{ field: "LastName", direction: "ASCENDING", nullOrder: "NULLS_FIRST" }],
+			usage: "FOR_UPDATE"
+		});
+		expect(element.validate().map((error) => error.key)).toEqual(["condition-1", "conditionLogic", "usage"]);
+		await flush();
+
+		await fire(element.shadowRoot.querySelector('lightning-combobox[data-name="usage"]'), { value: "ALL_ROWS" });
+		expect(element.shadowRoot.textContent).not.toContain("can't sort the records it locks");
+		await fire(element.shadowRoot.querySelector('lightning-input[data-name="customLogic"]'), { value: "1 AND 2" });
+		expect(element.shadowRoot.textContent).not.toContain("Enter valid condition logic");
+		rows(element, "condition")[0].querySelector("lightning-button-icon").click();
+		await flush();
+		expect(rows(element, "condition")[0].textContent).toContain("Enter a value.");
 	});
 
 	it("only assigns slots that InvocableSoql.Input declares", () => {
