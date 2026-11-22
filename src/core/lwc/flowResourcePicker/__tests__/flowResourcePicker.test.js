@@ -244,6 +244,10 @@ describe("c-flow-resource-picker", () => {
 		expect(optionLabels(element)).toEqual(["Account Contact Role", "Contact"]);
 		expect(options(element).map((candidate) => candidate.getAttribute("aria-selected"))).toEqual(["false", "true"]);
 		await press(element, "Enter");
+		// ArrowDown opens a closed menu on the same highlight
+		await press(element, "ArrowDown");
+		expect(options(element).map((candidate) => candidate.getAttribute("aria-selected"))).toEqual(["false", "true"]);
+		await press(element, "Enter");
 
 		expect(onChange).not.toHaveBeenCalled();
 	});

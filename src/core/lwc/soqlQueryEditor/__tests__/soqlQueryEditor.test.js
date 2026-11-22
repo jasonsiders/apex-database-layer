@@ -337,7 +337,13 @@ describe("c-soql-query-editor", () => {
 		expect(rows(element, "condition")[10].textContent).not.toContain("Enter a value.");
 		// The old value is dropped rather than saved in place of the picked resource, so Done still flags the row:
 		expect(savedDefinition(events).conditions[10]).toEqual({ field: "LastName", operator: "EQUALS" });
-		expect(element.validate().map((error) => error.key)).toEqual(["condition-10"]);
+		const tooManyError = "This action takes up to 10 resources of this type.";
+		expect(element.validate()).toEqual([{ key: "condition-10", errorString: tooManyError }]);
+		// The error moves with its row through later edits:
+		rows(element, "condition")[0].querySelector("lightning-button-icon").click();
+		await flush();
+		expect(rows(element, "condition")[9].textContent).toContain("up to 10 resources");
+		expect(savedDefinition(events).conditions[9]).toEqual({ field: "LastName", operator: "EQUALS" });
 	});
 
 	it("removes a condition and its slot", async () => {

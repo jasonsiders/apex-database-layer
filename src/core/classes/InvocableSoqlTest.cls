@@ -434,6 +434,7 @@ private class InvocableSoqlTest {
 		malformedDateLiteral.conditions.add(fakeLiteral);
 		// Without TYPEOF, a polymorphic relationship only allows the Name object's fields:
 		InvocableSoqlQuery polymorphicField = InvocableSoqlTest.initQuery('Task', new List<String>{ 'Who.Birthdate' });
+		InvocableSoqlQuery unknownAllFields = InvocableSoqlTest.initQuery('Contact', new List<String>{ 'Nope.*' });
 		InvocableSoqlQuery missingObject = InvocableSoqlTest.initQuery(null, null);
 		InvocableSoql.Input missingDefinition = new InvocableSoql.Input();
 
@@ -447,6 +448,7 @@ private class InvocableSoqlTest {
 			InvocableSoqlTest.invokeAndCatch(InvocableSoqlTest.initInput(unknownSortField)),
 			InvocableSoqlTest.invokeAndCatch(InvocableSoqlTest.initInput(malformedDateLiteral)),
 			InvocableSoqlTest.invokeAndCatch(InvocableSoqlTest.initInput(polymorphicField)),
+			InvocableSoqlTest.invokeAndCatch(InvocableSoqlTest.initInput(unknownAllFields)),
 			InvocableSoqlTest.invokeAndCatch(InvocableSoqlTest.initInput(missingObject)),
 			InvocableSoqlTest.invokeAndCatch(missingDefinition)
 		};
@@ -596,23 +598,6 @@ private class InvocableSoqlTest {
 	}
 
 	@IsTest
-	private static void shouldRejectAllFieldsOfAnUnknownRelationship() {
-		List<String> fields = new List<String>{ 'Nope.*' };
-		String definition = InvocableSoqlTest.initDefinition('Contact', fields);
-		Exception caughtError;
-
-		Test.startTest();
-		try {
-			InvocableSoqlQuery.parse(definition);
-		} catch (Exception error) {
-			caughtError = error;
-		}
-		Test.stopTest();
-
-		Assert.isInstanceOfType(caughtError, IllegalArgumentException.class, 'Wrong error: ' + caughtError);
-	}
-
-	@IsTest
 	private static void shouldLetPluginsAddConditionsToQueriesWithoutAny() {
 		insert new List<Account>{ new Account(Name = 'Acme'), new Account(Name = 'Beta') };
 		String definition = InvocableSoqlTest.initDefinition('Account', new List<String>{ 'Name' });
@@ -634,13 +619,10 @@ private class InvocableSoqlTest {
 			new Account(Name = 'Acme', Site = 'East'),
 			new Account(Name = 'Beta', Site = 'West')
 		};
-		InvocableSoqlQuery definition = new InvocableSoqlQuery();
+		InvocableSoqlQuery definition = InvocableSoqlTest.initQuery('Account', null);
 		definition.conditionLogic = 'OR';
-		definition.conditions = new List<InvocableSoqlQuery.Condition>{
-			InvocableSoqlTest.initCondition('Name', 'EQUALS', 'Acme'),
-			InvocableSoqlTest.initCondition('Name', 'EQUALS', 'Beta')
-		};
-		definition.objectApiName = 'Account';
+		definition.conditions.add(InvocableSoqlTest.initCondition('Name', 'EQUALS', 'Acme'));
+		definition.conditions.add(InvocableSoqlTest.initCondition('Name', 'EQUALS', 'Beta'));
 		String json = JSON.serialize(definition);
 		InvocableSoql.Input input = new InvocableSoql.Input();
 
@@ -661,24 +643,29 @@ private class InvocableSoqlTest {
 	private static void shouldCheckNullsWithTrueOrFalseFromResources() {
 		insert new List<Account>{ new Account(Name = 'Blank'), new Account(Name = 'Listed', Phone = '555-0100') };
 		InvocableSoqlQuery.Condition condition = InvocableSoqlTest.initSlotCondition('Phone', 'IS_NULL', 'boolean1');
-		InvocableSoqlQuery definition = InvocableSoqlTest.initQuery('Account', new List<String>{ 'Name' });
-		definition.conditions.add(condition);
-		String json = JSON.serialize(definition);
+		InvocableSoqlQuery query = InvocableSoqlTest.initQuery('Account', new List<String>{ 'Name' });
+		query.conditions.add(condition);
+		List<InvocableSoql.Input> inputs = new List<InvocableSoql.Input>{};
+		// An unset resource checks for null, like a definition with no value
+		for (Boolean isNull : new List<Boolean>{ true, false, null }) {
+			InvocableSoql.Input input = InvocableSoqlTest.initInput(query);
+			input.boolean1 = isNull;
+			inputs.add(input);
+		}
 
 		Test.startTest();
-		InvocableSoqlQuery query = InvocableSoqlQuery.parse(json);
-		List<Account> blank = InvocableSoqlTest.queryNullCheck(query, true);
-		List<Account> listed = InvocableSoqlTest.queryNullCheck(query, false);
-		// An unset resource checks for null, like a definition with no value
-		List<Account> unset = InvocableSoqlTest.queryNullCheck(query, null);
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(inputs);
 		Test.stopTest();
 
+		List<SObject> blank = outputs?.get(0)?.records;
+		List<SObject> listed = outputs?.get(1)?.records;
+		List<SObject> unset = outputs?.get(2)?.records;
 		Assert.areEqual(1, blank?.size(), 'Wrong accounts for true: ' + blank);
-		Assert.areEqual('Blank', blank?.get(0)?.Name, 'Wrong account for true');
+		Assert.areEqual('Blank', blank?.get(0)?.get('Name'), 'Wrong account for true');
 		Assert.areEqual(1, listed?.size(), 'Wrong accounts for false: ' + listed);
-		Assert.areEqual('Listed', listed?.get(0)?.Name, 'Wrong account for false');
+		Assert.areEqual('Listed', listed?.get(0)?.get('Name'), 'Wrong account for false');
 		Assert.areEqual(1, unset?.size(), 'Wrong accounts for no value: ' + unset);
-		Assert.areEqual('Blank', unset?.get(0)?.Name, 'Wrong account for no value');
+		Assert.areEqual('Blank', unset?.get(0)?.get('Name'), 'Wrong account for no value');
 	}
 
 	// **** HELPERS **** //
@@ -742,14 +729,6 @@ private class InvocableSoqlTest {
 		InvocableSoqlQuery query = InvocableSoqlTest.initQuery('Account', new List<String>{ 'Name' });
 		query.conditions.add(InvocableSoqlTest.initCondition('Name', operator, value));
 		return InvocableSoqlTest.invoke(InvocableSoqlTest.initInput(query));
-	}
-
-	private static List<Account> queryNullCheck(InvocableSoqlQuery query, Boolean isNull) {
-		InvocableSoql.Input input = new InvocableSoql.Input();
-		input.boolean1 = isNull;
-		List<Object> values = query?.resolveValues(input);
-		Soql builder = query?.toSoql(values, System.AccessLevel.SYSTEM_MODE);
-		return (List<Account>) builder?.query();
 	}
 
 	// **** INNER **** //

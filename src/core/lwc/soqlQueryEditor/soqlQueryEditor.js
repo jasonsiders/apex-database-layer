@@ -703,7 +703,7 @@ export default class SoqlQueryEditor extends LightningElement {
 			target: target ?? {},
 			value: slotValue ?? literal,
 			valueDataType: slotValue ? REFERENCE : "String",
-			errorMessage: this._errors[`condition-${index}`]
+			errorMessage: condition.error ?? this._errors[`condition-${index}`]
 		};
 	}
 
@@ -857,12 +857,10 @@ export default class SoqlQueryEditor extends LightningElement {
 			this._setGenericType(`T__${slot}`, objectType);
 		} else {
 			// Keeping the old value would save it in place of the picked resource, once Done clears the error
+			const error = `This action takes up to ${SLOT_COUNT} resources of this type.`;
 			this._releaseSlot(condition);
-			this._replaceCondition(index, { field: condition.field, operator: condition.operator });
+			this._replaceCondition(index, { field: condition.field, operator: condition.operator, error });
 		}
-		// Set last, so the refreshed errors that replacing the condition brings don't hide it
-		const tooManyError = `This action takes up to ${SLOT_COUNT} resources of this type.`;
-		this._errors = { ...this._errors, [`condition-${index}`]: slot ? undefined : tooManyError };
 	}
 
 	/**
@@ -901,9 +899,11 @@ export default class SoqlQueryEditor extends LightningElement {
 	 */
 	_updateDefinition(changes) {
 		this._definition = { ...this._definition, ...changes };
-		const { fields, orderBy } = this._definition;
+		const { conditions, fields, orderBy } = this._definition;
 		const definition = {
 			...this._definition,
+			// A condition's error stays with its row, not the saved definition
+			conditions: conditions.map((condition) => ({ ...condition, error: undefined })),
 			fields: fields.filter(Boolean),
 			orderBy: orderBy.filter((sortOrder) => sortOrder.field)
 		};
@@ -915,7 +915,7 @@ export default class SoqlQueryEditor extends LightningElement {
 	}
 
 	/**
-	 * @description Checks that a condition has a field, an operator, and a value when its operator needs one
+	 * @description Checks that a condition has a field, an operator, and a value
 	 * @param {Object} condition The condition
 	 * @param {Number} index The condition's position
 	 * @returns {Object} An error, or null
@@ -924,7 +924,7 @@ export default class SoqlQueryEditor extends LightningElement {
 		const hasValue =
 			Boolean(condition.slot) || condition.value != null || condition.values || condition.dateLiteral;
 		const isComplete = condition.field && condition.operator && hasValue;
-		return isComplete ? null : { key: `condition-${index}`, errorString: REQUIRED_ERROR };
+		return isComplete ? null : { key: `condition-${index}`, errorString: condition.error ?? REQUIRED_ERROR };
 	}
 
 	/**

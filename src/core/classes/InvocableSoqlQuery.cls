@@ -593,7 +593,8 @@ public inherited sharing class InvocableSoqlQuery {
 		Boolean hasSlot = (isBound || isNullCheck) && condition?.slot != null;
 		Object value = hasSlot ? input?.getSlotValue(condition?.slot) : condition?.getStaticValue();
 		Object boundValue = isBound ? this.prepareValue(index, value) : null;
-		return isNullCheck ? InvocableSoqlQuery.toIsNull(value) : boundValue;
+		// Anything but false checks for null, including no value
+		return isNullCheck ? this.coerceValue(value, Boolean.class) != false : boundValue;
 	}
 
 	/**
@@ -610,16 +611,6 @@ public inherited sharing class InvocableSoqlQuery {
 		if (amount != null && amount != amount.round(System.RoundingMode.DOWN)) {
 			throw new IllegalArgumentException('Whole-number fields take no fractions: ' + value);
 		}
-	}
-
-	/**
-	 * @description Reads Is Null's value. Anything but false checks for null, including no value
-	 * @param value A Boolean from a slot, or text from the definition
-	 * @return True for IS NULL, false for IS NOT NULL
-	 */
-	private static Boolean toIsNull(Object value) {
-		String text = String.valueOf(value);
-		return text?.equalsIgnoreCase('false') != true;
 	}
 
 	/**
@@ -792,7 +783,8 @@ public inherited sharing class InvocableSoqlQuery {
 		 */
 		private String render(Integer index, Object value, Boolean isLiteral) {
 			Boolean isNotNull = this.operator == InvocableSoqlQuery.NULL_CHECK && value == false;
-			String token = isNotNull ? '!=' : InvocableSoqlQuery.TOKENS?.get(this.operator);
+			String tokenKey = isNotNull ? 'NOT_EQUALS' : this.operator;
+			String token = InvocableSoqlQuery.TOKENS?.get(tokenKey);
 			String operand = this.renderOperand(index, value, isLiteral);
 			return this.field + ' ' + token + ' ' + operand;
 		}

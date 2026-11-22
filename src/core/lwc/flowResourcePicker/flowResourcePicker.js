@@ -710,7 +710,7 @@ export default class FlowResourcePicker extends LightningElement {
 		// Waits for the latest load, so the highlight lands on fresh options, not ones the typing replaced
 		await this._menuLoad;
 		const count = this.options.length;
-		const next = wasOpen ? (this._activeIndex + offset + count) % count : 0;
+		const next = wasOpen ? (this._activeIndex + offset + count) % count : Math.max(this._activeIndex, 0);
 		this._activeIndex = count ? next : -1;
 	}
 
