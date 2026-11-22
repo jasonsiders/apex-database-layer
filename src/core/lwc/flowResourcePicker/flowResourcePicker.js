@@ -470,7 +470,8 @@ export default class FlowResourcePicker extends LightningElement {
 			ArrowDown: () => this._moveActive(1),
 			ArrowUp: () => this._moveActive(-1),
 			Enter: () => this._chooseActive(),
-			Escape: () => this._close()
+			// Flow Builder closes its editor on Escape, so an open menu keeps it; a closed one passes it on
+			Escape: this.isOpen ? () => this._dismiss(event) : null
 		};
 		const action = actions[event.key];
 		if (action) {
@@ -584,6 +585,15 @@ export default class FlowResourcePicker extends LightningElement {
 		}
 		this._isDirty = false;
 		this._isEditing = false;
+		this._close();
+	}
+
+	/**
+	 * @description Closes the menu on Escape, keeping the key from Flow Builder's editor
+	 * @param {KeyboardEvent} event The Escape keydown
+	 */
+	_dismiss(event) {
+		event.stopPropagation();
 		this._close();
 	}
 

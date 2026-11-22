@@ -341,6 +341,22 @@ describe("c-flow-resource-picker", () => {
 		expect(lastChange(onChange)).toEqual({ name: "accessLevel", value: "boolVar", valueDataType: "reference" });
 	});
 
+	it("keeps Escape from closing Flow Builder's editor while the menu is open", async () => {
+		const { element } = await render();
+		const onKeyDown = jest.fn();
+		element.addEventListener("keydown", onKeyDown);
+		const escape = () => new KeyboardEvent("keydown", { key: "Escape", bubbles: true, composed: true });
+		await open(element);
+
+		input(element).dispatchEvent(escape());
+		await flush();
+		expect(onKeyDown).not.toHaveBeenCalled();
+		expect(input(element).getAttribute("aria-expanded")).toBe("false");
+
+		input(element).dispatchEvent(escape());
+		expect(onKeyDown).toHaveBeenCalledTimes(1);
+	});
+
 	it("keeps a chosen resource when the input loses focus to its pill", async () => {
 		const { element, onChange } = await render();
 		await open(element);
