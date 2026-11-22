@@ -1,6 +1,6 @@
 import { LightningElement, api } from "lwc";
 import getFields from "@salesforce/apex/InvocableSoql.getFields";
-import { compareLabels } from "c/flowResourceMenu";
+import { compareLabels, initSection } from "c/flowResourceMenu";
 
 // SOQL rejects a seventh relationship: "cannot query foreign key relationships more than 5 levels away from the root"
 const MAX_RELATIONSHIPS = 6;
@@ -47,8 +47,7 @@ export async function resolveField(objectApiName, path) {
 	const segments = path?.split(".") ?? [];
 	const name = segments.pop();
 	const level = name ? await resolveLevel(objectApiName, segments) : null;
-	const fields = level ? await describeLevel(level) : [];
-	return fields.find((field) => field.apiName === name) ?? null;
+	return level?.fields.find((field) => field.apiName === name) ?? null;
 }
 
 /**
@@ -62,46 +61,46 @@ export async function resolveField(objectApiName, path) {
 export async function getFieldOptions(objectApiName, parentPath, filter) {
 	const segments = parentPath ? parentPath.split(".") : [];
 	const level = await resolveLevel(objectApiName, segments);
-	const fields = level ? await describeLevel(level) : [];
-	return level ? { parent: level.option, sections: initSections(fields, level, filter) } : NO_OPTIONS;
-}
-
-/**
- * @description Describes a level's object; one that can't be described has no fields
- * @param {Object} level A level from `resolveLevel`
- * @returns {Promise<Array>} The object's fields
- */
-function describeLevel(level) {
-	return loadFields(level.objectApiName).catch(() => []);
+	return level ? { parent: level.option, sections: initSections(level, filter) } : NO_OPTIONS;
 }
 
 /**
  * @description Follows relationships from an object, stopping where SOQL does
  * @param {String} objectApiName The object to start from
  * @param {Array} segments Relationship names, ex: `["Account", "Owner"]`
- * @returns {Promise<Object>} `{ objectApiName, option, depth }` for the last relationship's object, where `option` is
- * its relationship's option (null for the starting object), or null if a segment isn't a relationship
+ * @returns {Promise<Object>} The last relationship's level, from `initLevel`, or null if a segment isn't a relationship
  */
 async function resolveLevel(objectApiName, segments) {
-	let level = objectApiName ? { objectApiName, option: null, depth: 0 } : null;
+	let level = objectApiName ? await initLevel(objectApiName, null, 0) : null;
 	for (const segment of segments) {
+		const relationship = level?.fields.find((field) => isRelationship(field) && field.relationshipName === segment);
 		// eslint-disable-next-line no-await-in-loop
-		const fields = level ? await describeLevel(level) : [];
-		const relationship = fields.find((field) => isRelationship(field) && field.relationshipName === segment);
-		level = relationship && level.depth < MAX_RELATIONSHIPS ? descend(level, relationship) : null;
+		level = relationship && level.depth < MAX_RELATIONSHIPS ? await descend(level, relationship) : null;
 	}
 	return level;
+}
+
+/**
+ * @description Describes a level's object; one that can't be described has no fields
+ * @param {String} objectApiName The level's object
+ * @param {Object} option The relationship's option that leads to the level, or null for the starting object
+ * @param {Number} depth How many relationships lead to the level
+ * @returns {Promise<Object>} `{ objectApiName, option, depth, fields }`
+ */
+async function initLevel(objectApiName, option, depth) {
+	const fields = await loadFields(objectApiName).catch(() => []);
+	return { objectApiName, option, depth, fields };
 }
 
 /**
  * @description The level below a relationship
  * @param {Object} level The relationship's level
  * @param {Object} relationship The lookup field
- * @returns {Object} The related object's level
+ * @returns {Promise<Object>} The related object's level
  */
 function descend(level, relationship) {
 	const option = initRelationshipOption(relationship, level.option);
-	return { objectApiName: relationship.referenceTo, option, depth: level.depth + 1 };
+	return initLevel(relationship.referenceTo, option, level.depth + 1);
 }
 
 /**
@@ -116,27 +115,40 @@ function isRelationship(field) {
 /**
  * @description Lists a level's options, like Flow Builder's field menus: relationships and lookup IDs, then the other
  * fields, each by label
- * @param {Array} fields The level's fields
  * @param {Object} level The level from `resolveLevel`
  * @param {String} filter `filterable` or `sortable` to offer only fields that can filter or sort; blank for any
  * @returns {Array} "Relationship Fields" and "Record Fields" sections
  */
-function initSections(fields, level, filter) {
+function initSections(level, filter) {
 	const isUsable = (field) => !filter || (filter === "filterable" ? field.isFilterable : field.isSortable);
 	const canDrill = level.depth < MAX_RELATIONSHIPS;
-	const relationships = canDrill ? fields.filter(isRelationship) : [];
+	const relationships = canDrill ? level.fields.filter(isRelationship) : [];
+	const usable = level.fields.filter(isUsable);
+	const toFieldOption = (field) => initFieldOption(field, level.option);
 	const relationshipOptions = relationships.map((field) => initRelationshipOption(field, level.option));
-	const fieldOptions = fields.filter(isUsable).map((field) => initFieldOption(field, level.option));
-	const lookupOptions = fieldOptions.filter((option) => option.isLookup);
-	const recordOptions = fieldOptions.filter((option) => !option.isLookup);
+	const lookupOptions = usable.filter(isRelationship).map(toFieldOption);
+	const recordOptions = usable.filter((field) => !isRelationship(field)).map(toFieldOption);
 	return [
-		{
-			label: "Relationship Fields",
-			items: [...relationshipOptions.sort(compareLabels), ...lookupOptions.sort(compareLabels)],
-			hasDivider: true
-		},
-		{ label: "Record Fields", items: recordOptions.sort(compareLabels), hasDivider: true }
+		initSection(
+			"Relationship Fields",
+			[...relationshipOptions.sort(compareLabels), ...lookupOptions.sort(compareLabels)],
+			false
+		),
+		initSection("Record Fields", recordOptions)
 	];
+}
+
+/**
+ * @description Extends a parent's path by one step
+ * @param {Object} parent The drilled-into relationship's option, or null at the top
+ * @param {String} name The step's API name
+ * @param {String} label The step's label
+ * @returns {Object} `{ value, pathLabel }`, ex: `Account.Name` and `Account > Account Name`
+ */
+function joinPath(parent, name, label) {
+	return parent
+		? { value: `${parent.value}.${name}`, pathLabel: `${parent.pathLabel} > ${label}` }
+		: { value: name, pathLabel: label };
 }
 
 /**
@@ -147,12 +159,10 @@ function initSections(fields, level, filter) {
  */
 function initRelationshipOption(field, parent) {
 	const name = field.relationshipName;
-	const value = parent ? `${parent.value}.${name}` : name;
+	const path = joinPath(parent, name, name);
 	return {
-		key: `relationship:${value}`,
-		value,
+		...path,
 		label: name,
-		pathLabel: parent ? `${parent.pathLabel} > ${name}` : name,
 		description: `${field.label} (${field.referenceTo})`,
 		icon: "utility:record_lookup",
 		isDrillable: true
@@ -166,15 +176,12 @@ function initRelationshipOption(field, parent) {
  * @returns {Object} The option
  */
 function initFieldOption(field, parent) {
-	const value = parent ? `${parent.value}.${field.apiName}` : field.apiName;
+	const path = joinPath(parent, field.apiName, field.label);
 	return {
-		key: `field:${value}`,
-		value,
+		...path,
 		label: field.label,
-		pathLabel: parent ? `${parent.pathLabel} > ${field.label}` : field.label,
 		description: field.apiName,
 		icon: TYPE_ICONS[field.type] ?? "utility:text",
-		isLookup: isRelationship(field),
 		isSelectable: true
 	};
 }

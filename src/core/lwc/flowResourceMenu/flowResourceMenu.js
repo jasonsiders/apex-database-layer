@@ -318,6 +318,25 @@ export function parseInput(text) {
 }
 
 /**
+ * @description Reads typed text as a dotted path through a host's own options, like `parseInput` reads a merge field,
+ * ex: `Account.Ow` searches `Account` for `Ow`
+ * @param {String} text The text in the picker's input
+ * @returns {Object} `{ isReference, isComplete, path, parentPath, searchTerm }`; a path ending in a dot is unfinished
+ */
+export function parsePath(text) {
+	const path = text?.trim() ?? "";
+	const lastDot = path.lastIndexOf(".");
+	const hasPath = path !== "";
+	return {
+		isReference: hasPath,
+		isComplete: hasPath && !path.endsWith("."),
+		path,
+		parentPath: path.slice(0, Math.max(lastDot, 0)),
+		searchTerm: path.slice(lastDot + 1)
+	};
+}
+
+/**
  * @description Orders items alphabetically by label, ignoring case.
  * @param {Object} first An item or field
  * @param {Object} second Another item or field
@@ -405,7 +424,7 @@ function canDrill(item, target, context) {
  * @param {String} value The value to find
  * @returns {Object} The matching item, if any
  */
-function findItem(sections, value) {
+export function findItem(sections, value) {
 	return sections.flatMap((section) => section.items).find((item) => item.value === value);
 }
 
@@ -753,7 +772,7 @@ function initScreenItems(builderContext, scope) {
  * @param {Boolean} isSorted Whether to sort the items by label
  * @returns {Object} `{ label, items }`, with a unique key on each item
  */
-function initSection(label, items, isSorted = true) {
+export function initSection(label, items, isSorted = true) {
 	const ordered = isSorted ? [...items].sort(compareLabels) : items;
 	return { label, items: ordered.map((item) => ({ ...item, key: `${label}:${item.value}` })) };
 }

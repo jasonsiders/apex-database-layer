@@ -3,10 +3,12 @@ import { getObjectInfos } from "lightning/uiObjectInfoApi";
 import {
 	DATE_LITERAL_PATTERN,
 	filterSections,
+	findItem,
 	getChildSections,
 	getRootSections,
 	isAssignable,
 	parseInput,
+	parsePath,
 	REFERENCE,
 	REQUIRED_ERROR,
 	resolveItem
@@ -48,25 +50,6 @@ function toLiteralType(text, type, allowsDateLiterals) {
 	const isDateLiteral =
 		allowsDateLiterals && ["Date", "DateTime"].includes(type) && DATE_LITERAL_PATTERN.test(trimmed);
 	return isDateLiteral || LITERAL_PATTERNS[type]?.test(trimmed) ? type : "String";
-}
-
-/**
- * @description Reads typed text as a dotted path through host-supplied options, like `parseInput` reads a merge field,
- * ex: `Account.Ow` searches `Account` for `Ow`
- * @param {String} text The text in the picker's input
- * @returns {Object} `{ isReference, isComplete, path, parentPath, searchTerm }`; a path ending in a dot is unfinished
- */
-function parsePath(text) {
-	const path = text?.trim() ?? "";
-	const lastDot = path.lastIndexOf(".");
-	const hasPath = path !== "";
-	return {
-		isReference: hasPath,
-		isComplete: hasPath && !path.endsWith("."),
-		path,
-		parentPath: path.slice(0, Math.max(lastDot, 0)),
-		searchTerm: path.slice(lastDot + 1)
-	};
 }
 
 /**
@@ -177,6 +160,7 @@ export default class FlowResourcePicker extends LightningElement {
 	_isTouched = false;
 	_isOpen = false;
 	_loadOptions;
+	_menuLoad = Promise.resolve();
 	_objectLabels = {};
 	_refreshId = 0;
 	_requestId = 0;
@@ -248,10 +232,6 @@ export default class FlowResourcePicker extends LightningElement {
 
 	get hasCrumbs() {
 		return this._trail.length > 0;
-	}
-
-	get hasHostOptions() {
-		return Boolean(this._loadOptions);
 	}
 
 	get hasOptions() {
@@ -617,9 +597,16 @@ export default class FlowResourcePicker extends LightningElement {
 	}
 
 	/**
-	 * @description Rebuilds the menu for the current text: the resources in the drilled-into item, or at the root.
+	 * @description Rebuilds the menu for the current text, remembering the load so keys can wait for it
 	 */
-	async _loadMenu() {
+	_loadMenu() {
+		this._menuLoad = this._buildMenu();
+	}
+
+	/**
+	 * @description Builds the menu for the current text: the options in the drilled-into item, or at the top
+	 */
+	async _buildMenu() {
 		const requestId = ++this._requestId;
 		const { parentPath, path, searchTerm } = this._parseText();
 		const { parent, sections } = this._loadOptions
@@ -690,10 +677,7 @@ export default class FlowResourcePicker extends LightningElement {
 	async _findItem(path) {
 		const { parentPath } = parsePath(path);
 		const level = this._loadOptions ? await this._loadOptions(parentPath) : null;
-		const options = level?.sections.flatMap((section) => section.items);
-		return level
-			? (options.find((option) => option.value === path) ?? null)
-			: resolveItem(path, this.context, this._describeObject);
+		return level ? (findItem(level.sections, path) ?? null) : resolveItem(path, this.context, this._describeObject);
 	}
 
 	/**
@@ -702,8 +686,9 @@ export default class FlowResourcePicker extends LightningElement {
 	 */
 	async _moveActive(offset) {
 		const wasOpen = this._isOpen;
-		// A closed menu loads first, so the highlight lands on its fresh options
-		await this._open();
+		this._open();
+		// Waits for the latest load, so the highlight lands on fresh options, not ones the typing replaced
+		await this._menuLoad;
 		const count = this.options.length;
 		const next = wasOpen ? (this._activeIndex + offset + count) % count : 0;
 		this._activeIndex = count ? next : -1;
@@ -711,12 +696,13 @@ export default class FlowResourcePicker extends LightningElement {
 
 	/**
 	 * @description Opens the menu for the current text.
-	 * @returns {Promise} Settles once the menu has loaded
 	 */
 	_open() {
 		const wasOpen = this._isOpen;
 		this._isOpen = true;
-		return wasOpen ? Promise.resolve() : this._loadMenu();
+		if (!wasOpen) {
+			this._loadMenu();
+		}
 	}
 
 	/**
@@ -734,7 +720,7 @@ export default class FlowResourcePicker extends LightningElement {
 		const refreshId = ++this._refreshId;
 		const value = this._value;
 		const isConstant = String(value).startsWith(GLOBAL_CONSTANT_PREFIX);
-		const isPath = this._valueDataType === REFERENCE || isConstant || this.hasHostOptions;
+		const isPath = this._valueDataType === REFERENCE || isConstant || Boolean(this._loadOptions);
 		const path = isPath ? value : null;
 		this._text = path || value == null ? "" : String(value);
 		// Flow Builder sets builderContext, value, and valueDataType together, so only the last one's refresh resolves

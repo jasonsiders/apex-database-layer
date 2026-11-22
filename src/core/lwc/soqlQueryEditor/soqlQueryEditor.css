@@ -39,15 +39,16 @@
 	grid-template-columns: minmax(0, 3fr) minmax(0, 2fr) minmax(0, 2fr);
 }
 
-/* Prefix and remove button sit level with the inputs: below their 1.75rem labels, as tall as an input */
-.editor-row-prefix {
-	line-height: 2rem;
-	min-width: 2rem;
+/* Prefix and remove button sit level with the inputs, below their 1.75rem labels */
+.editor-row-prefix,
+.editor-row-remove {
 	padding-top: 1.75rem;
 }
 
-.editor-row-remove {
-	padding-top: 1.75rem;
+/* As tall as an input, so the prefix's text centers on it */
+.editor-row-prefix {
+	line-height: 2rem;
+	min-width: 2rem;
 }
 
 /* Flow's own collapsible sections, ex: Show advanced options, don't indent their headers */
