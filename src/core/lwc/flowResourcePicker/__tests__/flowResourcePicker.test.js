@@ -486,6 +486,21 @@ describe("c-flow-resource-picker", () => {
 			expect(pillLabel(element)).toBe("Account > Account Name");
 		});
 
+		it("keeps a saved path when its pill is edited and left unchanged", async () => {
+			const { element, onChange } = await render({
+				name: "field",
+				value: "Account.Name",
+				loadOptions,
+				builderContext: undefined
+			});
+
+			await editPill(element);
+			await blur(element);
+
+			expect(onChange).not.toHaveBeenCalled();
+			expect(pillLabel(element)).toBe("Account > Account Name");
+		});
+
 		it("shows a saved path as a pill once its options load", async () => {
 			const { element } = await render({ name: "field", value: "Account.Name", builderContext: undefined });
 

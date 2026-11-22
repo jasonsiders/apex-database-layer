@@ -584,7 +584,9 @@ export default class FlowResourcePicker extends LightningElement {
 	 * @param {Object} selection For references, the chosen item; records add its `objectType` and `isCollection`
 	 */
 	_emitChange(value, valueDataType, selection) {
-		const isUnchanged = value === this._value && valueDataType === this._valueDataType;
+		// The host's options are always paths, so only the value can change; hosts needn't pass a valueDataType
+		const isSameType = Boolean(this._loadOptions) || valueDataType === this._valueDataType;
+		const isUnchanged = value === this._value && isSameType;
 		if (!isUnchanged) {
 			this._value = value;
 			this._valueDataType = valueDataType;
