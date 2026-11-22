@@ -189,6 +189,8 @@ public inherited sharing class InvocableSoql {
 	 * @description The query, plus typed slots for its values. Flow can't pass values of any type through one input, so
 	 * the editor assigns each resource to a free slot of its type, and the query names the slot
 	 */
+	// Flow can't pass values of any type through one input, so each type needs its own slots
+	@SuppressWarnings('PMD.ExcessivePublicCount,PMD.TooManyFields')
 	public class Input {
 		/** @description Text, not an enum, since Flow can't pass System.AccessLevel **/
 		@InvocableVariable(

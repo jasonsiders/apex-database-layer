@@ -2,6 +2,8 @@
  * @description A `SOQL: Get Record(s)` query, parsed from the JSON its editor writes. Builds the query, binding every
  * value, and resolves each interview's values for it
  */
+// Each method is small; the class totals cover parsing, rendering, and coercion, like Soql
+@SuppressWarnings('PMD.CognitiveComplexity,PMD.CyclomaticComplexity')
 public inherited sharing class InvocableSoqlQuery {
 	// **** CONSTANTS **** //
 	private static final String BIND_PREFIX = 'bind';

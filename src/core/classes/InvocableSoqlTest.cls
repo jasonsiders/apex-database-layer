@@ -71,9 +71,11 @@ private class InvocableSoqlTest {
 	}
 
 	@IsTest
-	private static void shouldBindTimeSlots() {
+	private static void shouldBindTimes() {
 		InvocableSoqlQuery query = InvocableSoqlTest.initQuery('BusinessHours', null);
 		query.conditions.add(InvocableSoqlTest.initSlotCondition('MondayStartTime', 'GREATER_OR_EQUAL', 'time1'));
+		// A typed time has no zone; JSON alone would read it in the running user's time zone:
+		query.conditions.add(InvocableSoqlTest.initCondition('MondayEndTime', 'LESS_THAN', '17:30'));
 		InvocableSoql.Input input = InvocableSoqlTest.initInput(query);
 		input.time1 = Time.newInstance(9, 30, 0, 0);
 
@@ -81,21 +83,9 @@ private class InvocableSoqlTest {
 		InvocableSoql.Output output = InvocableSoqlTest.invoke(input);
 		Test.stopTest();
 
-		String expected = 'SELECT Id, MondayStartTime FROM BusinessHours WHERE MondayStartTime >= 09:30:00.000Z';
-		Assert.areEqual(expected, output?.queryString, 'Wrong query');
-	}
-
-	@IsTest
-	private static void shouldKeepTypedTimesAsTyped() {
-		InvocableSoqlQuery query = InvocableSoqlTest.initQuery('BusinessHours', null);
-		// A typed time has no zone; JSON alone would read it in the running user's time zone:
-		query.conditions.add(InvocableSoqlTest.initCondition('MondayStartTime', 'GREATER_OR_EQUAL', '09:30'));
-
-		Test.startTest();
-		InvocableSoql.Output output = InvocableSoqlTest.invoke(InvocableSoqlTest.initInput(query));
-		Test.stopTest();
-
-		String expected = 'SELECT Id, MondayStartTime FROM BusinessHours WHERE MondayStartTime >= 09:30:00.000Z';
+		String expected =
+			'SELECT Id, MondayStartTime, MondayEndTime FROM BusinessHours ' +
+			'WHERE MondayStartTime >= 09:30:00.000Z AND MondayEndTime < 17:30:00.000Z';
 		Assert.areEqual(expected, output?.queryString, 'Wrong query');
 	}
 
@@ -387,27 +377,19 @@ private class InvocableSoqlTest {
 		InvocableSoql.Input systemMode = InvocableSoqlTest.initInput(InvocableSoqlTest.initQuery('Account', null));
 		systemMode.accessLevel = 'SYSTEM_MODE';
 		InvocableSoql.Input userMode = InvocableSoqlTest.initInput(InvocableSoqlTest.initQuery('Account', null));
+		InvocableSoql.Input invalid = InvocableSoqlTest.initInput(InvocableSoqlTest.initQuery('Account', null));
+		invalid.accessLevel = 'GOD_MODE';
 
 		Test.startTest();
 		InvocableSoqlTest.invoke(systemMode);
 		System.AccessLevel systemLevel = spy.lastQuery?.accessLevel;
 		InvocableSoqlTest.invoke(userMode);
 		System.AccessLevel userLevel = spy.lastQuery?.accessLevel;
+		Exception caughtError = InvocableSoqlTest.invokeAndCatch(invalid);
 		Test.stopTest();
 
 		Assert.areEqual(System.AccessLevel.SYSTEM_MODE, systemLevel, 'Wrong access level');
 		Assert.areEqual(System.AccessLevel.USER_MODE, userLevel, 'Did not default to USER_MODE');
-	}
-
-	@IsTest
-	private static void shouldRejectInvalidAccessLevel() {
-		InvocableSoql.Input input = InvocableSoqlTest.initInput(InvocableSoqlTest.initQuery('Account', null));
-		input.accessLevel = 'GOD_MODE';
-
-		Test.startTest();
-		Exception caughtError = InvocableSoqlTest.invokeAndCatch(input);
-		Test.stopTest();
-
 		Assert.isInstanceOfType(caughtError, IllegalArgumentException.class, 'Wrong error: ' + caughtError);
 	}
 
@@ -528,7 +510,7 @@ private class InvocableSoqlTest {
 			objectsByName.put(option.apiName, option);
 		}
 		Assert.areEqual(
-			Account.SObjectType.getDescribe().getLabel(),
+			Account.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getLabel(),
 			objectsByName.get('Account')?.label,
 			'Wrong label'
 		);
@@ -538,13 +520,11 @@ private class InvocableSoqlTest {
 	@IsTest
 	private static void shouldListFields() {
 		Test.startTest();
-		List<InvocableSoql.FieldOption> fields = InvocableSoql.getFields('Contact');
+		Map<String, InvocableSoql.FieldOption> fieldsByName = InvocableSoqlTest.indexFields('Contact');
+		Map<String, InvocableSoql.FieldOption> taskFieldsByName = InvocableSoqlTest.indexFields('Task');
 		Test.stopTest();
 
-		Map<String, InvocableSoql.FieldOption> fieldsByName = new Map<String, InvocableSoql.FieldOption>{};
-		for (InvocableSoql.FieldOption option : fields) {
-			fieldsByName.put(option.apiName, option);
-		}
+		Assert.isTrue(taskFieldsByName.get('WhoId')?.isPolymorphic, 'WhoId looks up to Contacts and Leads');
 		InvocableSoql.FieldOption accountId = fieldsByName.get('AccountId');
 		Assert.areEqual('Account', accountId?.relationshipName, 'Wrong relationship name');
 		Assert.areEqual('Account', accountId?.referenceTo, 'Wrong parent object');
@@ -559,19 +539,6 @@ private class InvocableSoqlTest {
 		Assert.areEqual('PICKLIST', leadSource?.type, 'Wrong type');
 		Assert.isFalse(leadSource?.picklistValues?.isEmpty(), 'Missing picklist values');
 		Assert.isNotNull(leadSource?.picklistValues?.get(0)?.value, 'Missing picklist value');
-	}
-
-	@IsTest
-	private static void shouldFlagPolymorphicLookups() {
-		Test.startTest();
-		List<InvocableSoql.FieldOption> fields = InvocableSoql.getFields('Task');
-		Test.stopTest();
-
-		InvocableSoql.FieldOption whoId;
-		for (InvocableSoql.FieldOption option : fields) {
-			whoId = (option.apiName == 'WhoId') ? option : whoId;
-		}
-		Assert.isTrue(whoId?.isPolymorphic, 'WhoId looks up to Contacts and Leads');
 	}
 
 	@IsTest
@@ -595,6 +562,14 @@ private class InvocableSoqlTest {
 		condition.operator = operator;
 		condition.value = value;
 		return condition;
+	}
+
+	private static Map<String, InvocableSoql.FieldOption> indexFields(String objectApiName) {
+		Map<String, InvocableSoql.FieldOption> fieldsByName = new Map<String, InvocableSoql.FieldOption>{};
+		for (InvocableSoql.FieldOption option : InvocableSoql.getFields(objectApiName)) {
+			fieldsByName.put(option.apiName, option);
+		}
+		return fieldsByName;
 	}
 
 	private static InvocableSoql.Input initInput(InvocableSoqlQuery query) {
@@ -639,9 +614,15 @@ private class InvocableSoqlTest {
 	}
 
 	// **** INNER **** //
+	/** @description Records the last mocked query, so tests can check how it was built **/
 	private class QuerySpy implements MockSoql.Simulator {
 		private Soql lastQuery;
 
+		/**
+		 * @description Records the query, returning no rows
+		 * @param queryToMock The query the action ran
+		 * @return No rows
+		 */
 		public List<Object> simulateQuery(Soql queryToMock) {
 			this.lastQuery = queryToMock;
 			return new List<SObject>{};
