@@ -21,7 +21,7 @@ In Flow Builder, add an **Action** element and search for `SOQL:`, under the **D
 1. **Get Records of This Object**: search for the object to query.
 2. **Filter Records**: add conditions, and choose whether all of them, any of them, or custom logic must be met. Each condition has a field, an operator, and a value.
 3. **Sort Records**: add the fields to sort by, each ascending or descending, with blank values first or last.
-4. **Select Fields to Store**: add the fields to include in the records. Records always include their ID, and every field used in a condition.
+4. **Select Fields to Store**: add the fields to include in the records. Records always include their ID, and every field used in a condition. **All Fields** stores every field of the object, or of a parent, ex: **Account > All Fields**. In user mode, it stores only the fields the running user can read.
 5. **Query Options**: set the access level, a limit, an offset, and **Rows**: **All Rows** includes deleted and archived records, and **For Update** locks the records for the rest of the transaction. SOQL allows one of the two at a time.
 
 To use a parent's field, pick its relationship, ex: **Account**, and the menu lists the parent's fields, like Flow Builder's resource menu. You can also type the path, ex: `Account.Owner.`. Relationships go as deep as SOQL allows: six. A relationship to several objects, ex: a task's **Who**, offers only the fields SOQL allows on it without `TYPEOF`, such as Name and Type.
@@ -151,7 +151,7 @@ The editor saves the query as JSON in the **Query Definition** input. `Invocable
 | Property         | Description                                                                                                                                     |
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | `objectApiName`  | The object to query.                                                                                                                            |
-| `fields`         | The fields to select, including parent fields. `Id` is implied.                                                                                 |
+| `fields`         | The fields to select, including parent fields. `*` selects every field of the object, and `Account.*` every field of a parent. `Id` is implied. |
 | `conditions`     | Each condition's `field` and `operator`, and its value: a `slot`, a `value` or `values` as text, or a `dateLiteral`. Null checks take no value. |
 | `conditionLogic` | `AND` (default), `OR`, or custom logic by condition number, using only numbers, `AND`, `OR`, `NOT`, and parentheses.                            |
 | `orderBy`        | Each sort field's `field`, `direction` (`ASCENDING` or `DESCENDING`), and `nullOrder` (`NULLS_FIRST` or `NULLS_LAST`).                          |

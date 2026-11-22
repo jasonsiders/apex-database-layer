@@ -6,6 +6,8 @@ import { compareLabels, initSection } from "c/flowResourceMenu";
 const MAX_RELATIONSHIPS = 6;
 // Field describes, by object, shared by every picker and the editor; a failed describe is forgotten, so it retries
 const FIELDS_BY_OBJECT = new Map();
+// Ends the path that stores every field of its object, ex: "Account.*"; InvocableSoqlQuery.ALL_FIELDS
+const ALL_FIELDS = "*";
 const NO_OPTIONS = { parent: null, sections: [] };
 const TYPE_ICONS = {
 	BOOLEAN: "utility:toggle",
@@ -128,9 +130,16 @@ function initSections(level, filter) {
 	const relationshipOptions = relationships.map((field) => initRelationshipOption(field, level.option));
 	const lookupOptions = usable.filter(isRelationship).map(toFieldOption);
 	const recordOptions = usable.filter((field) => !isRelationship(field)).map(toFieldOption);
+	// Only stored fields take every field of an object, since a condition or sort needs one; nor does an object without any
+	const canSelectAll = !filter && level.fields.length > 0;
+	const allFieldsOptions = canSelectAll ? [initAllFieldsOption(level)] : [];
 	// Relationships come before lookup IDs, like Flow Builder, so the section sorts each group, not the whole list
 	const relationshipItems = [...relationshipOptions.sort(compareLabels), ...lookupOptions.sort(compareLabels)];
-	return [initSection("Relationship Fields", relationshipItems, false), initSection("Record Fields", recordOptions)];
+	const recordItems = [...allFieldsOptions, ...recordOptions.sort(compareLabels)];
+	return [
+		initSection("Relationship Fields", relationshipItems, false),
+		initSection("Record Fields", recordItems, false)
+	];
 }
 
 /**
@@ -161,6 +170,22 @@ function initRelationshipOption(field, parent) {
 		description: `${field.label} (${field.referenceTo})`,
 		icon: "utility:record_lookup",
 		isDrillable: true
+	};
+}
+
+/**
+ * @description Builds the option that stores every field of a level's object
+ * @param {Object} level The level from `resolveLevel`
+ * @returns {Object} The option, ex: "Account.*", shown as "Account > All Fields"
+ */
+function initAllFieldsOption(level) {
+	const path = joinPath(level.option, ALL_FIELDS, "All Fields");
+	return {
+		...path,
+		label: "All Fields",
+		description: level.objectApiName,
+		icon: "utility:list",
+		isSelectable: true
 	};
 }
 

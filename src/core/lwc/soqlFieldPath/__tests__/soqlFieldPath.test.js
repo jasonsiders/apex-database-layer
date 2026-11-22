@@ -141,6 +141,19 @@ describe("c-soql-field-path", () => {
 		expect(input(element).value).toBe("Account.Owner.IsActive");
 	});
 
+	it("picks All Fields of the object or a parent, for stored fields", async () => {
+		const { element, onChange } = await render({ value: "Account.*" });
+		expect(pillLabel(element)).toBe("Account > All Fields");
+
+		menu(element).querySelector(".picker-pill-remove").click();
+		await flush();
+		await open(element);
+		await choose(element, "All Fields");
+
+		expect(onChange.mock.calls.at(-1)[0].detail).toEqual({ value: "*", field: null });
+		expect(pillLabel(element)).toBe("All Fields");
+	});
+
 	it("fires null when the field is cleared", async () => {
 		const { element, onChange } = await render({ value: "LastName" });
 
@@ -162,6 +175,21 @@ describe("c-soql-field-path", () => {
 	});
 
 	describe("getFieldOptions", () => {
+		it("offers All Fields first at each level, but not for filtering or sorting", async () => {
+			const findAll = ({ sections }) =>
+				sections.flatMap((section) => section.items).find((item) => item.value.endsWith("*"));
+			const top = await getFieldOptions("Contact", "");
+			const account = await getFieldOptions("Contact", "Account");
+			const filterable = await getFieldOptions("Contact", "", "filterable");
+			const sortable = await getFieldOptions("Contact", "Account", "sortable");
+
+			expect(findAll(top)).toMatchObject({ value: "*", label: "All Fields", isSelectable: true });
+			expect(top.sections[1].items[0].value).toBe("*");
+			expect(findAll(account)).toMatchObject({ value: "Account.*", pathLabel: "Account > All Fields" });
+			expect(findAll(filterable)).toBeUndefined();
+			expect(findAll(sortable)).toBeUndefined();
+		});
+
 		it("offers only sortable fields for sorting", async () => {
 			const { sections } = await getFieldOptions("Contact", "", "sortable");
 
