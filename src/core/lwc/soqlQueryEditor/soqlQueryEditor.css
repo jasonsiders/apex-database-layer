@@ -51,6 +51,11 @@
 	min-width: 2rem;
 }
 
+/* lightning-button's host is inline, which ignores top margin; Get Records leaves a gap above its add buttons */
+.editor-add {
+	display: inline-block;
+}
+
 /* Flow's own collapsible sections, ex: Show advanced options, don't indent their headers */
 .options-accordion {
 	--slds-c-accordion-section-spacing-inline-start: 0;
