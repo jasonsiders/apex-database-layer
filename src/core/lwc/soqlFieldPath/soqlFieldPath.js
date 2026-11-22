@@ -58,12 +58,34 @@ export async function resolveField(objectApiName, path) {
  * @param {String} objectApiName The object the path starts from
  * @param {String} parentPath The relationships drilled into, ex: `Account.Owner`; blank for the object's own fields
  * @param {String} filter `filterable` or `sortable` to offer only fields that can filter or sort; blank for any
+ * @param {Array} coveredPaths Paths whose fields are all stored already, ex: `["Account"]`, which offer only
+ * relationships
  * @returns {Promise<Object>} `{ parent, sections }`, or no options if the path isn't a chain of relationships
  */
-export async function getFieldOptions(objectApiName, parentPath, filter) {
+export async function getFieldOptions(objectApiName, parentPath, filter, coveredPaths = []) {
 	const segments = parentPath ? parentPath.split(".") : [];
 	const level = await resolveLevel(objectApiName, segments);
-	return level ? { parent: level.option, sections: initSections(level, filter) } : NO_OPTIONS;
+	const isCovered = coveredPaths.includes(parentPath);
+	return level ? { parent: level.option, sections: initSections(level, filter, isCovered) } : NO_OPTIONS;
+}
+
+/**
+ * @description The path whose fields an All Fields selection stores, ex: "Account" for "Account.*"
+ * @param {String} field A stored field
+ * @returns {String} The path, blank for the queried object, or null if the field isn't All Fields
+ */
+export function getAllFieldsPath(field) {
+	return field?.endsWith(ALL_FIELDS) ? getParentPath(field) : null;
+}
+
+/**
+ * @description The relationships a field path goes through, ex: "Account.Owner" for "Account.Owner.Name"
+ * @param {String} field A field path
+ * @returns {String} The relationships, blank for one of the queried object's own fields
+ */
+export function getParentPath(field) {
+	const lastDot = field.lastIndexOf(".");
+	return field.slice(0, Math.max(lastDot, 0));
 }
 
 /**
@@ -119,19 +141,21 @@ function isRelationship(field) {
  * fields, each by label
  * @param {Object} level The level from `resolveLevel`
  * @param {String} filter `filterable` or `sortable` to offer only fields that can filter or sort; blank for any
+ * @param {Boolean} isCovered Whether the level's fields are all stored already
  * @returns {Array} "Relationship Fields" and "Record Fields" sections
  */
-function initSections(level, filter) {
+function initSections(level, filter, isCovered) {
 	const isUsable = (field) => !filter || (filter === "filterable" ? field.isFilterable : field.isSortable);
 	const canDrill = level.depth < MAX_RELATIONSHIPS;
 	const relationships = canDrill ? level.fields.filter(isRelationship) : [];
-	const usable = level.fields.filter(isUsable);
+	// A level whose fields are all stored already offers only its parents' fields, through its relationships
+	const usable = isCovered ? [] : level.fields.filter(isUsable);
 	const toFieldOption = (field) => initFieldOption(field, level.option);
 	const relationshipOptions = relationships.map((field) => initRelationshipOption(field, level.option));
 	const lookupOptions = usable.filter(isRelationship).map(toFieldOption);
 	const recordOptions = usable.filter((field) => !isRelationship(field)).map(toFieldOption);
 	// Only stored fields take every field of an object, since a condition or sort needs one; nor does an object without any
-	const canSelectAll = !filter && level.fields.length > 0;
+	const canSelectAll = !filter && usable.length > 0;
 	const allFieldsOptions = canSelectAll ? [initAllFieldsOption(level)] : [];
 	// Relationships come before lookup IDs, like Flow Builder, so the section sorts each group, not the whole list
 	const relationshipItems = [...relationshipOptions.sort(compareLabels), ...lookupOptions.sort(compareLabels)];
@@ -232,13 +256,18 @@ export default class SoqlFieldPath extends LightningElement {
 	 * @type {String}
 	 */
 	@api value;
+	/**
+	 * @description Paths whose fields are all stored by other rows, ex: `["", "Account"]`, which offer only relationships
+	 * @type {Array}
+	 */
+	@api coveredPaths;
 
 	/**
 	 * @description Lists the options under a path, for the picker
 	 * @param {String} parentPath The relationships drilled into
 	 * @returns {Promise<Object>} `{ parent, sections }`
 	 */
-	loadOptions = (parentPath) => getFieldOptions(this.objectApiName, parentPath, this.filter);
+	loadOptions = (parentPath) => getFieldOptions(this.objectApiName, parentPath, this.filter, this.coveredPaths);
 
 	// **** HANDLERS **** //
 	/**

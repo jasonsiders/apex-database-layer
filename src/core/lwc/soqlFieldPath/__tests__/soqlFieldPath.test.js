@@ -154,6 +154,13 @@ describe("c-soql-field-path", () => {
 		expect(pillLabel(element)).toBe("All Fields");
 	});
 
+	it("hides the fields of levels other rows store in full", async () => {
+		const { element } = await render({ coveredPaths: [""] });
+		await open(element);
+
+		expect(optionLabels(element)).toEqual(["Account"]);
+	});
+
 	it("fires null when the field is cleared", async () => {
 		const { element, onChange } = await render({ value: "LastName" });
 
@@ -188,6 +195,14 @@ describe("c-soql-field-path", () => {
 			expect(findAll(account)).toMatchObject({ value: "Account.*", pathLabel: "Account > All Fields" });
 			expect(findAll(filterable)).toBeUndefined();
 			expect(findAll(sortable)).toBeUndefined();
+		});
+
+		it("offers only relationships on a level whose fields are all stored", async () => {
+			const covered = await getFieldOptions("Contact", "", null, [""]);
+			const parent = await getFieldOptions("Contact", "Account", null, [""]);
+
+			expect(values(covered.sections)).toEqual(["Account"]);
+			expect(values(parent.sections)).toContain("Account.*");
 		});
 
 		it("offers only sortable fields for sorting", async () => {

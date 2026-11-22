@@ -1,7 +1,7 @@
 import { LightningElement, api, wire } from "lwc";
 import getObjects from "@salesforce/apex/InvocableSoql.getObjects";
 import { DATE_LITERAL_PATTERN, REFERENCE, REQUIRED_ERROR, compareLabels, toBooleanConstant } from "c/flowResourceMenu";
-import { resolveField } from "c/soqlFieldPath";
+import { getAllFieldsPath, getParentPath, resolveField } from "c/soqlFieldPath";
 
 const ACCESS_LEVELS = [
 	{ label: "User Mode", value: "USER_MODE" },
@@ -189,6 +189,19 @@ function parseDefinition(json) {
 }
 
 /**
+ * @description Drops the stored fields an All Fields selection already stores, ex: Account.Name beside Account.*
+ * @param {Array} fields The stored fields, with null for rows not yet picked
+ * @returns {Array} The fields to keep
+ */
+function dropCoveredFields(fields) {
+	const allFieldsPaths = fields.map(getAllFieldsPath).filter((path) => path != null);
+	const coveredPaths = new Set(allFieldsPaths);
+	const isKept = (field) =>
+		field == null || getAllFieldsPath(field) != null || !coveredPaths.has(getParentPath(field));
+	return fields.filter(isKept);
+}
+
+/**
  * @description Custom Property Editor for `SOQL: Get Record(s)` (`InvocableSoql`). Mirrors Flow Builder's Get Records:
  * pick an object, filter it by conditions on its own or its parents' fields, sort it, and choose fields to store, plus
  * the query options Get Records lacks. Saves the query as JSON in `queryDefinition`, and each value that comes from a
@@ -254,7 +267,12 @@ export default class SoqlQueryEditor extends LightningElement {
 	}
 
 	get fields() {
-		return this._definition.fields.map((field, index) => ({ key: `${index}:${field}`, index, value: field }));
+		return this._definition.fields.map((field, index) => ({
+			key: `${index}:${field}`,
+			index,
+			value: field,
+			coveredPaths: this._findCoveredPaths(index)
+		}));
 	}
 
 	get isCustomLogic() {
@@ -432,14 +450,15 @@ export default class SoqlQueryEditor extends LightningElement {
 	}
 
 	/**
-	 * @description Saves a field to store
+	 * @description Saves a field to store, dropping any the rows' All Fields selections already store
 	 * @param {CustomEvent} event Change on a field path: `{ value }`
 	 */
 	handleFieldChange(event) {
 		const index = Number(event.target.dataset.index);
 		const fields = [...this._definition.fields];
 		fields[index] = event.detail.value;
-		this._updateDefinition({ fields });
+		const keptFields = dropCoveredFields(fields);
+		this._updateDefinition({ fields: keptFields });
 	}
 
 	/**
@@ -584,6 +603,16 @@ export default class SoqlQueryEditor extends LightningElement {
 			.filter((condition, position) => position !== index)
 			.map((condition) => condition.slot);
 		return toSlotNames(prefix).find((name) => !used.includes(name)) ?? null;
+	}
+
+	/**
+	 * @description Lists the paths other rows store all the fields of, so a row's picker offers only their parents
+	 * @param {Number} index The row
+	 * @returns {Array} The paths, ex: `["", "Account"]` for `*` and `Account.*`
+	 */
+	_findCoveredPaths(index) {
+		const otherFields = this._definition.fields.filter((_, position) => position !== index);
+		return otherFields.map(getAllFieldsPath).filter((path) => path != null);
 	}
 
 	/**

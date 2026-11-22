@@ -460,6 +460,26 @@ describe("c-soql-query-editor", () => {
 		expect(savedDefinition(events)).toMatchObject({ fields: [], orderBy: [] });
 	});
 
+	it("drops stored fields that All Fields covers, then offers only the parents' fields there", async () => {
+		const fields = ["LastName", "Account.Name", "Account.Owner.Name"];
+		const { element, events } = await render({ objectApiName: "Contact", fields, conditions: [], orderBy: [] });
+		const fieldPaths = () => rows(element, "field").map((row) => row.querySelector("c-soql-field-path"));
+		const addField = async () => {
+			element.shadowRoot.querySelector('lightning-button[data-name="addField"]').click();
+			await flush();
+		};
+
+		await addField();
+		await fire(fieldPaths().at(-1), { value: "*", field: null });
+		expect(savedDefinition(events).fields).toEqual(["Account.Name", "Account.Owner.Name", "*"]);
+
+		await addField();
+		await fire(fieldPaths().at(-1), { value: "Account.*", field: null });
+		expect(savedDefinition(events).fields).toEqual(["Account.Owner.Name", "*", "Account.*"]);
+		// Each picker hides the fields other rows' All Fields already store, keeping its own value pickable:
+		expect(fieldPaths().map((fieldPath) => fieldPath.coveredPaths)).toEqual([["", "Account"], ["Account"], [""]]);
+	});
+
 	it("saves the query options and access level", async () => {
 		const { element, events } = await render(withCondition({ field: "LastName", operator: "IS_NOT_NULL" }));
 		const input = (name) => element.shadowRoot.querySelector(`[data-name="${name}"]`);
