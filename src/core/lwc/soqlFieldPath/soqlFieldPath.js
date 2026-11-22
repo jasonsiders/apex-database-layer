@@ -128,14 +128,9 @@ function initSections(level, filter) {
 	const relationshipOptions = relationships.map((field) => initRelationshipOption(field, level.option));
 	const lookupOptions = usable.filter(isRelationship).map(toFieldOption);
 	const recordOptions = usable.filter((field) => !isRelationship(field)).map(toFieldOption);
-	return [
-		initSection(
-			"Relationship Fields",
-			[...relationshipOptions.sort(compareLabels), ...lookupOptions.sort(compareLabels)],
-			false
-		),
-		initSection("Record Fields", recordOptions)
-	];
+	// Relationships come before lookup IDs, like Flow Builder, so the section sorts each group, not the whole list
+	const relationshipItems = [...relationshipOptions.sort(compareLabels), ...lookupOptions.sort(compareLabels)];
+	return [initSection("Relationship Fields", relationshipItems, false), initSection("Record Fields", recordOptions)];
 }
 
 /**

@@ -374,6 +374,28 @@ export function isAssignable(item, target) {
 	return !target || (matchesMode && (isRecordTarget ? matchesRecord : matchesScalar));
 }
 
+/**
+ * @description Finds the item with the given value.
+ * @param {Array} sections The sections to search
+ * @param {String} value The value to find
+ * @returns {Object} The matching item, if any
+ */
+export function findItem(sections, value) {
+	return sections.flatMap((section) => section.items).find((item) => item.value === value);
+}
+
+/**
+ * @description Wraps items in a section, sorted by label unless Flow Builder uses a fixed order.
+ * @param {String} label The section's label
+ * @param {Array} items The section's items
+ * @param {Boolean} isSorted Whether to sort the items by label
+ * @returns {Object} `{ label, items }`, with a unique key on each item
+ */
+export function initSection(label, items, isSorted = true) {
+	const ordered = isSorted ? [...items].sort(compareLabels) : items;
+	return { label, items: ordered.map((item) => ({ ...item, key: `${label}:${item.value}` })) };
+}
+
 // **** PRIVATE **** //
 /**
  * @description Marks each item as selectable and/or drillable for the target, dropping items that are neither.
@@ -416,16 +438,6 @@ function canDrill(item, target, context) {
 		[DRILL_RECORD]: () => !item.isCollection && !isRecordTarget && !target?.isCollection
 	};
 	return checks[item.drillType]?.() ?? false;
-}
-
-/**
- * @description Finds the item with the given value.
- * @param {Array} sections The sections to search
- * @param {String} value The value to find
- * @returns {Object} The matching item, if any
- */
-export function findItem(sections, value) {
-	return sections.flatMap((section) => section.items).find((item) => item.value === value);
 }
 
 /**
@@ -763,18 +775,6 @@ function initScreenItems(builderContext, scope) {
 	const screens = (builderContext.screens ?? []).filter((screen) => scope.isUpstream(screen.name));
 	const fields = screens.flatMap((screen) => flatten(screen.fields ?? []));
 	return fields.filter((field) => field.dataType).map(initTypedItem);
-}
-
-/**
- * @description Wraps items in a section, sorted by label unless Flow Builder uses a fixed order.
- * @param {String} label The section's label
- * @param {Array} items The section's items
- * @param {Boolean} isSorted Whether to sort the items by label
- * @returns {Object} `{ label, items }`, with a unique key on each item
- */
-export function initSection(label, items, isSorted = true) {
-	const ordered = isSorted ? [...items].sort(compareLabels) : items;
-	return { label, items: ordered.map((item) => ({ ...item, key: `${label}:${item.value}` })) };
 }
 
 /**
