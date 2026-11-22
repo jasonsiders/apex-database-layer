@@ -6,6 +6,8 @@
 @SuppressWarnings('PMD.CognitiveComplexity,PMD.CyclomaticComplexity')
 public inherited sharing class InvocableSoqlQuery {
 	// **** CONSTANTS **** //
+	/** @description The object a polymorphic relationship describes as, ex: Task.Who; SOQL allows only its fields **/
+	public static final String POLYMORPHIC_OBJECT = 'Name';
 	private static final String BIND_PREFIX = 'bind';
 	/** @description Only condition numbers, AND, OR, NOT, and parentheses, so custom logic can't add SOQL **/
 	private static final Pattern CUSTOM_LOGIC_PATTERN = Pattern.compile('(?i)^(\\s|\\d+|AND|OR|NOT|\\(|\\))*$');
@@ -347,7 +349,7 @@ public inherited sharing class InvocableSoqlQuery {
 
 	/**
 	 * @description Finds the lookup with the relationship name, ex: AccountId for "Account". A polymorphic lookup, ex:
-	 * What, describes as its first object, which shares the fields SOQL allows on it
+	 * Who, describes as the Name object, since SOQL only allows its fields on one without TYPEOF
 	 * @param child The object holding the lookup
 	 * @param relationshipName The relationship name
 	 * @param path The whole field path, for the error
@@ -355,17 +357,20 @@ public inherited sharing class InvocableSoqlQuery {
 	 * @throws System.IllegalArgumentException When the object has no relationship by that name
 	 */
 	private DescribeSObjectResult describeParent(DescribeSObjectResult child, String relationshipName, String path) {
-		SObjectType parentType;
+		List<SObjectType> parentTypes;
 		for (SObjectField field : child?.fields?.getMap()?.values()) {
 			DescribeFieldResult describe = field?.getDescribe();
 			String candidate = describe?.getRelationshipName();
 			Boolean isMatch = relationshipName?.equalsIgnoreCase(candidate) == true;
-			parentType = isMatch ? describe?.getReferenceTo()?.get(0) : parentType;
+			parentTypes = isMatch ? describe?.getReferenceTo() : parentTypes;
 		}
-		if (parentType == null) {
+		if (parentTypes?.isEmpty() != false) {
 			throw new IllegalArgumentException('Invalid field for ' + this.objectApiName + ': ' + path);
 		}
-		return parentType?.getDescribe(SObjectDescribeOptions.DEFERRED);
+		String firstParent = String.valueOf(parentTypes?.get(0));
+		String parentName = (parentTypes?.size() > 1) ? InvocableSoqlQuery.POLYMORPHIC_OBJECT : firstParent;
+		List<String> parentNames = new List<String>{ parentName };
+		return Schema.describeSObjects(parentNames, SObjectDescribeOptions.DEFERRED)?.get(0);
 	}
 
 	/**

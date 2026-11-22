@@ -40,7 +40,8 @@
 			"type": "ID",
 			"isFilterable": true,
 			"isSortable": true,
-			"picklistValues": []
+			"picklistValues": [],
+			"referenceTo": "Contact"
 		},
 		{
 			"apiName": "Interests__c",
@@ -49,8 +50,14 @@
 			"isFilterable": true,
 			"isSortable": false,
 			"picklistValues": [
-				{ "label": "Golf", "value": "Golf" },
-				{ "label": "Tennis", "value": "Tennis" }
+				{
+					"label": "Golf",
+					"value": "Golf"
+				},
+				{
+					"label": "Tennis",
+					"value": "Tennis"
+				}
 			]
 		},
 		{
@@ -68,8 +75,14 @@
 			"isFilterable": true,
 			"isSortable": true,
 			"picklistValues": [
-				{ "label": "Web", "value": "Web" },
-				{ "label": "Phone Inquiry", "value": "Phone Inquiry" }
+				{
+					"label": "Web",
+					"value": "Web"
+				},
+				{
+					"label": "Phone Inquiry",
+					"value": "Phone Inquiry"
+				}
 			]
 		},
 		{
@@ -112,6 +125,15 @@
 			"type": "REFERENCE",
 			"relationshipName": "Owner",
 			"referenceTo": "User",
+			"isFilterable": true,
+			"isSortable": true,
+			"picklistValues": []
+		},
+		{
+			"apiName": "Id",
+			"label": "Account ID",
+			"type": "ID",
+			"referenceTo": "Account",
 			"isFilterable": true,
 			"isSortable": true,
 			"picklistValues": []

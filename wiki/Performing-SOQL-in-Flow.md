@@ -24,7 +24,7 @@ In Flow Builder, add an **Action** element and search for `SOQL:`, under the **D
 4. **Select Fields to Store**: add the fields to include in the records. Records always include their ID, and every field used in a condition.
 5. **Query Options**: set the access level, a limit, an offset, and **Rows**: **All Rows** includes deleted and archived records, and **For Update** locks the records for the rest of the transaction. SOQL allows one of the two at a time.
 
-To use a parent's field, pick its relationship first, ex: **Account >**, then pick a field of the parent. Relationships go as deep as SOQL allows.
+To use a parent's field, pick its relationship first, ex: **Account >**, then pick a field of the parent. Relationships go as deep as SOQL allows. A relationship to several objects, ex: a task's **Who**, offers only the fields SOQL allows on it without `TYPEOF`, such as Name and Type.
 
 ### Operators
 

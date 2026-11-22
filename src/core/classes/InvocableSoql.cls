@@ -52,7 +52,7 @@ public inherited sharing class InvocableSoql {
 		for (SObjectField field : InvocableSoql.describeFields(objectApiName)) {
 			DescribeFieldResult describe = field?.getDescribe();
 			if (describe?.isAccessible() == true) {
-				InvocableSoql.FieldOption option = new InvocableSoql.FieldOption(describe);
+				InvocableSoql.FieldOption option = new InvocableSoql.FieldOption(describe, objectApiName);
 				options?.add(option);
 			}
 		}
@@ -117,7 +117,10 @@ public inherited sharing class InvocableSoql {
 		/** @description Offered as values for picklist conditions; active values only **/
 		@AuraEnabled
 		public List<InvocableSoql.PicklistOption> picklistValues;
-		/** @description The parent object, for drilling into a lookup; a polymorphic lookup's first object, like Apex **/
+		/**
+		 * @description The object whose IDs the field holds: a lookup's parent, which the editor drills into, or the
+		 * field's own object for its ID. A polymorphic lookup holds `InvocableSoqlQuery.POLYMORPHIC_OBJECT`, like Apex
+		 */
 		@AuraEnabled
 		public String referenceTo;
 		/** @description The lookup's relationship name, ex: "Account" for AccountId; blank for other fields **/
@@ -130,18 +133,21 @@ public inherited sharing class InvocableSoql {
 		/**
 		 * @description Copies the describe details the editor needs
 		 * @param field The field's describe
+		 * @param objectApiName The field's object
 		 */
-		private FieldOption(DescribeFieldResult field) {
+		private FieldOption(DescribeFieldResult field, String objectApiName) {
 			List<SObjectType> parents = field?.getReferenceTo();
 			List<Schema.PicklistEntry> entries = field?.getPicklistValues();
 			SObjectType firstParent = parents?.isEmpty() == false ? parents?.get(0) : null;
+			String parentName = (parents?.size() > 1) ? InvocableSoqlQuery.POLYMORPHIC_OBJECT : firstParent?.toString();
+			Boolean isId = field?.getType() == Schema.DisplayType.ID;
 			this.apiName = field?.getName();
 			this.isFilterable = field?.isFilterable();
 			this.isPolymorphic = parents?.size() > 1;
 			this.isSortable = field?.isSortable();
 			this.label = field?.getLabel();
 			this.picklistValues = InvocableSoql.initPicklistOptions(entries);
-			this.referenceTo = firstParent?.toString();
+			this.referenceTo = isId ? objectApiName : parentName;
 			this.relationshipName = field?.getRelationshipName();
 			this.type = field?.getType()?.name();
 		}

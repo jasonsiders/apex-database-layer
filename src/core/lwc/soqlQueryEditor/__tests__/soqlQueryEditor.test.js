@@ -124,16 +124,21 @@ describe("c-soql-query-editor", () => {
 	});
 
 	it("starts over when the object changes, releasing slots", async () => {
-		const { element, events } = await render(
-			withCondition({ field: "LastName", operator: "EQUALS", slot: "text1" }),
-			[{ name: "text1", value: "textVar", valueDataType: "reference" }]
-		);
+		// The old object's logic and options go too:
+		const definition = {
+			...withCondition({ field: "LastName", operator: "EQUALS", slot: "text1" }),
+			conditionLogic: "1",
+			rowLimit: 5
+		};
+		const { element, events } = await render(definition, [
+			{ name: "text1", value: "textVar", valueDataType: "reference" }
+		]);
 
 		const picker = element.shadowRoot.querySelector('c-flow-resource-picker[data-name="objectApiName"]');
 		await fire(picker, { value: "Account", valueDataType: "String" });
 
 		expect(events).toContainEqual({ type: "configuration_editor_input_value_deleted", detail: { name: "text1" } });
-		expect(savedDefinition(events)).toMatchObject({ objectApiName: "Account", conditions: [] });
+		expect(savedDefinition(events)).toEqual({ conditions: [], fields: [], orderBy: [], objectApiName: "Account" });
 	});
 
 	it("adds a condition, defaulting its operator to the field's first", async () => {
@@ -219,6 +224,12 @@ describe("c-soql-query-editor", () => {
 			type: "configuration_editor_generic_type_mapping_changed",
 			detail: { typeName: "T__recordCollection1", typeValue: "Account" }
 		});
+	});
+
+	it("restricts a parent ID's record collections to the parent's object", async () => {
+		const { element } = await render(withCondition({ field: "Account.Id", operator: "IN" }));
+
+		expect(valuePicker(element, 0)).toMatchObject({ acceptsRecords: true, objectType: "Account" });
 	});
 
 	it("saves typed collections to collection slots of their type", async () => {
@@ -366,12 +377,13 @@ describe("c-soql-query-editor", () => {
 
 		element.shadowRoot.querySelector('lightning-button[data-name="addCondition"]').click();
 		await flush();
-		expect(savedDefinition(events).conditionLogic).toBe("1 OR (2 AND 3) AND 4");
+		// Parenthesized, since SOQL can't mix AND and OR without them:
+		expect(savedDefinition(events).conditionLogic).toBe("(1 OR (2 AND 3)) AND 4");
 
 		rows(element, "condition")[0].querySelector("lightning-button-icon").click();
 		await flush();
 		// The removed condition's number can't be guessed, so it's flagged for the user to fix:
-		expect(savedDefinition(events).conditionLogic).toBe("? OR (1 AND 2) AND 3");
+		expect(savedDefinition(events).conditionLogic).toBe("(? OR (1 AND 2)) AND 3");
 		// The added condition is still empty, so it's flagged too:
 		expect(element.validate().map((error) => error.key)).toEqual(["condition-2", "conditionLogic"]);
 
@@ -379,6 +391,10 @@ describe("c-soql-query-editor", () => {
 		await fire(custom, { value: "1 AND 2" });
 		// Condition 3 isn't named, so it wouldn't apply:
 		expect(element.validate().map((error) => error.key)).toEqual(["condition-2", "conditionLogic"]);
+		await fire(custom, { value: "1 OR 2 AND 3" });
+		expect(element.validate().map((error) => error.key)).toEqual(["condition-2", "conditionLogic"]);
+		await fire(custom, { value: "1 OR (2 AND NOT 3)" });
+		expect(element.validate().map((error) => error.key)).toEqual(["condition-2"]);
 	});
 
 	it("saves typed booleans in lowercase, which Apex reads", async () => {

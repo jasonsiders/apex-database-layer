@@ -129,6 +129,13 @@ describe("c-flow-resource-menu", () => {
 			expect(labelsBySection(sections)).toEqual({ "Simple Variables": ["textCollectionVar"] });
 		});
 
+		it("offers the host's listed values in a typed input, ex: date literals in a Date input", () => {
+			const target = { dataType: "Date", picklistValues: [{ label: "TODAY", value: "TODAY" }] };
+			const sections = getRootSections(context, target);
+
+			expect(findItem(sections, "TODAY")).toMatchObject({ isLiteral: true, isSelectable: true });
+		});
+
 		it("restricts records to the input's object, when it has one", () => {
 			const sections = getRootSections(context, { ...RECORD, objectType: "Contact" });
 

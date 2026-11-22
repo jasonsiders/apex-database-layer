@@ -180,14 +180,19 @@ private class InvocableSoqlTest {
 		insert new Contact(AccountId = account.Id, LastName = 'Contact');
 		InvocableSoqlQuery query = InvocableSoqlTest.initQuery('Contact', new List<String>{ 'Account.Name' });
 		query.conditions.add(InvocableSoqlTest.initCondition('Account.Owner.IsActive', 'EQUALS', 'true'));
+		InvocableSoqlQuery tasks = InvocableSoqlTest.initQuery('Task', new List<String>{ 'Who.Name' });
+		tasks.conditions.add(InvocableSoqlTest.initCondition('Who.Type', 'EQUALS', 'Contact'));
 
 		Test.startTest();
 		InvocableSoql.Output output = InvocableSoqlTest.invoke(InvocableSoqlTest.initInput(query));
+		InvocableSoql.Output taskOutput = InvocableSoqlTest.invoke(InvocableSoqlTest.initInput(tasks));
 		Test.stopTest();
 
 		Assert.areEqual('Acme', output?.record?.getSObject('Account')?.get('Name'), 'Wrong parent field');
 		String expected = 'SELECT Id, Account.Name, Account.Owner.IsActive FROM Contact WHERE Account.Owner.IsActive = true';
 		Assert.areEqual(expected, output?.queryString, 'Wrong query');
+		String expectedTasks = 'SELECT Id, Who.Name, Who.Type FROM Task WHERE Who.Type = \'Contact\'';
+		Assert.areEqual(expectedTasks, taskOutput?.queryString, 'Wrong polymorphic query');
 	}
 
 	@IsTest
@@ -415,6 +420,8 @@ private class InvocableSoqlTest {
 		InvocableSoqlQuery.Condition fakeLiteral = InvocableSoqlTest.initCondition('CreatedDate', 'EQUALS', null);
 		fakeLiteral.dateLiteral = 'FOO_BAR:3';
 		malformedDateLiteral.conditions.add(fakeLiteral);
+		// Without TYPEOF, a polymorphic relationship only allows the Name object's fields:
+		InvocableSoqlQuery polymorphicField = InvocableSoqlTest.initQuery('Task', new List<String>{ 'Who.Birthdate' });
 		InvocableSoqlQuery missingObject = InvocableSoqlTest.initQuery(null, null);
 		InvocableSoql.Input missingDefinition = new InvocableSoql.Input();
 
@@ -427,6 +434,7 @@ private class InvocableSoqlTest {
 			InvocableSoqlTest.invokeAndCatch(InvocableSoqlTest.initInput(unknownSelectField)),
 			InvocableSoqlTest.invokeAndCatch(InvocableSoqlTest.initInput(unknownSortField)),
 			InvocableSoqlTest.invokeAndCatch(InvocableSoqlTest.initInput(malformedDateLiteral)),
+			InvocableSoqlTest.invokeAndCatch(InvocableSoqlTest.initInput(polymorphicField)),
 			InvocableSoqlTest.invokeAndCatch(InvocableSoqlTest.initInput(missingObject)),
 			InvocableSoqlTest.invokeAndCatch(missingDefinition)
 		};
@@ -525,6 +533,8 @@ private class InvocableSoqlTest {
 		Test.stopTest();
 
 		Assert.isTrue(taskFieldsByName.get('WhoId')?.isPolymorphic, 'WhoId looks up to Contacts and Leads');
+		Assert.areEqual('Name', taskFieldsByName.get('WhoId')?.referenceTo, 'Polymorphic lookups drill into Name');
+		Assert.areEqual('Contact', fieldsByName.get('Id')?.referenceTo, 'An ID holds its own object\'s IDs');
 		InvocableSoql.FieldOption accountId = fieldsByName.get('AccountId');
 		Assert.areEqual('Account', accountId?.relationshipName, 'Wrong relationship name');
 		Assert.areEqual('Account', accountId?.referenceTo, 'Wrong parent object');

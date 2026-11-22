@@ -142,6 +142,28 @@ function toSlotNames(prefix) {
 }
 
 /**
+ * @description Whether custom logic mixes AND and OR without parentheses, ex: `1 OR 2 AND 3`, which SOQL rejects
+ * @param {String} logic The custom logic
+ * @returns {Boolean} True if any one level of parentheses has both AND and OR
+ */
+function hasMixedOperators(logic) {
+	const levels = [new Set()];
+	let isMixed = false;
+	for (const token of logic.toUpperCase().match(/AND|OR|\(|\)/g) ?? []) {
+		if (token === "(") {
+			levels.push(new Set());
+		} else if (token === ")") {
+			levels.pop();
+		} else {
+			const level = levels.at(-1) ?? new Set();
+			level.add(token);
+			isMixed = isMixed || level.size > 1;
+		}
+	}
+	return isMixed;
+}
+
+/**
  * @description The kind of field, which picks its operators and value type
  * @param {Object} field The field, from `InvocableSoql.getFields`
  * @returns {String} A key of `OPERATORS`
@@ -351,7 +373,8 @@ export default class SoqlQueryEditor extends LightningElement {
 	handleAddCondition() {
 		const conditions = [...this._definition.conditions, { field: null, operator: null }];
 		const logic = this._definition.conditionLogic;
-		const appended = logic?.trim() ? `${logic} AND ${conditions.length}` : String(conditions.length);
+		// Parenthesized, since SOQL can't mix AND and OR without parentheses, ex: `(1 OR 2) AND 3`
+		const appended = logic?.trim() ? `(${logic}) AND ${conditions.length}` : String(conditions.length);
 		const conditionLogic = this.isCustomLogic ? appended : logic;
 		this._updateDefinition({ conditions, conditionLogic });
 	}
@@ -449,8 +472,9 @@ export default class SoqlQueryEditor extends LightningElement {
 		if (objectApiName !== this.objectApiName) {
 			this._definition.conditions.forEach((condition) => this._releaseSlot(condition));
 			this._isCustomLogic = false;
-			const emptyDefinition = parseDefinition();
-			this._updateDefinition({ ...emptyDefinition, objectApiName });
+			// Replaced, not merged, so the old object's logic and options go too
+			this._definition = parseDefinition();
+			this._updateDefinition({ objectApiName });
 			this._setGenericTypes(objectApiName);
 		}
 	}
@@ -635,14 +659,13 @@ export default class SoqlQueryEditor extends LightningElement {
 		const isCollection = COLLECTION_OPERATORS.includes(operator);
 		const isDate = type === "Date" || type === "DateTime";
 		const picklistValues = isDate ? DATE_LITERALS : (field?.picklistValues ?? []);
-		// An ID field holds this object's IDs; a lookup holds its parent's, unless it looks up to several objects
-		const recordObject = field?.type === "ID" ? this.objectApiName : field?.referenceTo;
 		const target = {
 			acceptsRecords: isCollection && toKind(field) === "id",
 			allowsDateLiterals: isDate,
 			isCollection,
 			isPicklistOnly: MULTI_VALUE_OPERATORS.includes(operator),
-			objectType: field?.isPolymorphic ? null : recordObject,
+			// The object whose IDs the field holds; a lookup to several objects takes collections of any of them
+			objectType: field?.isPolymorphic ? null : field?.referenceTo,
 			picklistValues: isCollection ? [] : picklistValues,
 			type
 		};
@@ -799,7 +822,7 @@ export default class SoqlQueryEditor extends LightningElement {
 
 	/**
 	 * @description Checks custom logic: only condition numbers, AND, OR, NOT, and parentheses, naming each condition
-	 * exactly, since a condition the logic leaves out doesn't apply
+	 * exactly, since a condition the logic leaves out doesn't apply, with AND and OR in separate parentheses
 	 * @returns {Object} An error, or null
 	 */
 	_validateLogic() {
@@ -808,7 +831,8 @@ export default class SoqlQueryEditor extends LightningElement {
 		const expected = this._definition.conditions.map((condition, index) => index + 1);
 		const isValidText = /^(\s|\d+|AND|OR|NOT|\(|\))*$/i.test(logic);
 		const isExact = numbers.size === expected.length && expected.every((number) => numbers.has(number));
-		const isValid = !this.isCustomLogic || (logic.trim() !== "" && isValidText && isExact);
+		const isGrouped = !hasMixedOperators(logic);
+		const isValid = !this.isCustomLogic || (logic.trim() !== "" && isValidText && isExact && isGrouped);
 		return isValid
 			? null
 			: { key: "conditionLogic", errorString: "Enter valid condition logic, ex: 1 AND (2 OR 3)." };
