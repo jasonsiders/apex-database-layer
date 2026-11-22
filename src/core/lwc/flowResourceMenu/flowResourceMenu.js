@@ -363,13 +363,12 @@ export function isAssignable(item, target) {
 	const isScalar = Boolean(item.dataType) && ![SOBJECT, "Apex"].includes(item.dataType);
 	const types = COMPATIBLE_TYPES[target?.dataType] ?? [target?.dataType];
 	const matchesScalarShape = Boolean(item.isCollection) === Boolean(target?.isCollection);
-	// The host lists values its input takes, ex: date literals for a Date input
-	const matchesScalar =
-		(isScalar && matchesScalarShape && types.includes(item.dataType)) || matchesRecordIds || Boolean(item.isListed);
-	// Typing mustn't reach values that a picklist-only target doesn't list; menu items came from the list
+	// The host lists values its input takes, ex: date literals for a Date input; typing mustn't reach unlisted values
+	// of a picklist-only target
 	const isListed =
-		Boolean(item.isLiteral) &&
-		(Boolean(item.isListed) || (target?.picklistValues ?? []).some(({ value }) => value === item.value));
+		Boolean(item.isLiteral) && (target?.picklistValues ?? []).some(({ value }) => value === item.value);
+	const matchesScalar =
+		(isScalar && matchesScalarShape && types.includes(item.dataType)) || matchesRecordIds || isListed;
 	const matchesMode = !target?.isPicklistOnly || isListed;
 	return !target || (matchesMode && (isRecordTarget ? matchesRecord : matchesScalar));
 }
@@ -693,7 +692,6 @@ function initPicklistItem(picklistValue) {
 		icon: "utility:picklist_type",
 		...picklistValue,
 		dataType: "String",
-		isListed: true,
 		isLiteral: true
 	});
 }

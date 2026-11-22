@@ -149,6 +149,17 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	}
 
 	/**
+	 * @description Names the object a lookup points to. A polymorphic lookup, ex: Task.WhoId, names the Name object,
+	 * since SOQL allows only its fields without TYPEOF
+	 * @param parentTypes The lookup's referenceTo types
+	 * @return The parent object's name, or null for a field that isn't a lookup
+	 */
+	public static String toEntityName(List<SObjectType> parentTypes) {
+		SObjectType firstParent = parentTypes?.isEmpty() == false ? parentTypes?.get(0) : null;
+		return (parentTypes?.size() > 1) ? Soql.POLYMORPHIC_ENTITY : firstParent?.toString();
+	}
+
+	/**
 	 * @description Initializes a SOQL request object for the specified operation.
 	 * @param operation The SOQL operation to perform
 	 * @return A configured Soql.Request object
@@ -813,8 +824,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		private String findParentEntity(SObjectField lookup) {
 			List<SObjectType> parentTypes = lookup?.getDescribe()?.getReferenceTo();
-			String firstParent = String.valueOf(parentTypes?.get(0));
-			return (parentTypes?.size() > 1) ? POLYMORPHIC_ENTITY : firstParent;
+			return Soql.toEntityName(parentTypes);
 		}
 
 		/**

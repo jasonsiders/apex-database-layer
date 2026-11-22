@@ -1,6 +1,6 @@
 import { LightningElement, api } from "lwc";
 import getFields from "@salesforce/apex/InvocableSoql.getFields";
-import { compareLabels, initSection } from "c/flowResourceMenu";
+import { compareLabels, initSection, parsePath } from "c/flowResourceMenu";
 
 // SOQL rejects a seventh relationship: "cannot query foreign key relationships more than 5 levels away from the root"
 const MAX_RELATIONSHIPS = 6;
@@ -75,17 +75,7 @@ export async function getFieldOptions(objectApiName, parentPath, filter, covered
  * @returns {String} The path, blank for the queried object, or null if the field isn't All Fields
  */
 export function getAllFieldsPath(field) {
-	return field?.endsWith(ALL_FIELDS) ? getParentPath(field) : null;
-}
-
-/**
- * @description The relationships a field path goes through, ex: "Account.Owner" for "Account.Owner.Name"
- * @param {String} field A field path
- * @returns {String} The relationships, blank for one of the queried object's own fields
- */
-export function getParentPath(field) {
-	const lastDot = field.lastIndexOf(".");
-	return field.slice(0, Math.max(lastDot, 0));
+	return field?.endsWith(ALL_FIELDS) ? parsePath(field).parentPath : null;
 }
 
 /**

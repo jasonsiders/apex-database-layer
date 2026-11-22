@@ -27,6 +27,26 @@ public abstract inherited sharing class InvocableDml {
 	}
 
 	/**
+	 * @description The action editors call this through Lightning, which only shows an AuraHandledException's message
+	 * @param objectApiName The object to describe
+	 * @return The object's fields
+	 * @throws System.AuraHandledException When the object doesn't exist
+	 */
+	public static List<SObjectField> describeFields(String objectApiName) {
+		List<String> objectApiNames = new List<String>{ objectApiName };
+		try {
+			List<DescribeSObjectResult> objects = Schema.describeSObjects(
+				objectApiNames,
+				SObjectDescribeOptions.DEFERRED
+			);
+			return objects?.get(0)?.fields?.getMap()?.values();
+		} catch (System.InvalidParameterValueException error) {
+			String message = error?.getMessage();
+			throw new System.AuraHandledException(message);
+		}
+	}
+
+	/**
 	 * @description Flow bulkifies interviews into one call; they share one DML operation, so a bulk run can't exhaust
 	 * the DML statement limit. One operation can only have one set of settings, so the first input's apply to all
 	 * @param inputs One input per flow interview

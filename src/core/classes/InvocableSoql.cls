@@ -49,7 +49,7 @@ public inherited sharing class InvocableSoql {
 	@AuraEnabled(cacheable=true)
 	public static List<InvocableSoql.FieldOption> getFields(String objectApiName) {
 		List<InvocableSoql.FieldOption> options = new List<InvocableSoql.FieldOption>{};
-		for (SObjectField field : InvocableSoql.describeFields(objectApiName)) {
+		for (SObjectField field : InvocableDml.describeFields(objectApiName)) {
 			DescribeFieldResult describe = field?.getDescribe();
 			if (describe?.isAccessible() == true) {
 				InvocableSoql.FieldOption option = new InvocableSoql.FieldOption(describe, objectApiName);
@@ -60,26 +60,6 @@ public inherited sharing class InvocableSoql {
 	}
 
 	// **** PRIVATE **** //
-	/**
-	 * @description The editor calls this through Lightning, which only shows an AuraHandledException's message
-	 * @param objectApiName The object to describe
-	 * @return The object's fields
-	 * @throws System.AuraHandledException When the object doesn't exist
-	 */
-	private static List<SObjectField> describeFields(String objectApiName) {
-		List<String> objectApiNames = new List<String>{ objectApiName };
-		try {
-			List<DescribeSObjectResult> objects = Schema.describeSObjects(
-				objectApiNames,
-				SObjectDescribeOptions.DEFERRED
-			);
-			return objects?.get(0)?.fields?.getMap()?.values();
-		} catch (System.InvalidParameterValueException error) {
-			String message = error?.getMessage();
-			throw new System.AuraHandledException(message);
-		}
-	}
-
 	/**
 	 * @description Lists a field's active picklist values
 	 * @param entries The field's picklist entries; empty for other fields
@@ -119,7 +99,7 @@ public inherited sharing class InvocableSoql {
 		public List<InvocableSoql.PicklistOption> picklistValues;
 		/**
 		 * @description The object whose IDs the field holds: a lookup's parent, which the editor drills into, or the
-		 * field's own object for its ID. A polymorphic lookup holds `InvocableSoqlQuery.POLYMORPHIC_OBJECT`, like Apex
+		 * field's own object for its ID. A polymorphic lookup holds the Name object, like Apex
 		 */
 		@AuraEnabled
 		public String referenceTo;
@@ -138,8 +118,7 @@ public inherited sharing class InvocableSoql {
 		private FieldOption(DescribeFieldResult field, String objectApiName) {
 			List<SObjectType> parents = field?.getReferenceTo();
 			List<Schema.PicklistEntry> entries = field?.getPicklistValues();
-			SObjectType firstParent = parents?.isEmpty() == false ? parents?.get(0) : null;
-			String parentName = (parents?.size() > 1) ? InvocableSoqlQuery.POLYMORPHIC_OBJECT : firstParent?.toString();
+			String parentName = Soql.toEntityName(parents);
 			Boolean isId = field?.getType() == Schema.DisplayType.ID;
 			this.apiName = field?.getName();
 			this.isFilterable = field?.isFilterable();

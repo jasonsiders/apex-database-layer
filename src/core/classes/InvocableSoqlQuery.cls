@@ -6,8 +6,6 @@
 @SuppressWarnings('PMD.CognitiveComplexity,PMD.CyclomaticComplexity')
 public inherited sharing class InvocableSoqlQuery {
 	// **** CONSTANTS **** //
-	/** @description The object a polymorphic relationship describes as, ex: Task.Who; SOQL allows only its fields **/
-	public static final String POLYMORPHIC_OBJECT = 'Name';
 	/** @description Ends a stored field that selects every field of its object, ex: "*" or "Account.Owner.*" **/
 	public static final String ALL_FIELDS = '*';
 	private static final String BIND_PREFIX = 'bind';
@@ -84,6 +82,8 @@ public inherited sharing class InvocableSoqlQuery {
 	/** @description Each condition's field path, split once, since a merged query reads it from every row **/
 	private transient List<List<String>> conditionPaths;
 	private transient DescribeSObjectResult objectDescribe;
+	/** @description The expanded SELECT clauses, by access level, since user mode omits fields the user can't read **/
+	private transient Map<System.AccessLevel, Set<String>> selectClausesByAccessLevel;
 
 	// **** PUBLIC **** //
 	/**
@@ -227,10 +227,29 @@ public inherited sharing class InvocableSoqlQuery {
 	}
 
 	/**
-	 * @description Adds each field to SELECT, plus each condition's field, so merged results can be split by it
+	 * @description Adds the SELECT clauses, expanded once per access level, since a batch builds a query and a query
+	 * string for each variant, and each all-field selection describes every field of its object
 	 * @param builder The query being built
 	 */
 	private void addSelect(Soql builder) {
+		System.AccessLevel accessLevel = builder?.accessLevel;
+		Set<String> cached = this.selectClausesByAccessLevel?.get(accessLevel);
+		if (cached == null) {
+			this.addFields(builder);
+			Set<String> clauses = builder?.selectClauses;
+			this.selectClausesByAccessLevel?.put(accessLevel, clauses?.clone());
+		} else {
+			for (String clause : cached) {
+				builder?.addSelect(clause);
+			}
+		}
+	}
+
+	/**
+	 * @description Adds each field to SELECT, plus each condition's field, so merged results can be split by it
+	 * @param builder The query being built
+	 */
+	private void addFields(Soql builder) {
 		List<String> fieldNames = new List<String>(this.fields ?? new List<String>{});
 		for (InvocableSoqlQuery.Condition condition : this.conditions) {
 			fieldNames?.add(condition?.field);
@@ -288,7 +307,7 @@ public inherited sharing class InvocableSoqlQuery {
 			((String) value).endsWith('Z') == false;
 		Object zoned = isLocalTime ? value + 'Z' : value;
 		String text = String.valueOf(value);
-		String serialized = JSON.serialize(zoned);
+		String serialized = isId ? null : JSON.serialize(zoned);
 		return isId ? Id.valueOf(text) : JSON.deserialize(serialized, valueType);
 	}
 
@@ -300,6 +319,7 @@ public inherited sharing class InvocableSoqlQuery {
 	private InvocableSoqlQuery describe() {
 		this.conditions = this.conditions ?? new List<InvocableSoqlQuery.Condition>{};
 		this.objectDescribe = this.describeObject();
+		this.selectClausesByAccessLevel = new Map<System.AccessLevel, Set<String>>{};
 		this.conditionFields = new List<DescribeFieldResult>{};
 		this.conditionPaths = new List<List<String>>{};
 		for (InvocableSoqlQuery.Condition condition : this.conditions) {
@@ -439,8 +459,7 @@ public inherited sharing class InvocableSoqlQuery {
 	 */
 	private DescribeSObjectResult describeReference(DescribeFieldResult lookup) {
 		List<SObjectType> parentTypes = lookup?.getReferenceTo();
-		String firstParent = String.valueOf(parentTypes?.get(0));
-		String parentName = (parentTypes?.size() > 1) ? InvocableSoqlQuery.POLYMORPHIC_OBJECT : firstParent;
+		String parentName = Soql.toEntityName(parentTypes);
 		List<String> parentNames = new List<String>{ parentName };
 		return Schema.describeSObjects(parentNames, SObjectDescribeOptions.DEFERRED)?.get(0);
 	}

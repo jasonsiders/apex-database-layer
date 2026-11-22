@@ -1,7 +1,14 @@
 import { LightningElement, api, wire } from "lwc";
 import getObjects from "@salesforce/apex/InvocableSoql.getObjects";
-import { DATE_LITERAL_PATTERN, REFERENCE, REQUIRED_ERROR, compareLabels, toBooleanConstant } from "c/flowResourceMenu";
-import { getAllFieldsPath, getParentPath, resolveField } from "c/soqlFieldPath";
+import {
+	DATE_LITERAL_PATTERN,
+	REFERENCE,
+	REQUIRED_ERROR,
+	compareLabels,
+	parsePath,
+	toBooleanConstant
+} from "c/flowResourceMenu";
+import { getAllFieldsPath, resolveField } from "c/soqlFieldPath";
 
 const ACCESS_LEVELS = [
 	{ label: "User Mode", value: "USER_MODE" },
@@ -194,11 +201,20 @@ function parseDefinition(json) {
  * @returns {Array} The fields to keep
  */
 function dropCoveredFields(fields) {
-	const allFieldsPaths = fields.map(getAllFieldsPath).filter((path) => path != null);
+	const allFieldsPaths = toCoveredPaths(fields);
 	const coveredPaths = new Set(allFieldsPaths);
 	const isKept = (field) =>
-		field == null || getAllFieldsPath(field) != null || !coveredPaths.has(getParentPath(field));
+		field == null || getAllFieldsPath(field) != null || !coveredPaths.has(parsePath(field).parentPath);
 	return fields.filter(isKept);
+}
+
+/**
+ * @description The paths whose fields All Fields selections store, ex: `["", "Account"]` for `*` and `Account.*`
+ * @param {Array} fields The stored fields, with null for rows not yet picked
+ * @returns {Array} The paths
+ */
+function toCoveredPaths(fields) {
+	return fields.map(getAllFieldsPath).filter((path) => path != null);
 }
 
 /**
@@ -612,7 +628,7 @@ export default class SoqlQueryEditor extends LightningElement {
 	 */
 	_findCoveredPaths(index) {
 		const otherFields = this._definition.fields.filter((_, position) => position !== index);
-		return otherFields.map(getAllFieldsPath).filter((path) => path != null);
+		return toCoveredPaths(otherFields);
 	}
 
 	/**

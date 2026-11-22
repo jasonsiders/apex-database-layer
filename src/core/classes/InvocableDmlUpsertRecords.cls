@@ -81,26 +81,6 @@ public inherited sharing class InvocableDmlUpsertRecords extends InvocableDml {
 	}
 
 	/**
-	 * @description The editor calls this through Lightning, which only shows an AuraHandledException's message
-	 * @param objectApiName The object to describe
-	 * @return The object's fields
-	 * @throws System.AuraHandledException When the object doesn't exist
-	 */
-	private List<SObjectField> describeFields(String objectApiName) {
-		List<String> objectApiNames = new List<String>{ objectApiName };
-		try {
-			List<DescribeSObjectResult> objects = Schema.describeSObjects(
-				objectApiNames,
-				SObjectDescribeOptions.DEFERRED
-			);
-			return objects?.get(0)?.fields?.getMap()?.values();
-		} catch (System.InvalidParameterValueException error) {
-			String message = error?.getMessage();
-			throw new System.AuraHandledException(message);
-		}
-	}
-
-	/**
 	 * @description Lists the fields the editor offers to match records on
 	 * @param objectApiName The object to upsert, ex: "Account"
 	 * @return The object's accessible external ID fields and standard ID lookup fields, except Id
@@ -108,7 +88,7 @@ public inherited sharing class InvocableDmlUpsertRecords extends InvocableDml {
 	 */
 	private List<InvocableDmlUpsertRecords.MatchField> initMatchFields(String objectApiName) {
 		List<InvocableDmlUpsertRecords.MatchField> matchFields = new List<InvocableDmlUpsertRecords.MatchField>{};
-		for (SObjectField field : this.describeFields(objectApiName)) {
+		for (SObjectField field : InvocableDml.describeFields(objectApiName)) {
 			DescribeFieldResult describe = field?.getDescribe();
 			if (this.isMatchable(describe)) {
 				InvocableDmlUpsertRecords.MatchField matchField = new InvocableDmlUpsertRecords.MatchField(describe);
