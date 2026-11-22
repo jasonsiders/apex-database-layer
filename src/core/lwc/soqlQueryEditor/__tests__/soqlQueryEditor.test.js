@@ -413,10 +413,12 @@ describe("c-soql-query-editor", () => {
 		await fire(custom, { value: "1 OR 2 AND 3" });
 		expect(element.validate().map((error) => error.key)).toEqual(["condition-2", "conditionLogic"]);
 		// SOQL rejects unbalanced parentheses, and conditions or operators out of turn:
-		for (const value of ["1 AND (2 OR 3", "1 2 OR 3", "(1 OR 2) AND 3 NOT"]) {
-			await fire(custom, { value });
-			expect(element.validate().map((error) => error.key)).toEqual(["condition-2", "conditionLogic"]);
-		}
+		await fire(custom, { value: "1 AND (2 OR 3" });
+		expect(element.validate().map((error) => error.key)).toEqual(["condition-2", "conditionLogic"]);
+		await fire(custom, { value: "1 2 OR 3" });
+		expect(element.validate().map((error) => error.key)).toEqual(["condition-2", "conditionLogic"]);
+		await fire(custom, { value: "(1 OR 2) AND 3 NOT" });
+		expect(element.validate().map((error) => error.key)).toEqual(["condition-2", "conditionLogic"]);
 		await fire(custom, { value: "1 OR (2 AND NOT 3)" });
 		expect(element.validate().map((error) => error.key)).toEqual(["condition-2"]);
 	});

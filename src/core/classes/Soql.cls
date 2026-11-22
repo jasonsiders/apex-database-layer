@@ -794,7 +794,8 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		/**
-		 * @description Joins a chain's relationship names into the prefix of its object's fields, ex: 'Contact.Account.'
+		 * @description Joins a chain's relationship names into the prefix of its object's fields,
+		 * ex: 'Contact.Account.'
 		 * @param chain The lookups to the object
 		 * @return The prefix, blank for the queried object
 		 */
@@ -853,7 +854,8 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			String entityName = this.entity;
 			for (Integer index = 0; index < names?.size(); index++) {
 				Boolean isLast = index == names?.size() - 1;
-				SObjectField step = this.findStep(entityName, names?.get(index), isLast);
+				String name = names?.get(index);
+				SObjectField step = this.findStep(entityName, name, isLast);
 				if (step == null) {
 					throw new IllegalArgumentException('Invalid lookup for ' + this.entity + ': ' + lookupFieldPath);
 				}
@@ -865,7 +867,8 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		/**
-		 * @description Finds one step of a lookup path: a relationship by its name, or the final lookup by its field name
+		 * @description Finds one step of a lookup path: a relationship by its name, or the final lookup by its field
+		 * name
 		 * @param entityName The step's object
 		 * @param name The relationship or field name
 		 * @param isLast Whether the step is the lookup field itself

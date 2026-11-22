@@ -236,8 +236,8 @@ public inherited sharing class InvocableSoqlQuery {
 		Set<String> cached = this.selectClausesByAccessLevel?.get(accessLevel);
 		if (cached == null) {
 			this.addFields(builder);
-			Set<String> clauses = builder?.selectClauses;
-			this.selectClausesByAccessLevel?.put(accessLevel, clauses?.clone());
+			Set<String> clauses = builder?.selectClauses?.clone();
+			this.selectClausesByAccessLevel?.put(accessLevel, clauses);
 		} else {
 			for (String clause : cached) {
 				builder?.addSelect(clause);
@@ -582,8 +582,8 @@ public inherited sharing class InvocableSoqlQuery {
 	}
 
 	/**
-	 * @description JSON would truncate a fraction for a whole-number field, ex: `< 42.5` would run as `< 42`, so it fails
-	 * instead
+	 * @description JSON would truncate a fraction for a whole-number field, ex: `< 42.5` would run as `< 42`, so it
+	 * fails instead
 	 * @param value A value for a condition
 	 * @param valueType The field's Apex type
 	 * @throws System.IllegalArgumentException When a whole-number field gets a value with a fraction
@@ -814,8 +814,8 @@ public inherited sharing class InvocableSoqlQuery {
 
 		/**
 		 * @description Renders the logic token by token, replacing each condition number with its condition. SOQL only
-		 * allows NOT at the start of a group, ex: `A AND (NOT B)`, so each NOT and its operand are wrapped in parentheses.
-		 * Soql omits a blank WHERE
+		 * allows NOT at the start of a group, ex: `A AND (NOT B)`, so each NOT and its operand are wrapped in
+		 * parentheses. Soql omits a blank WHERE
 		 * @return The WHERE clause's criteria
 		 */
 		public override String toString() {

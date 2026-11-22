@@ -144,7 +144,7 @@ function initSections(level, filter, isCovered) {
 	const relationshipOptions = relationships.map((field) => initRelationshipOption(field, level.option));
 	const lookupOptions = usable.filter(isRelationship).map(toFieldOption);
 	const recordOptions = usable.filter((field) => !isRelationship(field)).map(toFieldOption);
-	// Only stored fields take every field of an object, since a condition or sort needs one; nor does an object without any
+	// Conditions and sorts take one field, so only stored fields offer All Fields, and only for an object with fields
 	const canSelectAll = !filter && usable.length > 0;
 	const allFieldsOptions = canSelectAll ? [initAllFieldsOption(level)] : [];
 	// Relationships come before lookup IDs, like Flow Builder, so the section sorts each group, not the whole list
@@ -249,7 +249,8 @@ export default class SoqlFieldPath extends LightningElement {
 	 */
 	@api value;
 	/**
-	 * @description Paths whose fields are all stored by other rows, ex: `["", "Account"]`, which offer only relationships
+	 * @description Paths whose fields are all stored by other rows, ex: `["", "Account"]`, which offer only
+	 * relationships
 	 * @type {Array}
 	 */
 	@api coveredPaths;

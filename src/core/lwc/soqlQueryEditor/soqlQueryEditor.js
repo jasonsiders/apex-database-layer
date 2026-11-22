@@ -223,9 +223,18 @@ function parseDefinition(json) {
 function dropCoveredFields(fields) {
 	const allFieldsPaths = toCoveredPaths(fields);
 	const coveredPaths = new Set(allFieldsPaths);
-	const isKept = (field) =>
-		field == null || getAllFieldsPath(field) != null || !coveredPaths.has(parsePath(field).parentPath);
-	return fields.filter(isKept);
+	return fields.filter((field) => !isCoveredField(field, coveredPaths));
+}
+
+/**
+ * @description Whether an All Fields selection stores the field already, ex: Account.Name beside Account.*
+ * @param {String} field A stored field, or null for a row not yet picked
+ * @param {Set} coveredPaths The paths All Fields selections store
+ * @returns {Boolean} True if the field is redundant
+ */
+function isCoveredField(field, coveredPaths) {
+	const parentPath = field == null ? null : parsePath(field).parentPath;
+	return getAllFieldsPath(field) == null && coveredPaths.has(parentPath);
 }
 
 /**
