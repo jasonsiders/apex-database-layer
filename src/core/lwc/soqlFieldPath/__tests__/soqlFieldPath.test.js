@@ -156,6 +156,9 @@ describe("c-soql-field-path", () => {
 
 		expect(options(element)).toHaveLength(0);
 		expect(menu(element).querySelector(".picker-empty").textContent).toContain("couldn't find any matching fields");
+		input(element).dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown" }));
+		await flush();
+		expect(input(element).getAttribute("aria-activedescendant")).toBeNull();
 	});
 
 	describe("getFieldOptions", () => {
@@ -182,6 +185,9 @@ describe("c-soql-field-path", () => {
 
 		it("offers nothing under a path that isn't a relationship", async () => {
 			expect(await getFieldOptions("Contact", "Nope")).toEqual({ parent: null, sections: [] });
+			expect(await getFieldOptions(null, "")).toEqual({ parent: null, sections: [] });
+			getFields.mockImplementationOnce(() => Promise.reject(new Error("No access")));
+			expect(values((await getFieldOptions("Secret__c", "")).sections)).toEqual([]);
 		});
 	});
 

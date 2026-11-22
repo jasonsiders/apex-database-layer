@@ -501,6 +501,18 @@ describe("c-flow-resource-picker", () => {
 			expect(pillLabel(element)).toBe("Account > Account Name");
 		});
 
+		it("shows a saved path as-is when its options fail to load", async () => {
+			const failing = () => Promise.reject(new Error("No access"));
+			const { element } = await render({
+				name: "field",
+				value: "Account.Name",
+				loadOptions: failing,
+				builderContext: undefined
+			});
+
+			expect(pillLabel(element)).toBe("Account.Name");
+		});
+
 		it("shows a saved path as a pill once its options load", async () => {
 			const { element } = await render({ name: "field", value: "Account.Name", builderContext: undefined });
 
