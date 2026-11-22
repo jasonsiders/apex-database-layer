@@ -341,6 +341,19 @@ describe("c-flow-resource-picker", () => {
 		expect(lastChange(onChange)).toEqual({ name: "accessLevel", value: "boolVar", valueDataType: "reference" });
 	});
 
+	it("highlights from the menu the latest typing loads, not the one it replaces", async () => {
+		const { element, onChange } = await render({ type: "Boolean" });
+		await open(element);
+
+		input(element).value = "boolVar";
+		input(element).dispatchEvent(new CustomEvent("input"));
+		input(element).dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown" }));
+		await flush();
+		await press(element, "Enter");
+
+		expect(lastChange(onChange)).toEqual({ name: "accessLevel", value: "boolVar", valueDataType: "reference" });
+	});
+
 	it("keeps Escape from closing Flow Builder's editor while the menu is open", async () => {
 		const { element } = await render();
 		const onKeyDown = jest.fn();
