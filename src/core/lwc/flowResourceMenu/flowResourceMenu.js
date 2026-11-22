@@ -16,6 +16,8 @@ export const REFERENCE = "reference";
 // Shared, since creating a collator per comparison makes sorting large menus slow
 const LABEL_COLLATOR = new Intl.Collator(undefined, { sensitivity: "base" });
 const TYPE_ORDER = ["Boolean", "Currency", "Date", "DateTime", "Multipicklist", "Number", "Picklist", "String", "Time"];
+// Flow passes these resources to an input of the key's type, ex: a Currency field to a Number input
+const COMPATIBLE_TYPES = { Number: ["Currency", "Number"], String: ["Picklist", "String"] };
 
 // UI API field data types that Flow treats as something other than text
 const FLOW_TYPES_BY_FIELD_TYPE = {
@@ -202,8 +204,8 @@ const GLOBAL_CONSTANTS = [
 /**
  * @description Builds the top-level menu: each resource that fits the target input, or contains one that does.
  * @param {Object} context `{ builderContext, automaticOutputVariables, objectLabels }`
- * @param {Object} target The input being configured: `{ dataType, isCollection, isPicklistOnly, objectType,
- * picklistValues }`. Null includes everything; a record target without `isCollection` takes either.
+ * @param {Object} target The input being configured: `{ acceptsRecords, dataType, isCollection, isPicklistOnly,
+ * objectType, picklistValues }`. Null includes everything; a record target without `isCollection` takes either.
  * @returns {Array} Sections of `{ label, items, hasDivider }`, in Flow Builder's order
  */
 export function getRootSections(context, target) {
@@ -329,8 +331,12 @@ export function isAssignable(item, target) {
 	const matchesObject = !target?.objectType || item.objectType === target.objectType;
 	const matchesShape = target?.isCollection == null || item.isCollection === target.isCollection;
 	const matchesRecord = item.dataType === SOBJECT && matchesShape && matchesObject;
-	const isScalar = Boolean(item.dataType) && !item.isCollection && ![SOBJECT, "Apex"].includes(item.dataType);
-	const matchesScalar = isScalar && item.dataType === target?.dataType;
+	// A collection input that accepts records takes record collections of any object, for their IDs
+	const matchesRecordIds = Boolean(target?.acceptsRecords) && item.dataType === SOBJECT && item.isCollection === true;
+	const isScalar = Boolean(item.dataType) && ![SOBJECT, "Apex"].includes(item.dataType);
+	const types = COMPATIBLE_TYPES[target?.dataType] ?? [target?.dataType];
+	const matchesScalarShape = Boolean(item.isCollection) === Boolean(target?.isCollection);
+	const matchesScalar = (isScalar && matchesScalarShape && types.includes(item.dataType)) || matchesRecordIds;
 	// Typing mustn't reach values that a picklist-only target doesn't list
 	const isListed =
 		Boolean(item.isLiteral) && (target?.picklistValues ?? []).some(({ value }) => value === item.value);
@@ -376,7 +382,8 @@ function canDrill(item, target, context) {
 			initOutputItems(item, context).some(
 				(output) => isAssignable(output, target) || canDrill(output, target, context)
 			),
-		[DRILL_RECORD]: () => !item.isCollection && !isRecordTarget
+		// A record's fields are single values, so they can't fill a collection input
+		[DRILL_RECORD]: () => !item.isCollection && !isRecordTarget && !target?.isCollection
 	};
 	return checks[item.drillType]?.() ?? false;
 }

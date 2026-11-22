@@ -11,7 +11,17 @@ import {
 	resolveItem
 } from "c/flowResourceMenu";
 
+// SOQL's date literals, ex: TODAY or LAST_N_DAYS:30
+const DATE_LITERAL_PATTERN = /^[A-Z_0-9]+(:\d+)?$/;
 const GLOBAL_CONSTANT_PREFIX = "$GlobalConstant.";
+// The text each typed input takes as a literal of its type; anything else is text
+const LITERAL_PATTERNS = {
+	Boolean: /^(true|false)$/i,
+	Date: /^\d{4}-\d{2}-\d{2}$/,
+	DateTime: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:?\d{2})$/,
+	Number: /^[+-]?(\d+(\.\d*)?|\.\d+)$/,
+	Time: /^\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?Z?$/
+};
 const ROOT_LABEL = "All Resources";
 
 /**
@@ -25,6 +35,20 @@ function initDeferred() {
 		Object.assign(deferred, { resolve, reject });
 	});
 	return deferred;
+}
+
+/**
+ * @description The data type of typed text: the input's type, if the text is a literal of it, or else text
+ * @param {String} text The typed text
+ * @param {String} type The input's data type
+ * @param {Boolean} allowsDateLiterals Whether a date input also takes SOQL date literals
+ * @returns {String} The literal's data type
+ */
+function toLiteralType(text, type, allowsDateLiterals) {
+	const trimmed = text.trim();
+	const isDateLiteral =
+		allowsDateLiterals && ["Date", "DateTime"].includes(type) && DATE_LITERAL_PATTERN.test(trimmed);
+	return isDateLiteral || LITERAL_PATTERNS[type]?.test(trimmed) ? type : "String";
 }
 
 /**
@@ -43,6 +67,16 @@ function toValueDataType(item) {
  * with `{ name, value, valueDataType }`, where `valueDataType` is `reference` for resources.
  */
 export default class FlowResourcePicker extends LightningElement {
+	/**
+	 * @description Whether a collection input also takes record collections of any object, ex: for their IDs
+	 * @type {Boolean}
+	 */
+	@api acceptsRecords = false;
+	/**
+	 * @description Whether a Date or DateTime input also takes SOQL date literals, ex: `LAST_N_DAYS:30`
+	 * @type {Boolean}
+	 */
+	@api allowsDateLiterals = false;
 	/**
 	 * @description The CPE's `automaticOutputVariables`, for drilling into action outputs
 	 * @type {Object}
@@ -265,6 +299,7 @@ export default class FlowResourcePicker extends LightningElement {
 
 	get target() {
 		return {
+			acceptsRecords: this.acceptsRecords,
 			dataType: this.type,
 			isCollection: this.isCollection,
 			isPicklistOnly: this.isPicklistOnly,
@@ -626,22 +661,24 @@ export default class FlowResourcePicker extends LightningElement {
 	}
 
 	/**
-	 * @description Saves the typed text as a reference (`{!path}`) or a text literal. An unfinished merge field (ex:
-	 * `{!accountVar.`), or a literal the input doesn't take, is discarded, restoring the previous value.
+	 * @description Saves the typed text as a reference (`{!path}`) or a literal of the input's type, ex: `42` in a
+	 * Number input. An unfinished merge field (ex: `{!accountVar.`), or a literal the input doesn't take, is discarded,
+	 * restoring the previous value.
 	 */
 	_saveText() {
 		const parsed = parseInput(this._text);
 		const referencePath = parsed.isComplete ? parsed.path : null;
 		const isUnfinished = parsed.isReference && !parsed.isComplete;
 		const hasText = this._text.trim() !== "";
-		const literal = { value: this._text, dataType: "String", isLiteral: true };
+		const dataType = toLiteralType(this._text, this.type, this.allowsDateLiterals);
+		const literal = { value: this._text, dataType, isLiteral: true };
 		const isInvalid = isUnfinished || (hasText && !isAssignable(literal, this.target));
 		if (referencePath) {
 			this._selectReference(referencePath);
 		} else if (isInvalid) {
 			this._refreshSelection();
 		} else {
-			this._emitChange(hasText ? this._text : null, hasText ? "String" : null);
+			this._emitChange(hasText ? this._text : null, hasText ? dataType : null);
 		}
 	}
 

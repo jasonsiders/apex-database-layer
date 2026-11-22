@@ -394,6 +394,55 @@ describe("c-flow-resource-picker", () => {
 		expect(lastChange(onChange)).toEqual({ name: "accessLevel", value: "plain text", valueDataType: "String" });
 	});
 
+	it("saves typed literals of the input's type, and discards text that isn't one", async () => {
+		const cases = [
+			{ type: "Number", valid: "-42.5", invalid: "forty" },
+			{ type: "Date", valid: "2026-11-22", invalid: "11/22/2026" },
+			{ type: "DateTime", valid: "2026-11-22T09:30:00Z", invalid: "2026-11-22" },
+			{ type: "Time", valid: "09:30:00", invalid: "9am" },
+			{ type: "Boolean", valid: "TRUE", invalid: "yes" }
+		];
+		for (const { type: dataType, valid, invalid } of cases) {
+			// eslint-disable-next-line no-await-in-loop
+			const { element, onChange } = await render({ type: dataType });
+			// eslint-disable-next-line no-await-in-loop
+			await type(element, invalid);
+			// eslint-disable-next-line no-await-in-loop
+			await blur(element);
+			expect(onChange).not.toHaveBeenCalled();
+			// eslint-disable-next-line no-await-in-loop
+			await type(element, valid);
+			// eslint-disable-next-line no-await-in-loop
+			await blur(element);
+			expect(lastChange(onChange)).toEqual({ name: "accessLevel", value: valid, valueDataType: dataType });
+		}
+	});
+
+	it("takes SOQL date literals in a date input that allows them", async () => {
+		const { element, onChange } = await render({ type: "Date", allowsDateLiterals: true });
+
+		await type(element, "LAST_N_DAYS:30");
+		await blur(element);
+
+		expect(lastChange(onChange)).toEqual({ name: "accessLevel", value: "LAST_N_DAYS:30", valueDataType: "Date" });
+	});
+
+	it("takes a record collection of any object in a text collection input that accepts records", async () => {
+		const { element, onChange } = await render({ isCollection: true, acceptsRecords: true });
+
+		await open(element);
+		option(element, "accountsVar").click();
+		await flush();
+
+		expect(lastChange(onChange)).toEqual({
+			name: "accessLevel",
+			value: "accountsVar",
+			valueDataType: "reference",
+			objectType: "Account",
+			isCollection: true
+		});
+	});
+
 	it("discards typed values a record input wouldn't offer, keeping the previous value", async () => {
 		const { element, onChange } = await render({
 			name: "record",
