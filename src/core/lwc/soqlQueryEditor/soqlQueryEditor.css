@@ -1,0 +1,36 @@
+/* Flow pads the editor; bleeding past it gives full-width dividers, like native sections */
+.editor-section {
+	margin: 0 -0.75rem;
+	padding: 0.75rem;
+}
+
+/* As wide as c-flow-resource-picker's input, so every input in the panel lines up */
+.editor-input {
+	display: block;
+	max-width: 23rem;
+}
+
+/* A condition, sort field, or stored field: its inputs stacked, with its number and remove button beside them */
+.editor-row {
+	align-items: flex-start;
+	display: flex;
+	gap: 0.5rem;
+}
+
+.editor-row-inputs {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: 0.25rem;
+	min-width: 0;
+}
+
+.editor-row-number {
+	min-width: 1rem;
+	padding-top: 1.5rem;
+}
+
+/* Flow's own collapsible sections, ex: Show advanced options, don't indent their headers */
+.options-accordion {
+	--slds-c-accordion-section-spacing-inline-start: 0;
+}

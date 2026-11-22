@@ -12,6 +12,7 @@ public inherited sharing class InvocableSoql {
 	 */
 	@InvocableMethod(
 		category='Database Layer'
+		configurationEditor='c-soql-query-editor'
 		description='Get records that meet conditions, with parent fields, control over the access level, and values from flow resources.'
 		iconName='slds:standard:record_lookup'
 		label='SOQL: Get Record(s)'

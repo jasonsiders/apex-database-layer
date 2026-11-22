@@ -1,0 +1,22 @@
+<template>
+	<div class="slds-grid slds-wrap slds-grid_vertical-align-end field-path">
+		<template for:each={levels} for:item="level">
+			<div key={level.key} class="field-path-step">
+				<c-flow-resource-picker
+					data-index={level.index}
+					name={level.key}
+					label={level.label}
+					variant={level.variant}
+					is-picklist-only
+					required={level.required}
+					placeholder="Search fields..."
+					picklist-values={level.picklistValues}
+					value={level.value}
+					value-data-type="String"
+					error-message={level.errorMessage}
+					onchange={handleLevelChange}
+				></c-flow-resource-picker>
+			</div>
+		</template>
+	</div>
+</template>

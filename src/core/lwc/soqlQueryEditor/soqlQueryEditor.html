@@ -1,0 +1,247 @@
+<template>
+	<div class="editor-section">
+		<h3 class="slds-text-heading_small slds-var-m-bottom_small">Get Records of This Object</h3>
+		<c-flow-resource-picker
+			data-name="objectApiName"
+			name="objectApiName"
+			label="Object"
+			is-picklist-only
+			required
+			placeholder="Search objects..."
+			picklist-values={objectOptions}
+			value={objectApiName}
+			value-data-type="String"
+			error-message={errors.objectApiName}
+			onchange={handleObjectChange}
+		></c-flow-resource-picker>
+	</div>
+	<template lwc:if={objectApiName}>
+		<div class="editor-section slds-border_top">
+			<h3 class="slds-text-heading_small slds-var-m-bottom_small">Filter {objectLabel} Records</h3>
+			<lightning-combobox
+				class="editor-input"
+				data-name="conditionLogic"
+				name="logicMode"
+				label="Condition Requirements"
+				options={logicOptions}
+				value={logicMode}
+				onchange={handleLogicChange}
+			></lightning-combobox>
+			<template lwc:if={isCustomLogic}>
+				<lightning-input
+					class="editor-input slds-var-m-top_x-small"
+					data-name="customLogic"
+					label="Condition Logic"
+					placeholder="Ex: 1 AND (2 OR 3)"
+					value={conditionLogic}
+					onchange={handleCustomLogicChange}
+				></lightning-input>
+				<p lwc:if={errors.conditionLogic} class="slds-form-element__help slds-text-color_error">
+					{errors.conditionLogic}
+				</p>
+			</template>
+			<template for:each={conditions} for:item="condition">
+				<div key={condition.key} class="editor-row slds-var-m-top_small" data-name="condition">
+					<span class="editor-row-number slds-text-title">{condition.number}</span>
+					<div class="editor-row-inputs">
+						<c-soql-field-path
+							data-index={condition.index}
+							object-api-name={objectApiName}
+							value={condition.field}
+							filter="filterable"
+							label="Field"
+							onchange={handleConditionFieldChange}
+						></c-soql-field-path>
+						<lightning-combobox
+							lwc:if={condition.field}
+							class="editor-input"
+							data-index={condition.index}
+							data-role="operator"
+							name="operator"
+							label="Operator"
+							options={condition.operatorOptions}
+							value={condition.operator}
+							onchange={handleOperatorChange}
+						></lightning-combobox>
+						<c-flow-resource-picker
+							lwc:if={condition.hasValue}
+							data-index={condition.index}
+							data-role="value"
+							name="value"
+							label="Value"
+							type={condition.target.type}
+							is-collection={condition.target.isCollection}
+							accepts-records={condition.target.acceptsRecords}
+							allows-date-literals={condition.target.allowsDateLiterals}
+							is-picklist-only={condition.target.isPicklistOnly}
+							picklist-values={condition.target.picklistValues}
+							value={condition.value}
+							value-data-type={condition.valueDataType}
+							builder-context={builderContext}
+							element-name={elementName}
+							automatic-output-variables={automaticOutputVariables}
+							onchange={handleConditionValueChange}
+						></c-flow-resource-picker>
+						<p lwc:if={condition.errorMessage} class="slds-form-element__help slds-text-color_error">
+							{condition.errorMessage}
+						</p>
+					</div>
+					<lightning-button-icon
+						data-index={condition.index}
+						icon-name="utility:delete"
+						variant="bare"
+						alternative-text="Remove condition"
+						title="Remove condition"
+						onclick={handleRemoveCondition}
+					></lightning-button-icon>
+				</div>
+			</template>
+			<lightning-button
+				class="slds-var-m-top_small"
+				data-name="addCondition"
+				label="Add Condition"
+				icon-name="utility:add"
+				onclick={handleAddCondition}
+			></lightning-button>
+		</div>
+		<div class="editor-section slds-border_top">
+			<h3 class="slds-text-heading_small slds-var-m-bottom_small">Sort {objectLabel} Records</h3>
+			<template for:each={orderBy} for:item="sortOrder">
+				<div key={sortOrder.key} class="editor-row slds-var-m-top_small" data-name="sortOrder">
+					<div class="editor-row-inputs">
+						<c-soql-field-path
+							data-index={sortOrder.index}
+							data-property="field"
+							object-api-name={objectApiName}
+							value={sortOrder.field}
+							filter="sortable"
+							label="Sort By"
+							onchange={handleSortChange}
+						></c-soql-field-path>
+						<div class="slds-grid slds-gutters_xx-small">
+							<lightning-combobox
+								class="slds-col"
+								data-index={sortOrder.index}
+								data-property="direction"
+								name="direction"
+								label="Sort Order"
+								options={directions}
+								value={sortOrder.direction}
+								onchange={handleSortChange}
+							></lightning-combobox>
+							<lightning-combobox
+								class="slds-col"
+								data-index={sortOrder.index}
+								data-property="nullOrder"
+								name="nullOrder"
+								label="Blank Values"
+								options={nullOrders}
+								value={sortOrder.nullOrder}
+								onchange={handleSortChange}
+							></lightning-combobox>
+						</div>
+					</div>
+					<lightning-button-icon
+						data-index={sortOrder.index}
+						icon-name="utility:delete"
+						variant="bare"
+						alternative-text="Remove sort field"
+						title="Remove sort field"
+						onclick={handleRemoveSort}
+					></lightning-button-icon>
+				</div>
+			</template>
+			<lightning-button
+				class="slds-var-m-top_small"
+				data-name="addSort"
+				label="Add Sort Field"
+				icon-name="utility:add"
+				onclick={handleAddSort}
+			></lightning-button>
+		</div>
+		<div class="editor-section slds-border_top">
+			<h3 class="slds-text-heading_small slds-var-m-bottom_small">Select {objectLabel} Fields to Store</h3>
+			<p class="slds-text-body_regular slds-var-m-bottom_small">
+				Records always include their ID, and the fields used in conditions. To store a parent's field, pick its
+				relationship first, ex: Account &gt;.
+			</p>
+			<template for:each={fields} for:item="field">
+				<div key={field.key} class="editor-row slds-var-m-top_x-small" data-name="field">
+					<div class="editor-row-inputs">
+						<c-soql-field-path
+							data-index={field.index}
+							object-api-name={objectApiName}
+							value={field.value}
+							label="Field"
+							onchange={handleFieldChange}
+						></c-soql-field-path>
+					</div>
+					<lightning-button-icon
+						data-index={field.index}
+						icon-name="utility:delete"
+						variant="bare"
+						alternative-text="Remove field"
+						title="Remove field"
+						onclick={handleRemoveField}
+					></lightning-button-icon>
+				</div>
+			</template>
+			<lightning-button
+				class="slds-var-m-top_small"
+				data-name="addField"
+				label="Add Field"
+				icon-name="utility:add"
+				onclick={handleAddField}
+			></lightning-button>
+		</div>
+		<div class="editor-section slds-border_top">
+			<lightning-accordion class="options-accordion" allow-multiple-sections-open>
+				<lightning-accordion-section name="options" label="Query Options">
+					<div class="slds-var-p-horizontal_small">
+						<lightning-combobox
+							class="editor-input"
+							data-name="accessLevel"
+							name="accessLevel"
+							label="Access Level"
+							field-level-help="USER_MODE (default) enforces the running user's object permissions, field-level security, and sharing rules. SYSTEM_MODE ignores object permissions and field-level security, but sharing rules still apply."
+							options={accessLevels}
+							value={accessLevel}
+							onchange={handleAccessLevelChange}
+						></lightning-combobox>
+						<lightning-input
+							class="editor-input slds-var-m-top_x-small"
+							data-name="rowLimit"
+							type="number"
+							label="Limit"
+							field-level-help="The most records to get. Batches of interviews with a limit can't share a query."
+							min="1"
+							max="50000"
+							value={rowLimit}
+							onchange={handleLimitChange}
+						></lightning-input>
+						<lightning-input
+							class="editor-input slds-var-m-top_x-small"
+							data-name="rowOffset"
+							type="number"
+							label="Offset"
+							field-level-help="How many records to skip. Batches of interviews with an offset can't share a query."
+							min="0"
+							max="2000"
+							value={rowOffset}
+							onchange={handleOffsetChange}
+						></lightning-input>
+						<lightning-combobox
+							class="editor-input slds-var-m-top_x-small"
+							data-name="usage"
+							name="usage"
+							label="Rows"
+							options={usages}
+							value={usage}
+							onchange={handleUsageChange}
+						></lightning-combobox>
+					</div>
+				</lightning-accordion-section>
+			</lightning-accordion>
+		</div>
+	</template>
+</template>
