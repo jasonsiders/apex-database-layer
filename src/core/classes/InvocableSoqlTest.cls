@@ -297,8 +297,9 @@ private class InvocableSoqlTest {
 			new List<InvocableSoqlQuery.Condition>{
 				includes,
 				excludes,
-				InvocableSoqlTest.initCondition('Phone', 'IS_NULL', null),
-				InvocableSoqlTest.initCondition('Fax', 'IS_NOT_NULL', null),
+				InvocableSoqlTest.initCondition('Phone', 'IS_NULL', 'true'),
+				// Like Get Records, Is Null takes true or false; false finds the records with a value
+				InvocableSoqlTest.initCondition('Fax', 'IS_NULL', 'false'),
 				dateLiteral
 			}
 		);

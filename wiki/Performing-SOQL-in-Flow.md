@@ -30,14 +30,16 @@ To use a parent's field, pick its relationship, ex: **Account**, and the menu li
 
 The operators depend on the field's type, in Get Records' wording:
 
-| Field Type                        | Operators                                                                                                                    |
-| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| Text, picklist, email, phone, URL | Equals, Does Not Equal, Contains, Starts With, Ends With, Like, In, Not In, Is Null, Is Not Null                             |
-| ID and lookup                     | Equals, Does Not Equal, In, Not In, Is Null, Is Not Null                                                                     |
-| Number, currency, date, date/time | Equals, Does Not Equal, Less Than, Greater Than, Less Than or Equal, Greater Than or Equal, In, Not In, Is Null, Is Not Null |
-| Time                              | Equals, Does Not Equal, Less Than, Greater Than, Less Than or Equal, Greater Than or Equal, Is Null, Is Not Null             |
-| Checkbox                          | Equals, Does Not Equal                                                                                                       |
-| Multi-select picklist             | Includes, Excludes, Equals, Does Not Equal, Is Null, Is Not Null                                                             |
+| Field Type                        | Operators                                                                                                       |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Text, picklist, email, phone, URL | Equals, Does Not Equal, Contains, Starts With, Ends With, Like, In, Not In, Is Null                             |
+| ID and lookup                     | Equals, Does Not Equal, In, Not In, Is Null                                                                     |
+| Number, currency, date, date/time | Equals, Does Not Equal, Less Than, Greater Than, Less Than or Equal, Greater Than or Equal, In, Not In, Is Null |
+| Time                              | Equals, Does Not Equal, Less Than, Greater Than, Less Than or Equal, Greater Than or Equal, Is Null             |
+| Checkbox                          | Equals, Does Not Equal                                                                                          |
+| Multi-select picklist             | Includes, Excludes, Equals, Does Not Equal, Is Null                                                             |
+
+**Is Null** takes True or False, like Get Records: True finds records where the field is blank, and False finds records where it has a value. Its value can also be a Boolean resource, and an unset resource checks for blank.
 
 **Contains**, **Starts With**, and **Ends With** match their value literally, so a `%` or `_` in it is a character, not a wildcard. **Like** passes its value through as a SOQL pattern, wildcards and all.
 
@@ -148,15 +150,15 @@ The editor saves the query as JSON in the **Query Definition** input. `Invocable
 }
 ```
 
-| Property         | Description                                                                                                                                     |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `objectApiName`  | The object to query.                                                                                                                            |
-| `fields`         | The fields to select, including parent fields. `*` selects every field of the object, and `Account.*` every field of a parent. `Id` is implied. |
-| `conditions`     | Each condition's `field` and `operator`, and its value: a `slot`, a `value` or `values` as text, or a `dateLiteral`. Null checks take no value. |
-| `conditionLogic` | `AND` (default), `OR`, or custom logic by condition number, using only numbers, `AND`, `OR`, `NOT`, and parentheses.                            |
-| `orderBy`        | Each sort field's `field`, `direction` (`ASCENDING` or `DESCENDING`), and `nullOrder` (`NULLS_FIRST` or `NULLS_LAST`).                          |
-| `rowLimit`       | The `LIMIT`, if any.                                                                                                                            |
-| `rowOffset`      | The `OFFSET`, if any.                                                                                                                           |
-| `usage`          | `ALL_ROWS` or `FOR_UPDATE`, if any.                                                                                                             |
+| Property         | Description                                                                                                                                             |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `objectApiName`  | The object to query.                                                                                                                                    |
+| `fields`         | The fields to select, including parent fields. `*` selects every field of the object, and `Account.*` every field of a parent. `Id` is implied.         |
+| `conditions`     | Each condition's `field` and `operator`, and its value: a `slot`, a `value` or `values` as text, or a `dateLiteral`. `IS_NULL` takes `true` or `false`. |
+| `conditionLogic` | `AND` (default), `OR`, or custom logic by condition number, using only numbers, `AND`, `OR`, `NOT`, and parentheses.                                    |
+| `orderBy`        | Each sort field's `field`, `direction` (`ASCENDING` or `DESCENDING`), and `nullOrder` (`NULLS_FIRST` or `NULLS_LAST`).                                  |
+| `rowLimit`       | The `LIMIT`, if any.                                                                                                                                    |
+| `rowOffset`      | The `OFFSET`, if any.                                                                                                                                   |
+| `usage`          | `ALL_ROWS` or `FOR_UPDATE`, if any.                                                                                                                     |
 
-Operators are `EQUALS`, `NOT_EQUALS`, `LESS_THAN`, `GREATER_THAN`, `LESS_OR_EQUAL`, `GREATER_OR_EQUAL`, `LIKE`, `CONTAINS`, `STARTS_WITH`, `ENDS_WITH`, `IN`, `NOT_IN`, `INCLUDES`, `EXCLUDES`, `IS_NULL`, and `IS_NOT_NULL`. The action checks every field, operator, date literal, and custom logic before it runs any query, and fails on anything it doesn't recognize.
+Operators are `EQUALS`, `NOT_EQUALS`, `LESS_THAN`, `GREATER_THAN`, `LESS_OR_EQUAL`, `GREATER_OR_EQUAL`, `LIKE`, `CONTAINS`, `STARTS_WITH`, `ENDS_WITH`, `IN`, `NOT_IN`, `INCLUDES`, `EXCLUDES`, and `IS_NULL`. The action checks every field, operator, date literal, and custom logic before it runs any query, and fails on anything it doesn't recognize.

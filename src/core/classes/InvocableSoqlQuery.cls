@@ -23,7 +23,8 @@ public inherited sharing class InvocableSoqlQuery {
 		'LIKE',
 		'STARTS_WITH'
 	};
-	private static final Set<String> NULL_OPERATORS = new Set<String>{ 'IS_NOT_NULL', 'IS_NULL' };
+	/** @description Takes true or false, like Get Records: false finds the records whose field has a value **/
+	private static final String NULL_CHECK = 'IS_NULL';
 	private static final Pattern TOKEN_PATTERN = Pattern.compile('(?i)\\d+|AND|OR|NOT|\\(|\\)');
 	private static final Map<String, String> TOKENS = new Map<String, String>{
 		'CONTAINS' => 'LIKE',
@@ -34,7 +35,6 @@ public inherited sharing class InvocableSoqlQuery {
 		'GREATER_THAN' => '>',
 		'IN' => 'IN',
 		'INCLUDES' => 'INCLUDES',
-		'IS_NOT_NULL' => '!=',
 		'IS_NULL' => '=',
 		'LESS_OR_EQUAL' => '<=',
 		'LESS_THAN' => '<',
@@ -185,7 +185,7 @@ public inherited sharing class InvocableSoqlQuery {
 	/**
 	 * @description Resolves an interview's value for each condition, from its slot or the definition
 	 * @param input The interview's input
-	 * @return One value per condition, in condition order; null for conditions without a bound value
+	 * @return One value per condition, in condition order: Is Null's true or false, else null for conditions that don't bind one
 	 */
 	public List<Object> resolveValues(InvocableSoql.Input input) {
 		List<Object> values = new List<Object>{};
@@ -581,18 +581,19 @@ public inherited sharing class InvocableSoqlQuery {
 	}
 
 	/**
-	 * @description Conditions bind their value from a slot, or else from the definition
+	 * @description Conditions take their value from a slot, or else from the definition
 	 * @param index The condition's index
 	 * @param input The interview's input
-	 * @return The value, ready to bind, or null when the condition doesn't bind one
+	 * @return The value, ready to bind; Is Null's true or false; or null when the condition takes no value
 	 */
 	private Object resolveValue(Integer index, InvocableSoql.Input input) {
 		InvocableSoqlQuery.Condition condition = this.conditions?.get(index);
 		Boolean isBound = condition?.isBound() == true;
-		Boolean hasSlot = isBound && condition?.slot != null;
-		Object staticValue = (isBound && hasSlot == false) ? condition?.getStaticValue() : null;
-		Object value = hasSlot ? input?.getSlotValue(condition?.slot) : staticValue;
-		return isBound ? this.prepareValue(index, value) : null;
+		Boolean isNullCheck = condition?.operator == InvocableSoqlQuery.NULL_CHECK;
+		Boolean hasSlot = (isBound || isNullCheck) && condition?.slot != null;
+		Object value = hasSlot ? input?.getSlotValue(condition?.slot) : condition?.getStaticValue();
+		Object boundValue = isBound ? this.prepareValue(index, value) : null;
+		return isNullCheck ? InvocableSoqlQuery.toIsNull(value) : boundValue;
 	}
 
 	/**
@@ -609,6 +610,16 @@ public inherited sharing class InvocableSoqlQuery {
 		if (amount != null && amount != amount.round(System.RoundingMode.DOWN)) {
 			throw new IllegalArgumentException('Whole-number fields take no fractions: ' + value);
 		}
+	}
+
+	/**
+	 * @description Reads Is Null's value. Anything but false checks for null, including no value
+	 * @param value A Boolean from a slot, or text from the definition
+	 * @return True for IS NULL, false for IS NOT NULL
+	 */
+	private static Boolean toIsNull(Object value) {
+		String text = String.valueOf(value);
+		return text?.equalsIgnoreCase('false') != true;
 	}
 
 	/**
@@ -734,7 +745,7 @@ public inherited sharing class InvocableSoqlQuery {
 		public Boolean isBound() {
 			Boolean isLiteral =
 				InvocableSoqlQuery.LITERAL_OPERATORS?.contains(this.operator) == true ||
-				InvocableSoqlQuery.NULL_OPERATORS?.contains(this.operator) == true;
+				this.operator == InvocableSoqlQuery.NULL_CHECK;
 			return isLiteral == false && String.isBlank(this.dateLiteral);
 		}
 
@@ -756,7 +767,7 @@ public inherited sharing class InvocableSoqlQuery {
 		private String renderOperand(Integer index, Object value, Boolean isLiteral) {
 			// Values are only formatted for the debug string; the query binds them
 			String operand;
-			if (InvocableSoqlQuery.NULL_OPERATORS?.contains(this.operator) == true) {
+			if (this.operator == InvocableSoqlQuery.NULL_CHECK) {
 				operand = 'null';
 			} else if (String.isNotBlank(this.dateLiteral)) {
 				operand = this.dateLiteral;
@@ -780,7 +791,8 @@ public inherited sharing class InvocableSoqlQuery {
 		 * @return The condition, as SOQL
 		 */
 		private String render(Integer index, Object value, Boolean isLiteral) {
-			String token = InvocableSoqlQuery.TOKENS?.get(this.operator);
+			Boolean isNotNull = this.operator == InvocableSoqlQuery.NULL_CHECK && value == false;
+			String token = isNotNull ? '!=' : InvocableSoqlQuery.TOKENS?.get(this.operator);
 			String operand = this.renderOperand(index, value, isLiteral);
 			return this.field + ' ' + token + ' ' + operand;
 		}

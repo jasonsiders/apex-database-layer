@@ -84,6 +84,35 @@ private class InvocableSoqlQueryTest {
 		Assert.areEqual('Acme', accounts?.get(0)?.Name, 'Wrong account');
 	}
 
+	@IsTest
+	private static void shouldCheckNullsWithTrueOrFalseFromResources() {
+		insert new List<Account>{ new Account(Name = 'Blank'), new Account(Name = 'Listed', Phone = '555-0100') };
+		InvocableSoqlQuery.Condition condition = new InvocableSoqlQuery.Condition();
+		condition.field = 'Phone';
+		condition.operator = 'IS_NULL';
+		condition.slot = 'boolean1';
+		InvocableSoqlQuery definition = new InvocableSoqlQuery();
+		definition.conditions = new List<InvocableSoqlQuery.Condition>{ condition };
+		definition.fields = new List<String>{ 'Name' };
+		definition.objectApiName = 'Account';
+		String json = JSON.serialize(definition);
+
+		Test.startTest();
+		InvocableSoqlQuery query = InvocableSoqlQuery.parse(json);
+		List<Account> blank = InvocableSoqlQueryTest.queryNullCheck(query, true);
+		List<Account> listed = InvocableSoqlQueryTest.queryNullCheck(query, false);
+		// An unset resource checks for null, like a definition with no value
+		List<Account> unset = InvocableSoqlQueryTest.queryNullCheck(query, null);
+		Test.stopTest();
+
+		Assert.areEqual(1, blank?.size(), 'Wrong accounts for true: ' + blank);
+		Assert.areEqual('Blank', blank?.get(0)?.Name, 'Wrong account for true');
+		Assert.areEqual(1, listed?.size(), 'Wrong accounts for false: ' + listed);
+		Assert.areEqual('Listed', listed?.get(0)?.Name, 'Wrong account for false');
+		Assert.areEqual(1, unset?.size(), 'Wrong accounts for no value: ' + unset);
+		Assert.areEqual('Blank', unset?.get(0)?.Name, 'Wrong account for no value');
+	}
+
 	// **** HELPERS **** //
 	private static InvocableSoqlQuery.Condition initCondition(String field, String value) {
 		InvocableSoqlQuery.Condition condition = new InvocableSoqlQuery.Condition();
@@ -99,5 +128,13 @@ private class InvocableSoqlQueryTest {
 		query.fields = fields;
 		query.objectApiName = objectApiName;
 		return JSON.serialize(query);
+	}
+
+	private static List<Account> queryNullCheck(InvocableSoqlQuery query, Boolean isNull) {
+		InvocableSoql.Input input = new InvocableSoql.Input();
+		input.boolean1 = isNull;
+		List<Object> values = query?.resolveValues(input);
+		Soql builder = query?.toSoql(values, System.AccessLevel.SYSTEM_MODE);
+		return (List<Account>) builder?.query();
 	}
 }

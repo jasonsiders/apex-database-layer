@@ -157,8 +157,7 @@ describe("c-soql-query-editor", () => {
 			"LIKE",
 			"IN",
 			"NOT_IN",
-			"IS_NULL",
-			"IS_NOT_NULL"
+			"IS_NULL"
 		]);
 	});
 
@@ -283,7 +282,32 @@ describe("c-soql-query-editor", () => {
 		await fire(operator(), { value: "IS_NULL" });
 		expect(savedDefinition(events).conditions[0]).toEqual({ field: "LastName", operator: "IS_NULL" });
 		expect(events).toContainEqual({ type: "configuration_editor_input_value_deleted", detail: { name: "text1" } });
-		expect(valuePicker(element, 0)).toBeNull();
+		expect(valuePicker(element, 0).type).toBe("Boolean");
+	});
+
+	it("takes True or False for Is Null, like Get Records", async () => {
+		const { element, events } = await render(withCondition({ field: "LastName", operator: "IS_NULL" }));
+		expect(element.validate().map((error) => error.key)).toEqual(["condition-0"]);
+
+		await fire(valuePicker(element, 0), { value: "FALSE", valueDataType: "Boolean" });
+		expect(savedDefinition(events).conditions[0]).toEqual({
+			field: "LastName",
+			operator: "IS_NULL",
+			value: "false"
+		});
+		await fire(valuePicker(element, 0), { value: "$GlobalConstant.True", valueDataType: "Boolean" });
+		expect(savedDefinition(events).conditions[0]).toEqual({
+			field: "LastName",
+			operator: "IS_NULL",
+			value: "true"
+		});
+		expect(element.validate()).toEqual([]);
+		await fire(valuePicker(element, 0), { value: "booleanVar", valueDataType: "reference" });
+		expect(savedDefinition(events).conditions[0]).toEqual({
+			field: "LastName",
+			operator: "IS_NULL",
+			slot: "boolean1"
+		});
 	});
 
 	it("resets a condition's operator and value when its field changes", async () => {
@@ -348,8 +372,8 @@ describe("c-soql-query-editor", () => {
 			objectApiName: "Contact",
 			fields: [],
 			conditions: [
-				{ field: "LastName", operator: "IS_NULL" },
-				{ field: "LeadSource", operator: "IS_NULL" }
+				{ field: "LastName", operator: "IS_NULL", value: "true" },
+				{ field: "LeadSource", operator: "IS_NULL", value: "true" }
 			],
 			orderBy: []
 		});
@@ -393,9 +417,9 @@ describe("c-soql-query-editor", () => {
 			objectApiName: "Contact",
 			fields: [],
 			conditions: [
-				{ field: "LastName", operator: "IS_NULL" },
-				{ field: "LeadSource", operator: "IS_NULL" },
-				{ field: "Birthdate", operator: "IS_NULL" }
+				{ field: "LastName", operator: "IS_NULL", value: "true" },
+				{ field: "LeadSource", operator: "IS_NULL", value: "true" },
+				{ field: "Birthdate", operator: "IS_NULL", value: "true" }
 			],
 			conditionLogic: "1 OR (2 AND 3)",
 			orderBy: []
@@ -451,7 +475,9 @@ describe("c-soql-query-editor", () => {
 	});
 
 	it("saves sort fields and fields to store, without unfinished rows", async () => {
-		const { element, events } = await render(withCondition({ field: "LastName", operator: "IS_NOT_NULL" }));
+		const { element, events } = await render(
+			withCondition({ field: "LastName", operator: "IS_NULL", value: "true" })
+		);
 
 		element.shadowRoot.querySelector('lightning-button[data-name="addSort"]').click();
 		element.shadowRoot.querySelector('lightning-button[data-name="addField"]').click();
@@ -495,7 +521,9 @@ describe("c-soql-query-editor", () => {
 	});
 
 	it("saves the query options and access level", async () => {
-		const { element, events } = await render(withCondition({ field: "LastName", operator: "IS_NOT_NULL" }));
+		const { element, events } = await render(
+			withCondition({ field: "LastName", operator: "IS_NULL", value: "true" })
+		);
 		const input = (name) => element.shadowRoot.querySelector(`[data-name="${name}"]`);
 
 		await fire(input("rowLimit"), { value: "10" });

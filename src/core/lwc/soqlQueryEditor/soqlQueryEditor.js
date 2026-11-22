@@ -75,7 +75,6 @@ const OPERATOR_LABELS = {
 	GREATER_THAN: "Greater Than",
 	IN: "In",
 	INCLUDES: "Includes",
-	IS_NOT_NULL: "Is Not Null",
 	IS_NULL: "Is Null",
 	LESS_OR_EQUAL: "Less Than or Equal",
 	LESS_THAN: "Less Than",
@@ -88,16 +87,17 @@ const OPERATOR_LABELS = {
 const COLLECTION_OPERATORS = ["IN", "NOT_IN"];
 const COMPARISONS = ["LESS_THAN", "GREATER_THAN", "LESS_OR_EQUAL", "GREATER_OR_EQUAL"];
 const MULTI_VALUE_OPERATORS = ["INCLUDES", "EXCLUDES"];
-const NULL_CHECKS = ["IS_NULL", "IS_NOT_NULL"];
+// Like Get Records, Is Null takes True or False: False finds the records whose field has a value
+const NULL_CHECK_FIELD = { type: "BOOLEAN" };
 // The operators each kind of field offers, in Get Records' order
 const OPERATORS = {
 	boolean: ["EQUALS", "NOT_EQUALS"],
-	id: ["EQUALS", "NOT_EQUALS", "IN", "NOT_IN", ...NULL_CHECKS],
-	multipicklist: ["INCLUDES", "EXCLUDES", "EQUALS", "NOT_EQUALS", ...NULL_CHECKS],
-	ordered: ["EQUALS", "NOT_EQUALS", ...COMPARISONS, "IN", "NOT_IN", ...NULL_CHECKS],
-	text: ["EQUALS", "NOT_EQUALS", "CONTAINS", "STARTS_WITH", "ENDS_WITH", "LIKE", "IN", "NOT_IN", ...NULL_CHECKS],
+	id: ["EQUALS", "NOT_EQUALS", "IN", "NOT_IN", "IS_NULL"],
+	multipicklist: ["INCLUDES", "EXCLUDES", "EQUALS", "NOT_EQUALS", "IS_NULL"],
+	ordered: ["EQUALS", "NOT_EQUALS", ...COMPARISONS, "IN", "NOT_IN", "IS_NULL"],
+	text: ["EQUALS", "NOT_EQUALS", "CONTAINS", "STARTS_WITH", "ENDS_WITH", "LIKE", "IN", "NOT_IN", "IS_NULL"],
 	// Flow has no Time collections, so Time fields can't use IN
-	time: ["EQUALS", "NOT_EQUALS", ...COMPARISONS, ...NULL_CHECKS]
+	time: ["EQUALS", "NOT_EQUALS", ...COMPARISONS, "IS_NULL"]
 };
 // Combobox options for each kind's operators, built once
 const OPERATOR_OPTIONS = Object.fromEntries(
@@ -188,6 +188,16 @@ function isWellFormed(logic) {
 		isOperandNext = ["AND", "OR", "NOT", "("].includes(token);
 	}
 	return isValid && !isOperandNext && depth === 0;
+}
+
+/**
+ * @description The field whose type a condition's value takes: a boolean for Is Null, else the condition's field
+ * @param {Object} field The condition's field
+ * @param {String} operator The condition's operator
+ * @returns {Object} The field, or a stand-in boolean field
+ */
+function toValueField(field, operator) {
+	return operator === "IS_NULL" ? NULL_CHECK_FIELD : field;
 }
 
 /**
@@ -705,7 +715,7 @@ export default class SoqlQueryEditor extends LightningElement {
 	 * @returns {Object} The condition, with the value
 	 */
 	_initLiteral(condition, value) {
-		const fieldType = this._fields[condition.field]?.type;
+		const fieldType = toValueField(this._fields[condition.field], condition.operator)?.type;
 		// A typed boolean saves in lowercase, ex: TRUE as true, which is all Apex's JSON parser reads
 		const constant = fieldType === "BOOLEAN" ? (toBooleanConstant(value) ?? value) : value;
 		const text = GLOBAL_CONSTANT_VALUES[constant] ?? value;
@@ -719,14 +729,15 @@ export default class SoqlQueryEditor extends LightningElement {
 	}
 
 	/**
-	 * @description The value input a condition needs: none for null checks; picklist values only for INCLUDES and
-	 * EXCLUDES; a collection for IN and NOT IN, which also takes record collections of the field's object on ID
+	 * @description The value input a condition needs: True or False for Is Null; picklist values only for INCLUDES
+	 * and EXCLUDES; a collection for IN and NOT IN, which also takes record collections of the field's object on ID
 	 * fields, or of any object on polymorphic lookups; else one value
-	 * @param {Object} field The condition's field
+	 * @param {Object} conditionField The condition's field
 	 * @param {String} operator The condition's operator
-	 * @returns {Object} Properties for `c-flow-resource-picker`, or null when the operator takes no value
+	 * @returns {Object} Properties for `c-flow-resource-picker`, or null until an operator is picked
 	 */
-	_initTarget(field, operator) {
+	_initTarget(conditionField, operator) {
+		const field = toValueField(conditionField, operator);
 		const type = FLOW_TYPES[field?.type] ?? "String";
 		const isCollection = COLLECTION_OPERATORS.includes(operator);
 		const isDate = type === "Date" || type === "DateTime";
@@ -741,7 +752,7 @@ export default class SoqlQueryEditor extends LightningElement {
 			picklistValues: isCollection ? [] : picklistValues,
 			type
 		};
-		return operator && !NULL_CHECKS.includes(operator) ? target : null;
+		return operator ? target : null;
 	}
 
 	/**
@@ -910,10 +921,9 @@ export default class SoqlQueryEditor extends LightningElement {
 	 * @returns {Object} An error, or null
 	 */
 	_validateCondition(condition, index) {
-		const needsValue = !NULL_CHECKS.includes(condition.operator);
 		const hasValue =
 			Boolean(condition.slot) || condition.value != null || condition.values || condition.dateLiteral;
-		const isComplete = condition.field && condition.operator && (hasValue || !needsValue);
+		const isComplete = condition.field && condition.operator && hasValue;
 		return isComplete ? null : { key: `condition-${index}`, errorString: REQUIRED_ERROR };
 	}
 
