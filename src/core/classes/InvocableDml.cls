@@ -11,6 +11,22 @@ public abstract inherited sharing class InvocableDml {
 
 	// **** PUBLIC **** //
 	/**
+	 * @description Blank runs in the safer USER_MODE; anything else must name an access level exactly, so a typo fails
+	 * instead of running in a mode the flow didn't ask for. Shared with `InvocableSoql`, whose input works the same way
+	 * @param name The access level's name, from a flow input
+	 * @return The matching System.AccessLevel
+	 * @throws System.IllegalArgumentException When the value isn't blank, USER_MODE, or SYSTEM_MODE
+	 */
+	public static System.AccessLevel toAccessLevel(String name) {
+		String levelName = String.isBlank(name) ? 'USER_MODE' : name;
+		System.AccessLevel level = InvocableDml.ACCESS_LEVELS?.get(levelName);
+		if (level == null) {
+			throw new IllegalArgumentException('Invalid access level: ' + levelName);
+		}
+		return level;
+	}
+
+	/**
 	 * @description Flow bulkifies interviews into one call; they share one DML operation, so a bulk run can't exhaust
 	 * the DML statement limit. One operation can only have one set of settings, so the first input's apply to all
 	 * @param inputs One input per flow interview
@@ -177,18 +193,12 @@ public abstract inherited sharing class InvocableDml {
 		}
 
 		/**
-		 * @description Blank runs in the safer USER_MODE; anything else must name an access level exactly, so a typo
-		 * fails instead of running in a mode the flow didn't ask for
+		 * @description Parsed by `InvocableDml.toAccessLevel`
 		 * @return The matching System.AccessLevel
 		 * @throws System.IllegalArgumentException When the value isn't blank, USER_MODE, or SYSTEM_MODE
 		 */
 		public System.AccessLevel getAccessLevel() {
-			String name = String.isBlank(this.accessLevel) ? 'USER_MODE' : this.accessLevel;
-			System.AccessLevel level = InvocableDml.ACCESS_LEVELS?.get(name);
-			if (level == null) {
-				throw new IllegalArgumentException('Invalid access level: ' + name);
-			}
-			return level;
+			return InvocableDml.toAccessLevel(this.accessLevel);
 		}
 
 		/**
