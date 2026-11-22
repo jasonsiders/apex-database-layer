@@ -265,6 +265,8 @@ export default class FlowResourcePicker extends LightningElement {
 		let index = 0;
 		return this._sections.map((section) => ({
 			...section,
+			// A section without a label, ex: a host's leading shortcut, has no header
+			hasHeader: this.isResourceMenu && Boolean(section.label),
 			items: section.items.map((item) => {
 				const isActive = index === this._activeIndex;
 				const activeClass = isActive ? " slds-has-focus" : "";

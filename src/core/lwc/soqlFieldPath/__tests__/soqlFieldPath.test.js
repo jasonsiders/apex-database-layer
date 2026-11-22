@@ -154,6 +154,15 @@ describe("c-soql-field-path", () => {
 		expect(pillLabel(element)).toBe("All Fields");
 	});
 
+	it("lists All Fields at the top of the menu, without a header", async () => {
+		const { element } = await render();
+		await open(element);
+
+		const headers = [...menu(element).querySelectorAll(".slds-listbox__option-header")];
+		expect(optionLabels(element)[0]).toBe("All Fields");
+		expect(headers.map((header) => header.textContent.trim())).toEqual(["Relationship Fields", "Record Fields"]);
+	});
+
 	it("hides the fields of levels other rows store in full", async () => {
 		const { element } = await render({ coveredPaths: [""] });
 		await open(element);
@@ -182,7 +191,7 @@ describe("c-soql-field-path", () => {
 	});
 
 	describe("getFieldOptions", () => {
-		it("offers All Fields first at each level, but not for filtering or sorting", async () => {
+		it("offers All Fields at the top of each level, but not for filtering or sorting", async () => {
 			const findAll = ({ sections }) =>
 				sections.flatMap((section) => section.items).find((item) => item.value.endsWith("*"));
 			const top = await getFieldOptions("Contact", "");
@@ -191,7 +200,7 @@ describe("c-soql-field-path", () => {
 			const sortable = await getFieldOptions("Contact", "Account", "sortable");
 
 			expect(findAll(top)).toMatchObject({ value: "*", label: "All Fields", isSelectable: true });
-			expect(top.sections[1].items[0].value).toBe("*");
+			expect(top.sections[0].items.map((item) => item.value)).toEqual(["*"]);
 			expect(findAll(account)).toMatchObject({ value: "Account.*", pathLabel: "Account > All Fields" });
 			expect(findAll(filterable)).toBeUndefined();
 			expect(findAll(sortable)).toBeUndefined();

@@ -137,12 +137,12 @@ function isRelationship(field) {
 }
 
 /**
- * @description Lists a level's options, like Flow Builder's field menus: relationships and lookup IDs, then the other
- * fields, each by label
+ * @description Lists a level's options: All Fields, then, like Flow Builder's field menus, relationships and lookup
+ * IDs, then the other fields, each by label
  * @param {Object} level The level from `resolveLevel`
  * @param {String} filter `filterable` or `sortable` to offer only fields that can filter or sort; blank for any
  * @param {Boolean} isCovered Whether the level's fields are all stored already
- * @returns {Array} "Relationship Fields" and "Record Fields" sections
+ * @returns {Array} An All Fields section, then "Relationship Fields" and "Record Fields"
  */
 function initSections(level, filter, isCovered) {
 	const isUsable = (field) => !filter || (filter === "filterable" ? field.isFilterable : field.isSortable);
@@ -159,10 +159,12 @@ function initSections(level, filter, isCovered) {
 	const allFieldsOptions = canSelectAll ? [initAllFieldsOption(level)] : [];
 	// Relationships come before lookup IDs, like Flow Builder, so the section sorts each group, not the whole list
 	const relationshipItems = [...relationshipOptions.sort(compareLabels), ...lookupOptions.sort(compareLabels)];
-	const recordItems = [...allFieldsOptions, ...recordOptions.sort(compareLabels)];
+	// All Fields leads the menu in a section of its own, which has no header, set apart by a divider
+	const allFieldsSection = { ...initSection("", allFieldsOptions), hasDivider: true };
 	return [
+		allFieldsSection,
 		initSection("Relationship Fields", relationshipItems, false),
-		initSection("Record Fields", recordItems, false)
+		initSection("Record Fields", recordOptions)
 	];
 }
 

@@ -88,7 +88,7 @@
 						<template lwc:if={hasOptions}>
 							<template for:each={menu} for:item="section">
 								<ul key={section.label} class={groupClass} role="group" aria-label={section.label}>
-									<li lwc:if={isResourceMenu} role="presentation" class="slds-listbox__item">
+									<li lwc:if={section.hasHeader} role="presentation" class="slds-listbox__item">
 										<h3 class="slds-listbox__option-header picker-section" role="presentation">
 											{section.label}
 										</h3>
