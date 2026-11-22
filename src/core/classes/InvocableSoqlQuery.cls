@@ -185,7 +185,8 @@ public inherited sharing class InvocableSoqlQuery {
 	/**
 	 * @description Resolves an interview's value for each condition, from its slot or the definition
 	 * @param input The interview's input
-	 * @return One value per condition, in condition order: Is Null's true or false, else null for conditions that don't bind one
+	 * @return One value per condition, in condition order: Is Null's true or false, else null for conditions that
+	 * don't bind one
 	 */
 	public List<Object> resolveValues(InvocableSoql.Input input) {
 		List<Object> values = new List<Object>{};
