@@ -498,11 +498,19 @@ private class InvocableSoqlTest {
 		Test.startTest();
 		Map<String, InvocableSoql.FieldOption> fieldsByName = InvocableSoqlTest.indexFields('Contact');
 		Map<String, InvocableSoql.FieldOption> taskFieldsByName = InvocableSoqlTest.indexFields('Task');
+		InvocableSoql.FieldOption folderId = InvocableSoqlTest.indexFields('Document').get('FolderId');
+		InvocableSoql.FieldOption createdById = InvocableSoqlTest.indexFields('AccountHistory').get('CreatedById');
 		Test.stopTest();
 
 		Assert.isTrue(taskFieldsByName.get('WhoId')?.isPolymorphic, 'WhoId looks up to Contacts and Leads');
 		Assert.areEqual('Name', taskFieldsByName.get('WhoId')?.referenceTo, 'Polymorphic lookups drill into Name');
 		Assert.areEqual('Contact', fieldsByName.get('Id')?.referenceTo, 'An ID holds its own object\'s IDs');
+		// FolderId holds Folder or User IDs, but SOQL resolves it to Folder:
+		Assert.isTrue(folderId?.isPolymorphic, 'FolderId looks up to Folders and Users');
+		Assert.areEqual('Folder', folderId?.referenceTo, 'Wrong parent object for a multi-object lookup');
+		// CreatedById only holds User IDs, but SOQL resolves it to Name:
+		Assert.isTrue(createdById?.isPolymorphic, 'A name-pointing lookup takes any object\'s records');
+		Assert.areEqual('Name', createdById?.referenceTo, 'Name-pointing lookups drill into Name');
 		InvocableSoql.FieldOption accountId = fieldsByName.get('AccountId');
 		Assert.areEqual('Account', accountId?.relationshipName, 'Wrong relationship name');
 		Assert.areEqual('Account', accountId?.referenceTo, 'Wrong parent object');
