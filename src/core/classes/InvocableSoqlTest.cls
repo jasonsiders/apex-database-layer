@@ -846,6 +846,104 @@ private class InvocableSoqlTest {
 	}
 
 	@IsTest
+	private static void shouldMergeWhenEachInterviewExcludesItsOwnRecord() {
+		List<Account> accounts = InvocableSoqlTest.initAccounts();
+		List<Contact> contacts = new List<Contact>{
+			new Contact(Id = MockRecord.initRecordId(Contact.SObjectType), AccountId = accounts[0].Id, LastName = 'A'),
+			new Contact(Id = MockRecord.initRecordId(Contact.SObjectType), AccountId = accounts[0].Id, LastName = 'B'),
+			new Contact(Id = MockRecord.initRecordId(Contact.SObjectType), AccountId = accounts[1].Id, LastName = 'C')
+		};
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(contacts);
+		InvocableSoql.Query query = InvocableSoqlTest.initQuery('Contact', new List<String>{ 'LastName' });
+		query.conditions.add(InvocableSoqlTest.initSlotCondition('AccountId', 'EQUALS', 'text1'));
+		query.conditions.add(InvocableSoqlTest.initSlotCondition('Id', 'NOT_EQUALS', 'text2'));
+		List<InvocableSoql.Input> inputs = new List<InvocableSoql.Input>{};
+		for (Contact contact : contacts) {
+			InvocableSoql.Input input = InvocableSoqlTest.initTextInput(query, contact.AccountId);
+			input.text2 = contact.Id;
+			inputs.add(input);
+		}
+
+		Test.startTest();
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(inputs);
+		Test.stopTest();
+
+		// The merged query leaves out Id != so each interview still sees the batch's other records, then drops its own:
+		Assert.areEqual(1, spy.queries?.size(), 'Wrong # of queries');
+		String merged = spy.queries?.get(0)?.toString();
+		Assert.isTrue(merged?.endsWith('WHERE AccountId = :bind0'), merged);
+		Assert.isFalse(spy.queries?.get(0)?.binds?.containsKey('bind1'), 'Merged query bound the left-out condition');
+		Assert.areEqual(new List<SObject>{ contacts[1] }, outputs[0].records, 'Wrong 1st output');
+		Assert.areEqual(new List<SObject>{ contacts[0] }, outputs[1].records, 'Wrong 2nd output');
+		Assert.areEqual(new List<SObject>{}, outputs[2].records, 'Wrong 3rd output');
+		Assert.isTrue(outputs[0].queryString?.endsWith('Id != \'' + contacts[0].Id + '\''), outputs[0].queryString);
+	}
+
+	@IsTest
+	private static void shouldMergeWhenOnlyEachInterviewsOwnRecordVaries() {
+		List<Contact> contacts = new List<Contact>{
+			new Contact(Id = MockRecord.initRecordId(Contact.SObjectType), LastName = 'A'),
+			new Contact(Id = MockRecord.initRecordId(Contact.SObjectType), LastName = 'B')
+		};
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(contacts);
+		InvocableSoql.Query query = InvocableSoqlTest.initQuery('Contact', new List<String>{ 'LastName' });
+		query.conditions.add(InvocableSoqlTest.initSlotCondition('AccountId', 'EQUALS', 'text1'));
+		query.conditions.add(InvocableSoqlTest.initSlotCondition('Id', 'NOT_EQUALS', 'text2'));
+		List<InvocableSoql.Input> inputs = new List<InvocableSoql.Input>{};
+		// Contacts with no account share a blank AccountId, so only their own IDs differ:
+		for (Contact contact : contacts) {
+			InvocableSoql.Input input = InvocableSoqlTest.initInput(query);
+			input.text2 = contact.Id;
+			inputs.add(input);
+		}
+
+		Test.startTest();
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(inputs);
+		Test.stopTest();
+
+		Assert.areEqual(1, spy.queries?.size(), 'Wrong # of queries');
+		Assert.areEqual(new List<SObject>{ contacts[1] }, outputs[0].records, 'Wrong 1st output');
+		Assert.areEqual(new List<SObject>{ contacts[0] }, outputs[1].records, 'Wrong 2nd output');
+	}
+
+	@IsTest
+	private static void shouldRunSeparatelyWhenOnlyAnIdsNotEqualsVaries() {
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(new List<SObject>{});
+		InvocableSoql.Query query = InvocableSoqlTest.initQuery('Contact', new List<String>{ 'LastName' });
+		query.conditions.add(InvocableSoqlTest.initSlotCondition('Id', 'NOT_EQUALS', 'text1'));
+		List<InvocableSoql.Input> inputs = new List<InvocableSoql.Input>{};
+		for (Integer count = 0; count < 2; count++) {
+			Id contactId = MockRecord.initRecordId(Contact.SObjectType);
+			inputs.add(InvocableSoqlTest.initTextInput(query, contactId));
+		}
+
+		Test.startTest();
+		InvocableSoql.invoke(inputs);
+		Test.stopTest();
+
+		// With no other condition to merge on, each interview runs its own query:
+		Assert.areEqual(2, spy.queries?.size(), 'Wrong # of queries');
+	}
+
+	@IsTest
+	private static void shouldRunSeparatelyWhenTextNotEqualsVaries() {
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(new List<SObject>{});
+		InvocableSoql.Query query = InvocableSoqlTest.initSlotQuery('Site', 'EQUALS', 'text1');
+		query.conditions.add(InvocableSoqlTest.initSlotCondition('Name', 'NOT_EQUALS', 'text2'));
+		InvocableSoql.Input first = InvocableSoqlTest.initTextInput(query, 'East');
+		first.text2 = 'Acme';
+		InvocableSoql.Input second = InvocableSoqlTest.initTextInput(query, 'West');
+		second.text2 = 'Beta';
+
+		Test.startTest();
+		InvocableSoql.invoke(new List<InvocableSoql.Input>{ first, second });
+		Test.stopTest();
+
+		// Apex and SOQL fold some text's case differently, so only an ID's Not Equals is applied in Apex:
+		Assert.areEqual(2, spy.queries?.size(), 'Wrong # of queries');
+	}
+
+	@IsTest
 	private static void shouldRunSeparatelyWithAnyConditionLogic() {
 		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(new List<SObject>{});
 		InvocableSoql.Query query = InvocableSoqlTest.initSlotQuery('Name', 'EQUALS', 'text1');
@@ -867,7 +965,7 @@ private class InvocableSoqlTest {
 	}
 
 	@IsTest
-	private static void shouldRunNullValuesSeparately() {
+	private static void shouldMergeNullValues() {
 		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(InvocableSoqlTest.initAccounts());
 		InvocableSoql.Query query = InvocableSoqlTest.initSlotQuery('Site', 'EQUALS', 'text1');
 		List<InvocableSoql.Input> inputs = new List<InvocableSoql.Input>{
@@ -880,15 +978,19 @@ private class InvocableSoqlTest {
 		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(inputs);
 		Test.stopTest();
 
-		Assert.areEqual(2, spy.queries?.size(), 'Wrong # of queries');
+		// SOQL's IN matches a null to blank fields, as `= null` does, and the split keys blanks together:
+		Assert.areEqual(1, spy.queries?.size(), 'Wrong # of queries');
+		List<Object> mergedSites = (List<Object>) spy.queries?.get(0)?.binds?.get('bind0');
+		Assert.areEqual(new Set<Object>{ 'East', 'West', null }, new Set<Object>(mergedSites), 'Wrong merged values');
 		Assert.areEqual(new List<String>{ 'Acme' }, InvocableSoqlTest.getNames(outputs[0]), 'Wrong 1st output');
 		Assert.areEqual(new List<String>{ 'Beta' }, InvocableSoqlTest.getNames(outputs[1]), 'Wrong 2nd output');
+		Assert.areEqual(new List<String>{ 'Gamma' }, InvocableSoqlTest.getNames(outputs[2]), 'Wrong 3rd output');
 		Assert.isTrue(outputs[2].queryString?.endsWith('WHERE Site = null'), outputs[2].queryString);
 	}
 
 	@IsTest
 	private static void shouldRunEmptyTextSeparately() {
-		// SOQL matches '' to null, which a split can't reproduce, so '' runs alone, like null
+		// SOQL matches '' to null, which a split can't reproduce, so '' runs alone
 		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(InvocableSoqlTest.initAccounts());
 		InvocableSoql.Query query = InvocableSoqlTest.initSlotQuery('Site', 'EQUALS', 'text1');
 		List<InvocableSoql.Input> inputs = new List<InvocableSoql.Input>{
