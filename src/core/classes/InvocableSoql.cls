@@ -3,6 +3,7 @@
  * fields, the access level, and values from flow resources. See `InvocableSoql.Planner` for how a bulk run shares
  * queries
  */
+@SuppressWarnings('PMD.CognitiveComplexity,PMD.CyclomaticComplexity,PMD.NcssCount')
 public inherited sharing class InvocableSoql {
 	// **** CONSTANTS **** //
 	/** @description Ends a stored field that selects every field of its object, ex: "*" or "Account.Owner.*" **/
@@ -1276,7 +1277,6 @@ public inherited sharing class InvocableSoql {
 	 * @description A `SOQL: Get Record(s)` query, parsed from the JSON its editor writes. Builds the query, binding every
 	 * value, and resolves each interview's values for it
 	 */
-	@SuppressWarnings('PMD.CognitiveComplexity,PMD.CyclomaticComplexity')
 	public class Query {
 		/** @description Filters, combined by `conditionLogic` **/
 		public List<InvocableSoql.Condition> conditions;
@@ -2044,7 +2044,6 @@ public inherited sharing class InvocableSoql {
 	 * are split back to each interview by comparing that field in Apex. Everything else runs one query per distinct set of
 	 * values; see `InvocableSoql.Query.isMergeable` for when merging applies
 	 */
-	@SuppressWarnings('PMD.CognitiveComplexity,PMD.CyclomaticComplexity')
 	private class Planner {
 		/** @description Interviews that share a query definition and access level, by both **/
 		private Map<String, InvocableSoql.Batch> batches = new Map<String, InvocableSoql.Batch>{};
