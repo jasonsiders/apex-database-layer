@@ -131,7 +131,7 @@ MockSoql.setGlobalMock()?.withResults(new List<Contact>{ contact });
 
 ## Query Definition
 
-The editor saves the query as JSON in the **Query Definition** input. `InvocableSoqlQuery` parses it:
+The editor saves the query as JSON in the **Query Definition** input. `InvocableSoql.Query` parses it:
 
 ```json
 {

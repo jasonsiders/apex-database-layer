@@ -6,7 +6,7 @@ import { compareLabels, initSection, parsePath } from "c/flowResourceMenu";
 const MAX_RELATIONSHIPS = 6;
 // Field describes, by object, shared by every picker and the editor; a failed describe is forgotten, so it retries
 const FIELDS_BY_OBJECT = new Map();
-// Ends the path that stores every field of its object, ex: "Account.*"; InvocableSoqlQuery.ALL_FIELDS
+// Ends the path that stores every field of its object, ex: "Account.*"; InvocableSoql.ALL_FIELDS
 const ALL_FIELDS = "*";
 const NO_OPTIONS = { parent: null, sections: [] };
 const TYPE_ICONS = {
