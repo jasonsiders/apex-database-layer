@@ -880,6 +880,44 @@ private class InvocableSoqlTest {
 	}
 
 	@IsTest
+	private static void shouldRunEmptyTextSeparately() {
+		// SOQL matches '' to null, which a split can't reproduce, so '' runs alone, like null
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(InvocableSoqlTest.initAccounts());
+		InvocableSoql.Query query = InvocableSoqlTest.initSlotQuery('Site', 'EQUALS', 'text1');
+		List<InvocableSoql.Input> inputs = new List<InvocableSoql.Input>{
+			InvocableSoqlTest.initTextInput(query, 'East'),
+			InvocableSoqlTest.initTextInput(query, 'West'),
+			InvocableSoqlTest.initTextInput(query, '')
+		};
+
+		Test.startTest();
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(inputs);
+		Test.stopTest();
+
+		Assert.areEqual(2, spy.queries?.size(), 'Wrong # of queries');
+		Assert.areEqual(new List<String>{ 'Acme' }, InvocableSoqlTest.getNames(outputs[0]), 'Wrong 1st output');
+		Assert.areEqual(new List<String>{ 'Beta' }, InvocableSoqlTest.getNames(outputs[1]), 'Wrong 2nd output');
+		Assert.areEqual(3, outputs[2].records?.size(), 'Mocks do not filter, so the lone query gets every row');
+	}
+
+	@IsTest
+	private static void shouldRunCollectionsWithEmptyTextSeparately() {
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(InvocableSoqlTest.initAccounts());
+		InvocableSoql.Query query = InvocableSoqlTest.initSlotQuery('Site', 'IN', 'textCollection1');
+		InvocableSoql.Input first = InvocableSoqlTest.initInput(query);
+		first.textCollection1 = new List<String>{ 'East' };
+		InvocableSoql.Input second = InvocableSoqlTest.initInput(query);
+		second.textCollection1 = new List<String>{ 'West', '' };
+
+		Test.startTest();
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(new List<InvocableSoql.Input>{ first, second });
+		Test.stopTest();
+
+		Assert.areEqual(2, spy.queries?.size(), 'Wrong # of queries');
+		Assert.areEqual(3, outputs[1].records?.size(), 'Mocks do not filter, so the lone query gets every row');
+	}
+
+	@IsTest
 	private static void shouldMatchNumbersRegardlessOfScale() {
 		List<Account> accounts = new List<Account>{
 			new Account(AnnualRevenue = 100, Name = 'Hundred'),

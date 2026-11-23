@@ -129,6 +129,9 @@ const SLOT_PREFIXES = {
 	Time: "time"
 };
 const RECORD_SLOTS = toSlotNames(RECORD_SLOT_PREFIX);
+// The Limit and Offset inputs' bounds, which they show but don't enforce; SOQL rejects an offset over 2,000
+const ROW_LIMIT_RANGE = { min: 1, max: 50000, errorString: "Enter a limit from 1 to 50,000." };
+const ROW_OFFSET_RANGE = { min: 0, max: 2000, errorString: "Enter an offset from 0 to 2,000, the most SOQL can skip." };
 const USAGES = [
 	NONE_OPTION,
 	{ label: "All Rows (include deleted and archived records)", value: "ALL_ROWS" },
@@ -142,6 +145,18 @@ const USAGES = [
  */
 function toSlotNames(prefix) {
 	return Array.from({ length: SLOT_COUNT }, (_, index) => `${prefix}${index + 1}`);
+}
+
+/**
+ * @description Checks a saved limit or offset against its input's bounds
+ * @param {String} key The input's `data-name`
+ * @param {Number} value The saved number, or null
+ * @param {Object} range `{ min, max, errorString }`
+ * @returns {Object} An error, or null
+ */
+function validateRange(key, value, range) {
+	const isValid = value == null || (value >= range.min && value <= range.max);
+	return isValid ? null : { key, errorString: range.errorString };
 }
 
 /**
@@ -731,7 +746,10 @@ export default class SoqlQueryEditor extends FlowPropertyEditor {
 		);
 		const logicError = this._validateLogic();
 		const usageError = this._validateUsage();
-		const errors = [objectError, ...conditionErrors, logicError, usageError].filter(Boolean);
+		const limitError = validateRange("rowLimit", this.rowLimit, ROW_LIMIT_RANGE);
+		const offsetError = validateRange("rowOffset", this.rowOffset, ROW_OFFSET_RANGE);
+		const checks = [objectError, ...conditionErrors, logicError, limitError, offsetError, usageError];
+		const errors = checks.filter(Boolean);
 		const errorEntries = errors.map((error) => [error.key, error.errorString]);
 		this._errors = Object.fromEntries(errorEntries);
 		return errors;
@@ -861,7 +879,8 @@ export default class SoqlQueryEditor extends FlowPropertyEditor {
 		const logic = this._definition.conditionLogic ?? "";
 		const numbers = new Set((logic.match(/\d+/g) ?? []).map(Number));
 		const expected = this._definition.conditions.map((condition, index) => index + 1);
-		const isValidText = /^(\s|\d+|AND|OR|NOT|\(|\))*$/i.test(logic);
+		// \d, not \d+: the group repeats anyway, and \d+ in a repeated group backtracks exponentially on long digit runs
+		const isValidText = /^(\s|\d|AND|OR|NOT|\(|\))*$/i.test(logic);
 		const isExact = numbers.size === expected.length && expected.every((number) => numbers.has(number));
 		const isGrouped = !hasMixedOperators(logic);
 		const isValid = !this.isCustomLogic || (isValidText && isWellFormed(logic) && isExact && isGrouped);

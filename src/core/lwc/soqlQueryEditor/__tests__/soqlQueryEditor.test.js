@@ -586,6 +586,38 @@ describe("c-soql-query-editor", () => {
 		expect(element.shadowRoot.textContent).toContain("can't sort the records it locks");
 	});
 
+	it("flags a limit or offset outside its input's bounds, which Flow Builder would otherwise save", async () => {
+		const { element } = await render({
+			objectApiName: "Contact",
+			fields: [],
+			conditions: [],
+			orderBy: [],
+			rowLimit: 0,
+			rowOffset: 2001
+		});
+
+		expect(element.validate().map((error) => error.key)).toEqual(["rowLimit", "rowOffset"]);
+		await flush();
+		expect(element.shadowRoot.textContent).toContain("Enter an offset from 0 to 2,000");
+		await fire(element.shadowRoot.querySelector('[data-name="rowLimit"]'), { value: "50000" });
+		await fire(element.shadowRoot.querySelector('[data-name="rowOffset"]'), { value: "2000" });
+		expect(element.validate()).toEqual([]);
+	});
+
+	it("rejects a long run of digits in custom logic without stalling the browser", async () => {
+		const { element } = await render({
+			objectApiName: "Contact",
+			fields: [],
+			conditions: [{ field: "LastName", operator: "IS_NULL", value: "true" }],
+			conditionLogic: `1 AND ${"1".repeat(30)}x`,
+			orderBy: []
+		});
+
+		const start = Date.now();
+		expect(element.validate().map((error) => error.key)).toEqual(["conditionLogic"]);
+		expect(Date.now() - start).toBeLessThan(1000);
+	});
+
 	it("clears errors as they're fixed once Done flags them, keeping each on its row", async () => {
 		const { element } = await render({
 			objectApiName: "Contact",
