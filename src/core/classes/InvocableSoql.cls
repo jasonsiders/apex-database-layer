@@ -971,8 +971,21 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
+		 * @description An ID's Not Equals, ex: `Id != {!$Record.Id}`, can be left out of a merged query and applied to
+		 * its rows in Apex, since IDs compare exactly, and SOQL's `!=` keeps null like Apex's. Text can't, since Apex
+		 * and SOQL fold some text's case differently
+		 * @param index The condition's index
+		 * @return Whether a split can apply the condition
+		 */
+		private Boolean isFilterable(Integer index) {
+			Type valueType = this.getValueType(index);
+			return this.getOperator(index) == 'NOT_EQUALS' && valueType == Id.class;
+		}
+
+		/**
 		 * @description Merging interviews unions one condition's values, then splits the rows by that field, which only
-		 * gives each interview its own rows when every condition must match, and no row is cut by LIMIT or OFFSET
+		 * gives each interview its own rows when every condition must match. LIMIT and OFFSET apply to each
+		 * interview's rows after the split
 		 * @param index The condition whose values differ between interviews
 		 * @return Whether interviews that differ only in this condition can share one query
 		 */
@@ -986,8 +999,6 @@ public inherited sharing class InvocableSoql {
 				fieldType == Schema.DisplayType.CURRENCY && UserInfo.isMultiCurrencyOrganization();
 			String operator = this.getOperator(index);
 			return isAllConditions &&
-				this.rowLimit == null &&
-				this.rowOffset == null &&
 				isMultiPicklist == false &&
 				isConvertedCurrency == false &&
 				InvocableSoql.MERGEABLE_OPERATORS?.contains(operator) == true;
@@ -1030,6 +1041,42 @@ public inherited sharing class InvocableSoql {
 			InvocableSoql.Filter whereClause = new InvocableSoql.Filter(this, values, false);
 			Map<String, Object> binds = this.initBinds(values);
 			return (Soql) this.initSoql(whereClause, accessLevel)?.addBind(binds);
+		}
+
+		/**
+		 * @description Builds a merged query: without LIMIT and OFFSET, which `page` applies to each interview's rows,
+		 * and without the conditions the split applies
+		 * @param values One value per condition, the varying one holding every interview's values
+		 * @param omitted The indexes of the conditions the split applies
+		 * @param accessLevel The access level to query in
+		 * @return The query, ready to run
+		 */
+		private Soql toMergedSoql(List<Object> values, Set<Integer> omitted, System.AccessLevel accessLevel) {
+			InvocableSoql.Filter whereClause = new InvocableSoql.Filter(this, values, false);
+			whereClause.omitted = omitted;
+			Map<String, Object> binds = this.initBinds(values);
+			for (Integer index : omitted) {
+				binds?.remove(InvocableSoql.BIND_PREFIX + index);
+			}
+			Soql builder = this.initSoql(whereClause, accessLevel);
+			return (Soql) builder?.setRowLimit(null)?.setRowOffset(null)?.addBind(binds);
+		}
+
+		/**
+		 * @description Applies OFFSET and LIMIT to one interview's rows from a merged query, which keeps query order
+		 * @param rows The interview's rows
+		 * @return The rows OFFSET and LIMIT keep
+		 */
+		private List<SObject> page(List<SObject> rows) {
+			Integer first = this.rowOffset ?? 0;
+			Integer size = rows?.size();
+			Integer last = Math.min(size, first + (this.rowLimit ?? size));
+			List<SObject> kept = new List<SObject>{};
+			for (Integer position = first; position < last; position++) {
+				SObject row = rows?.get(position);
+				kept?.add(row);
+			}
+			return kept;
 		}
 
 		/**
@@ -1543,6 +1590,8 @@ public inherited sharing class InvocableSoql {
 	 */
 	private class Filter implements Soql.Criteria {
 		private Boolean isLiteral;
+		/** @description Conditions a merged query leaves out, by index, for the split to apply; only under AND **/
+		private Set<Integer> omitted = new Set<Integer>{};
 		private InvocableSoql.Query query;
 		private List<Object> values;
 
@@ -1627,7 +1676,9 @@ public inherited sharing class InvocableSoql {
 			List<String> numbers = new List<String>{};
 			for (Integer index = 1; index <= this.query?.conditions?.size(); index++) {
 				String conditionNumber = String.valueOf(index);
-				numbers?.add(conditionNumber);
+				if (this.omitted?.contains(index - 1) == false) {
+					numbers?.add(conditionNumber);
+				}
 			}
 			Boolean isPreset = logic == 'AND' || logic == 'OR';
 			Boolean isValidCustom =
@@ -1658,8 +1709,9 @@ public inherited sharing class InvocableSoql {
 	 * @description Runs a batch of `SOQL: Get Record(s)` interviews in as few queries as it can, since Flow sends every
 	 * interview at the element in one call. Interviews with the same query, access level, and values share one query.
 	 * Interviews whose values differ in exactly one EQUALS, IN, or LIKE-style condition share one merged query, whose
-	 * rows are split back to each interview by comparing that field in Apex. Everything else runs one query per
-	 * distinct set of values; see `InvocableSoql.Query.isMergeable` for when merging applies
+	 * rows are split back to each interview by comparing that field in Apex. An ID's Not Equals may differ too, ex:
+	 * `Id != {!$Record.Id}`: the merged query leaves it out, and the split applies it. Everything else runs one query
+	 * per distinct set of values; see `InvocableSoql.Query.isMergeable` for when merging applies
 	 */
 	private class Planner {
 		/** @description Interviews that share a query definition and access level, by both **/
@@ -1724,6 +1776,8 @@ public inherited sharing class InvocableSoql {
 	/** @description Interviews with the same query and access level, which can share queries **/
 	private class Batch {
 		private System.AccessLevel accessLevel;
+		/** @description Varying conditions the split applies, which a merged query leaves out, ex: Id != $Record.Id **/
+		private Set<Integer> filteredIndexes = new Set<Integer>{};
 		private InvocableSoql.Query query;
 		/** @description Each distinct set of values, by its JSON **/
 		private Map<String, InvocableSoql.Variant> variants = new Map<String, InvocableSoql.Variant>{};
@@ -1753,18 +1807,41 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description Finds the one condition whose values differ between variants, if only one does
-		 * @return The condition's index, or null when none or several differ
+		 * @description Finds the one condition whose values differ between variants, if only one does, besides those a
+		 * split can apply, which it records in `filteredIndexes`. When only those differ, finds a shared one instead
+		 * @return The condition's index, or null when none can merge or several differ
 		 */
 		private Integer findVaryingIndex() {
 			List<InvocableSoql.Variant> variants = this.variants?.values();
 			List<Integer> varying = new List<Integer>{};
 			for (Integer index = 0; index < variants?.get(0)?.valueKeys?.size(); index++) {
-				if (this.isVarying(index) == true) {
+				Boolean isVarying = this.isVarying(index);
+				Boolean isFiltered = isVarying && this.query?.isFilterable(index);
+				if (isFiltered) {
+					this.filteredIndexes?.add(index);
+				} else if (isVarying) {
 					varying?.add(index);
 				}
 			}
-			return (varying?.size() == 1) ? varying?.get(0) : null;
+			Integer varyingIndex = (varying?.size() == 1) ? varying?.get(0) : null;
+			Boolean isOnlyFiltered = varying?.isEmpty() == true && this.filteredIndexes?.isEmpty() == false;
+			return isOnlyFiltered ? this.findSharedIndex() : varyingIndex;
+		}
+
+		/**
+		 * @description When only conditions a split applies differ, ex: contacts with no account, each excluding
+		 * itself, finds a bound condition to merge on anyway: every row matches its one shared value
+		 * @return The condition's index, or null when none can merge
+		 */
+		private Integer findSharedIndex() {
+			Integer sharedIndex;
+			for (Integer index = 0; index < this.query?.conditions?.size(); index++) {
+				Boolean isBound = this.query?.conditions?.get(index)?.isBound() == true;
+				Boolean isCandidate = isBound && this.filteredIndexes?.contains(index) == false;
+				Boolean isShared = sharedIndex == null && isCandidate && this.query?.isMergeable(index) == true;
+				sharedIndex = isShared ? index : sharedIndex;
+			}
+			return sharedIndex;
 		}
 
 		/**
@@ -1782,8 +1859,8 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description Lists the variants a merged query can serve: a null value runs alone, since `= null` means IS
-		 * NULL, and so does a LIKE pattern with wildcards in its middle, which a split can't reproduce
+		 * @description Lists the variants a merged query can serve: empty text runs alone, and so does a blank LIKE
+		 * pattern or one with wildcards in its middle, which a split can't reproduce
 		 * @param index The varying condition's index, or null
 		 * @return The variants to merge; fewer than two means there's nothing to merge
 		 */
@@ -1801,7 +1878,9 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description A null or empty text value runs alone, and so does a LIKE pattern that a split can't reproduce
+		 * @description Empty text runs alone, and so does a blank LIKE pattern, or one a split can't reproduce. A blank
+		 * value merges, since SOQL's IN matches null to blank fields, as `= null` does, and the split keys blanks
+		 * together
 		 * @param index The varying condition's index
 		 * @param value A variant's value for it
 		 * @return Whether a merged query can serve the variant
@@ -1810,10 +1889,10 @@ public inherited sharing class InvocableSoql {
 			Boolean isPattern = this.query?.isPattern(index);
 			Boolean isSimple = (isPattern && value != null)
 				? new InvocableSoql.LikePattern((String) value, false)?.isSimple
-				: true;
-			// SOQL matches '' to null, but a split keys '' and null apart, so '' runs alone, like null
+				: isPattern == false;
+			// SOQL matches '' to null, but a split keys '' and null apart, so '' runs alone
 			Boolean hasEmptyText = InvocableSoql.toList(value)?.contains('') == true;
-			return value != null && hasEmptyText == false && isSimple == true;
+			return hasEmptyText == false && isSimple == true;
 		}
 
 		/**
@@ -1840,10 +1919,11 @@ public inherited sharing class InvocableSoql {
 		 */
 		private void runMerged(Integer index, List<InvocableSoql.Variant> mergeable) {
 			InvocableSoql.Splitter splitter = new InvocableSoql.Splitter(this.query, index, mergeable);
+			splitter.filteredIndexes = this.filteredIndexes;
 			List<Object> values = mergeable?.get(0)?.values?.clone();
 			Object mergedValue = splitter?.getMergedValue();
 			values?.set(index, mergedValue);
-			List<SObject> rows = this.query?.toSoql(values, this.accessLevel)?.query();
+			List<SObject> rows = this.query?.toMergedSoql(values, this.filteredIndexes, this.accessLevel)?.query();
 			splitter?.split(rows);
 		}
 	}
@@ -1898,7 +1978,11 @@ public inherited sharing class InvocableSoql {
 		private void parse(String pattern, Boolean isCaseSensitive) {
 			this.isLeading = pattern?.startsWith('%') == true;
 			String rest = this.isLeading ? pattern?.substring(1) : pattern;
-			this.isTrailing = rest?.endsWith('%') == true && rest?.endsWith('\\%') == false;
+			// Escaped backslashes go first, so `\\%` ends in a wildcard, and `\%` in a literal %
+			String withoutEscapedBackslashes = rest?.replace('\\\\', '');
+			this.isTrailing =
+				withoutEscapedBackslashes?.endsWith('%') == true &&
+				withoutEscapedBackslashes?.endsWith('\\%') == false;
 			String body = this.isTrailing ? rest?.removeEnd('%') : rest;
 			String unescaped = body?.replace('\\\\', '')?.replace('\\%', '')?.replace('\\_', '');
 			this.isSimple = unescaped?.containsAny('%_\\') == false;
@@ -1924,6 +2008,8 @@ public inherited sharing class InvocableSoql {
 
 	/** @description Splits a merged query's rows back to each variant, by the varying condition's field **/
 	private class Splitter {
+		/** @description Conditions the merged query left out, which each row must pass for each variant **/
+		private Set<Integer> filteredIndexes = new Set<Integer>{};
 		private Integer index;
 		private Boolean isCaseSensitive;
 		private Boolean isPattern;
@@ -1967,7 +2053,7 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description Gives each variant the rows that match its value, in query order
+		 * @description Gives each variant the rows that match its values, in query order, then applies OFFSET and LIMIT
 		 * @param rows The merged query's rows
 		 */
 		private void split(List<SObject> rows) {
@@ -1977,6 +2063,9 @@ public inherited sharing class InvocableSoql {
 			for (SObject row : rows) {
 				this.addRow(row);
 			}
+			for (InvocableSoql.Variant variant : this.variants) {
+				variant.records = this.query?.page(variant?.records);
+			}
 		}
 
 		/**
@@ -1985,8 +2074,26 @@ public inherited sharing class InvocableSoql {
 		 */
 		private void addRow(SObject row) {
 			for (InvocableSoql.Variant variant : this.match(row)) {
-				variant?.records?.add(row);
+				if (this.passesFilters(row, variant) == true) {
+					variant?.records?.add(row);
+				}
 			}
+		}
+
+		/**
+		 * @description Applies each condition the merged query left out: an ID's Not Equals
+		 * @param row A row from the merged query
+		 * @param variant A variant the row matches by the varying field
+		 * @return Whether the row passes them for the variant
+		 */
+		private Boolean passesFilters(SObject row, InvocableSoql.Variant variant) {
+			Boolean isPassing = true;
+			for (Integer filteredIndex : this.filteredIndexes) {
+				Object fieldValue = this.query?.getFieldValue(row, filteredIndex);
+				Object excludedValue = variant?.values?.get(filteredIndex);
+				isPassing &= fieldValue != excludedValue;
+			}
+			return isPassing;
 		}
 
 		/**
