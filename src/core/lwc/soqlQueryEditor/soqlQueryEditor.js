@@ -879,7 +879,8 @@ export default class SoqlQueryEditor extends FlowPropertyEditor {
 		const logic = this._definition.conditionLogic ?? "";
 		const numbers = new Set((logic.match(/\d+/g) ?? []).map(Number));
 		const expected = this._definition.conditions.map((condition, index) => index + 1);
-		const isValidText = /^(\s|\d+|AND|OR|NOT|\(|\))*$/i.test(logic);
+		// \d, not \d+: the group repeats anyway, and \d+ in a repeated group backtracks exponentially on long digit runs
+		const isValidText = /^(\s|\d|AND|OR|NOT|\(|\))*$/i.test(logic);
 		const isExact = numbers.size === expected.length && expected.every((number) => numbers.has(number));
 		const isGrouped = !hasMixedOperators(logic);
 		const isValid = !this.isCustomLogic || (isValidText && isWellFormed(logic) && isExact && isGrouped);

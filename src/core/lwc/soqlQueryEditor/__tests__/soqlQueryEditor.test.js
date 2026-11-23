@@ -604,6 +604,20 @@ describe("c-soql-query-editor", () => {
 		expect(element.validate()).toEqual([]);
 	});
 
+	it("rejects a long run of digits in custom logic without stalling the browser", async () => {
+		const { element } = await render({
+			objectApiName: "Contact",
+			fields: [],
+			conditions: [{ field: "LastName", operator: "IS_NULL", value: "true" }],
+			conditionLogic: `1 AND ${"1".repeat(30)}x`,
+			orderBy: []
+		});
+
+		const start = Date.now();
+		expect(element.validate().map((error) => error.key)).toEqual(["conditionLogic"]);
+		expect(Date.now() - start).toBeLessThan(1000);
+	});
+
 	it("clears errors as they're fixed once Done flags them, keeping each on its row", async () => {
 		const { element } = await render({
 			objectApiName: "Contact",
