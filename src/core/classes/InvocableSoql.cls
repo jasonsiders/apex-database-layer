@@ -2108,9 +2108,10 @@ public inherited sharing class InvocableSoql {
 		 * @param key A field value's key
 		 */
 		private void matchSubstrings(Set<Integer> positions, String key) {
+			Integer keyLength = key?.length();
 			Integer lookups = 0;
 			for (Integer length : this.substrings?.keySet()) {
-				lookups += Math.max(key?.length() - length + 1, 0);
+				lookups += Math.max(keyLength - length + 1, 0);
 			}
 			if (lookups <= this.substringKeys?.size()) {
 				this.lookUpSubstrings(positions, key);
@@ -2142,7 +2143,8 @@ public inherited sharing class InvocableSoql {
 		private void testSubstrings(Set<Integer> positions, String key) {
 			for (String substring : this.substringKeys) {
 				if (key?.contains(substring) == true) {
-					Map<String, Set<Integer>> keyed = this.substrings?.get(substring?.length());
+					Integer length = substring?.length();
+					Map<String, Set<Integer>> keyed = this.substrings?.get(length);
 					this.addMatches(positions, keyed, substring);
 				}
 			}
@@ -2325,7 +2327,8 @@ public inherited sharing class InvocableSoql {
 			} else if (node?.index != null) {
 				result = this.matchersByIndex?.get(node?.index)?.test(position);
 			} else if (node?.operator == 'NOT') {
-				Boolean value = this.evaluate(node?.children?.get(0), position);
+				InvocableSoql.LogicNode negated = node?.children?.get(0);
+				Boolean value = this.evaluate(negated, position);
 				result = (value == null) ? null : value == false;
 			} else {
 				result = this.evaluateJoined(node, position);
@@ -2462,7 +2465,8 @@ public inherited sharing class InvocableSoql {
 			String operator = this.query?.getOperator(index);
 			List<Object> values = new List<Object>{};
 			for (InvocableSoql.Variant variant : this.variants) {
-				values?.add(variant?.values?.get(index));
+				Object value = variant?.values?.get(index);
+				values?.add(value);
 			}
 			InvocableSoql.ConditionMatcher matcher;
 			if (operator == InvocableSoql.NULL_CHECK) {
@@ -2859,7 +2863,8 @@ public inherited sharing class InvocableSoql {
 		 * @param position The variant's position
 		 */
 		private void addVariant(Integer position) {
-			for (Object element : InvocableSoql.toList(this.values?.get(position))) {
+			Object value = this.values?.get(position);
+			for (Object element : InvocableSoql.toList(value)) {
 				String key = this.toKey(element);
 				Set<Integer> positions = this.positionsByKey?.get(key) ?? new Set<Integer>{};
 				positions?.add(position);

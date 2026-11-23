@@ -1408,28 +1408,28 @@ private with sharing class InvocableSoqlTest {
 			new Contact(Id = MockRecord.initRecordId(Contact.SObjectType), EmailBouncedDate = noon.addSeconds(-1))
 		};
 		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(accounts);
-		List<InvocableSoql.Input> numberInputs = InvocableSoqlTest.initRangeInputs(
-			'Account',
+		InvocableSoql.Condition numberRange = InvocableSoqlTest.initSlotCondition(
 			'NumberOfEmployees',
 			'LESS_OR_EQUAL',
 			'number1'
 		);
+		List<InvocableSoql.Input> numberInputs = InvocableSoqlTest.initRangeInputs('Account', numberRange);
 		numberInputs[0].number1 = 15;
 		numberInputs[1].number1 = 20;
-		List<InvocableSoql.Input> timeInputs = InvocableSoqlTest.initRangeInputs(
-			'BusinessHours',
+		InvocableSoql.Condition timeRange = InvocableSoqlTest.initSlotCondition(
 			'MondayStartTime',
 			'LESS_THAN',
 			'time1'
 		);
+		List<InvocableSoql.Input> timeInputs = InvocableSoqlTest.initRangeInputs('BusinessHours', timeRange);
 		timeInputs[0].time1 = Time.newInstance(9, 0, 0, 0);
 		timeInputs[1].time1 = Time.newInstance(11, 0, 0, 0);
-		List<InvocableSoql.Input> dateTimeInputs = InvocableSoqlTest.initRangeInputs(
-			'Contact',
+		InvocableSoql.Condition dateTimeRange = InvocableSoqlTest.initSlotCondition(
 			'EmailBouncedDate',
 			'GREATER_OR_EQUAL',
 			'dateTime1'
 		);
+		List<InvocableSoql.Input> dateTimeInputs = InvocableSoqlTest.initRangeInputs('Contact', dateTimeRange);
 		dateTimeInputs[0].dateTime1 = noon.addSeconds(-1);
 		dateTimeInputs[1].dateTime1 = DateTime.newInstance(noon.getTime() + 500);
 
@@ -1972,14 +1972,9 @@ private with sharing class InvocableSoqlTest {
 		return input;
 	}
 
-	private static List<InvocableSoql.Input> initRangeInputs(
-		String objectApiName,
-		String field,
-		String operator,
-		String slot
-	) {
+	private static List<InvocableSoql.Input> initRangeInputs(String objectApiName, InvocableSoql.Condition condition) {
 		InvocableSoql.Query query = InvocableSoqlTest.initQuery(objectApiName, new List<String>{ 'Name' });
-		query.conditions.add(InvocableSoqlTest.initSlotCondition(field, operator, slot));
+		query.conditions.add(condition);
 		return new List<InvocableSoql.Input>{ InvocableSoqlTest.initInput(query), InvocableSoqlTest.initInput(query) };
 	}
 
