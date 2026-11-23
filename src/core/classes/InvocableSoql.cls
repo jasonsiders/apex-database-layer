@@ -14,6 +14,8 @@ public inherited sharing class InvocableSoql {
 	private static final Set<String> COLLECTION_OPERATORS = new Set<String>{ 'IN', 'NOT_IN' };
 	/** @description SOQL can't bind INCLUDES or EXCLUDES values, so they're literals only **/
 	private static final Set<String> LITERAL_OPERATORS = new Set<String>{ 'EXCLUDES', 'INCLUDES' };
+	/** @description The most rows SOQL's OFFSET can skip **/
+	private static final Integer MAX_OFFSET = 2000;
 	/** @description Operators whose rows can be split back to interviews by comparing the field in Apex **/
 	private static final Set<String> MERGEABLE_OPERATORS = new Set<String>{
 		'CONTAINS',
@@ -1222,6 +1224,7 @@ public inherited sharing class InvocableSoql {
 				this.conditionPaths?.add(path);
 			}
 			this.describeOtherFields();
+			this.validatePaging();
 			// Renders the WHERE clause once, so bad condition logic fails before any query runs
 			List<Object> blankValues = new List<Object>(this.conditions?.size());
 			new InvocableSoql.Filter(this, blankValues, true)?.toString();
@@ -1239,6 +1242,25 @@ public inherited sharing class InvocableSoql {
 			}
 			for (String path : paths) {
 				this.describePath(path);
+			}
+		}
+
+		/**
+		 * @description Checks LIMIT and OFFSET as SOQL would, since a merged query leaves them out, so SOQL never sees
+		 * them and the same definition would fail alone but run merged
+		 * @throws System.IllegalArgumentException When the limit is negative, the offset is outside 0 to 2,000, or FOR
+		 * UPDATE has an offset
+		 */
+		private void validatePaging() {
+			Integer offset = this.rowOffset ?? 0;
+			if ((this.rowLimit ?? 0) < 0) {
+				throw new IllegalArgumentException('Invalid limit: ' + this.rowLimit);
+			}
+			if (offset < 0 || offset > InvocableSoql.MAX_OFFSET) {
+				throw new IllegalArgumentException('Invalid offset, outside 0 to 2,000: ' + this.rowOffset);
+			}
+			if (this.usage == 'FOR_UPDATE' && this.rowOffset != null) {
+				throw new IllegalArgumentException('FOR UPDATE cannot be used with an offset');
 			}
 		}
 

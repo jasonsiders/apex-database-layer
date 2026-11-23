@@ -325,6 +325,38 @@ private class InvocableSoqlTest {
 	}
 
 	@IsTest
+	private static void shouldRejectLimitsAndOffsetsSoqlWould() {
+		// A merged query leaves out LIMIT and OFFSET, so SOQL never checks them; the action must, at any batch size
+		InvocableSoql.Query negativeLimit = InvocableSoqlTest.initQuery('Account', null);
+		negativeLimit.rowLimit = -1;
+		InvocableSoql.Query negativeOffset = InvocableSoqlTest.initQuery('Account', null);
+		negativeOffset.rowOffset = -1;
+		InvocableSoql.Query largeOffset = InvocableSoqlTest.initQuery('Account', null);
+		largeOffset.rowOffset = 2001;
+		InvocableSoql.Query lockedOffset = InvocableSoqlTest.initQuery('Account', null);
+		lockedOffset.rowOffset = 0;
+		lockedOffset.usage = 'FOR_UPDATE';
+		InvocableSoql.Query edges = InvocableSoqlTest.initQuery('Account', null);
+		edges.rowLimit = 0;
+		edges.rowOffset = 2000;
+
+		Test.startTest();
+		List<Exception> errors = new List<Exception>{
+			InvocableSoqlTest.invokeAndCatch(InvocableSoqlTest.initInput(negativeLimit)),
+			InvocableSoqlTest.invokeAndCatch(InvocableSoqlTest.initInput(negativeOffset)),
+			InvocableSoqlTest.invokeAndCatch(InvocableSoqlTest.initInput(largeOffset)),
+			InvocableSoqlTest.invokeAndCatch(InvocableSoqlTest.initInput(lockedOffset))
+		};
+		Exception edgeError = InvocableSoqlTest.invokeAndCatch(InvocableSoqlTest.initInput(edges));
+		Test.stopTest();
+
+		for (Exception error : errors) {
+			Assert.isInstanceOfType(error, IllegalArgumentException.class, 'Wrong error: ' + error);
+		}
+		Assert.isNull(edgeError, 'Rejected a limit of 0 or an offset of 2,000: ' + edgeError);
+	}
+
+	@IsTest
 	private static void shouldApplyUsage() {
 		InvocableSoql.Query query = InvocableSoqlTest.initQuery('Account', null);
 		query.conditions.add(InvocableSoqlTest.initCondition('IsDeleted', 'EQUALS', 'true'));
