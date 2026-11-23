@@ -5,7 +5,6 @@
  * are split back to each interview by comparing that field in Apex. Everything else runs one query per distinct set of
  * values; see `InvocableSoqlQuery.isMergeable` for when merging applies
  */
-// Each method is small; the class total covers grouping, merging, and splitting, which share private state
 @SuppressWarnings('PMD.CognitiveComplexity,PMD.CyclomaticComplexity')
 public inherited sharing class InvocableSoqlPlanner {
 	/** @description Interviews that share a query definition and access level, by both **/

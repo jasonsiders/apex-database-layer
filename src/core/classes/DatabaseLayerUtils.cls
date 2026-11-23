@@ -2,6 +2,13 @@
  * @description Internal utility class providing framework-specific functionality in a pseudo-namespace pattern.
  */
 public without sharing class DatabaseLayerUtils {
+	/** @description Flows pass access levels as text, so each valid value maps to its System.AccessLevel **/
+	private static final Map<String, System.AccessLevel> ACCESS_LEVELS = new Map<String, System.AccessLevel>{
+		'SYSTEM_MODE' => System.AccessLevel.SYSTEM_MODE,
+		'USER_MODE' => System.AccessLevel.USER_MODE
+	};
+	/** @description The object SOQL resolves a name-pointing lookup to, ex: Case.Owner **/
+	private static final String POLYMORPHIC_ENTITY = 'Name';
 	// Note: These properties do not use traditional naming conventions to support a 'namespace-like' API
 	/**
 	 * @description Utility for managing Schema.ChildRelationship objects.
@@ -47,6 +54,57 @@ public without sharing class DatabaseLayerUtils {
 	 */
 	public String getParameter(String developerName) {
 		return this.parameters?.get(developerName);
+	}
+
+	/**
+	 * @description Lightning only shows an AuraHandledException's message, so editors that call this show the reason
+	 * @param objectApiName The object to describe
+	 * @return The object's fields
+	 * @throws System.AuraHandledException When the object doesn't exist
+	 */
+	public List<SObjectField> describeFields(String objectApiName) {
+		List<String> objectApiNames = new List<String>{ objectApiName };
+		try {
+			List<DescribeSObjectResult> objects = Schema.describeSObjects(
+				objectApiNames,
+				SObjectDescribeOptions.DEFERRED
+			);
+			return objects?.get(0)?.fields?.getMap()?.values();
+		} catch (System.InvalidParameterValueException error) {
+			String message = error?.getMessage();
+			throw new System.AuraHandledException(message);
+		}
+	}
+
+	/**
+	 * @description Blank runs in the safer USER_MODE; anything else must name an access level exactly, so a typo fails
+	 * instead of running in a mode the caller didn't ask for
+	 * @param name The access level's name, ex: from a flow input
+	 * @return The matching System.AccessLevel
+	 * @throws System.IllegalArgumentException When the value isn't blank, USER_MODE, or SYSTEM_MODE
+	 */
+	public System.AccessLevel toAccessLevel(String name) {
+		String levelName = String.isBlank(name) ? 'USER_MODE' : name;
+		System.AccessLevel level = DatabaseLayerUtils.ACCESS_LEVELS?.get(levelName);
+		if (level == null) {
+			throw new IllegalArgumentException('Invalid access level: ' + levelName);
+		}
+		return level;
+	}
+
+	/**
+	 * @description Names the object SOQL resolves a lookup's relationship to. A name-pointing lookup, ex: Case.OwnerId
+	 * or AccountHistory.CreatedById, resolves to the Name object, the only one whose fields SOQL allows on it without
+	 * TYPEOF. Other lookups resolve to their first object, even with several, ex: Document.FolderId to Folder
+	 * @param lookup The lookup's describe
+	 * @return The object's name, or null for a field that isn't a lookup
+	 */
+	public String toEntityName(DescribeFieldResult lookup) {
+		List<SObjectType> parentTypes = lookup?.getReferenceTo();
+		SObjectType firstParent = parentTypes?.isEmpty() == false ? parentTypes?.get(0) : null;
+		// shortcut: a few name-pointing lookups, ex: ObjectPermissions.ParentId, resolve to their object; Apex's
+		// describe can't tell them apart, so they get the Name object's fields
+		return (lookup?.isNamePointing() == true) ? DatabaseLayerUtils.POLYMORPHIC_ENTITY : firstParent?.toString();
 	}
 
 	private Map<String, String> loadParameters() {

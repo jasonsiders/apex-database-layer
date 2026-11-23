@@ -194,4 +194,56 @@ private class DatabaseLayerUtilsTest {
 		Assert.isInstanceOfType(record, User.class, 'Did not create a User');
 		Assert.areEqual(record?.Id, recordId, 'Wrong Id');
 	}
+
+	@IsTest
+	private static void shouldParseAccessLevels() {
+		Test.startTest();
+		System.AccessLevel blank = DatabaseLayer.Utils.toAccessLevel(null);
+		System.AccessLevel systemMode = DatabaseLayer.Utils.toAccessLevel('SYSTEM_MODE');
+		Exception caughtError;
+		try {
+			DatabaseLayer.Utils.toAccessLevel('system');
+		} catch (IllegalArgumentException error) {
+			caughtError = error;
+		}
+		Test.stopTest();
+
+		Assert.areEqual(System.AccessLevel.USER_MODE, blank, 'Did not default to USER_MODE');
+		Assert.areEqual(System.AccessLevel.SYSTEM_MODE, systemMode, 'Wrong access level');
+		Assert.isNotNull(caughtError, 'Did not reject an inexact name');
+	}
+
+	@IsTest
+	private static void shouldDescribeFields() {
+		Test.startTest();
+		List<SObjectField> fields = DatabaseLayer.Utils.describeFields('Account');
+		Exception caughtError;
+		try {
+			DatabaseLayer.Utils.describeFields('Not_An_Object__c');
+		} catch (System.AuraHandledException error) {
+			caughtError = error;
+		}
+		Test.stopTest();
+
+		Assert.isTrue(fields?.contains(Account.Name), 'Did not describe Account\'s fields');
+		Assert.isNotNull(caughtError, 'Did not throw a System.AuraHandledException');
+	}
+
+	@IsTest
+	private static void shouldNameTheObjectSoqlResolvesALookupTo() {
+		Test.startTest();
+		String lookup = DatabaseLayer.Utils.toEntityName(Contact.AccountId?.getDescribe());
+		String polymorphic = DatabaseLayer.Utils.toEntityName(Case.OwnerId?.getDescribe());
+		// SOQL resolves by isNamePointing, not by how many objects the lookup references:
+		String namePointing = DatabaseLayer.Utils.toEntityName(AccountHistory.CreatedById?.getDescribe());
+		String severalObjects = DatabaseLayer.Utils.toEntityName(Document.FolderId?.getDescribe());
+		String notLookup = DatabaseLayer.Utils.toEntityName(Account.Name?.getDescribe());
+		Test.stopTest();
+
+		Assert.areEqual('Account', lookup, 'Wrong lookup object');
+		Assert.areEqual('Name', polymorphic, 'Wrong polymorphic lookup object');
+		Assert.areEqual('Name', namePointing, 'Wrong name-pointing lookup object');
+		Assert.areEqual('Folder', severalObjects, 'Wrong multi-object lookup object');
+		Assert.isNull(notLookup, 'Named an object for a field that is not a lookup');
+	}
 }

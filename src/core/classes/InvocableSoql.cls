@@ -49,7 +49,7 @@ public inherited sharing class InvocableSoql {
 	@AuraEnabled(cacheable=true)
 	public static List<InvocableSoql.FieldOption> getFields(String objectApiName) {
 		List<InvocableSoql.FieldOption> options = new List<InvocableSoql.FieldOption>{};
-		for (SObjectField field : InvocableDml.describeFields(objectApiName)) {
+		for (SObjectField field : DatabaseLayer.Utils.describeFields(objectApiName)) {
 			DescribeFieldResult describe = field?.getDescribe();
 			if (describe?.isAccessible() == true) {
 				InvocableSoql.FieldOption option = new InvocableSoql.FieldOption(describe, objectApiName);
@@ -85,7 +85,7 @@ public inherited sharing class InvocableSoql {
 		/** @description Conditions can only use filterable fields **/
 		@AuraEnabled
 		public Boolean isFilterable;
-		/** @description A lookup to several objects, ex: Task.WhoId, takes record collections of any object **/
+		/** @description A name-pointing lookup, ex: Task.WhoId, takes record collections of any object **/
 		@AuraEnabled
 		public Boolean isPolymorphic;
 		/** @description ORDER BY can only use sortable fields **/
@@ -116,13 +116,12 @@ public inherited sharing class InvocableSoql {
 		 * @param objectApiName The field's object
 		 */
 		private FieldOption(DescribeFieldResult field, String objectApiName) {
-			List<SObjectType> parents = field?.getReferenceTo();
 			List<Schema.PicklistEntry> entries = field?.getPicklistValues();
-			String parentName = Soql.toEntityName(parents);
+			String parentName = DatabaseLayer.Utils.toEntityName(field);
 			Boolean isId = field?.getType() == Schema.DisplayType.ID;
 			this.apiName = field?.getName();
 			this.isFilterable = field?.isFilterable();
-			this.isPolymorphic = parents?.size() > 1;
+			this.isPolymorphic = field?.isNamePointing();
 			this.isSortable = field?.isSortable();
 			this.label = field?.getLabel();
 			this.picklistValues = InvocableSoql.initPicklistOptions(entries);
@@ -878,12 +877,12 @@ public inherited sharing class InvocableSoql {
 		public List<SObject> recordCollection10;
 
 		/**
-		 * @description Parsed by `InvocableDml.toAccessLevel`, like the DML actions
+		 * @description Parsed by `DatabaseLayerUtils.toAccessLevel`, like the DML actions
 		 * @return The matching System.AccessLevel
 		 * @throws System.IllegalArgumentException When the value isn't blank, USER_MODE, or SYSTEM_MODE
 		 */
 		public System.AccessLevel getAccessLevel() {
-			return InvocableDml.toAccessLevel(this.accessLevel);
+			return DatabaseLayer.Utils.toAccessLevel(this.accessLevel);
 		}
 
 		/**

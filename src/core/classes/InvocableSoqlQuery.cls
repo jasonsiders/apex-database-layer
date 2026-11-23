@@ -2,7 +2,6 @@
  * @description A `SOQL: Get Record(s)` query, parsed from the JSON its editor writes. Builds the query, binding every
  * value, and resolves each interview's values for it
  */
-// Each method is small; the class totals cover parsing, rendering, and coercion, like Soql
 @SuppressWarnings('PMD.CognitiveComplexity,PMD.CyclomaticComplexity')
 public inherited sharing class InvocableSoqlQuery {
 	// **** CONSTANTS **** //
@@ -470,14 +469,12 @@ public inherited sharing class InvocableSoqlQuery {
 	}
 
 	/**
-	 * @description Describes the object a lookup points to. A polymorphic lookup, ex: Who, describes as the Name
-	 * object, since SOQL only allows its fields on one without TYPEOF
+	 * @description Describes the object SOQL resolves a lookup to, per `DatabaseLayerUtils.toEntityName`
 	 * @param lookup The lookup's describe
 	 * @return The parent object's describe
 	 */
 	private DescribeSObjectResult describeReference(DescribeFieldResult lookup) {
-		List<SObjectType> parentTypes = lookup?.getReferenceTo();
-		String parentName = Soql.toEntityName(parentTypes);
+		String parentName = DatabaseLayer.Utils.toEntityName(lookup);
 		List<String> parentNames = new List<String>{ parentName };
 		return Schema.describeSObjects(parentNames, SObjectDescribeOptions.DEFERRED)?.get(0);
 	}

@@ -88,7 +88,7 @@ public inherited sharing class InvocableDmlUpsertRecords extends InvocableDml {
 	 */
 	private List<InvocableDmlUpsertRecords.MatchField> initMatchFields(String objectApiName) {
 		List<InvocableDmlUpsertRecords.MatchField> matchFields = new List<InvocableDmlUpsertRecords.MatchField>{};
-		for (SObjectField field : InvocableDml.describeFields(objectApiName)) {
+		for (SObjectField field : DatabaseLayer.Utils.describeFields(objectApiName)) {
 			DescribeFieldResult describe = field?.getDescribe();
 			if (this.isMatchable(describe)) {
 				InvocableDmlUpsertRecords.MatchField matchField = new InvocableDmlUpsertRecords.MatchField(describe);

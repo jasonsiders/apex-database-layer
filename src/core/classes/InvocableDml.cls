@@ -3,49 +3,7 @@
  * operation, via `doDml`
  */
 public abstract inherited sharing class InvocableDml {
-	/** @description Flow passes the access level as text, so each valid value maps to its System.AccessLevel **/
-	private static final Map<String, System.AccessLevel> ACCESS_LEVELS = new Map<String, System.AccessLevel>{
-		'SYSTEM_MODE' => System.AccessLevel.SYSTEM_MODE,
-		'USER_MODE' => System.AccessLevel.USER_MODE
-	};
-
 	// **** PUBLIC **** //
-	/**
-	 * @description Blank runs in the safer USER_MODE; anything else must name an access level exactly, so a typo fails
-	 * instead of running in a mode the flow didn't ask for. Shared with `InvocableSoql`, whose input works the same way
-	 * @param name The access level's name, from a flow input
-	 * @return The matching System.AccessLevel
-	 * @throws System.IllegalArgumentException When the value isn't blank, USER_MODE, or SYSTEM_MODE
-	 */
-	public static System.AccessLevel toAccessLevel(String name) {
-		String levelName = String.isBlank(name) ? 'USER_MODE' : name;
-		System.AccessLevel level = InvocableDml.ACCESS_LEVELS?.get(levelName);
-		if (level == null) {
-			throw new IllegalArgumentException('Invalid access level: ' + levelName);
-		}
-		return level;
-	}
-
-	/**
-	 * @description The action editors call this through Lightning, which only shows an AuraHandledException's message
-	 * @param objectApiName The object to describe
-	 * @return The object's fields
-	 * @throws System.AuraHandledException When the object doesn't exist
-	 */
-	public static List<SObjectField> describeFields(String objectApiName) {
-		List<String> objectApiNames = new List<String>{ objectApiName };
-		try {
-			List<DescribeSObjectResult> objects = Schema.describeSObjects(
-				objectApiNames,
-				SObjectDescribeOptions.DEFERRED
-			);
-			return objects?.get(0)?.fields?.getMap()?.values();
-		} catch (System.InvalidParameterValueException error) {
-			String message = error?.getMessage();
-			throw new System.AuraHandledException(message);
-		}
-	}
-
 	/**
 	 * @description Flow bulkifies interviews into one call; they share one DML operation, so a bulk run can't exhaust
 	 * the DML statement limit. One operation can only have one set of settings, so the first input's apply to all
@@ -213,12 +171,12 @@ public abstract inherited sharing class InvocableDml {
 		}
 
 		/**
-		 * @description Parsed by `InvocableDml.toAccessLevel`
+		 * @description Parsed by `DatabaseLayerUtils.toAccessLevel`
 		 * @return The matching System.AccessLevel
 		 * @throws System.IllegalArgumentException When the value isn't blank, USER_MODE, or SYSTEM_MODE
 		 */
 		public System.AccessLevel getAccessLevel() {
-			return InvocableDml.toAccessLevel(this.accessLevel);
+			return DatabaseLayer.Utils.toAccessLevel(this.accessLevel);
 		}
 
 		/**

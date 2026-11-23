@@ -22,8 +22,6 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	// Other constants
 	private static final Soql.LogicType DEFAULT_LOGIC_TYPE = Soql.LogicType.ALL_CONDITIONS;
 	private static final String ID_REFERENCE = 'Id';
-	// The object a polymorphic lookup, ex: Case.Owner, describes as; SOQL allows only its fields without TYPEOF
-	private static final String POLYMORPHIC_ENTITY = 'Name';
 	// Matches the SOQL date literal grammar: the fixed keywords, plus the parameterized <LITERAL>:<n> forms.
 	// See https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_select_dateformats.htm
 	public static final Pattern DATE_LITERAL_PATTERN = Pattern.compile(
@@ -146,17 +144,6 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	global Soql setQueryIdentifier(String identifier) {
 		this.identifier = identifier;
 		return this;
-	}
-
-	/**
-	 * @description Names the object a lookup points to. A polymorphic lookup, ex: Task.WhoId, names the Name object,
-	 * since SOQL allows only its fields without TYPEOF
-	 * @param parentTypes The lookup's referenceTo types
-	 * @return The parent object's name, or null for a field that isn't a lookup
-	 */
-	public static String toEntityName(List<SObjectType> parentTypes) {
-		SObjectType firstParent = parentTypes?.isEmpty() == false ? parentTypes?.get(0) : null;
-		return (parentTypes?.size() > 1) ? Soql.POLYMORPHIC_ENTITY : firstParent?.toString();
 	}
 
 	/**
@@ -824,8 +811,8 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @return The parent object's name, or 'Name' for a polymorphic lookup
 		 */
 		private String findParentEntity(SObjectField lookup) {
-			List<SObjectType> parentTypes = lookup?.getDescribe()?.getReferenceTo();
-			return Soql.toEntityName(parentTypes);
+			DescribeFieldResult describe = lookup?.getDescribe();
+			return DatabaseLayer.Utils.toEntityName(describe);
 		}
 
 		/**
