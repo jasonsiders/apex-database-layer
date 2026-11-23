@@ -16,7 +16,7 @@ Because the action uses `DatabaseLayer.Soql`, [plugins](./Plugin:-Soql.PreAndPos
 
 ## Building the Query
 
-In Flow Builder, add an **Action** element and search for `SOQL:`, under the **Database Layer** category. The action's editor mirrors Get Records:
+In Flow Builder, add an **Action** element and search for `SOQL:`, under the **Database Layer** category. The action's editor mirrors Get Records. Below the object, click a section's heading to open or close it; only **Filter Records** starts open:
 
 1. **Get Records of This Object**: search for the object to query.
 2. **Filter Records**: add conditions, and choose whether all of them, any of them, or custom logic must be met. Each condition has a field, an operator, and a value.

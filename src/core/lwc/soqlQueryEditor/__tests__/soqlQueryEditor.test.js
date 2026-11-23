@@ -107,6 +107,21 @@ describe("c-soql-query-editor", () => {
 		expect(element.shadowRoot.querySelectorAll("c-soql-field-path")).toHaveLength(0);
 	});
 
+	it("collapses every section but the filter, and lets several stay open", async () => {
+		const { element } = await render({ objectApiName: "Contact", conditions: [], fields: [], orderBy: [] });
+
+		const accordion = element.shadowRoot.querySelector("lightning-accordion");
+		const sections = [...accordion.querySelectorAll("lightning-accordion-section")];
+		expect(sections.map((section) => section.label)).toEqual([
+			"Filter Contact Records",
+			"Sort Contact Records",
+			"Select Contact Fields to Store",
+			"Query Options"
+		]);
+		expect(accordion.allowMultipleSectionsOpen).toBe(true);
+		expect(accordion.activeSectionName).toBe(sections[0].name);
+	});
+
 	it("starts the query when an object is chosen, typing the outputs and record slots to it", async () => {
 		const { element, events } = await render();
 

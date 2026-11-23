@@ -346,11 +346,6 @@ export default class SoqlQueryEditor extends LightningElement {
 		return this._definition.objectApiName;
 	}
 
-	get objectLabel() {
-		const object = this._objects.find((candidate) => candidate.value === this.objectApiName);
-		return object?.label ?? this.objectApiName;
-	}
-
 	get objectOptions() {
 		return this._objects;
 	}
@@ -371,6 +366,16 @@ export default class SoqlQueryEditor extends LightningElement {
 
 	get rowOffset() {
 		return this._definition.rowOffset;
+	}
+
+	get sectionLabels() {
+		const object = this._objects.find((candidate) => candidate.value === this.objectApiName);
+		const label = object?.label ?? this.objectApiName;
+		return {
+			filter: `Filter ${label} Records`,
+			sort: `Sort ${label} Records`,
+			fields: `Select ${label} Fields to Store`
+		};
 	}
 
 	get usage() {

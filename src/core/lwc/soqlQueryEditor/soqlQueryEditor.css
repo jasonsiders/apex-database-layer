@@ -56,7 +56,8 @@
 	display: inline-block;
 }
 
-/* Flow's own collapsible sections, ex: Show advanced options, don't indent their headers */
-.options-accordion {
-	--slds-c-accordion-section-spacing-inline-start: 0;
+/* Bleeds past Flow's padding like .editor-section, so the dividers between sections span the panel */
+.editor-sections {
+	display: block;
+	margin: 0 -0.75rem;
 }
