@@ -222,6 +222,10 @@
 						onchange={handleOffsetChange}
 					></lightning-input>
 				</div>
+				<p lwc:if={errors.rowLimit} class="slds-form-element__help slds-text-color_error">{errors.rowLimit}</p>
+				<p lwc:if={errors.rowOffset} class="slds-form-element__help slds-text-color_error">
+					{errors.rowOffset}
+				</p>
 			</lightning-accordion-section>
 			<lightning-accordion-section name="options" label="Advanced Query Options">
 				<lightning-combobox

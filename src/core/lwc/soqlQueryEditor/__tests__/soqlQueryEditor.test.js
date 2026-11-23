@@ -586,6 +586,24 @@ describe("c-soql-query-editor", () => {
 		expect(element.shadowRoot.textContent).toContain("can't sort the records it locks");
 	});
 
+	it("flags a limit or offset outside its input's bounds, which Flow Builder would otherwise save", async () => {
+		const { element } = await render({
+			objectApiName: "Contact",
+			fields: [],
+			conditions: [],
+			orderBy: [],
+			rowLimit: 0,
+			rowOffset: 2001
+		});
+
+		expect(element.validate().map((error) => error.key)).toEqual(["rowLimit", "rowOffset"]);
+		await flush();
+		expect(element.shadowRoot.textContent).toContain("Enter an offset from 0 to 2,000");
+		await fire(element.shadowRoot.querySelector('[data-name="rowLimit"]'), { value: "50000" });
+		await fire(element.shadowRoot.querySelector('[data-name="rowOffset"]'), { value: "2000" });
+		expect(element.validate()).toEqual([]);
+	});
+
 	it("clears errors as they're fixed once Done flags them, keeping each on its row", async () => {
 		const { element } = await render({
 			objectApiName: "Contact",
