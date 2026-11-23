@@ -3,8 +3,11 @@ import { getPicklistValues } from "lightning/uiObjectInfoApi";
 import LOCALE_FIELD from "@salesforce/schema/User.LocaleSidKey";
 import getMatchFields from "@salesforce/apex/InvocableDmlUpsertRecords.getMatchFields";
 import { REFERENCE, REQUIRED_ERROR, compareLabels, toBooleanConstant } from "c/flowResourceMenu";
-import FlowPropertyEditor, { ACCESS_LEVELS, ACCESS_LEVEL_HELP, NONE_OPTION } from "c/flowPropertyEditor";
+import FlowPropertyEditor, { ACCESS_LEVELS, NONE_OPTION } from "c/flowPropertyEditor";
 
+/** @description Unlike the query's SYSTEM_MODE, the DML actions' still applies sharing, until #208 */
+const ACCESS_LEVEL_HELP =
+	"USER_MODE (default) enforces the running user's object permissions, field-level security, and sharing rules. SYSTEM_MODE ignores object permissions and field-level security, but sharing rules still apply.";
 const FALSE = toBooleanConstant(false);
 const TRUE = toBooleanConstant(true);
 // Labeled like Flow Builder's boolean global constants

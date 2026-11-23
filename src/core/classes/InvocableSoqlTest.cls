@@ -1,6 +1,9 @@
+/**
+ * @description Tests `InvocableSoql` with sharing, as Flow calls it, with no Apex caller whose sharing it could inherit
+ */
 @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveRunAs,PMD.CyclomaticComplexity,PMD.NcssCount')
 @IsTest
-private class InvocableSoqlTest {
+private with sharing class InvocableSoqlTest {
 	private static final List<Object> NO_VALUES = new List<Object>{};
 
 	static {
@@ -101,6 +104,31 @@ private class InvocableSoqlTest {
 			'SELECT Id, MondayStartTime, MondayEndTime FROM BusinessHours ' +
 			'WHERE MondayStartTime >= 09:30:00.000Z AND MondayEndTime < 17:30:00.000Z';
 		Assert.areEqual(expected, output?.queryString, 'Wrong query');
+	}
+
+	@IsTest
+	private static void shouldBindBlankDatesAndTimesAsNull() {
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(new List<SObject>{});
+		InvocableSoql.Query query = InvocableSoqlTest.initQuery('Contact', null);
+		query.conditions.add(InvocableSoqlTest.initSlotCondition('Birthdate', 'EQUALS', 'date1'));
+		query.conditions.add(InvocableSoqlTest.initSlotCondition('EmailBouncedDate', 'EQUALS', 'dateTime1'));
+		InvocableSoql.Query timeQuery = InvocableSoqlTest.initQuery('BusinessHours', null);
+		timeQuery.conditions.add(InvocableSoqlTest.initSlotCondition('MondayStartTime', 'EQUALS', 'time1'));
+
+		Test.startTest();
+		InvocableSoql.Output output = InvocableSoqlTest.invoke(InvocableSoqlTest.initInput(query));
+		InvocableSoql.Output timeOutput = InvocableSoqlTest.invoke(InvocableSoqlTest.initInput(timeQuery));
+		Test.stopTest();
+
+		// Like Get Records, a blank resource finds blank fields; JSON alone can't read null as a date:
+		Map<String, Object> binds = spy.queries?.get(0)?.binds;
+		Assert.isTrue(binds?.containsKey('bind0'), 'Did not bind the date: ' + binds);
+		Assert.isNull(binds?.get('bind0'), 'Wrong date bind: ' + binds);
+		Assert.isTrue(
+			output?.queryString?.endsWith('Birthdate = null AND EmailBouncedDate = null'),
+			output?.queryString
+		);
+		Assert.isTrue(timeOutput?.queryString?.endsWith('MondayStartTime = null'), timeOutput?.queryString);
 	}
 
 	@IsTest
@@ -325,6 +353,39 @@ private class InvocableSoqlTest {
 	}
 
 	@IsTest
+	private static void shouldRejectLimitsAndOffsetsSoqlWould() {
+		// A merged query leaves out LIMIT and OFFSET, so SOQL never checks them; the action must, at any batch size
+		InvocableSoql.Query negativeLimit = InvocableSoqlTest.initQuery('Account', null);
+		negativeLimit.rowLimit = -1;
+		InvocableSoql.Query negativeOffset = InvocableSoqlTest.initQuery('Account', null);
+		negativeOffset.rowOffset = -1;
+		InvocableSoql.Query largeOffset = InvocableSoqlTest.initQuery('Account', null);
+		largeOffset.rowOffset = 2001;
+		InvocableSoql.Query lockedOffset = InvocableSoqlTest.initQuery('Account', null);
+		lockedOffset.rowOffset = 0;
+		lockedOffset.usage = 'FOR_UPDATE';
+		InvocableSoql.Query edges = InvocableSoqlTest.initQuery('Account', null);
+		edges.rowLimit = 0;
+		edges.rowOffset = 2000;
+
+		Test.startTest();
+		List<Exception> errors = new List<Exception>{
+			InvocableSoqlTest.invokeAndCatch(InvocableSoqlTest.initInput(negativeLimit)),
+			InvocableSoqlTest.invokeAndCatch(InvocableSoqlTest.initInput(negativeOffset)),
+			InvocableSoqlTest.invokeAndCatch(InvocableSoqlTest.initInput(largeOffset)),
+			InvocableSoqlTest.invokeAndCatch(InvocableSoqlTest.initInput(lockedOffset))
+		};
+		Exception edgeError = InvocableSoqlTest.invokeAndCatch(InvocableSoqlTest.initInput(edges));
+		Test.stopTest();
+
+		Assert.isInstanceOfType(errors[0], IllegalArgumentException.class, 'Wrong limit error: ' + errors[0]);
+		Assert.isInstanceOfType(errors[1], IllegalArgumentException.class, 'Wrong offset error: ' + errors[1]);
+		Assert.isInstanceOfType(errors[2], IllegalArgumentException.class, 'Wrong offset error: ' + errors[2]);
+		Assert.isInstanceOfType(errors[3], IllegalArgumentException.class, 'Wrong usage error: ' + errors[3]);
+		Assert.isNull(edgeError, 'Rejected a limit of 0 or an offset of 2,000: ' + edgeError);
+	}
+
+	@IsTest
 	private static void shouldApplyUsage() {
 		InvocableSoql.Query query = InvocableSoqlTest.initQuery('Account', null);
 		query.conditions.add(InvocableSoqlTest.initCondition('IsDeleted', 'EQUALS', 'true'));
@@ -355,6 +416,30 @@ private class InvocableSoqlTest {
 		Assert.areEqual(System.AccessLevel.SYSTEM_MODE, spy.queries?.get(0)?.accessLevel, 'Wrong access level');
 		Assert.areEqual(System.AccessLevel.USER_MODE, spy.queries?.get(1)?.accessLevel, 'Did not default to USER_MODE');
 		Assert.isInstanceOfType(caughtError, IllegalArgumentException.class, 'Wrong error: ' + caughtError);
+	}
+
+	@IsTest
+	private static void shouldIgnoreSharingInSystemMode() {
+		// Activities are private by default, so another user can't see this task unless sharing is ignored
+		DatabaseLayer.useRealSoql();
+		insert new Task(Subject = 'Hidden');
+		User viewer = InvocableSoqlTest.initStandardUser();
+		InvocableSoql.Query query = InvocableSoqlTest.initQuery('Task', null);
+		query.conditions.add(InvocableSoqlTest.initCondition('Subject', 'EQUALS', 'Hidden'));
+		InvocableSoql.Input systemMode = InvocableSoqlTest.initInput(query);
+		systemMode.accessLevel = 'SYSTEM_MODE';
+		InvocableSoql.Input userMode = InvocableSoqlTest.initInput(query);
+		List<InvocableSoql.Input> inputs = new List<InvocableSoql.Input>{ systemMode, userMode };
+		List<InvocableSoql.Output> outputs;
+
+		Test.startTest();
+		System.runAs(viewer) {
+			outputs = InvocableSoql.invoke(inputs);
+		}
+		Test.stopTest();
+
+		Assert.areEqual(1, outputs?.get(0)?.records?.size(), 'SYSTEM_MODE applied sharing');
+		Assert.areEqual(0, outputs?.get(1)?.records?.size(), 'USER_MODE ignored sharing');
 	}
 
 	@IsTest
@@ -777,6 +862,25 @@ private class InvocableSoqlTest {
 	}
 
 	@IsTest
+	private static void shouldMergeBlankPatternsAsBlankFields() {
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(InvocableSoqlTest.initAccounts());
+		InvocableSoql.Query query = InvocableSoqlTest.initSlotQuery('Site', 'CONTAINS', 'text1');
+		List<InvocableSoql.Input> inputs = new List<InvocableSoql.Input>{
+			InvocableSoqlTest.initTextInput(query, 'as'),
+			InvocableSoqlTest.initTextInput(query, null)
+		};
+
+		Test.startTest();
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(inputs);
+		Test.stopTest();
+
+		// A blank value binds `LIKE null`, which SOQL matches to blank fields:
+		Assert.areEqual(1, spy.queries?.size(), 'Wrong # of queries');
+		Assert.areEqual(new List<String>{ 'Acme' }, InvocableSoqlTest.getNames(outputs[0]), 'Wrong 1st output');
+		Assert.areEqual(new List<String>{ 'Gamma' }, InvocableSoqlTest.getNames(outputs[1]), 'Wrong blank output');
+	}
+
+	@IsTest
 	private static void shouldRunComplexLikePatternsSeparately() {
 		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(InvocableSoqlTest.initAccounts());
 		InvocableSoql.Query query = InvocableSoqlTest.initSlotQuery('Name', 'LIKE', 'text1');
@@ -800,22 +904,149 @@ private class InvocableSoqlTest {
 	}
 
 	@IsTest
-	private static void shouldRunSeparatelyWhenSeveralConditionsVary() {
-		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(new List<SObject>{});
+	private static void shouldMergeSeveralVaryingConditions() {
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(InvocableSoqlTest.initAccounts());
 		InvocableSoql.Query query = InvocableSoqlTest.initSlotQuery('Name', 'EQUALS', 'text1');
 		query.conditions.add(InvocableSoqlTest.initSlotCondition('Site', 'EQUALS', 'text2'));
-		InvocableSoql.Input first = InvocableSoqlTest.initTextInput(query, 'Acme');
-		first.text2 = 'East';
-		InvocableSoql.Input second = InvocableSoqlTest.initTextInput(query, 'Beta');
-		second.text2 = 'West';
+		List<InvocableSoql.Input> inputs = new List<InvocableSoql.Input>{
+			InvocableSoqlTest.initTwoTextInput(query, 'Acme', 'East'),
+			InvocableSoqlTest.initTwoTextInput(query, 'Beta', 'West'),
+			InvocableSoqlTest.initTwoTextInput(query, 'Acme', 'West')
+		};
+		InvocableSoql.Query prefixQuery = InvocableSoqlTest.initSlotQuery('Site', 'EQUALS', 'text1');
+		prefixQuery.conditions.add(InvocableSoqlTest.initSlotCondition('Name', 'STARTS_WITH', 'text2'));
+		List<InvocableSoql.Input> prefixInputs = new List<InvocableSoql.Input>{
+			InvocableSoqlTest.initTwoTextInput(prefixQuery, 'East', 'ac'),
+			InvocableSoqlTest.initTwoTextInput(prefixQuery, 'West', 'ga')
+		};
 
 		Test.startTest();
-		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(new List<InvocableSoql.Input>{ first, second });
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(inputs);
+		List<InvocableSoql.Output> prefixOutputs = InvocableSoql.invoke(prefixInputs);
 		Test.stopTest();
 
+		// Each condition binds every interview's values, so the query reads Acme and Beta at both sites:
 		Assert.areEqual(2, spy.queries?.size(), 'Wrong # of queries');
+		List<Object> mergedSites = (List<Object>) spy.queries?.get(0)?.binds?.get('bind1');
+		Assert.areEqual(new Set<Object>{ 'East', 'West' }, new Set<Object>(mergedSites), 'Wrong merged sites');
+		Assert.areEqual(new List<String>{ 'Acme' }, InvocableSoqlTest.getNames(outputs[0]), 'Wrong 1st output');
+		Assert.areEqual(new List<String>{ 'Beta' }, InvocableSoqlTest.getNames(outputs[1]), 'Wrong 2nd output');
+		Assert.areEqual(new List<String>{}, InvocableSoqlTest.getNames(outputs[2]), 'Wrong 3rd output');
 		Assert.isTrue(outputs[0].queryString?.endsWith('Name = \'Acme\' AND Site = \'East\''), outputs[0].queryString);
-		Assert.isTrue(outputs[1].queryString?.endsWith('Name = \'Beta\' AND Site = \'West\''), outputs[1].queryString);
+		Assert.areEqual(new List<String>{ 'Acme' }, InvocableSoqlTest.getNames(prefixOutputs[0]), 'Wrong 1st prefix');
+		Assert.areEqual(new List<String>{}, InvocableSoqlTest.getNames(prefixOutputs[1]), 'Wrong 2nd prefix');
+	}
+
+	@IsTest
+	private static void shouldMergeAnyConditionLogic() {
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(InvocableSoqlTest.initAccounts());
+		InvocableSoql.Query query = InvocableSoqlTest.initSlotQuery('Name', 'EQUALS', 'text1');
+		query.conditions.add(InvocableSoqlTest.initSlotCondition('Site', 'EQUALS', 'text2'));
+		query.conditionLogic = 'OR';
+		List<InvocableSoql.Input> inputs = new List<InvocableSoql.Input>{
+			InvocableSoqlTest.initTwoTextInput(query, 'Acme', 'West'),
+			InvocableSoqlTest.initTwoTextInput(query, 'Beta', 'West'),
+			InvocableSoqlTest.initTwoTextInput(query, 'Gamma', 'East')
+		};
+		// A static condition under OR is checked in Apex too, since a row can match through another branch:
+		InvocableSoql.Query customQuery = InvocableSoqlTest.initSlotQuery('Name', 'EQUALS', 'text1');
+		customQuery.conditions.add(InvocableSoqlTest.initSlotCondition('Site', 'EQUALS', 'text2'));
+		customQuery.conditions.add(InvocableSoqlTest.initCondition('Name', 'EQUALS', 'Beta'));
+		customQuery.conditionLogic = '1 OR (2 AND NOT 3)';
+		List<InvocableSoql.Input> customInputs = new List<InvocableSoql.Input>{
+			InvocableSoqlTest.initTwoTextInput(customQuery, 'Acme', 'West'),
+			InvocableSoqlTest.initTwoTextInput(customQuery, 'Gamma', 'East')
+		};
+
+		Test.startTest();
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(inputs);
+		List<InvocableSoql.Output> customOutputs = InvocableSoql.invoke(customInputs);
+		Test.stopTest();
+
+		// The query matches any interview's values, then each row is checked against each interview's logic:
+		Assert.areEqual(2, spy.queries?.size(), 'Wrong # of queries');
+		Assert.areEqual(new List<String>{ 'Acme', 'Beta' }, InvocableSoqlTest.getNames(outputs[0]), 'Wrong 1st output');
+		Assert.areEqual(new List<String>{ 'Beta' }, InvocableSoqlTest.getNames(outputs[1]), 'Wrong 2nd output');
+		Assert.areEqual(
+			new List<String>{ 'Acme', 'Gamma' },
+			InvocableSoqlTest.getNames(outputs[2]),
+			'Wrong 3rd output'
+		);
+		Assert.isTrue(outputs[0].queryString?.contains('Name = \'Acme\' OR Site = \'West\''), outputs[0].queryString);
+		String merged = spy.queries?.get(1)?.toString();
+		Assert.isTrue(merged?.endsWith('(Name = :bind0 OR (Site = :bind1 AND (NOT Name = :bind2)))'), merged);
+		Assert.areEqual(new List<String>{ 'Acme' }, InvocableSoqlTest.getNames(customOutputs[0]), 'Wrong 1st custom');
+		List<String> lastNames = InvocableSoqlTest.getNames(customOutputs[1]);
+		Assert.areEqual(new List<String>{ 'Acme', 'Gamma' }, lastNames, 'Wrong 2nd custom');
+	}
+
+	@IsTest
+	private static void shouldCheckNestedLogicForEachInterview() {
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(InvocableSoqlTest.initAccounts());
+		InvocableSoql.Query query = InvocableSoqlTest.initSlotQuery('Site', 'EQUALS', 'text1');
+		query.conditions.add(InvocableSoqlTest.initSlotCondition('Name', 'CONTAINS', 'text2'));
+		query.conditions.add(InvocableSoqlTest.initCondition('Name', 'EQUALS', 'Gamma'));
+		query.conditions.add(InvocableSoqlTest.initSlotCondition('Name', 'NOT_EQUALS', 'text3'));
+		query.conditionLogic = '1 AND ((2 AND 4) OR 3)';
+		List<InvocableSoql.Input> inputs = new List<InvocableSoql.Input>{
+			InvocableSoqlTest.initTwoTextInput(query, 'East', 'cm'),
+			InvocableSoqlTest.initTwoTextInput(query, 'West', 'et'),
+			InvocableSoqlTest.initTwoTextInput(query, '', 'zz')
+		};
+		inputs[0].text3 = 'Zeta';
+		inputs[1].text3 = 'Beta';
+		inputs[2].text3 = 'Zeta';
+
+		Test.startTest();
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(inputs);
+		Test.stopTest();
+
+		// Each row is looked up by site, then checked against the rest of each interview's logic:
+		Assert.areEqual(1, spy.queries?.size(), 'Wrong # of queries');
+		Assert.areEqual(new List<String>{ 'Acme' }, InvocableSoqlTest.getNames(outputs[0]), 'Wrong 1st output');
+		Assert.areEqual(new List<String>{}, InvocableSoqlTest.getNames(outputs[1]), 'Wrong 2nd output');
+		Assert.areEqual(new List<String>{ 'Gamma' }, InvocableSoqlTest.getNames(outputs[2]), 'Wrong 3rd output');
+	}
+
+	@IsTest
+	private static void shouldRunVaryingConditionsUnderNotSeparately() {
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(new List<SObject>{});
+		InvocableSoql.Query query = InvocableSoqlTest.initSlotQuery('Name', 'EQUALS', 'text1');
+		query.conditionLogic = 'NOT 1';
+		List<InvocableSoql.Input> inputs = new List<InvocableSoql.Input>{
+			InvocableSoqlTest.initTextInput(query, 'Acme'),
+			InvocableSoqlTest.initTextInput(query, 'Beta')
+		};
+
+		Test.startTest();
+		InvocableSoql.invoke(inputs);
+		Test.stopTest();
+
+		// Matching any interview's values can't widen a negated condition, since NOT narrows what it widens:
+		Assert.areEqual(2, spy.queries?.size(), 'Wrong # of queries');
+	}
+
+	@IsTest
+	private static void shouldRunConditionsApexCannotCheckSeparately() {
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(new List<SObject>{});
+		InvocableSoql.Query anyQuery = InvocableSoqlTest.initDateLiteralQuery('OR');
+		InvocableSoql.Query allQuery = InvocableSoqlTest.initDateLiteralQuery('AND');
+		InvocableSoql.Query rangeQuery = InvocableSoqlTest.initSlotQuery('Name', 'GREATER_THAN', 'text1');
+
+		Test.startTest();
+		InvocableSoql.invoke(InvocableSoqlTest.initNameInputs(anyQuery));
+		Integer anyQueries = spy.queries?.size();
+		InvocableSoql.invoke(InvocableSoqlTest.initNameInputs(allQuery));
+		Integer allQueries = spy.queries?.size() - anyQueries;
+		InvocableSoql.invoke(InvocableSoqlTest.initNameInputs(rangeQuery));
+		Integer rangeQueries = spy.queries?.size() - anyQueries - allQueries;
+		Test.stopTest();
+
+		// Apex can't check a date literal, so it can only merge where every row the query returns already passes it:
+		Assert.areEqual(2, anyQueries, 'Wrong # of queries under OR');
+		Assert.areEqual(1, allQueries, 'Wrong # of queries under AND');
+		// Text ranges follow SOQL's sort order, which Apex can't reproduce:
+		Assert.areEqual(2, rangeQueries, 'Wrong # of text range queries');
 	}
 
 	@IsTest
@@ -871,7 +1102,7 @@ private class InvocableSoqlTest {
 		// The merged query leaves out Id != so each interview still sees the batch's other records, then drops its own:
 		Assert.areEqual(1, spy.queries?.size(), 'Wrong # of queries');
 		String merged = spy.queries?.get(0)?.toString();
-		Assert.isTrue(merged?.endsWith('WHERE AccountId = :bind0'), merged);
+		Assert.isTrue(merged?.endsWith('WHERE AccountId = :bind0 AND Id != null'), merged);
 		Assert.isFalse(spy.queries?.get(0)?.binds?.containsKey('bind1'), 'Merged query bound the left-out condition');
 		Assert.areEqual(new List<SObject>{ contacts[1] }, outputs[0].records, 'Wrong 1st output');
 		Assert.areEqual(new List<SObject>{ contacts[0] }, outputs[1].records, 'Wrong 2nd output');
@@ -1016,81 +1247,294 @@ private class InvocableSoqlTest {
 			'o\'' => new List<String>{ 'O\'Brien & Sons' },
 			'Back\\' => new List<String>{ 'Back\\slash Ltd' }
 		};
-		// A blank pattern runs alone:
-		Set<String> loneTitles = new Set<String>{ null };
 
 		Test.startTest();
 		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(inputs);
 		Test.stopTest();
 
-		Assert.areEqual(2, spy.queries?.size(), 'Wrong # of queries');
-		// Mocks don't filter, so a lone query gets every row:
-		List<String> allNames = InvocableSoqlTest.getNames(new InvocableSoql.Output(accounts, null));
+		// A blank pattern merges too, and matches blank names, of which there are none:
+		Assert.areEqual(1, spy.queries?.size(), 'Wrong # of queries');
 		for (Integer index = 0; index < inputs.size(); index++) {
 			String title = inputs[index].text1;
 			List<String> names = InvocableSoqlTest.getNames(outputs[index]);
-			List<String> mergedNames = expectedNames.get(title) ?? new List<String>{};
-			List<String> expected = loneTitles.contains(title) ? allNames : mergedNames;
+			List<String> expected = expectedNames.get(title) ?? new List<String>{};
 			Assert.areEqual(expected, names, 'Wrong output for title ' + title);
 		}
 	}
 
 	@IsTest
-	private static void shouldRunSeparatelyWhenOnlyAnIdsNotEqualsVaries() {
-		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(new List<SObject>{});
-		InvocableSoql.Query query = InvocableSoqlTest.initQuery('Contact', new List<String>{ 'LastName' });
-		query.conditions.add(InvocableSoqlTest.initSlotCondition('Id', 'NOT_EQUALS', 'text1'));
-		List<InvocableSoql.Input> inputs = new List<InvocableSoql.Input>{};
-		for (Integer count = 0; count < 2; count++) {
-			Id contactId = MockRecord.initRecordId(Contact.SObjectType);
-			inputs.add(InvocableSoqlTest.initTextInput(query, contactId));
-		}
+	private static void shouldMergeWhenOnlyNotEqualsVaries() {
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(InvocableSoqlTest.initAccounts());
+		InvocableSoql.Query query = InvocableSoqlTest.initSlotQuery('Name', 'NOT_EQUALS', 'text1');
+		List<InvocableSoql.Input> inputs = new List<InvocableSoql.Input>{
+			InvocableSoqlTest.initTextInput(query, 'Acme'),
+			InvocableSoqlTest.initTextInput(query, 'beta')
+		};
 
 		Test.startTest();
-		InvocableSoql.invoke(inputs);
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(inputs);
 		Test.stopTest();
 
-		// With no other condition to merge on, each interview runs its own query:
-		Assert.areEqual(2, spy.queries?.size(), 'Wrong # of queries');
+		// Like Get Records, with no other condition to merge on, the query reads every row, and Apex drops each value:
+		Assert.areEqual(1, spy.queries?.size(), 'Wrong # of queries');
+		String merged = spy.queries?.get(0)?.toString();
+		Assert.isTrue(merged?.endsWith('WHERE Id != null'), merged);
+		Assert.areEqual(new List<String>{ 'Beta', 'Gamma' }, InvocableSoqlTest.getNames(outputs[0]), 'Wrong 1st');
+		Assert.areEqual(new List<String>{ 'Acme', 'Gamma' }, InvocableSoqlTest.getNames(outputs[1]), 'Wrong 2nd');
 	}
 
 	@IsTest
-	private static void shouldRunSeparatelyWhenTextNotEqualsVaries() {
-		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(new List<SObject>{});
+	private static void shouldMergeVaryingTextNotEquals() {
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(InvocableSoqlTest.initAccounts());
 		InvocableSoql.Query query = InvocableSoqlTest.initSlotQuery('Site', 'EQUALS', 'text1');
 		query.conditions.add(InvocableSoqlTest.initSlotCondition('Name', 'NOT_EQUALS', 'text2'));
-		InvocableSoql.Input first = InvocableSoqlTest.initTextInput(query, 'East');
-		first.text2 = 'Acme';
-		InvocableSoql.Input second = InvocableSoqlTest.initTextInput(query, 'West');
-		second.text2 = 'Beta';
+		List<InvocableSoql.Input> inputs = new List<InvocableSoql.Input>{
+			InvocableSoqlTest.initTwoTextInput(query, 'East', 'acme'),
+			InvocableSoqlTest.initTwoTextInput(query, 'West', 'Gamma')
+		};
 
 		Test.startTest();
-		InvocableSoql.invoke(new List<InvocableSoql.Input>{ first, second });
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(inputs);
 		Test.stopTest();
 
-		// Apex and SOQL fold some text's case differently, so only an ID's Not Equals is applied in Apex:
-		Assert.areEqual(2, spy.queries?.size(), 'Wrong # of queries');
+		// Not Equals can't widen to every interview's values, so the query leaves it out, and Apex drops each value:
+		Assert.areEqual(1, spy.queries?.size(), 'Wrong # of queries');
+		String merged = spy.queries?.get(0)?.toString();
+		Assert.isTrue(merged?.endsWith('WHERE Site = :bind0 AND Id != null'), merged);
+		Assert.isFalse(spy.queries?.get(0)?.binds?.containsKey('bind1'), 'Merged query bound the left-out condition');
+		Assert.areEqual(new List<String>{}, InvocableSoqlTest.getNames(outputs[0]), 'Wrong 1st output');
+		Assert.areEqual(new List<String>{ 'Beta' }, InvocableSoqlTest.getNames(outputs[1]), 'Wrong 2nd output');
 	}
 
 	@IsTest
-	private static void shouldRunSeparatelyWithAnyConditionLogic() {
-		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(new List<SObject>{});
-		InvocableSoql.Query query = InvocableSoqlTest.initSlotQuery('Name', 'EQUALS', 'text1');
-		query.conditions.add(InvocableSoqlTest.initSlotCondition('Site', 'EQUALS', 'text2'));
-		query.conditionLogic = 'OR';
-		InvocableSoql.Input first = InvocableSoqlTest.initTextInput(query, 'Acme');
-		first.text2 = 'West';
-		InvocableSoql.Input second = InvocableSoqlTest.initTextInput(query, 'Beta');
-		second.text2 = 'West';
+	private static void shouldMergeVaryingNullChecksAndNotIn() {
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(InvocableSoqlTest.initAccounts());
+		InvocableSoql.Query query = InvocableSoqlTest.initSlotQuery('Site', 'IS_NULL', 'boolean1');
+		query.conditions.add(InvocableSoqlTest.initSlotCondition('Name', 'NOT_IN', 'textCollection1'));
+		query.conditions.add(InvocableSoqlTest.initSlotCondition('Site', 'IS_NULL', 'boolean2'));
+		query.conditionLogic = '1 AND 2 AND 3';
+		query.rowLimit = 1;
+		List<InvocableSoql.Input> inputs = new List<InvocableSoql.Input>{
+			InvocableSoqlTest.initNullCheckInput(query, true, new List<String>{ 'Gamma' }),
+			InvocableSoqlTest.initNullCheckInput(query, false, new List<String>{ 'acme' }),
+			InvocableSoqlTest.initNullCheckInput(query, true, null)
+		};
 
 		Test.startTest();
-		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(new List<InvocableSoql.Input>{ first, second });
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(inputs);
 		Test.stopTest();
 
-		// Merged, a row matching only the shared condition couldn't be split back to one interview:
-		Assert.areEqual(2, spy.queries?.size(), 'Wrong # of queries');
-		Assert.isTrue(outputs[0].queryString?.contains('Name = \'Acme\' OR Site = \'West\''), outputs[0].queryString);
-		Assert.isTrue(outputs[1].queryString?.contains('Name = \'Beta\' OR Site = \'West\''), outputs[1].queryString);
+		Assert.areEqual(1, spy.queries?.size(), 'Wrong # of queries');
+		Assert.areEqual(new List<String>{}, InvocableSoqlTest.getNames(outputs[0]), 'Wrong 1st output');
+		Assert.areEqual(new List<String>{ 'Beta' }, InvocableSoqlTest.getNames(outputs[1]), 'Wrong 2nd output');
+		Assert.areEqual(new List<String>{ 'Gamma' }, InvocableSoqlTest.getNames(outputs[2]), 'Wrong 3rd output');
+	}
+
+	@IsTest
+	private static void shouldMergeRanges() {
+		List<Contact> contacts = new List<Contact>{
+			new Contact(Id = MockRecord.initRecordId(Contact.SObjectType), Birthdate = Date.newInstance(1990, 1, 1)),
+			new Contact(Id = MockRecord.initRecordId(Contact.SObjectType), Birthdate = Date.newInstance(2000, 1, 1)),
+			new Contact(Id = MockRecord.initRecordId(Contact.SObjectType))
+		};
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(contacts);
+		InvocableSoql.Query query = InvocableSoqlTest.initQuery('Contact', null);
+		query.conditions.add(InvocableSoqlTest.initSlotCondition('Birthdate', 'GREATER_THAN', 'date1'));
+		// With a limit, the split drops each interview once it has its row:
+		query.rowLimit = 1;
+		List<InvocableSoql.Input> inputs = new List<InvocableSoql.Input>{
+			InvocableSoqlTest.initInput(query),
+			InvocableSoqlTest.initInput(query),
+			InvocableSoqlTest.initInput(query)
+		};
+		inputs[0].date1 = Date.newInstance(1995, 1, 1);
+		inputs[1].date1 = Date.newInstance(1990, 1, 1);
+
+		Test.startTest();
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(inputs);
+		Test.stopTest();
+
+		// SOQL passes every row for a blank bound, even a blank field, so the query reads them all:
+		Assert.areEqual(1, spy.queries?.size(), 'Wrong # of queries');
+		String merged = spy.queries?.get(0)?.toString();
+		Assert.isTrue(merged?.endsWith('WHERE Id != null'), merged);
+		Assert.areEqual(new List<SObject>{ contacts[1] }, outputs[0].records, 'Wrong 1st output');
+		Assert.areEqual(new List<SObject>{ contacts[1] }, outputs[1].records, 'Wrong 2nd output');
+		Assert.areEqual(new List<SObject>{ contacts[0] }, outputs[2].records, 'Wrong blank bound output');
+	}
+
+	@IsTest
+	private static void shouldKeepMatchingInterviewsThatStillNeedRows() {
+		List<Account> accounts = InvocableSoqlTest.initAccounts();
+		accounts[0].NumberOfEmployees = 2001;
+		accounts[1].NumberOfEmployees = 1992;
+		accounts[2].NumberOfEmployees = 2005;
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(accounts);
+		InvocableSoql.Query query = InvocableSoqlTest.initSlotQuery('NumberOfEmployees', 'GREATER_THAN', 'number1');
+		query.rowLimit = 2;
+		List<InvocableSoql.Input> inputs = new List<InvocableSoql.Input>{
+			InvocableSoqlTest.initInput(query),
+			InvocableSoqlTest.initInput(query),
+			InvocableSoqlTest.initInput(query)
+		};
+		inputs[0].number1 = 2000;
+		inputs[1].number1 = 1995;
+		inputs[2].number1 = 1990;
+
+		Test.startTest();
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(inputs);
+		Test.stopTest();
+
+		// The loosest interview fills on the 2nd row, and the others still get the 3rd:
+		Assert.areEqual(1990, spy.queries?.get(0)?.binds?.get('bind0'), 'Wrong merged bound');
+		Assert.areEqual(new List<String>{ 'Acme', 'Gamma' }, InvocableSoqlTest.getNames(outputs[0]), 'Wrong 1st');
+		Assert.areEqual(new List<String>{ 'Acme', 'Gamma' }, InvocableSoqlTest.getNames(outputs[1]), 'Wrong 2nd');
+		Assert.areEqual(new List<String>{ 'Acme', 'Beta' }, InvocableSoqlTest.getNames(outputs[2]), 'Wrong 3rd');
+	}
+
+	@IsTest
+	private static void shouldMergeRangesOfEveryOrderedType() {
+		List<Account> accounts = InvocableSoqlTest.initAccounts();
+		accounts[0].NumberOfEmployees = 10;
+		accounts[1].NumberOfEmployees = 20;
+		List<BusinessHours> hours = new List<BusinessHours>{
+			new BusinessHours(Name = 'Early', MondayStartTime = Time.newInstance(8, 0, 0, 0)),
+			new BusinessHours(Name = 'Late', MondayStartTime = Time.newInstance(10, 0, 0, 0))
+		};
+		// SOQL drops a bound's milliseconds, so `>= 12:00:00.500` matches 12:00:00:
+		DateTime noon = DateTime.newInstanceGmt(2020, 1, 1, 12, 0, 0);
+		List<Contact> contacts = new List<Contact>{
+			new Contact(Id = MockRecord.initRecordId(Contact.SObjectType), EmailBouncedDate = noon),
+			new Contact(Id = MockRecord.initRecordId(Contact.SObjectType), EmailBouncedDate = noon.addSeconds(-1))
+		};
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(accounts);
+		InvocableSoql.Condition numberRange = InvocableSoqlTest.initSlotCondition(
+			'NumberOfEmployees',
+			'LESS_OR_EQUAL',
+			'number1'
+		);
+		List<InvocableSoql.Input> numberInputs = InvocableSoqlTest.initRangeInputs('Account', numberRange);
+		numberInputs[0].number1 = 15;
+		numberInputs[1].number1 = 20;
+		InvocableSoql.Condition timeRange = InvocableSoqlTest.initSlotCondition(
+			'MondayStartTime',
+			'LESS_THAN',
+			'time1'
+		);
+		List<InvocableSoql.Input> timeInputs = InvocableSoqlTest.initRangeInputs('BusinessHours', timeRange);
+		timeInputs[0].time1 = Time.newInstance(9, 0, 0, 0);
+		timeInputs[1].time1 = Time.newInstance(11, 0, 0, 0);
+		InvocableSoql.Condition dateTimeRange = InvocableSoqlTest.initSlotCondition(
+			'EmailBouncedDate',
+			'GREATER_OR_EQUAL',
+			'dateTime1'
+		);
+		List<InvocableSoql.Input> dateTimeInputs = InvocableSoqlTest.initRangeInputs('Contact', dateTimeRange);
+		dateTimeInputs[0].dateTime1 = noon.addSeconds(-1);
+		dateTimeInputs[1].dateTime1 = DateTime.newInstance(noon.getTime() + 500);
+
+		Test.startTest();
+		List<InvocableSoql.Output> numberOutputs = InvocableSoql.invoke(numberInputs);
+		InvocableSoqlTest.mockRows(hours);
+		List<InvocableSoql.Output> timeOutputs = InvocableSoql.invoke(timeInputs);
+		InvocableSoqlTest.mockRows(contacts);
+		List<InvocableSoql.Output> dateTimeOutputs = InvocableSoql.invoke(dateTimeInputs);
+		Test.stopTest();
+
+		// Less Than Or Equal reads below the highest bound:
+		Assert.areEqual(20, spy.queries?.get(0)?.binds?.get('bind0'), 'Wrong merged number');
+		Assert.areEqual(new List<String>{ 'Acme' }, InvocableSoqlTest.getNames(numberOutputs[0]), 'Wrong 1st number');
+		Assert.areEqual(new List<String>{ 'Acme', 'Beta' }, InvocableSoqlTest.getNames(numberOutputs[1]), 'Wrong 2nd');
+		Assert.areEqual(new List<SObject>{ hours[0] }, timeOutputs[0].records, 'Wrong 1st time');
+		Assert.areEqual(hours, timeOutputs[1].records, 'Wrong 2nd time');
+		Assert.areEqual(contacts, dateTimeOutputs[0].records, 'Wrong 1st date/time');
+		Assert.areEqual(new List<SObject>{ contacts[0] }, dateTimeOutputs[1].records, 'Kept milliseconds SOQL drops');
+	}
+
+	@IsTest
+	private static void shouldMergeRangesWithEquals() {
+		List<Id> accountIds = InvocableSoqlTest.initAccountIds(2);
+		List<Contact> contacts = new List<Contact>{
+			new Contact(AccountId = accountIds[0], Birthdate = Date.newInstance(1990, 1, 1), LastName = 'Old'),
+			new Contact(AccountId = accountIds[0], Birthdate = Date.newInstance(2000, 1, 1), LastName = 'New'),
+			new Contact(AccountId = accountIds[1], Birthdate = Date.newInstance(1990, 1, 1), LastName = 'Other')
+		};
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(contacts);
+		InvocableSoql.Query query = InvocableSoqlTest.initQuery('Contact', new List<String>{ 'LastName' });
+		query.conditions.add(InvocableSoqlTest.initSlotCondition('AccountId', 'EQUALS', 'text1'));
+		query.conditions.add(InvocableSoqlTest.initSlotCondition('Birthdate', 'LESS_THAN', 'date1'));
+		InvocableSoql.Input first = InvocableSoqlTest.initTextInput(query, accountIds[0]);
+		first.date1 = Date.newInstance(1995, 1, 1);
+		InvocableSoql.Input second = InvocableSoqlTest.initTextInput(query, accountIds[1]);
+		second.date1 = Date.newInstance(2005, 1, 1);
+		InvocableSoql.Input blank = InvocableSoqlTest.initTextInput(query, accountIds[0]);
+		List<InvocableSoql.Input> inputs = new List<InvocableSoql.Input>{ first, second, blank };
+
+		Test.startTest();
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(inputs);
+		Test.stopTest();
+
+		// A blank bound passes every row, so the query leaves the range to Apex:
+		Assert.areEqual(1, spy.queries?.size(), 'Wrong # of queries');
+		String merged = spy.queries?.get(0)?.toString();
+		Assert.isTrue(merged?.endsWith('WHERE AccountId = :bind0 AND Id != null'), merged);
+		Assert.areEqual(new List<SObject>{ contacts[0] }, outputs[0].records, 'Wrong 1st output');
+		Assert.areEqual(new List<SObject>{ contacts[2] }, outputs[1].records, 'Wrong 2nd output');
+		Assert.areEqual(new List<SObject>{ contacts[0], contacts[1] }, outputs[2].records, 'Wrong blank output');
+	}
+
+	@IsTest
+	private static void shouldTreatRangesOnBlankFieldsAsUnknown() {
+		List<Account> accounts = InvocableSoqlTest.initAccounts();
+		accounts[0].NumberOfEmployees = 10;
+		accounts[1].NumberOfEmployees = 1;
+		InvocableSoqlTest.mockRows(accounts);
+		InvocableSoql.Query query = InvocableSoqlTest.initSlotQuery('Name', 'EQUALS', 'text1');
+		query.conditions.add(InvocableSoqlTest.initCondition('NumberOfEmployees', 'GREATER_THAN', '5'));
+		query.conditions.add(InvocableSoqlTest.initCondition('Site', 'EQUALS', 'Nowhere'));
+		query.conditions.add(InvocableSoqlTest.initCondition('Site', 'NOT_EQUALS', 'Nowhere'));
+		query.conditionLogic = '1 OR NOT ((2 OR 3) AND 4)';
+
+		Test.startTest();
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(InvocableSoqlTest.initNameInputs(query));
+		Test.stopTest();
+
+		// Like SOQL, a range on a blank field is neither true nor false, so even NOT of it fails, ex: for Gamma:
+		Assert.areEqual(new List<String>{ 'Acme', 'Beta' }, InvocableSoqlTest.getNames(outputs[0]), 'Wrong 1st output');
+		Assert.areEqual(new List<String>{ 'Beta' }, InvocableSoqlTest.getNames(outputs[1]), 'Wrong 2nd output');
+	}
+
+	@IsTest
+	private static void shouldBindMergedRangesAsTheirFieldsType() {
+		// Real queries, since only the database rejects a bind of the wrong type, ex: a Decimal for an Integer field
+		DatabaseLayer.useRealSoql();
+		insert new List<Account>{
+			new Account(Name = 'Range', NumberOfEmployees = 10),
+			new Account(Name = 'Range', NumberOfEmployees = 20)
+		};
+		InvocableSoql.Query query = InvocableSoqlTest.initQuery('Account', new List<String>{ 'NumberOfEmployees' });
+		query.conditions.add(InvocableSoqlTest.initCondition('Name', 'EQUALS', 'Range'));
+		query.conditions.add(InvocableSoqlTest.initSlotCondition('NumberOfEmployees', 'GREATER_OR_EQUAL', 'number1'));
+		query.conditions.add(InvocableSoqlTest.initSlotCondition('CreatedDate', 'LESS_THAN', 'dateTime1'));
+		query.orderBy = new List<InvocableSoql.SortOrder>{ new InvocableSoql.SortOrder() };
+		query.orderBy[0].field = 'NumberOfEmployees';
+		List<InvocableSoql.Input> inputs = new List<InvocableSoql.Input>{
+			InvocableSoqlTest.initInput(query),
+			InvocableSoqlTest.initInput(query)
+		};
+		inputs[0].number1 = 15;
+		inputs[0].dateTime1 = DateTime.now().addDays(15);
+		inputs[1].number1 = 5;
+		inputs[1].dateTime1 = DateTime.now().addDays(5);
+
+		Test.startTest();
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(inputs);
+		Integer queries = Limits.getQueries();
+		Test.stopTest();
+
+		Assert.areEqual(1, queries, 'Did not merge the interviews');
+		Assert.areEqual(1, outputs[0].records?.size(), 'Wrong 1st output: ' + outputs[0].records);
+		Assert.areEqual(2, outputs[1].records?.size(), 'Wrong 2nd output: ' + outputs[1].records);
 	}
 
 	@IsTest
@@ -1118,8 +1562,8 @@ private class InvocableSoqlTest {
 	}
 
 	@IsTest
-	private static void shouldRunEmptyTextSeparately() {
-		// SOQL matches '' to null, which a split can't reproduce, so '' runs alone
+	private static void shouldMergeEmptyTextAsBlank() {
+		// SOQL matches '' to null, so '' merges with other values, as a blank
 		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(InvocableSoqlTest.initAccounts());
 		InvocableSoql.Query query = InvocableSoqlTest.initSlotQuery('Site', 'EQUALS', 'text1');
 		List<InvocableSoql.Input> inputs = new List<InvocableSoql.Input>{
@@ -1132,14 +1576,14 @@ private class InvocableSoqlTest {
 		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(inputs);
 		Test.stopTest();
 
-		Assert.areEqual(2, spy.queries?.size(), 'Wrong # of queries');
+		Assert.areEqual(1, spy.queries?.size(), 'Wrong # of queries');
 		Assert.areEqual(new List<String>{ 'Acme' }, InvocableSoqlTest.getNames(outputs[0]), 'Wrong 1st output');
 		Assert.areEqual(new List<String>{ 'Beta' }, InvocableSoqlTest.getNames(outputs[1]), 'Wrong 2nd output');
-		Assert.areEqual(3, outputs[2].records?.size(), 'Mocks do not filter, so the lone query gets every row');
+		Assert.areEqual(new List<String>{ 'Gamma' }, InvocableSoqlTest.getNames(outputs[2]), 'Wrong 3rd output');
 	}
 
 	@IsTest
-	private static void shouldRunCollectionsWithEmptyTextSeparately() {
+	private static void shouldMergeCollectionsWithEmptyText() {
 		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(InvocableSoqlTest.initAccounts());
 		InvocableSoql.Query query = InvocableSoqlTest.initSlotQuery('Site', 'IN', 'textCollection1');
 		InvocableSoql.Input first = InvocableSoqlTest.initInput(query);
@@ -1151,8 +1595,13 @@ private class InvocableSoqlTest {
 		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(new List<InvocableSoql.Input>{ first, second });
 		Test.stopTest();
 
-		Assert.areEqual(2, spy.queries?.size(), 'Wrong # of queries');
-		Assert.areEqual(3, outputs[1].records?.size(), 'Mocks do not filter, so the lone query gets every row');
+		Assert.areEqual(1, spy.queries?.size(), 'Wrong # of queries');
+		Assert.areEqual(new List<String>{ 'Acme' }, InvocableSoqlTest.getNames(outputs[0]), 'Wrong 1st output');
+		Assert.areEqual(
+			new List<String>{ 'Beta', 'Gamma' },
+			InvocableSoqlTest.getNames(outputs[1]),
+			'Wrong 2nd output'
+		);
 	}
 
 	@IsTest
@@ -1194,6 +1643,29 @@ private class InvocableSoqlTest {
 		Assert.areEqual(1, spy.queries?.size(), 'Wrong # of queries');
 		Assert.areEqual(accounts[0].Id, outputs[0].record?.Id, 'Wrong 1st output');
 		Assert.areEqual(accounts[1].Id, outputs[1].record?.Id, 'Wrong 2nd output');
+	}
+
+	@IsTest
+	private static void shouldMatchFifteenCharacterIdsInCollections() {
+		List<Account> accounts = InvocableSoqlTest.initAccounts();
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(accounts);
+		InvocableSoql.Query query = InvocableSoqlTest.initSlotQuery('Id', 'IN', 'textCollection1');
+		InvocableSoql.Input shortIds = InvocableSoqlTest.initInput(query);
+		shortIds.textCollection1 = new List<String>{ String.valueOf(accounts[0].Id).left(15) };
+		InvocableSoql.Input longIds = InvocableSoqlTest.initInput(query);
+		longIds.textCollection1 = new List<String>{ accounts[1].Id };
+		InvocableSoql.Input invalidIds = InvocableSoqlTest.initInput(query);
+		invalidIds.textCollection1 = new List<String>{ 'not-an-id' };
+
+		Test.startTest();
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(new List<InvocableSoql.Input>{ shortIds, longIds });
+		Exception caughtError = InvocableSoqlTest.invokeAndCatch(invalidIds);
+		Test.stopTest();
+
+		Assert.areEqual(1, spy.queries?.size(), 'Wrong # of queries');
+		Assert.areEqual(accounts[0].Id, outputs[0].record?.Id, 'Wrong 1st output');
+		Assert.areEqual(accounts[1].Id, outputs[1].record?.Id, 'Wrong 2nd output');
+		Assert.isInstanceOfType(caughtError, StringException.class, 'Wrong error: ' + caughtError);
 	}
 
 	@IsTest
@@ -1261,6 +1733,28 @@ private class InvocableSoqlTest {
 		Assert.areEqual('ABC', sensitive, 'Wrong case-sensitive key');
 		Assert.isTrue(isInsensitiveMatch, 'Case-insensitive pattern did not match');
 		Assert.isFalse(isSensitiveMatch, 'Case-sensitive pattern matched the wrong case');
+	}
+
+	@IsTest
+	private static void shouldIndexLikePatternsByLength() {
+		InvocableSoql.LikePatternIndex mixed = InvocableSoqlTest.initPatternIndex(
+			new List<String>{ 'acme%', 'ac%', '%corp', '%me co%', '%o%', 'acme corp', '%', 'corp%' }
+		);
+		// Enough Contains patterns that looking up a short value's substrings beats testing each one:
+		List<String> letters = new List<String>{ '%a%', '%b%', '%c%' };
+		InvocableSoql.LikePatternIndex substrings = InvocableSoqlTest.initPatternIndex(letters);
+
+		Test.startTest();
+		Set<Integer> fullName = mixed.match('acme corp');
+		Set<Integer> shortName = mixed.match('ac');
+		Set<Integer> blank = mixed.match(null);
+		Set<Integer> twoLetters = substrings.match('ba');
+		Test.stopTest();
+
+		Assert.areEqual(new Set<Integer>{ 0, 1, 2, 3, 4, 5, 6 }, fullName, 'Wrong matches for a long value');
+		Assert.areEqual(new Set<Integer>{ 1, 6 }, shortName, 'Wrong matches for a short value');
+		Assert.isTrue(blank.isEmpty(), 'Matched a blank value: ' + blank);
+		Assert.areEqual(new Set<Integer>{ 0, 1 }, twoLetters, 'Wrong matches by substring');
 	}
 
 	@IsTest
@@ -1448,6 +1942,71 @@ private class InvocableSoqlTest {
 		InvocableSoql.Query query = InvocableSoqlTest.initQuery('Account', new List<String>{ 'Name' });
 		query.conditions.add(InvocableSoqlTest.initSlotCondition(field, operator, slot));
 		return query;
+	}
+
+	private static InvocableSoql.Query initDateLiteralQuery(String logic) {
+		InvocableSoql.Query query = InvocableSoqlTest.initSlotQuery('Name', 'EQUALS', 'text1');
+		InvocableSoql.Condition recent = InvocableSoqlTest.initCondition('CreatedDate', 'EQUALS', null);
+		recent.dateLiteral = 'LAST_N_DAYS:30';
+		query.conditions.add(recent);
+		query.conditionLogic = logic;
+		return query;
+	}
+
+	private static List<InvocableSoql.Input> initNameInputs(InvocableSoql.Query query) {
+		return new List<InvocableSoql.Input>{
+			InvocableSoqlTest.initTextInput(query, 'Acme'),
+			InvocableSoqlTest.initTextInput(query, 'Zeta')
+		};
+	}
+
+	private static InvocableSoql.Input initNullCheckInput(
+		InvocableSoql.Query query,
+		Boolean isNull,
+		List<String> names
+	) {
+		InvocableSoql.Input input = InvocableSoqlTest.initInput(query);
+		input.boolean1 = isNull;
+		input.boolean2 = isNull;
+		input.textCollection1 = names;
+		return input;
+	}
+
+	private static List<InvocableSoql.Input> initRangeInputs(String objectApiName, InvocableSoql.Condition condition) {
+		InvocableSoql.Query query = InvocableSoqlTest.initQuery(objectApiName, new List<String>{ 'Name' });
+		query.conditions.add(condition);
+		return new List<InvocableSoql.Input>{ InvocableSoqlTest.initInput(query), InvocableSoqlTest.initInput(query) };
+	}
+
+	private static InvocableSoql.Input initTwoTextInput(InvocableSoql.Query query, String text1, String text2) {
+		InvocableSoql.Input input = InvocableSoqlTest.initTextInput(query, text1);
+		input.text2 = text2;
+		return input;
+	}
+
+	private static InvocableSoql.LikePatternIndex initPatternIndex(List<String> patterns) {
+		InvocableSoql.LikePatternIndex index = new InvocableSoql.LikePatternIndex();
+		for (Integer position = 0; position < patterns.size(); position++) {
+			index.add(new InvocableSoql.LikePattern(patterns[position], false), position);
+		}
+		return index;
+	}
+
+	private static User initStandardUser() {
+		Profile standard = [SELECT Id FROM Profile WHERE Name = 'Standard User' LIMIT 1];
+		User viewer = new User(
+			Alias = 'viewer',
+			EmailEncodingKey = 'UTF-8',
+			Email = 'viewer@example.com.invalid',
+			LanguageLocaleKey = 'en_US',
+			LastName = 'Viewer',
+			LocaleSidKey = 'en_US',
+			ProfileId = standard?.Id,
+			TimeZoneSidKey = 'America/New_York',
+			Username = 'viewer' + DateTime.now()?.getTime() + '@example.com.invalid'
+		);
+		insert viewer;
+		return viewer;
 	}
 
 	private static InvocableSoql.Input initTextInput(InvocableSoql.Query query, String text1) {

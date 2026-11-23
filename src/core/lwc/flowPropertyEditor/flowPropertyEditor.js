@@ -11,7 +11,7 @@ export const ACCESS_LEVELS = [
  * @description Help for the actions' Access Level input, matching its description in Apex
  */
 export const ACCESS_LEVEL_HELP =
-	"USER_MODE (default) enforces the running user's object permissions, field-level security, and sharing rules. SYSTEM_MODE ignores object permissions and field-level security, but sharing rules still apply.";
+	"USER_MODE (default) enforces the running user's object permissions, field-level security, and sharing rules. SYSTEM_MODE ignores all three, like Get Records in a flow that runs in system context without sharing.";
 /**
  * @description A combobox's empty choice. Flow Builder can't save a blank literal, so choosing it removes the input.
  */

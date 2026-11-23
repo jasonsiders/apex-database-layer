@@ -14,14 +14,28 @@ public inherited sharing class InvocableSoql {
 	private static final Set<String> COLLECTION_OPERATORS = new Set<String>{ 'IN', 'NOT_IN' };
 	/** @description SOQL can't bind INCLUDES or EXCLUDES values, so they're literals only **/
 	private static final Set<String> LITERAL_OPERATORS = new Set<String>{ 'EXCLUDES', 'INCLUDES' };
-	/** @description Operators whose rows can be split back to interviews by comparing the field in Apex **/
-	private static final Set<String> MERGEABLE_OPERATORS = new Set<String>{
-		'CONTAINS',
-		'ENDS_WITH',
-		'EQUALS',
-		'IN',
-		'LIKE',
-		'STARTS_WITH'
+	/** @description The most rows SOQL's OFFSET can skip **/
+	private static final Integer MAX_OFFSET = 2000;
+	/** @description Ordered as days since this date, so dates compare as numbers **/
+	private static final Date EPOCH = Date.newInstance(1970, 1, 1);
+	/** @description Operators Apex checks by key: whether the field's value is, or isn't, one of the values **/
+	private static final Set<String> KEY_OPERATORS = new Set<String>{ 'EQUALS', 'IN', 'NOT_EQUALS', 'NOT_IN' };
+	/** @description Matches no variants; shared, so it's never changed **/
+	private static final Set<Integer> NO_POSITIONS = new Set<Integer>{};
+	/** @description Field types Apex orders like SOQL; text follows SOQL's sort order, which Apex can't reproduce **/
+	private static final Set<Type> ORDERED_TYPES = new Set<Type>{
+		Date.class,
+		DateTime.class,
+		Decimal.class,
+		Integer.class,
+		Long.class,
+		Time.class
+	};
+	private static final Set<String> RANGE_OPERATORS = new Set<String>{
+		'GREATER_OR_EQUAL',
+		'GREATER_THAN',
+		'LESS_OR_EQUAL',
+		'LESS_THAN'
 	};
 	/** @description Takes true or false, like Get Records: false finds the records whose field has a value **/
 	private static final String NULL_CHECK = 'IS_NULL';
@@ -163,6 +177,30 @@ public inherited sharing class InvocableSoql {
 	}
 
 	/**
+	 * @description Builds an empty list of a field's type, since SOQL can't bind a `List<Object>`
+	 * @param valueType The field's Apex type
+	 * @return The list
+	 */
+	private static List<Object> initList(Type valueType) {
+		String listTypeName = 'List<' + valueType?.getName() + '>';
+		return (List<Object>) Type.forName(listTypeName)?.newInstance();
+	}
+
+	/**
+	 * @description Whether a typed list takes the values as they are, the same as `InvocableSoql.Query.coerceValue`
+	 * would convert them: a `List<Id>` checks and lengthens each ID it's given, and text and numbers already of their
+	 * field's type need no conversion
+	 * @param values A collection of values
+	 * @param valueType The field's Apex type
+	 * @return True if the values can be added to the field's list as they are
+	 */
+	private static Boolean isNativeList(Iterable<Object> values, Type valueType) {
+		Boolean isText = valueType == String.class && values instanceof List<String>;
+		Boolean isNumber = valueType == Decimal.class && values instanceof List<Decimal>;
+		return valueType == Id.class || isText || isNumber;
+	}
+
+	/**
 	 * @description Joins tokens with spaces, except inside parentheses, ex: `(A OR B)`
 	 * @param output The criteria so far
 	 * @param token The next token
@@ -279,20 +317,37 @@ public inherited sharing class InvocableSoql {
 	}
 
 	/**
-	 * @description Treats a single value as a one-item list, so EQUALS and IN values merge alike
-	 * @param value A value, or a collection of values
+	 * @description Converts a value to a number that orders like it, so ranges compare numbers, dates, date/times,
+	 * and times alike
+	 * @param value A number, date, date/time, or time
+	 * @return The value's order, or null for a null value
+	 */
+	private static Decimal toOrdinal(Object value) {
+		Decimal ordinal;
+		if (value instanceof Time) {
+			ordinal = DateTime.newInstanceGmt(InvocableSoql.EPOCH, (Time) value)?.getTime();
+		} else if (value instanceof Date) {
+			// Checked before DateTime, since a Date is also an instanceof DateTime
+			ordinal = InvocableSoql.EPOCH.daysBetween((Date) value);
+		} else if (value instanceof DateTime) {
+			// SOQL drops a bound's milliseconds, and stores none, so date/times compare whole seconds
+			Decimal milliseconds = ((DateTime) value)?.getTime();
+			ordinal = (milliseconds / 1000)?.round(System.RoundingMode.FLOOR);
+		} else {
+			ordinal = (Decimal) value;
+		}
+		return ordinal;
+	}
+
+	/**
+	 * @description Treats a single value as a one-item list, so EQUALS and IN values merge alike. In values are
+	 * lists, via `InvocableSoql.Query.coerce`, and come back as is, so callers only read the result
+	 * @param value A value, or a list of values
 	 * @return The values
 	 */
 	private static List<Object> toList(Object value) {
-		List<Object> values = new List<Object>{};
-		if (value instanceof Iterable<Object>) {
-			for (Object element : (Iterable<Object>) value) {
-				values?.add(element);
-			}
-		} else {
-			values?.add(value);
-		}
-		return values;
+		Boolean isList = value instanceof List<Object>;
+		return isList ? (List<Object>) value : new List<Object>{ value };
 	}
 
 	// **** INNER **** //
@@ -401,7 +456,7 @@ public inherited sharing class InvocableSoql {
 		/** @description Text, not an enum, since Flow can't pass System.AccessLevel **/
 		@InvocableVariable(
 			label='Access Level'
-			description='USER_MODE (default) enforces the running user\'s object permissions, field-level security, and sharing rules. SYSTEM_MODE ignores object permissions and field-level security, but sharing rules still apply.'
+			description='USER_MODE (default) enforces the running user\'s object permissions, field-level security, and sharing rules. SYSTEM_MODE ignores all three, like Get Records in a flow that runs in system context without sharing.'
 		)
 		public String accessLevel;
 
@@ -917,6 +972,8 @@ public inherited sharing class InvocableSoql {
 		private transient List<DescribeFieldResult> conditionFields;
 		/** @description Each condition's field path, split once, since a merged query reads it from every row **/
 		private transient List<List<String>> conditionPaths;
+		/** @description The condition logic, parsed once, which a merged query checks for each variant **/
+		private transient InvocableSoql.LogicNode logicTree;
 		private transient DescribeSObjectResult objectDescribe;
 		/** @description Expanded SELECT clauses by access level, since user mode omits fields the user can't read **/
 		private transient Map<System.AccessLevel, Set<String>> selectClausesByAccessLevel;
@@ -971,37 +1028,50 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description An ID's Not Equals, ex: `Id != {!$Record.Id}`, can be left out of a merged query and applied to
-		 * its rows in Apex, since IDs compare exactly, and SOQL's `!=` keeps null like Apex's. Text can't, since Apex
-		 * and SOQL fold some text's case differently
+		 * @description Whether Apex can check the condition on a row as SOQL would. Date literals, Includes, and
+		 * Excludes can't be, nor can multi-select picklists, which compare sets of values; currencies in an org with
+		 * several, which SOQL converts; or text ranges, which follow SOQL's sort order
 		 * @param index The condition's index
-		 * @return Whether a split can apply the condition
+		 * @return Whether a merged query's split can check the condition
 		 */
-		private Boolean isFilterable(Integer index) {
+		private Boolean isCheckable(Integer index) {
+			InvocableSoql.Condition condition = this.conditions?.get(index);
+			String operator = condition?.operator;
+			Boolean isNullCheck = operator == InvocableSoql.NULL_CHECK;
+			Boolean hasValue = condition?.isBound() == true || isNullCheck;
+			Schema.DisplayType fieldType = this.conditionFields?.get(index)?.getType();
+			Boolean isMultiPicklist = fieldType == Schema.DisplayType.MULTIPICKLIST;
+			Boolean isConvertedCurrency =
+				fieldType == Schema.DisplayType.CURRENCY && UserInfo.isMultiCurrencyOrganization();
 			Type valueType = this.getValueType(index);
-			return this.getOperator(index) == 'NOT_EQUALS' && valueType == Id.class;
+			Boolean isRange =
+				InvocableSoql.RANGE_OPERATORS?.contains(operator) && InvocableSoql.ORDERED_TYPES?.contains(valueType);
+			Boolean isKnown =
+				InvocableSoql.KEY_OPERATORS?.contains(operator) ||
+				this.isPattern(index) ||
+				isNullCheck ||
+				isRange;
+			return hasValue && isKnown && isMultiPicklist == false && isConvertedCurrency == false;
 		}
 
 		/**
-		 * @description Merging interviews unions one condition's values, then splits the rows by that field, which only
-		 * gives each interview its own rows when every condition must match. LIMIT and OFFSET apply to each
-		 * interview's rows after the split
-		 * @param index The condition whose values differ between interviews
-		 * @return Whether interviews that differ only in this condition can share one query
+		 * @description Whether Apex can check a variant's value for the condition: not a LIKE pattern with wildcards in
+		 * its middle, which only SOQL can match. SOQL treats a blank range bound as true, and a blank pattern as Is
+		 * Null, but both as false under NOT. A varying condition is never under NOT, so only its blanks are checkable
+		 * @param index The condition's index
+		 * @param value A variant's value for it
+		 * @param isVarying Whether the condition's values differ between variants
+		 * @return Whether a merged query's split can check the value
 		 */
-		private Boolean isMergeable(Integer index) {
-			Boolean isAllConditions = this.getLogicName() == 'AND';
-			Schema.DisplayType fieldType = this.conditionFields?.get(index)?.getType();
-			// Equality on a multi-select picklist compares the whole set of values, which a split can't reproduce
-			Boolean isMultiPicklist = fieldType == Schema.DisplayType.MULTIPICKLIST;
-			// With several currencies, SOQL compares converted amounts but returns each in its record's own currency
-			Boolean isConvertedCurrency =
-				fieldType == Schema.DisplayType.CURRENCY && UserInfo.isMultiCurrencyOrganization();
+		private Boolean isCheckableValue(Integer index, Object value, Boolean isVarying) {
 			String operator = this.getOperator(index);
-			return isAllConditions &&
-				isMultiPicklist == false &&
-				isConvertedCurrency == false &&
-				InvocableSoql.MERGEABLE_OPERATORS?.contains(operator) == true;
+			Boolean isRange = InvocableSoql.RANGE_OPERATORS?.contains(operator);
+			Boolean isPattern = this.isPattern(index);
+			String pattern = isPattern ? (String) value : null;
+			Boolean isBlank = isPattern ? String.isEmpty(pattern) : value == null;
+			Boolean isSimple = isPattern == false || new InvocableSoql.LikePattern(pattern, false)?.isSimple == true;
+			Boolean hasBlankBound = isBlank && (isRange || isPattern);
+			return hasBlankBound ? isVarying : isSimple;
 		}
 
 		/**
@@ -1045,8 +1115,8 @@ public inherited sharing class InvocableSoql {
 
 		/**
 		 * @description Builds a merged query: without LIMIT and OFFSET, which `page` applies to each interview's rows,
-		 * and without the conditions the split applies
-		 * @param values One value per condition, the varying one holding every interview's values
+		 * and without the conditions the split applies alone
+		 * @param values One value per condition, each varying one widened to cover every interview's values
 		 * @param omitted The indexes of the conditions the split applies
 		 * @param accessLevel The access level to query in
 		 * @return The query, ready to run
@@ -1166,17 +1236,17 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description Coerces each value in a collection, since a list can't be converted to another element type
+		 * @description Coerces each value in a collection, since a list can't be converted to another element type.
+		 * Values a typed list takes as they are skip `coerceValue`, which costs about 100 times as much per value
 		 * @param values The values
 		 * @param valueType The field's Apex type
 		 * @return A list of the field's type
 		 */
 		private List<Object> coerceList(Iterable<Object> values, Type valueType) {
-			String listTypeName = 'List<' + valueType?.getName() + '>';
-			Type listType = Type.forName(listTypeName);
-			List<Object> coerced = (List<Object>) listType?.newInstance();
+			List<Object> coerced = InvocableSoql.initList(valueType);
+			Boolean isNative = InvocableSoql.isNativeList(values, valueType);
 			for (Object value : values) {
-				Object element = this.coerceValue(value, valueType);
+				Object element = isNative ? value : this.coerceValue(value, valueType);
 				coerced?.add(element);
 			}
 			return coerced;
@@ -1184,23 +1254,28 @@ public inherited sharing class InvocableSoql {
 
 		/**
 		 * @description JSON converts flow values and the editor's text alike; Id.valueOf also lengthens 15-character
-		 * IDs, so they match the 18-character IDs that queries return
+		 * IDs, so they match the 18-character IDs that queries return. A blank stays null, since JSON can't read null
+		 * as a date, date/time, or time
 		 * @param value A single value
 		 * @param valueType The field's Apex type
 		 * @return The value as the field's type
 		 */
 		private Object coerceValue(Object value, Type valueType) {
-			InvocableSoql.checkWholeNumber(value, valueType);
-			Boolean isId = valueType == Id.class && value != null;
-			// JSON reads a zoneless time, ex: "10:30", in the user's time zone; Time fields hold the time as typed
-			Boolean isLocalTime =
-				value instanceof String &&
-				valueType == Time.class &&
-				((String) value).endsWith('Z') == false;
-			Object zoned = isLocalTime ? value + 'Z' : value;
-			String text = String.valueOf(value);
-			String serialized = isId ? null : JSON.serialize(zoned);
-			return isId ? Id.valueOf(text) : JSON.deserialize(serialized, valueType);
+			Object coerced;
+			if (value != null) {
+				InvocableSoql.checkWholeNumber(value, valueType);
+				Boolean isId = valueType == Id.class;
+				// JSON reads a zoneless time, ex: "10:30", in the user's time zone; Time fields hold the time as typed
+				Boolean isLocalTime =
+					value instanceof String &&
+					valueType == Time.class &&
+					((String) value).endsWith('Z') == false;
+				Object zoned = isLocalTime ? value + 'Z' : value;
+				String text = String.valueOf(value);
+				String serialized = isId ? null : JSON.serialize(zoned);
+				coerced = isId ? Id.valueOf(text) : JSON.deserialize(serialized, valueType);
+			}
+			return coerced;
 		}
 
 		/**
@@ -1222,9 +1297,13 @@ public inherited sharing class InvocableSoql {
 				this.conditionPaths?.add(path);
 			}
 			this.describeOtherFields();
+			this.validatePaging();
 			// Renders the WHERE clause once, so bad condition logic fails before any query runs
 			List<Object> blankValues = new List<Object>(this.conditions?.size());
-			new InvocableSoql.Filter(this, blankValues, true)?.toString();
+			InvocableSoql.Filter blankFilter = new InvocableSoql.Filter(this, blankValues, true);
+			blankFilter?.toString();
+			String logic = blankFilter?.getLogic();
+			this.logicTree = new InvocableSoql.LogicParser(logic)?.parse();
 			return this;
 		}
 
@@ -1239,6 +1318,25 @@ public inherited sharing class InvocableSoql {
 			}
 			for (String path : paths) {
 				this.describePath(path);
+			}
+		}
+
+		/**
+		 * @description Checks LIMIT and OFFSET as SOQL would, since a merged query leaves them out, so SOQL never sees
+		 * them and the same definition would fail alone but run merged
+		 * @throws System.IllegalArgumentException When the limit is negative, the offset is outside 0 to 2,000, or FOR
+		 * UPDATE has an offset
+		 */
+		private void validatePaging() {
+			Integer offset = this.rowOffset ?? 0;
+			if ((this.rowLimit ?? 0) < 0) {
+				throw new IllegalArgumentException('Invalid limit: ' + this.rowLimit);
+			}
+			if (offset < 0 || offset > InvocableSoql.MAX_OFFSET) {
+				throw new IllegalArgumentException('Invalid offset, outside 0 to 2,000: ' + this.rowOffset);
+			}
+			if (this.usage == 'FOR_UPDATE' && this.rowOffset != null) {
+				throw new IllegalArgumentException('FOR UPDATE cannot be used with an offset');
 			}
 		}
 
@@ -1590,7 +1688,7 @@ public inherited sharing class InvocableSoql {
 	 */
 	private class Filter implements Soql.Criteria {
 		private Boolean isLiteral;
-		/** @description Conditions a merged query leaves out, by index, for the split to apply; only under AND **/
+		/** @description Conditions a merged query leaves out, by index, for the split to apply **/
 		private Set<Integer> omitted = new Set<Integer>{};
 		private InvocableSoql.Query query;
 		private List<Object> values;
@@ -1676,9 +1774,7 @@ public inherited sharing class InvocableSoql {
 			List<String> numbers = new List<String>{};
 			for (Integer index = 1; index <= this.query?.conditions?.size(); index++) {
 				String conditionNumber = String.valueOf(index);
-				if (this.omitted?.contains(index - 1) == false) {
-					numbers?.add(conditionNumber);
-				}
+				numbers?.add(conditionNumber);
 			}
 			Boolean isPreset = logic == 'AND' || logic == 'OR';
 			Boolean isValidCustom =
@@ -1690,7 +1786,8 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description Renders a condition by its number in the logic
+		 * @description Renders a condition by its number in the logic. A left-out condition renders as one every row
+		 * passes, which keeps the logic around it, ex: under OR
 		 * @param conditionNumber The condition's number, starting at 1
 		 * @return The condition, as SOQL
 		 * @throws System.IllegalArgumentException When no condition has that number
@@ -1700,18 +1797,17 @@ public inherited sharing class InvocableSoql {
 			if (index < 0 || index >= this.query?.conditions?.size()) {
 				throw new IllegalArgumentException('Invalid condition logic: ' + this.query?.conditionLogic);
 			}
+			Boolean isOmitted = this.omitted?.contains(index) == true;
 			Object value = this.values?.get(index);
-			return this.query?.conditions?.get(index)?.render(index, value, this.isLiteral);
+			return isOmitted ? 'Id != null' : this.query?.conditions?.get(index)?.render(index, value, this.isLiteral);
 		}
 	}
 
 	/**
 	 * @description Runs a batch of `SOQL: Get Record(s)` interviews in as few queries as it can, since Flow sends every
 	 * interview at the element in one call. Interviews with the same query, access level, and values share one query.
-	 * Interviews whose values differ in exactly one EQUALS, IN, or LIKE-style condition share one merged query, whose
-	 * rows are split back to each interview by comparing that field in Apex. An ID's Not Equals may differ too, ex:
-	 * `Id != {!$Record.Id}`: the merged query leaves it out, and the split applies it. Everything else runs one query
-	 * per distinct set of values; see `InvocableSoql.Query.isMergeable` for when merging applies
+	 * The rest share one merged query, whose rows Apex checks against each interview's conditions, like Get Records;
+	 * see `InvocableSoql.Splitter` for when merging applies
 	 */
 	private class Planner {
 		/** @description Interviews that share a query definition and access level, by both **/
@@ -1776,8 +1872,6 @@ public inherited sharing class InvocableSoql {
 	/** @description Interviews with the same query and access level, which can share queries **/
 	private class Batch {
 		private System.AccessLevel accessLevel;
-		/** @description Varying conditions the split applies, which a merged query leaves out, ex: Id != $Record.Id **/
-		private Set<Integer> filteredIndexes = new Set<Integer>{};
 		private InvocableSoql.Query query;
 		/** @description Each distinct set of values, by its JSON **/
 		private Map<String, InvocableSoql.Variant> variants = new Map<String, InvocableSoql.Variant>{};
@@ -1807,124 +1901,47 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description Finds the one condition whose values differ between variants, if only one does, besides those a
-		 * split can apply, which it records in `filteredIndexes`. When only those differ, finds a shared one instead
-		 * @return The condition's index, or null when none can merge or several differ
-		 */
-		private Integer findVaryingIndex() {
-			List<InvocableSoql.Variant> variants = this.variants?.values();
-			List<Integer> varying = new List<Integer>{};
-			for (Integer index = 0; index < variants?.get(0)?.valueKeys?.size(); index++) {
-				Boolean isVarying = this.isVarying(index);
-				Boolean isFiltered = isVarying && this.query?.isFilterable(index);
-				if (isFiltered) {
-					this.filteredIndexes?.add(index);
-				} else if (isVarying) {
-					varying?.add(index);
-				}
-			}
-			Integer varyingIndex = (varying?.size() == 1) ? varying?.get(0) : null;
-			Boolean isOnlyFiltered = varying?.isEmpty() == true && this.filteredIndexes?.isEmpty() == false;
-			return isOnlyFiltered ? this.findSharedIndex() : varyingIndex;
-		}
-
-		/**
-		 * @description When only conditions a split applies differ, ex: contacts with no account, each excluding
-		 * itself, finds a bound condition to merge on anyway: every row matches its one shared value
-		 * @return The condition's index, or null when none can merge
-		 */
-		private Integer findSharedIndex() {
-			Integer sharedIndex;
-			for (Integer index = 0; index < this.query?.conditions?.size(); index++) {
-				Boolean isBound = this.query?.conditions?.get(index)?.isBound() == true;
-				Boolean isCandidate = isBound && this.filteredIndexes?.contains(index) == false;
-				Boolean isShared = sharedIndex == null && isCandidate && this.query?.isMergeable(index) == true;
-				sharedIndex = isShared ? index : sharedIndex;
-			}
-			return sharedIndex;
-		}
-
-		/**
-		 * @description Whether variants hold different values for a condition
-		 * @param index The condition's index
-		 * @return Whether its values differ
-		 */
-		private Boolean isVarying(Integer index) {
-			Set<String> keys = new Set<String>{};
-			for (InvocableSoql.Variant variant : this.variants?.values()) {
-				String key = variant?.valueKeys?.get(index);
-				keys?.add(key);
-			}
-			return keys?.size() > 1;
-		}
-
-		/**
-		 * @description Lists the variants a merged query can serve: empty text runs alone, and so does a blank LIKE
-		 * pattern or one with wildcards in its middle, which a split can't reproduce
-		 * @param index The varying condition's index, or null
-		 * @return The variants to merge; fewer than two means there's nothing to merge
-		 */
-		private List<InvocableSoql.Variant> getMergeable(Integer index) {
-			List<InvocableSoql.Variant> mergeable = new List<InvocableSoql.Variant>{};
-			if (index != null && this.query?.isMergeable(index) == true) {
-				for (InvocableSoql.Variant variant : this.variants?.values()) {
-					Object value = variant?.values?.get(index);
-					if (this.isMergeableValue(index, value) == true) {
-						mergeable?.add(variant);
-					}
-				}
-			}
-			return mergeable;
-		}
-
-		/**
-		 * @description Empty text runs alone, and so does a blank LIKE pattern, or one a split can't reproduce. A blank
-		 * value merges, since SOQL's IN matches null to blank fields, as `= null` does, and the split keys blanks
-		 * together
-		 * @param index The varying condition's index
-		 * @param value A variant's value for it
-		 * @return Whether a merged query can serve the variant
-		 */
-		private Boolean isMergeableValue(Integer index, Object value) {
-			Boolean isPattern = this.query?.isPattern(index);
-			Boolean isSimple = (isPattern && value != null)
-				? new InvocableSoql.LikePattern((String) value, false)?.isSimple
-				: isPattern == false;
-			// SOQL matches '' to null, but a split keys '' and null apart, so '' runs alone
-			Boolean hasEmptyText = InvocableSoql.toList(value)?.contains('') == true;
-			return hasEmptyText == false && isSimple == true;
-		}
-
-		/**
 		 * @description Merges what it can into one query, runs the remaining variants one query each, then renders each
 		 * variant's query string once for all its interviews
 		 */
 		private void run() {
-			Integer index = this.findVaryingIndex();
-			List<InvocableSoql.Variant> mergeable = this.getMergeable(index);
-			if (mergeable?.size() > 1) {
-				this.runMerged(index, mergeable);
+			List<InvocableSoql.Variant> candidates = this.variants?.values();
+			InvocableSoql.Splitter splitter = (candidates?.size() > 1)
+				? new InvocableSoql.Splitter(this.query, candidates)
+				: null;
+			if (splitter?.variants?.size() > 1) {
+				this.runMerged(splitter);
 			}
-			for (InvocableSoql.Variant variant : this.variants?.values()) {
-				variant.records = variant?.records ?? this.query?.toSoql(variant?.values, this.accessLevel)?.query();
+			for (InvocableSoql.Variant variant : candidates) {
+				if (variant?.records == null) {
+					Soql builder = this.query?.toSoql(variant?.values, this.accessLevel);
+					variant.records = this.runQuery(builder);
+				}
 				variant.queryString = this.query?.toQueryString(variant?.values, this.accessLevel);
 			}
 		}
 
 		/**
-		 * @description Unions the varying condition's values into one query, then splits its rows by that field. Each
-		 * row keeps its query order within each variant
-		 * @param index The varying condition's index
-		 * @param mergeable The variants to merge
+		 * @description Runs one query for the splitter's variants, then splits its rows between them
+		 * @param splitter The variants to merge, and how
 		 */
-		private void runMerged(Integer index, List<InvocableSoql.Variant> mergeable) {
-			InvocableSoql.Splitter splitter = new InvocableSoql.Splitter(this.query, index, mergeable);
-			splitter.filteredIndexes = this.filteredIndexes;
-			List<Object> values = mergeable?.get(0)?.values?.clone();
-			Object mergedValue = splitter?.getMergedValue();
-			values?.set(index, mergedValue);
-			List<SObject> rows = this.query?.toMergedSoql(values, this.filteredIndexes, this.accessLevel)?.query();
+		private void runMerged(InvocableSoql.Splitter splitter) {
+			List<Object> values = splitter?.getMergedValues();
+			Soql merged = this.query?.toMergedSoql(values, splitter?.droppedIndexes, this.accessLevel);
+			List<SObject> rows = this.runQuery(merged);
 			splitter?.split(rows);
+		}
+
+		/**
+		 * @description Runs SYSTEM_MODE queries without sharing, like Get Records in a flow that runs in system
+		 * context. `Soql` inherits sharing from its caller, and Flow calls the action with none, so it would run with
+		 * sharing. USER_MODE enforces sharing itself
+		 * @param builder The query
+		 * @return The rows
+		 */
+		private List<SObject> runQuery(Soql builder) {
+			Boolean isSystemMode = this.accessLevel == System.AccessLevel.SYSTEM_MODE;
+			return isSystemMode ? new InvocableSoql.SystemModeRunner().run(builder) : builder?.query();
 		}
 	}
 
@@ -1951,7 +1968,7 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description Matches like SOQL would
+		 * @description Matches like SOQL would: a blank pattern, as `LIKE null` or `LIKE ''`, matches blank values
 		 * @param candidate A field value's key, from `InvocableSoql.toKey`
 		 * @return Whether the value matches
 		 */
@@ -1965,7 +1982,7 @@ public inherited sharing class InvocableSoql {
 			} else if (this.isTrailing) {
 				isMatch = candidate?.startsWith(this.key);
 			} else {
-				isMatch = candidate?.equals(this.key);
+				isMatch = (candidate ?? '').equals(this.key);
 			}
 			return isMatch == true;
 		}
@@ -1987,7 +2004,7 @@ public inherited sharing class InvocableSoql {
 			String unescaped = body?.replace('\\\\', '')?.replace('\\%', '')?.replace('\\_', '');
 			this.isSimple = unescaped?.containsAny('%_\\') == false;
 			String text = this.unescape(body);
-			this.key = InvocableSoql.toKey(text, isCaseSensitive);
+			this.key = InvocableSoql.toKey(text, isCaseSensitive) ?? '';
 		}
 
 		/**
@@ -2006,61 +2023,240 @@ public inherited sharing class InvocableSoql {
 		}
 	}
 
-	/** @description Splits a merged query's rows back to each variant, by the varying condition's field **/
+	/**
+	 * @description Finds the simple LIKE patterns a value matches by looking up its prefixes, suffixes, and
+	 * substrings, one per pattern length, instead of testing every pattern: 200 Contains values over 5,000 rows were
+	 * a million tests, over the CPU limit
+	 */
+	@TestVisible
+	private class LikePatternIndex {
+		/** @description Patterns without wildcards, ex: `abc`, by key **/
+		private Map<String, Set<Integer>> exact = new Map<String, Set<Integer>>{};
+		/** @description Patterns like `abc%`, by key, by key length **/
+		private Map<Integer, Map<String, Set<Integer>>> prefixes = new Map<Integer, Map<String, Set<Integer>>>{};
+		/** @description Patterns like `%abc%`, by key, by key length **/
+		private Map<Integer, Map<String, Set<Integer>>> substrings = new Map<Integer, Map<String, Set<Integer>>>{};
+		/** @description Each distinct `%abc%` key, to test a long value against when that's less work than lookups **/
+		private List<String> substringKeys = new List<String>{};
+		/** @description Patterns like `%abc`, by key, by key length **/
+		private Map<Integer, Map<String, Set<Integer>>> suffixes = new Map<Integer, Map<String, Set<Integer>>>{};
+
+		/**
+		 * @description Adds a pattern
+		 * @param pattern A simple pattern
+		 * @param position The position its matches report
+		 */
+		@TestVisible
+		private void add(InvocableSoql.LikePattern pattern, Integer position) {
+			Map<String, Set<Integer>> keyed = this.findKeyed(pattern);
+			Set<Integer> positions = keyed?.get(pattern?.key);
+			Boolean isNewSubstring = positions == null && pattern?.isLeading && pattern?.isTrailing;
+			if (isNewSubstring) {
+				this.substringKeys?.add(pattern?.key);
+			}
+			positions = positions ?? new Set<Integer>{};
+			positions?.add(position);
+			keyed?.put(pattern?.key, positions);
+		}
+
+		/**
+		 * @description Lists the patterns a value matches. A prefix or suffix longer than the value is the whole
+		 * value, which can't equal a key of that length, so it needs no length check
+		 * @param key A field value's key, from `InvocableSoql.toKey`
+		 * @return The matching patterns' positions; only blank patterns for a null key, as SOQL matches `LIKE null`
+		 */
+		@TestVisible
+		private Set<Integer> match(String key) {
+			Set<Integer> positions = new Set<Integer>{};
+			this.addMatches(positions, this.exact, key ?? '');
+			if (key != null) {
+				for (Integer length : this.prefixes?.keySet()) {
+					this.addMatches(positions, this.prefixes?.get(length), key?.left(length));
+				}
+				for (Integer length : this.suffixes?.keySet()) {
+					this.addMatches(positions, this.suffixes?.get(length), key?.right(length));
+				}
+				this.matchSubstrings(positions, key);
+			}
+			return positions;
+		}
+
+		/**
+		 * @description Picks the map a pattern belongs in, by its wildcards and key length
+		 * @param pattern A simple pattern
+		 * @return The map of its kind and length
+		 */
+		private Map<String, Set<Integer>> findKeyed(InvocableSoql.LikePattern pattern) {
+			Map<Integer, Map<String, Set<Integer>>> byLength;
+			if (pattern?.isLeading && pattern?.isTrailing) {
+				byLength = this.substrings;
+			} else if (pattern?.isLeading) {
+				byLength = this.suffixes;
+			} else if (pattern?.isTrailing) {
+				byLength = this.prefixes;
+			}
+			Integer length = pattern?.key?.length();
+			Map<String, Set<Integer>> keyed = byLength?.get(length) ?? new Map<String, Set<Integer>>{};
+			byLength?.put(length, keyed);
+			return (byLength == null) ? this.exact : keyed;
+		}
+
+		/**
+		 * @description Looks up each of the value's substrings of each pattern length, unless that's more work than
+		 * testing each pattern, ex: a long value against a few patterns
+		 * @param positions The matches so far, which receive these
+		 * @param key A field value's key
+		 */
+		private void matchSubstrings(Set<Integer> positions, String key) {
+			Integer keyLength = key?.length();
+			Integer lookups = 0;
+			for (Integer length : this.substrings?.keySet()) {
+				lookups += Math.max(keyLength - length + 1, 0);
+			}
+			if (lookups <= this.substringKeys?.size()) {
+				this.lookUpSubstrings(positions, key);
+			} else {
+				this.testSubstrings(positions, key);
+			}
+		}
+
+		/**
+		 * @description Looks up each of the value's substrings of each pattern length
+		 * @param positions The matches so far, which receive these
+		 * @param key A field value's key
+		 */
+		private void lookUpSubstrings(Set<Integer> positions, String key) {
+			for (Integer length : this.substrings?.keySet()) {
+				Map<String, Set<Integer>> keyed = this.substrings?.get(length);
+				for (Integer start = 0; start + length <= key?.length(); start++) {
+					String substring = key?.substring(start, start + length);
+					this.addMatches(positions, keyed, substring);
+				}
+			}
+		}
+
+		/**
+		 * @description Tests the value against each `%abc%` pattern
+		 * @param positions The matches so far, which receive these
+		 * @param key A field value's key
+		 */
+		private void testSubstrings(Set<Integer> positions, String key) {
+			for (String substring : this.substringKeys) {
+				if (key?.contains(substring) == true) {
+					Integer length = substring?.length();
+					Map<String, Set<Integer>> keyed = this.substrings?.get(length);
+					this.addMatches(positions, keyed, substring);
+				}
+			}
+		}
+
+		/**
+		 * @description Adds the positions of the patterns with a key
+		 * @param positions The matches so far, which receive these
+		 * @param keyed Patterns by key
+		 * @param key The key to look up
+		 */
+		private void addMatches(Set<Integer> positions, Map<String, Set<Integer>> keyed, String key) {
+			Set<Integer> matches = keyed?.get(key) ?? InvocableSoql.NO_POSITIONS;
+			positions?.addAll(matches);
+		}
+	}
+
+	/** @description Runs queries without sharing, which `Soql` inherits, since it's `inherited sharing` **/
+	private without sharing class SystemModeRunner {
+		/**
+		 * @description Runs the query
+		 * @param builder A SYSTEM_MODE query
+		 * @return The rows
+		 */
+		private List<SObject> run(Soql builder) {
+			return builder?.query();
+		}
+	}
+
+	/**
+	 * @description Merges variants into one query that matches any of their values, then splits its rows back to each
+	 * variant by checking each row against the variant's logic in Apex, as Get Records does in memory. A condition
+	 * whose values vary widens in the query: Equals, In, and LIKE-style conditions match any variant's values, ranges
+	 * read past the loosest bound, and Not Equals, Not In, and Is Null drop out. Apex checks each condition that
+	 * widens, and each one a row could pass without, ex: under OR; the query guarantees the rest. Variants can't merge
+	 * when a condition Apex must check is one it can't (see `InvocableSoql.Query.isCheckable`), or a varying
+	 * condition is under NOT, which narrows what widening widens. A variant with a value Apex can't check runs alone
+	 */
 	private class Splitter {
-		/** @description Conditions the merged query left out, which each row must pass for each variant **/
-		private Set<Integer> filteredIndexes = new Set<Integer>{};
-		private Integer index;
-		private Boolean isCaseSensitive;
-		private Boolean isPattern;
-		/** @description Each variant's LIKE pattern, by position; empty for EQUALS and IN **/
-		private List<InvocableSoql.LikePattern> patterns = new List<InvocableSoql.LikePattern>{};
+		/**
+		 * @description Every merged variant's position, until it fills, and the split stops at none; matches that hold
+		 * all of them share it
+		 */
+		private Set<Integer> allPositions = new Set<Integer>{};
+		/** @description The rows each variant keeps, OFFSET plus LIMIT; null without a limit **/
+		private Integer capacity;
+		/** @description Conditions Apex checks, by index: those not in a part of the logic the query guarantees **/
+		private Set<Integer> checkedIndexes = new Set<Integer>{};
+		/** @description Conditions the merged query leaves out, ex: each interview's `Id != {!$Record.Id}` **/
+		private Set<Integer> droppedIndexes = new Set<Integer>{};
+		/**
+		 * @description Each condition's checker, listed once, since `Map.values()` builds a new list on each call, and
+		 * here that costs CPU in proportion to everything the checkers hold: per row, it was most of the split's
+		 */
+		private List<InvocableSoql.ConditionMatcher> matchers = new List<InvocableSoql.ConditionMatcher>{};
+		/** @description A checker for each condition Apex checks, by index **/
+		private Map<Integer, InvocableSoql.ConditionMatcher> matchersByIndex = new Map<Integer, InvocableSoql.ConditionMatcher>{};
 		private InvocableSoql.Query query;
-		/** @description Each EQUALS or IN value's variants, by key; positions, so a duplicate value adds a row once **/
-		private Map<String, Set<Integer>> variantsByKey = new Map<String, Set<Integer>>{};
-		private List<InvocableSoql.Variant> variants;
+		/** @description Conditions in the logic whose values differ between variants, by index **/
+		private Set<Integer> varyingIndexes = new Set<Integer>{};
+		/** @description The variants the merged query serves, by position; fewer than two when none can merge **/
+		private List<InvocableSoql.Variant> variants = new List<InvocableSoql.Variant>{};
 
 		/**
-		 * @description Indexes each variant's values for matching rows
+		 * @description Plans the merge: which variants it serves, and how Apex checks each condition
 		 * @param query The query
-		 * @param index The varying condition's index
-		 * @param variants The variants to split rows between
+		 * @param candidates Every variant in the batch
 		 */
-		private Splitter(InvocableSoql.Query query, Integer index, List<InvocableSoql.Variant> variants) {
-			this.index = index;
-			this.isCaseSensitive = query?.isCaseSensitive(index);
-			this.isPattern = query?.isPattern(index);
+		private Splitter(InvocableSoql.Query query, List<InvocableSoql.Variant> candidates) {
+			InvocableSoql.LogicNode root = query?.logicTree;
 			this.query = query;
-			this.variants = variants;
-			for (Integer position = 0; position < variants?.size(); position++) {
-				this.addVariant(position);
+			this.findVaryingIndexes(root, candidates);
+			Boolean isMergeable = root != null && this.plan(root, true, false);
+			this.findCheckedIndexes(root);
+			List<InvocableSoql.Variant> checkable = isMergeable
+				? this.findCheckable(candidates)
+				: new List<InvocableSoql.Variant>{};
+			if (checkable?.size() > 1) {
+				this.variants = checkable;
+				this.initMatchers();
 			}
 		}
 
 		/**
-		 * @description Unions every variant's value, coerced as one list, since SOQL binds are strictly typed. EQUALS
-		 * and LIKE bind a list as they would a single value, ex: `Name = :list` matches any of them
-		 * @return The merged value
+		 * @description Widens each varying condition, starting from the first variant's values, since the rest are
+		 * the same for every variant
+		 * @return One value per condition, ready to bind; left-out conditions keep a value they don't bind
 		 */
-		private Object getMergedValue() {
-			List<Object> merged = new List<Object>{};
-			for (InvocableSoql.Variant variant : this.variants) {
-				Object value = variant?.values?.get(this.index);
-				List<Object> values = InvocableSoql.toList(value);
-				merged?.addAll(values);
+		private List<Object> getMergedValues() {
+			List<Object> values = this.variants?.get(0)?.values?.clone();
+			for (Integer index : this.varyingIndexes) {
+				Boolean isDropped = this.droppedIndexes?.contains(index);
+				Object merged = isDropped ? null : this.matchersByIndex?.get(index)?.getMergedValue();
+				values?.set(index, merged);
 			}
-			return this.query?.coerce(this.index, merged);
+			return values;
 		}
 
 		/**
-		 * @description Gives each variant the rows that match its values, in query order, then applies OFFSET and LIMIT
+		 * @description Gives each variant the rows that pass its logic, in query order, then applies OFFSET and LIMIT.
+		 * With a limit, it stops once every variant has the rows it keeps, ex: for a limit of 1 over a whole table
 		 * @param rows The merged query's rows
 		 */
 		private void split(List<SObject> rows) {
+			Integer rowLimit = this.query?.rowLimit;
+			this.capacity = (rowLimit == null) ? null : rowLimit + (this.query?.rowOffset ?? 0);
 			for (InvocableSoql.Variant variant : this.variants) {
 				variant.records = new List<SObject>{};
 			}
-			for (SObject row : rows) {
+			Integer next = 0;
+			while (this.capacity != 0 && this.allPositions?.isEmpty() == false && next < rows?.size()) {
+				SObject row = rows?.get(next++);
 				this.addRow(row);
 			}
 			for (InvocableSoql.Variant variant : this.variants) {
@@ -2069,91 +2265,876 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description Adds a row to each variant it belongs to
+		 * @description Adds a row to each variant whose logic it passes
 		 * @param row A row from the merged query
 		 */
 		private void addRow(SObject row) {
-			for (InvocableSoql.Variant variant : this.match(row)) {
-				if (this.passesFilters(row, variant) == true) {
-					variant?.records?.add(row);
+			for (InvocableSoql.ConditionMatcher matcher : this.matchers) {
+				matcher?.prepare(row);
+			}
+			List<Integer> filled = new List<Integer>{};
+			for (Integer position : this.matchNode(this.query?.logicTree)) {
+				List<SObject> records = this.variants?.get(position)?.records;
+				Boolean isFilled = this.addRecord(records, row);
+				if (isFilled) {
+					filled?.add(position);
 				}
+			}
+			// Closed after the row, since its matches can be the very sets that closing changes
+			for (Integer position : filled) {
+				this.close(position);
 			}
 		}
 
 		/**
-		 * @description Applies each condition the merged query left out: an ID's Not Equals
-		 * @param row A row from the merged query
-		 * @param variant A variant the row matches by the varying field
-		 * @return Whether the row passes them for the variant
+		 * @description Adds a row to a variant's records, unless it already has every row its limit keeps
+		 * @param records The variant's records so far
+		 * @param row A row the variant's logic passes
+		 * @return Whether this row filled the variant
 		 */
-		private Boolean passesFilters(SObject row, InvocableSoql.Variant variant) {
+		private Boolean addRecord(List<SObject> records, SObject row) {
+			Boolean isOpen = this.capacity == null || records?.size() < this.capacity;
+			if (isOpen) {
+				records?.add(row);
+			}
+			return isOpen && records?.size() == this.capacity;
+		}
+
+		/**
+		 * @description Stops looking for rows for a variant that has every row its limit keeps, so checkers that look
+		 * through every variant for each row skip it
+		 * @param position The variant's position
+		 */
+		private void close(Integer position) {
+			this.allPositions?.remove(position);
+			for (InvocableSoql.ConditionMatcher matcher : this.matchers) {
+				matcher?.close(position);
+			}
+		}
+
+		/**
+		 * @description Checks a part of the logic for one variant. Like SOQL, a range on a blank field is unknown,
+		 * neither true nor false, so NOT of it is unknown too. A part without varying conditions passes for every
+		 * variant or none, so any position stands for all; the parts the query guarantees pass
+		 * @param node A part of the logic
+		 * @param position The variant's position
+		 * @return True or false, or null when unknown
+		 */
+		private Boolean evaluate(InvocableSoql.LogicNode node, Integer position) {
+			Boolean result;
+			if (node?.isSkipped == true) {
+				result = true;
+			} else if (node?.index != null) {
+				result = this.matchersByIndex?.get(node?.index)?.test(position);
+			} else if (node?.operator == 'NOT') {
+				InvocableSoql.LogicNode negated = node?.children?.get(0);
+				Boolean value = this.evaluate(negated, position);
+				result = (value == null) ? null : value == false;
+			} else {
+				result = this.evaluateJoined(node, position);
+			}
+			return result;
+		}
+
+		/**
+		 * @description Joins the checks of an AND's or OR's parts, in three-valued logic: an AND is false if any part
+		 * is false, else unknown if any part is unknown; an OR is true if any part is true, else unknown if any is
+		 * @param node An AND or OR
+		 * @param position The variant's position
+		 * @return True or false, or null when unknown
+		 */
+		private Boolean evaluateJoined(InvocableSoql.LogicNode node, Integer position) {
+			Boolean isAnd = node?.operator == 'AND';
+			Boolean result = isAnd;
+			for (InvocableSoql.LogicNode child : node?.children) {
+				Boolean value = this.evaluate(child, position);
+				Boolean isDecisive = value == (isAnd == false);
+				Boolean isDecided = result == (isAnd == false);
+				result = (isDecided || isDecisive) ? isAnd == false : ((value == null) ? null : result);
+			}
+			return result;
+		}
+
+		/**
+		 * @description Picks the part of each varying AND that rows are looked up by, once for every row, and lists
+		 * its other varying parts, which Apex then checks for just the variants the lookup finds
+		 * @param node A part of the logic
+		 */
+		private void findDrivers(InvocableSoql.LogicNode node) {
+			Boolean isVaryingAnd = node?.operator == 'AND' && node?.isUniform == false;
+			node.driver = isVaryingAnd ? this.findDriver(node) : null;
+			node.others = new List<InvocableSoql.LogicNode>{};
+			for (InvocableSoql.LogicNode child : node?.children) {
+				if (isVaryingAnd && child != node?.driver && child?.isUniform == false) {
+					node?.others?.add(child);
+				}
+				this.findDrivers(child);
+			}
+		}
+
+		/**
+		 * @description Finds a part of an AND to look rows up by, preferring a condition whose lookup finds few
+		 * variants, ex: Equals over Not Equals
+		 * @param node An AND with varying conditions
+		 * @return The varying part to look up
+		 */
+		private InvocableSoql.LogicNode findDriver(InvocableSoql.LogicNode node) {
+			InvocableSoql.LogicNode driver;
+			for (InvocableSoql.LogicNode child : node?.children) {
+				Boolean isVarying = child?.isUniform == false;
+				Boolean isBetter = driver == null || (this.isSelective(child) && this.isSelective(driver) == false);
+				driver = (isVarying && isBetter) ? child : driver;
+			}
+			return driver;
+		}
+
+		/**
+		 * @description Records the varying conditions under a part of the logic
+		 * @param node A part of the logic
+		 * @param candidates Every variant in the batch
+		 */
+		private void findVaryingIndexes(InvocableSoql.LogicNode node, List<InvocableSoql.Variant> candidates) {
+			if (node?.index != null && this.isVarying(node?.index, candidates)) {
+				this.varyingIndexes?.add(node?.index);
+			}
+			for (InvocableSoql.LogicNode child : node?.children ?? new List<InvocableSoql.LogicNode>{}) {
+				this.findVaryingIndexes(child, candidates);
+			}
+		}
+
+		/**
+		 * @description Records the conditions Apex checks: every one outside a part the query guarantees
+		 * @param node A part of the logic
+		 */
+		private void findCheckedIndexes(InvocableSoql.LogicNode node) {
+			Boolean isChecked = node?.isSkipped == false;
+			if (node?.index != null && isChecked) {
+				this.checkedIndexes?.add(node?.index);
+			}
+			for (InvocableSoql.LogicNode child : isChecked ? node?.children : new List<InvocableSoql.LogicNode>{}) {
+				this.findCheckedIndexes(child);
+			}
+		}
+
+		/**
+		 * @description Lists the variants whose values Apex can check for every condition it checks
+		 * @param candidates Every variant in the batch
+		 * @return The variants that can merge
+		 */
+		private List<InvocableSoql.Variant> findCheckable(List<InvocableSoql.Variant> candidates) {
+			List<InvocableSoql.Variant> checkable = new List<InvocableSoql.Variant>{};
+			for (InvocableSoql.Variant variant : candidates) {
+				Boolean isCheckable = true;
+				for (Integer index : this.checkedIndexes) {
+					Object value = variant?.values?.get(index);
+					Boolean isVarying = this.varyingIndexes?.contains(index);
+					isCheckable &= this.query?.isCheckableValue(index, value, isVarying);
+				}
+				if (isCheckable) {
+					checkable?.add(variant);
+				}
+			}
+			return checkable;
+		}
+
+		/**
+		 * @description Builds a checker for each condition Apex checks, records the varying ones the query leaves
+		 * out, then picks how each AND looks rows up
+		 */
+		private void initMatchers() {
+			for (Integer position = 0; position < this.variants?.size(); position++) {
+				this.allPositions?.add(position);
+			}
+			for (Integer index : this.checkedIndexes) {
+				InvocableSoql.ConditionMatcher matcher = this.initMatcher(index);
+				this.matchers?.add(matcher);
+				this.matchersByIndex?.put(index, matcher);
+				if (matcher?.isDropped == true && this.varyingIndexes?.contains(index) == true) {
+					this.droppedIndexes?.add(index);
+				}
+			}
+			this.findDrivers(this.query?.logicTree);
+		}
+
+		/**
+		 * @description Picks the checker for a condition's operator
+		 * @param index The condition's index
+		 * @return The checker
+		 */
+		private InvocableSoql.ConditionMatcher initMatcher(Integer index) {
+			String operator = this.query?.getOperator(index);
+			List<Object> values = new List<Object>{};
+			for (InvocableSoql.Variant variant : this.variants) {
+				Object value = variant?.values?.get(index);
+				values?.add(value);
+			}
+			InvocableSoql.ConditionMatcher matcher;
+			if (operator == InvocableSoql.NULL_CHECK) {
+				matcher = new InvocableSoql.NullCheckMatcher(this.query, index, values);
+			} else if (InvocableSoql.RANGE_OPERATORS?.contains(operator) == true) {
+				matcher = new InvocableSoql.RangeMatcher(this.query, index, values);
+			} else if (this.query?.isPattern(index) == true) {
+				matcher = new InvocableSoql.PatternMatcher(this.query, index, values);
+			} else {
+				matcher = new InvocableSoql.KeyMatcher(this.query, index, values);
+			}
+			return matcher;
+		}
+
+		/**
+		 * @description Whether a part of the logic is a condition whose lookup finds few variants
+		 * @param node A part of the logic
+		 * @return Whether looking it up narrows rows to a few variants
+		 */
+		private Boolean isSelective(InvocableSoql.LogicNode node) {
+			return node?.index != null && this.matchersByIndex?.get(node?.index)?.isSelective == true;
+		}
+
+		/**
+		 * @description Whether variants hold different values for a condition
+		 * @param index The condition's index
+		 * @param candidates Every variant in the batch
+		 * @return Whether its values differ
+		 */
+		private Boolean isVarying(Integer index, List<InvocableSoql.Variant> candidates) {
+			Set<String> keys = new Set<String>{};
+			for (InvocableSoql.Variant variant : candidates) {
+				String key = variant?.valueKeys?.get(index);
+				keys?.add(key);
+			}
+			return keys?.size() > 1;
+		}
+
+		/**
+		 * @description Finds the variants whose logic the current row passes, by looking up its varying conditions
+		 * @param node A part of the logic
+		 * @return The positions of the variants it passes for; never changed by the caller
+		 */
+		private Set<Integer> matchNode(InvocableSoql.LogicNode node) {
+			Set<Integer> matched;
+			if (node?.isUniform == true) {
+				matched = (this.evaluate(node, 0) == true) ? this.allPositions : InvocableSoql.NO_POSITIONS;
+			} else if (node?.index != null) {
+				matched = this.matchersByIndex?.get(node?.index)?.match();
+			} else if (node?.operator == 'OR') {
+				matched = this.matchAny(node);
+			} else {
+				matched = this.matchAll(node);
+			}
+			return matched;
+		}
+
+		/**
+		 * @description An AND looks up one varying part, then checks the rest for just those variants
+		 * @param node An AND with varying conditions
+		 * @return The positions of the variants every part passes for
+		 */
+		private Set<Integer> matchAll(InvocableSoql.LogicNode node) {
+			Boolean isUniformPassing = true;
+			for (InvocableSoql.LogicNode child : node?.children) {
+				isUniformPassing &= child?.isUniform == false || this.evaluate(child, 0) == true;
+			}
+			Set<Integer> candidates = isUniformPassing ? this.matchNode(node?.driver) : InvocableSoql.NO_POSITIONS;
+			return (node?.others?.isEmpty() == true) ? candidates : this.testOthers(node, candidates);
+		}
+
+		/**
+		 * @description An OR unites its parts' matches
+		 * @param node An OR with varying conditions
+		 * @return The positions of the variants any part passes for
+		 */
+		private Set<Integer> matchAny(InvocableSoql.LogicNode node) {
+			Set<Integer> matched = new Set<Integer>{};
+			for (InvocableSoql.LogicNode child : node?.children) {
+				Set<Integer> childMatches = this.matchNode(child);
+				matched?.addAll(childMatches);
+			}
+			return matched;
+		}
+
+		/**
+		 * @description Keeps the variants an AND's lookup found whose other varying parts pass too
+		 * @param node An AND with varying conditions besides its driver
+		 * @param candidates The variants its driver's lookup found
+		 * @return The positions of the variants every part passes for
+		 */
+		private Set<Integer> testOthers(InvocableSoql.LogicNode node, Set<Integer> candidates) {
+			Set<Integer> matched = new Set<Integer>{};
+			for (Integer position : candidates) {
+				if (this.passesOthers(node, position)) {
+					matched?.add(position);
+				}
+			}
+			return matched;
+		}
+
+		/**
+		 * @description Checks an AND's varying parts, besides its driver, for one variant. Varying conditions are
+		 * never under NOT, so an unknown result fails like false
+		 * @param node An AND with varying conditions besides its driver
+		 * @param position The variant's position
+		 * @return Whether every other varying part passes
+		 */
+		private Boolean passesOthers(InvocableSoql.LogicNode node, Integer position) {
 			Boolean isPassing = true;
-			for (Integer filteredIndex : this.filteredIndexes) {
-				Object fieldValue = this.query?.getFieldValue(row, filteredIndex);
-				Object excludedValue = variant?.values?.get(filteredIndex);
-				isPassing &= fieldValue != excludedValue;
+			for (InvocableSoql.LogicNode other : node?.others) {
+				isPassing &= this.evaluate(other, position) == true;
 			}
 			return isPassing;
 		}
 
 		/**
-		 * @description Lists the variants a row belongs to
-		 * @param row A row from the merged query
-		 * @return The row's variants
+		 * @description Marks the parts of the logic the query guarantees, and those without varying conditions, then
+		 * checks that Apex can check the rest
+		 * @param node A part of the logic
+		 * @param isRequired Whether every row must pass it, as for a part joined to the rest only by AND
+		 * @param isNegated Whether it's under NOT
+		 * @return Whether the variants can merge, as far as this part goes
 		 */
-		private List<InvocableSoql.Variant> match(SObject row) {
-			Object fieldValue = this.query?.getFieldValue(row, this.index);
-			String key = InvocableSoql.toKey(fieldValue, this.isCaseSensitive);
-			return this.isPattern ? this.matchPatterns(key) : this.matchKeys(key);
+		private Boolean plan(InvocableSoql.LogicNode node, Boolean isRequired, Boolean isNegated) {
+			Boolean isChildRequired = isRequired && node?.operator == 'AND';
+			Boolean isChildNegated = isNegated || node?.operator == 'NOT';
+			Boolean isMergeable = true;
+			node.isUniform = node?.index == null || this.varyingIndexes?.contains(node?.index) == false;
+			for (InvocableSoql.LogicNode child : node?.children) {
+				isMergeable &= this.plan(child, isChildRequired, isChildNegated);
+				node.isUniform &= child?.isUniform;
+			}
+			node.isSkipped = isRequired && node?.isUniform;
+			// A varying condition widens, which NOT would turn into narrowing
+			Boolean isCheckable =
+				node?.index == null ||
+				(this.query?.isCheckable(node?.index) && (node?.isUniform || isNegated == false));
+			return node?.isSkipped || (isMergeable && isCheckable);
+		}
+	}
+
+	/** @description A part of the condition logic: a condition, or an AND, OR, or NOT of other parts **/
+	private class LogicNode {
+		private List<InvocableSoql.LogicNode> children = new List<InvocableSoql.LogicNode>{};
+		/** @description For an AND with varying conditions, the part a merged query's rows are looked up by **/
+		private InvocableSoql.LogicNode driver;
+		/** @description The condition's index, for a condition **/
+		private Integer index;
+		/** @description Whether the merged query guarantees every row passes it, so Apex needn't check it **/
+		private Boolean isSkipped = false;
+		/** @description Whether it holds no varying conditions, so it passes for every variant or none **/
+		private Boolean isUniform = true;
+		/** @description AND, OR, or NOT; blank for a condition **/
+		private String operator;
+		/** @description For an AND with varying conditions, the varying parts besides its driver **/
+		private List<InvocableSoql.LogicNode> others = new List<InvocableSoql.LogicNode>{};
+
+		/**
+		 * @description Builds a part of the logic
+		 * @param operator AND, OR, or NOT; blank for a condition
+		 * @param index The condition's index, for a condition
+		 */
+		private LogicNode(String operator, Integer index) {
+			this.index = index;
+			this.operator = operator;
+		}
+	}
+
+	/**
+	 * @description Parses condition logic into `InvocableSoql.LogicNode`s. SOQL rejects AND and OR side by side
+	 * without parentheses, so which binds first doesn't matter
+	 */
+	private class LogicParser {
+		private Integer position = 0;
+		private List<String> tokens = new List<String>{};
+
+		/**
+		 * @description Splits the logic into tokens
+		 * @param logic Well-formed logic, by condition number, ex: "1 AND (2 OR NOT 3)"
+		 */
+		private LogicParser(String logic) {
+			Matcher matcher = InvocableSoql.TOKEN_PATTERN.matcher(logic ?? '');
+			while (matcher?.find() == true) {
+				this.tokens?.add(matcher?.group()?.toUpperCase());
+			}
 		}
 
 		/**
-		 * @description Indexes a variant's value: its pattern, or a key per EQUALS or IN value
-		 * @param position The variant's position in `variants`
+		 * @description Parses the logic
+		 * @return Its root, or null for logic without conditions
+		 */
+		private InvocableSoql.LogicNode parse() {
+			return this.tokens?.isEmpty() == true ? null : this.parseGroup();
+		}
+
+		/**
+		 * @description Parses operands joined by AND or OR, joining a run of the same one into one part
+		 * @return The part
+		 */
+		private InvocableSoql.LogicNode parseGroup() {
+			InvocableSoql.LogicNode result = this.parseOperand();
+			InvocableSoql.LogicNode joined;
+			while (this.isJoinNext()) {
+				String operator = this.next();
+				InvocableSoql.LogicNode operand = this.parseOperand();
+				if (joined?.operator != operator) {
+					joined = new InvocableSoql.LogicNode(operator, null);
+					joined?.children?.add(result);
+					result = joined;
+				}
+				joined?.children?.add(operand);
+			}
+			return result;
+		}
+
+		/**
+		 * @description Parses a condition number, NOT and its operand, or a parenthesized group
+		 * @return The part
+		 */
+		private InvocableSoql.LogicNode parseOperand() {
+			String token = this.next();
+			InvocableSoql.LogicNode operand;
+			if (token == 'NOT') {
+				operand = new InvocableSoql.LogicNode(token, null);
+				InvocableSoql.LogicNode negated = this.parseOperand();
+				operand?.children?.add(negated);
+			} else if (token == '(') {
+				operand = this.parseGroup();
+				// Skips the closing parenthesis
+				this.next();
+			} else {
+				Integer index = Integer.valueOf(token) - 1;
+				operand = new InvocableSoql.LogicNode(null, index);
+			}
+			return operand;
+		}
+
+		/**
+		 * @description Whether AND or OR comes next
+		 * @return True if the next token joins operands
+		 */
+		private Boolean isJoinNext() {
+			String token = (this.position < this.tokens?.size()) ? this.tokens?.get(this.position) : null;
+			return token == 'AND' || token == 'OR';
+		}
+
+		/**
+		 * @description Reads the next token
+		 * @return The token
+		 */
+		private String next() {
+			return this.tokens?.get(this.position++);
+		}
+	}
+
+	/**
+	 * @description Checks one condition on a merged query's rows, for each variant. It holds no reference back to the
+	 * splitter, whose variants collect every row, so what it reaches doesn't grow as the split runs
+	 */
+	private abstract class ConditionMatcher {
+		protected Integer index;
+		protected Boolean isCaseSensitive;
+		/** @description Whether the merged query leaves the condition out when its values vary **/
+		protected Boolean isDropped = false;
+		/** @description Whether a lookup finds few variants, so an AND can check the rest for just those **/
+		protected Boolean isSelective = false;
+		/** @description The variants still short of the rows they keep, by position **/
+		protected Set<Integer> openPositions = new Set<Integer>{};
+		protected InvocableSoql.Query query;
+		/** @description The current row's value for the condition's field **/
+		protected Object rowValue;
+		/** @description Each variant's value for the condition, by position **/
+		protected List<Object> values;
+
+		/**
+		 * @description Holds what checking needs
+		 * @param query The query
+		 * @param index The condition's index
+		 * @param values Each variant's value for the condition, by position
+		 */
+		protected ConditionMatcher(InvocableSoql.Query query, Integer index, List<Object> values) {
+			this.index = index;
+			this.isCaseSensitive = query?.isCaseSensitive(index);
+			this.query = query;
+			this.values = values;
+			for (Integer position = 0; position < values?.size(); position++) {
+				this.openPositions?.add(position);
+			}
+		}
+
+		/**
+		 * @description Unions every variant's values into one list of the field's type, since SOQL binds are strictly
+		 * typed. Equals and LIKE bind a list as they would a single value, ex: `Name = :list` matches any of them
+		 * @return The merged value
+		 */
+		public virtual Object getMergedValue() {
+			Type valueType = this.query?.getValueType(this.index);
+			List<Object> merged = InvocableSoql.initList(valueType);
+			for (Object value : this.values) {
+				List<Object> elements = InvocableSoql.toList(value);
+				merged?.addAll(elements);
+			}
+			return merged;
+		}
+
+		/**
+		 * @description Stops matching a variant that has every row it keeps. Lookups by key or pattern find few
+		 * variants, so only checkers that look through every variant drop it
+		 * @param position The variant's position
+		 */
+		public virtual void close(Integer position) {
+			this.openPositions?.remove(position);
+		}
+
+		/**
+		 * @description Reads the row's value for the condition's field, once for every check of the row
+		 * @param row A row from the merged query
+		 */
+		public virtual void prepare(SObject row) {
+			this.rowValue = this.query?.getFieldValue(row, this.index);
+		}
+
+		/**
+		 * @description Finds the variants the current row passes the condition for
+		 * @return Their positions; never changed by the caller
+		 */
+		public abstract Set<Integer> match();
+
+		/**
+		 * @description Checks the current row for one variant
+		 * @param position The variant's position
+		 * @return True or false, or null when unknown, ex: a range on a blank field
+		 */
+		public abstract Boolean test(Integer position);
+	}
+
+	/** @description Checks Equals, In, Not Equals, and Not In by key, so a row's key looks up its variants **/
+	private class KeyMatcher extends InvocableSoql.ConditionMatcher {
+		private Boolean isNegated;
+		/** @description Each key's variants **/
+		private Map<String, Set<Integer>> positionsByKey = new Map<String, Set<Integer>>{};
+		/** @description The variants with the current row's key, looked up once for every check of the row **/
+		private Set<Integer> rowPositions;
+
+		/**
+		 * @description Indexes each variant's values by key
+		 * @param query The query
+		 * @param index The condition's index
+		 * @param values Each variant's value for the condition, by position
+		 */
+		private KeyMatcher(InvocableSoql.Query query, Integer index, List<Object> values) {
+			super(query, index, values);
+			String operator = query?.getOperator(index);
+			this.isNegated = operator == 'NOT_EQUALS' || operator == 'NOT_IN';
+			this.isDropped = this.isNegated;
+			this.isSelective = this.isNegated == false;
+			for (Integer position = 0; position < values?.size(); position++) {
+				this.addVariant(position);
+			}
+		}
+
+		/**
+		 * @description Finds the variants with the row's key, or for Not Equals and Not In, the other open ones
+		 * @return Their positions
+		 */
+		public override Set<Integer> match() {
+			Set<Integer> others = this.isNegated ? this.openPositions?.clone() : null;
+			others?.removeAll(this.rowPositions);
+			return others ?? this.rowPositions;
+		}
+
+		/**
+		 * @description Looks up the variants with the row's key
+		 * @param row A row from the merged query
+		 */
+		public override void prepare(SObject row) {
+			super.prepare(row);
+			String rowKey = this.toKey(this.rowValue);
+			this.rowPositions = this.positionsByKey?.get(rowKey) ?? InvocableSoql.NO_POSITIONS;
+		}
+
+		/**
+		 * @description Checks whether the variant holds the row's key
+		 * @param position The variant's position
+		 * @return Whether the row passes
+		 */
+		public override Boolean test(Integer position) {
+			return this.rowPositions?.contains(position) != this.isNegated;
+		}
+
+		/**
+		 * @description Indexes a variant's value, or each of its values for In and Not In
+		 * @param position The variant's position
 		 */
 		private void addVariant(Integer position) {
-			Object value = this.variants?.get(position)?.values?.get(this.index);
-			if (this.isPattern == true) {
-				InvocableSoql.LikePattern pattern = new InvocableSoql.LikePattern((String) value, this.isCaseSensitive);
+			Object value = this.values?.get(position);
+			for (Object element : InvocableSoql.toList(value)) {
+				String key = this.toKey(element);
+				Set<Integer> positions = this.positionsByKey?.get(key) ?? new Set<Integer>{};
+				positions?.add(position);
+				this.positionsByKey?.put(key, positions);
+			}
+		}
+
+		/**
+		 * @description Keys a value per `InvocableSoql.toKey`, with '' as null, since SOQL matches '' to blank fields
+		 * @param value A value
+		 * @return Its key
+		 */
+		private String toKey(Object value) {
+			String key = InvocableSoql.toKey(value, this.isCaseSensitive);
+			return String.isEmpty(key) ? null : key;
+		}
+	}
+
+	/** @description Checks Is Null: whether the field is blank, for true, or has a value, for false **/
+	private class NullCheckMatcher extends InvocableSoql.ConditionMatcher {
+		/** @description Each check's variants: true finds blank fields, false filled ones **/
+		private Map<Boolean, Set<Integer>> positionsByCheck = new Map<Boolean, Set<Integer>>{
+			true => new Set<Integer>{},
+			false => new Set<Integer>{}
+		};
+
+		/**
+		 * @description Groups the variants by check
+		 * @param query The query
+		 * @param index The condition's index
+		 * @param values Each variant's value for the condition, by position
+		 */
+		private NullCheckMatcher(InvocableSoql.Query query, Integer index, List<Object> values) {
+			super(query, index, values);
+			this.isDropped = true;
+			for (Integer position = 0; position < values?.size(); position++) {
+				Boolean isNullCheck = (Boolean) this.values?.get(position);
+				this.positionsByCheck?.get(isNullCheck)?.add(position);
+			}
+		}
+
+		/**
+		 * @description Drops a variant that has every row it keeps
+		 * @param position The variant's position
+		 */
+		public override void close(Integer position) {
+			super.close(position);
+			for (Set<Integer> positions : this.positionsByCheck?.values()) {
+				positions?.remove(position);
+			}
+		}
+
+		/**
+		 * @description Finds the variants whose check the row's value passes
+		 * @return Their positions
+		 */
+		public override Set<Integer> match() {
+			return this.positionsByCheck?.get(this.rowValue == null);
+		}
+
+		/**
+		 * @description Checks the row's value against the variant's check
+		 * @param position The variant's position
+		 * @return Whether the row passes
+		 */
+		public override Boolean test(Integer position) {
+			return this.values?.get(position) == (this.rowValue == null);
+		}
+	}
+
+	/** @description Checks Starts With, Ends With, Contains, and simple Like patterns **/
+	private class PatternMatcher extends InvocableSoql.ConditionMatcher {
+		private InvocableSoql.LikePatternIndex patternIndex = new InvocableSoql.LikePatternIndex();
+		/** @description Each variant's pattern, by position **/
+		private List<InvocableSoql.LikePattern> patterns = new List<InvocableSoql.LikePattern>{};
+		private String rowKey;
+
+		/**
+		 * @description Parses and indexes each variant's pattern
+		 * @param query The query
+		 * @param index The condition's index
+		 * @param values Each variant's value for the condition, by position
+		 */
+		private PatternMatcher(InvocableSoql.Query query, Integer index, List<Object> values) {
+			super(query, index, values);
+			this.isSelective = true;
+			for (Integer position = 0; position < values?.size(); position++) {
+				String value = (String) this.values?.get(position);
+				InvocableSoql.LikePattern pattern = new InvocableSoql.LikePattern(value, this.isCaseSensitive);
 				this.patterns?.add(pattern);
-			} else {
-				for (Object element : InvocableSoql.toList(value)) {
-					String key = InvocableSoql.toKey(element, this.isCaseSensitive);
-					Set<Integer> positions = this.variantsByKey?.get(key) ?? new Set<Integer>{};
-					positions?.add(position);
-					this.variantsByKey?.put(key, positions);
-				}
+				this.patternIndex?.add(pattern, position);
 			}
 		}
 
 		/**
-		 * @description Looks up the row's value by key
-		 * @param key The row's key for the varying field
-		 * @return The variants with that value
+		 * @description Looks up the patterns the row's value matches
+		 * @return Their variants' positions
 		 */
-		private List<InvocableSoql.Variant> matchKeys(String key) {
-			List<InvocableSoql.Variant> matches = new List<InvocableSoql.Variant>{};
-			for (Integer position : this.variantsByKey?.get(key) ?? new Set<Integer>{}) {
-				InvocableSoql.Variant variant = this.variants?.get(position);
-				matches?.add(variant);
-			}
-			return matches;
+		public override Set<Integer> match() {
+			return this.patternIndex?.match(this.rowKey);
 		}
 
 		/**
-		 * @description Tests the row's value against each variant's pattern
-		 * @param key The row's key for the varying field
-		 * @return The variants whose pattern matches
+		 * @description Keys the row's value
+		 * @param row A row from the merged query
 		 */
-		private List<InvocableSoql.Variant> matchPatterns(String key) {
-			List<InvocableSoql.Variant> matches = new List<InvocableSoql.Variant>{};
-			for (Integer position = 0; position < this.patterns?.size(); position++) {
-				if (this.patterns?.get(position)?.matches(key) == true) {
-					InvocableSoql.Variant variant = this.variants?.get(position);
-					matches?.add(variant);
+		public override void prepare(SObject row) {
+			super.prepare(row);
+			this.rowKey = InvocableSoql.toKey(this.rowValue, this.isCaseSensitive);
+		}
+
+		/**
+		 * @description Matches the row's value against the variant's pattern
+		 * @param position The variant's position
+		 * @return Whether the row passes
+		 */
+		public override Boolean test(Integer position) {
+			return this.patterns?.get(position)?.matches(this.rowKey);
+		}
+	}
+
+	/** @description Checks Greater Than, Less Than, and their Or Equal forms on numbers, dates, date/times, and times **/
+	private class RangeMatcher extends InvocableSoql.ConditionMatcher {
+		/** @description Each variant's bound, by position **/
+		private List<InvocableSoql.RangeBound> bounds = new List<InvocableSoql.RangeBound>{};
+		/** @description Whether a value equal to the bound passes, as for Greater or Equal **/
+		private Boolean isInclusive;
+		/** @description Whether values above the bound pass, as for Greater Than **/
+		private Boolean isUpward;
+		/** @description Each variant's bound, loosest first, so a row passes a run of them from the start **/
+		private List<InvocableSoql.RangeBound> loosestFirst = new List<InvocableSoql.RangeBound>{};
+		private Decimal rowOrdinal;
+		/** @description The variants without a bound, which SOQL passes every row for, even a blank field **/
+		private Set<Integer> unbounded = new Set<Integer>{};
+
+		/**
+		 * @description Orders each variant's bound
+		 * @param query The query
+		 * @param index The condition's index
+		 * @param values Each variant's value for the condition, by position
+		 */
+		private RangeMatcher(InvocableSoql.Query query, Integer index, List<Object> values) {
+			super(query, index, values);
+			String operator = query?.getOperator(index);
+			this.isInclusive = operator?.endsWith('OR_EQUAL') == true;
+			this.isUpward = operator?.startsWith('GREATER') == true;
+			// Greater Than's loosest bound is its lowest, and Less Than's its highest
+			Integer direction = this.isUpward ? 1 : -1;
+			for (Integer position = 0; position < values?.size(); position++) {
+				Object value = this.values?.get(position);
+				Decimal ordinal = InvocableSoql.toOrdinal(value);
+				InvocableSoql.RangeBound bound = new InvocableSoql.RangeBound(ordinal, position, direction);
+				this.bounds?.add(bound);
+				if (ordinal == null) {
+					this.unbounded?.add(position);
+				} else {
+					this.loosestFirst?.add(bound);
 				}
 			}
-			return matches;
+			this.loosestFirst?.sort();
+			// A variant without a bound needs every row, so the merged query can't bound the field
+			this.isDropped = this.unbounded?.isEmpty() == false;
+		}
+
+		/**
+		 * @description Drops a variant that has every row it keeps, so rows stop running past its bound
+		 * @param position The variant's position
+		 */
+		public override void close(Integer position) {
+			super.close(position);
+			Boolean isUnbounded = this.unbounded?.remove(position) == true;
+			if (isUnbounded == false) {
+				InvocableSoql.RangeBound bound = this.bounds?.get(position);
+				Integer next = this.loosestFirst?.indexOf(bound);
+				this.loosestFirst?.remove(next);
+			}
+		}
+
+		/**
+		 * @description The loosest bound, so the query reads every row any variant needs
+		 * @return The loosest variant's value
+		 */
+		public override Object getMergedValue() {
+			Integer loosest = this.loosestFirst?.get(0)?.position;
+			return this.values?.get(loosest);
+		}
+
+		/**
+		 * @description Collects the bounds the row's value passes, from the loosest until one fails, and the variants
+		 * without one
+		 * @return Their variants' positions; only those without a bound for a blank field
+		 */
+		public override Set<Integer> match() {
+			Set<Integer> matched = this.unbounded?.clone();
+			Integer next = 0;
+			Boolean isPassing = this.rowOrdinal != null;
+			while (isPassing && next < this.loosestFirst?.size()) {
+				InvocableSoql.RangeBound bound = this.loosestFirst?.get(next++);
+				isPassing = this.passes(bound?.ordinal);
+				if (isPassing) {
+					matched?.add(bound?.position);
+				}
+			}
+			return matched;
+		}
+
+		/**
+		 * @description Orders the row's value
+		 * @param row A row from the merged query
+		 */
+		public override void prepare(SObject row) {
+			super.prepare(row);
+			this.rowOrdinal = InvocableSoql.toOrdinal(this.rowValue);
+		}
+
+		/**
+		 * @description Compares the row's value with the variant's bound
+		 * @param position The variant's position
+		 * @return Whether the row passes: always without a bound; null for a blank field, which SOQL treats as unknown
+		 */
+		public override Boolean test(Integer position) {
+			Decimal bound = this.bounds?.get(position)?.ordinal;
+			Boolean isPassing;
+			if (bound == null) {
+				isPassing = true;
+			} else if (this.rowOrdinal != null) {
+				isPassing = this.passes(bound);
+			}
+			return isPassing;
+		}
+
+		/**
+		 * @description Compares the row's value with a bound by the operator
+		 * @param bound A bound, per `InvocableSoql.toOrdinal`
+		 * @return Whether the row's value passes
+		 */
+		private Boolean passes(Decimal bound) {
+			return (this.rowOrdinal == bound) ? this.isInclusive : (this.rowOrdinal > bound) == this.isUpward;
+		}
+	}
+
+	/** @description A variant's range bound, sorted loosest first **/
+	private class RangeBound implements Comparable {
+		/** @description 1 to sort lowest first, or -1 for highest first **/
+		private Integer direction;
+		private Decimal ordinal;
+		private Integer position;
+
+		/**
+		 * @description Holds a bound
+		 * @param ordinal The bound, per `InvocableSoql.toOrdinal`
+		 * @param position Its variant's position
+		 * @param direction 1 to sort lowest first, or -1 for highest first
+		 */
+		private RangeBound(Decimal ordinal, Integer position, Integer direction) {
+			this.direction = direction;
+			this.ordinal = ordinal;
+			this.position = position;
+		}
+
+		/**
+		 * @description Sorts by bound, in the direction
+		 * @param other Another bound
+		 * @return Negative to sort this first, positive to sort it after, or 0
+		 */
+		public Integer compareTo(Object other) {
+			Decimal otherOrdinal = ((InvocableSoql.RangeBound) other)?.ordinal;
+			Integer order = (this.ordinal > otherOrdinal) ? 1 : 0;
+			order = (this.ordinal < otherOrdinal) ? -1 : order;
+			return order * this.direction;
 		}
 	}
 
@@ -2162,7 +3143,7 @@ public inherited sharing class InvocableSoql {
 		private String queryString;
 		/** @description Null until a query fills it, so the batch can tell which variants still need one **/
 		private List<SObject> records;
-		/** @description Each value as JSON, to tell variants apart and find the condition that differs **/
+		/** @description Each value as JSON, to tell variants apart and find the conditions that differ **/
 		private List<String> valueKeys = new List<String>{};
 		private List<Object> values;
 
