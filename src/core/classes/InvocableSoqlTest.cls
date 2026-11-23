@@ -390,6 +390,30 @@ private class InvocableSoqlTest {
 	}
 
 	@IsTest
+	private static void shouldIgnoreSharingInSystemMode() {
+		// Activities are private by default, so another user can't see this task unless sharing is ignored
+		DatabaseLayer.useRealSoql();
+		insert new Task(Subject = 'Hidden');
+		User viewer = InvocableSoqlTest.initStandardUser();
+		InvocableSoql.Query query = InvocableSoqlTest.initQuery('Task', null);
+		query.conditions.add(InvocableSoqlTest.initCondition('Subject', 'EQUALS', 'Hidden'));
+		InvocableSoql.Input systemMode = InvocableSoqlTest.initInput(query);
+		systemMode.accessLevel = 'SYSTEM_MODE';
+		InvocableSoql.Input userMode = InvocableSoqlTest.initInput(query);
+		List<InvocableSoql.Input> inputs = new List<InvocableSoql.Input>{ systemMode, userMode };
+		List<InvocableSoql.Output> outputs;
+
+		Test.startTest();
+		System.runAs(viewer) {
+			outputs = new InvocableSoqlTest.FlowCaller().invoke(inputs);
+		}
+		Test.stopTest();
+
+		Assert.areEqual(1, outputs?.get(0)?.records?.size(), 'SYSTEM_MODE applied sharing');
+		Assert.areEqual(0, outputs?.get(1)?.records?.size(), 'USER_MODE ignored sharing');
+	}
+
+	@IsTest
 	private static void shouldRejectInvalidDefinitions() {
 		InvocableSoql.Query unknownField = InvocableSoqlTest.initQuery('Account', null);
 		unknownField.conditions.add(InvocableSoqlTest.initCondition('Not_A_Field__c', 'EQUALS', 'x'));
@@ -1482,6 +1506,23 @@ private class InvocableSoqlTest {
 		return query;
 	}
 
+	private static User initStandardUser() {
+		Profile standard = [SELECT Id FROM Profile WHERE Name = 'Standard User' LIMIT 1];
+		User viewer = new User(
+			Alias = 'viewer',
+			EmailEncodingKey = 'UTF-8',
+			Email = 'viewer@example.com.invalid',
+			LanguageLocaleKey = 'en_US',
+			LastName = 'Viewer',
+			LocaleSidKey = 'en_US',
+			ProfileId = standard?.Id,
+			TimeZoneSidKey = 'America/New_York',
+			Username = 'viewer' + DateTime.now()?.getTime() + '@example.com.invalid'
+		);
+		insert viewer;
+		return viewer;
+	}
+
 	private static InvocableSoql.Input initTextInput(InvocableSoql.Query query, String text1) {
 		InvocableSoql.Input input = InvocableSoqlTest.initInput(query);
 		input.text1 = text1;
@@ -1524,6 +1565,18 @@ private class InvocableSoqlTest {
 	}
 
 	// **** INNER **** //
+	/** @description Calls the action with sharing, as Flow does, since Flow gives it no Apex caller to inherit from **/
+	private with sharing class FlowCaller {
+		/**
+		 * @description Runs the action
+		 * @param inputs One input per interview
+		 * @return One output per input
+		 */
+		private List<InvocableSoql.Output> invoke(List<InvocableSoql.Input> inputs) {
+			return InvocableSoql.invoke(inputs);
+		}
+	}
+
 	/** @description Answers every query with the same rows, and records each one so tests can check how it was built **/
 	private class QuerySpy implements MockSoql.Simulator {
 		private List<Soql> queries = new List<Soql>{};

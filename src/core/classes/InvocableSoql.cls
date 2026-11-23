@@ -403,7 +403,7 @@ public inherited sharing class InvocableSoql {
 		/** @description Text, not an enum, since Flow can't pass System.AccessLevel **/
 		@InvocableVariable(
 			label='Access Level'
-			description='USER_MODE (default) enforces the running user\'s object permissions, field-level security, and sharing rules. SYSTEM_MODE ignores object permissions and field-level security, but sharing rules still apply.'
+			description='USER_MODE (default) enforces the running user\'s object permissions, field-level security, and sharing rules. SYSTEM_MODE ignores all three, like Get Records in a flow that runs in system context without sharing.'
 		)
 		public String accessLevel;
 
@@ -1928,7 +1928,10 @@ public inherited sharing class InvocableSoql {
 				this.runMerged(index, mergeable);
 			}
 			for (InvocableSoql.Variant variant : this.variants?.values()) {
-				variant.records = variant?.records ?? this.query?.toSoql(variant?.values, this.accessLevel)?.query();
+				if (variant?.records == null) {
+					Soql builder = this.query?.toSoql(variant?.values, this.accessLevel);
+					variant.records = this.runQuery(builder);
+				}
 				variant.queryString = this.query?.toQueryString(variant?.values, this.accessLevel);
 			}
 		}
@@ -1945,8 +1948,21 @@ public inherited sharing class InvocableSoql {
 			List<Object> values = mergeable?.get(0)?.values?.clone();
 			Object mergedValue = splitter?.getMergedValue();
 			values?.set(index, mergedValue);
-			List<SObject> rows = this.query?.toMergedSoql(values, this.filteredIndexes, this.accessLevel)?.query();
+			Soql merged = this.query?.toMergedSoql(values, this.filteredIndexes, this.accessLevel);
+			List<SObject> rows = this.runQuery(merged);
 			splitter?.split(rows);
+		}
+
+		/**
+		 * @description Runs SYSTEM_MODE queries without sharing, like Get Records in a flow that runs in system
+		 * context. `Soql` inherits sharing from its caller, and Flow calls the action with none, so it would run with
+		 * sharing. USER_MODE enforces sharing itself
+		 * @param builder The query
+		 * @return The rows
+		 */
+		private List<SObject> runQuery(Soql builder) {
+			Boolean isSystemMode = this.accessLevel == System.AccessLevel.SYSTEM_MODE;
+			return isSystemMode ? new InvocableSoql.SystemModeRunner().run(builder) : builder?.query();
 		}
 	}
 
@@ -2025,6 +2041,18 @@ public inherited sharing class InvocableSoql {
 				pieces?.add(literal);
 			}
 			return String.join(pieces, '\\');
+		}
+	}
+
+	/** @description Runs queries without sharing, which `Soql` inherits, since it's `inherited sharing` **/
+	private without sharing class SystemModeRunner {
+		/**
+		 * @description Runs the query
+		 * @param builder A SYSTEM_MODE query
+		 * @return The rows
+		 */
+		private List<SObject> run(Soql builder) {
+			return builder?.query();
 		}
 	}
 

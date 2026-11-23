@@ -8,7 +8,7 @@ import {
 	parsePath,
 	toBooleanConstant
 } from "c/flowResourceMenu";
-import FlowPropertyEditor, { ACCESS_LEVELS, ACCESS_LEVEL_HELP, NONE_OPTION } from "c/flowPropertyEditor";
+import FlowPropertyEditor, { ACCESS_LEVELS, NONE_OPTION } from "c/flowPropertyEditor";
 import { getAllFieldsPath, resolveField } from "c/soqlFieldPath";
 
 const CUSTOM = "CUSTOM";
@@ -130,6 +130,9 @@ const SLOT_PREFIXES = {
 };
 const RECORD_SLOTS = toSlotNames(RECORD_SLOT_PREFIX);
 // The Limit and Offset inputs' bounds, which they show but don't enforce; SOQL rejects an offset over 2,000
+/** @description Unlike the DML actions' SYSTEM_MODE, the query's ignores sharing, like Get Records in system context */
+const ACCESS_LEVEL_HELP =
+	"USER_MODE (default) enforces the running user's object permissions, field-level security, and sharing rules. SYSTEM_MODE ignores all three, like Get Records in a flow that runs in system context without sharing.";
 const ROW_LIMIT_RANGE = { min: 1, max: 50000, errorString: "Enter a limit from 1 to 50,000." };
 const ROW_OFFSET_RANGE = { min: 0, max: 2000, errorString: "Enter an offset from 0 to 2,000, the most SOQL can skip." };
 const USAGES = [
