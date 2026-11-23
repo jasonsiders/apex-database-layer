@@ -1250,7 +1250,7 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description Validated by Schema.describeSObjects, which throws for an unknown object
+		 * @description Validated by `DatabaseLayerUtils.Schema.describeObject`, which throws for an unknown object
 		 * @return The object's describe
 		 * @throws System.IllegalArgumentException When the object is blank
 		 */
@@ -1258,8 +1258,7 @@ public inherited sharing class InvocableSoql {
 			if (String.isBlank(this.objectApiName)) {
 				throw new IllegalArgumentException('Missing object');
 			}
-			List<String> objectApiNames = new List<String>{ this.objectApiName };
-			return Schema.describeSObjects(objectApiNames, SObjectDescribeOptions.DEFERRED)?.get(0);
+			return DatabaseLayer.Utils.Schema.describeObject(this.objectApiName);
 		}
 
 		/**
@@ -1288,16 +1287,11 @@ public inherited sharing class InvocableSoql {
 		 * @throws System.IllegalArgumentException When the object has no relationship by that name
 		 */
 		private DescribeFieldResult findLookup(DescribeSObjectResult child, String relationshipName, String path) {
-			DescribeFieldResult lookup;
-			for (SObjectField field : child?.fields?.getMap()?.values()) {
-				DescribeFieldResult describe = field?.getDescribe();
-				String candidate = describe?.getRelationshipName();
-				lookup = (relationshipName?.equalsIgnoreCase(candidate) == true) ? describe : lookup;
-			}
+			SObjectField lookup = DatabaseLayer.Utils.Schema.findLookup(child, relationshipName);
 			if (lookup == null) {
 				throw new IllegalArgumentException('Invalid field for ' + this.objectApiName + ': ' + path);
 			}
-			return lookup;
+			return lookup?.getDescribe();
 		}
 
 		/**
@@ -1307,8 +1301,7 @@ public inherited sharing class InvocableSoql {
 		 */
 		private DescribeSObjectResult describeReference(DescribeFieldResult lookup) {
 			String parentName = DatabaseLayer.Utils.Schema.toEntityName(lookup);
-			List<String> parentNames = new List<String>{ parentName };
-			return Schema.describeSObjects(parentNames, SObjectDescribeOptions.DEFERRED)?.get(0);
+			return DatabaseLayer.Utils.Schema.describeObject(parentName);
 		}
 
 		/**

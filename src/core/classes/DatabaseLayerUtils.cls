@@ -258,18 +258,45 @@ public without sharing class DatabaseLayerUtils {
 		 * @throws System.AuraHandledException When the object doesn't exist
 		 */
 		public List<SObjectField> describeFields(String objectApiName) {
-			List<String> objectApiNames = new List<String>{ objectApiName };
 			try {
-				// This class's name hides the Schema namespace's methods
-				List<DescribeSObjectResult> objects = System.Schema.describeSObjects(
-					objectApiNames,
-					SObjectDescribeOptions.DEFERRED
-				);
-				return objects?.get(0)?.fields?.getMap()?.values();
+				DescribeSObjectResult objectDescribe = this.describeObject(objectApiName);
+				return objectDescribe?.fields?.getMap()?.values();
 			} catch (System.InvalidParameterValueException error) {
 				String message = error?.getMessage();
 				throw new System.AuraHandledException(message);
 			}
+		}
+
+		/**
+		 * @description Describes an object, DEFERRED so its fields are only described once read
+		 * @param objectApiName The object's API name
+		 * @return The object's describe
+		 * @throws System.InvalidParameterValueException When the object doesn't exist
+		 */
+		public DescribeSObjectResult describeObject(String objectApiName) {
+			List<String> objectApiNames = new List<String>{ objectApiName };
+			// This class's name hides the Schema namespace's methods
+			List<DescribeSObjectResult> objects = System.Schema.describeSObjects(
+				objectApiNames,
+				SObjectDescribeOptions.DEFERRED
+			);
+			return objects?.get(0);
+		}
+
+		/**
+		 * @description Finds an object's lookup by its relationship name, ex: Contact.AccountId for "Account"
+		 * @param objectDescribe The object holding the lookup
+		 * @param relationshipName The relationship name, in any case
+		 * @return The lookup, or null when the object has no relationship by that name
+		 */
+		public SObjectField findLookup(DescribeSObjectResult objectDescribe, String relationshipName) {
+			List<SObjectField> fields = objectDescribe?.fields?.getMap()?.values() ?? new List<SObjectField>{};
+			SObjectField lookup;
+			for (SObjectField field : fields) {
+				String candidate = field?.getDescribe()?.getRelationshipName();
+				lookup = (relationshipName?.equalsIgnoreCase(candidate) == true) ? field : lookup;
+			}
+			return lookup;
 		}
 
 		/**

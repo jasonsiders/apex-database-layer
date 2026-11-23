@@ -900,13 +900,9 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @return The lookup, or null if the object has none by that name
 		 */
 		private SObjectField findStep(String entityName, String name, Boolean isLast) {
-			SObjectField step;
-			for (SObjectField field : this.getAllFields(entityName)) {
-				DescribeFieldResult describe = field?.getDescribe();
-				String candidate = isLast ? describe?.getName() : describe?.getRelationshipName();
-				step = (name?.equalsIgnoreCase(candidate) == true) ? field : step;
-			}
-			return step;
+			DescribeSObjectResult objectDescribe = DatabaseLayer.Utils.Schema.describeObject(entityName);
+			SObjectField field = objectDescribe?.fields?.getMap()?.get(name);
+			return isLast ? field : DatabaseLayer.Utils.Schema.findLookup(objectDescribe, name);
 		}
 
 		/**
@@ -914,15 +910,9 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @param entityName The object
 		 * @return All fields on the object, or an empty list if it cannot be described
 		 */
-		@SuppressWarnings('PMD.EagerlyLoadedDescribeSObjectResult')
 		private List<SObjectField> getAllFields(String entityName) {
-			// Note: Not sure why this PMD rule is flagging; the describe is explicitly deferred
-			List<Schema.DescribeSObjectResult> describes = Schema.describeSObjects(
-				new List<String>{ entityName },
-				Schema.SObjectDescribeOptions.DEFERRED
-			);
-			Schema.DescribeSObjectResult describe = describes?.isEmpty() == false ? describes?.get(0) : null;
-			return describe?.fields?.getMap()?.values() ?? new List<SObjectField>();
+			DescribeSObjectResult objectDescribe = DatabaseLayer.Utils.Schema.describeObject(entityName);
+			return objectDescribe?.fields?.getMap()?.values() ?? new List<SObjectField>();
 		}
 
 		/**

@@ -218,4 +218,28 @@ private class DatabaseLayerUtilsTest {
 		);
 		Assert.isNull(notLookup, 'Named an object for a field that is not a lookup');
 	}
+
+	@IsTest
+	private static void shouldDescribeAnObjectByName() {
+		Test.startTest();
+		DescribeSObjectResult describe = DatabaseLayer.Utils.Schema.describeObject('Contact');
+		Test.stopTest();
+
+		Assert.areEqual(Contact.SObjectType, describe?.getSObjectType(), 'Wrong object');
+	}
+
+	@IsTest
+	private static void shouldFindALookupByItsRelationshipName() {
+		DescribeSObjectResult contactDescribe = Contact.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED);
+
+		Test.startTest();
+		SObjectField lookup = DatabaseLayer.Utils.Schema.findLookup(contactDescribe, 'account');
+		SObjectField notRelationship = DatabaseLayer.Utils.Schema.findLookup(contactDescribe, 'LastName');
+		SObjectField noObject = DatabaseLayer.Utils.Schema.findLookup(null, 'Account');
+		Test.stopTest();
+
+		Assert.areEqual(Contact.AccountId, lookup, 'Wrong lookup');
+		Assert.isNull(notRelationship, 'Found a lookup by a field name, not a relationship name');
+		Assert.isNull(noObject, 'Found a lookup without an object');
+	}
 }
