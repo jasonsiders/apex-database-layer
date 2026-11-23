@@ -1801,7 +1801,7 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description A null value runs alone, and so does a LIKE pattern that a split can't reproduce
+		 * @description A null or empty text value runs alone, and so does a LIKE pattern that a split can't reproduce
 		 * @param index The varying condition's index
 		 * @param value A variant's value for it
 		 * @return Whether a merged query can serve the variant
@@ -1811,7 +1811,9 @@ public inherited sharing class InvocableSoql {
 			Boolean isSimple = (isPattern && value != null)
 				? new InvocableSoql.LikePattern((String) value, false)?.isSimple
 				: true;
-			return value != null && isSimple == true;
+			// SOQL matches '' to null, but a split keys '' and null apart, so '' runs alone, like null
+			Boolean hasEmptyText = InvocableSoql.toList(value)?.contains('') == true;
+			return value != null && hasEmptyText == false && isSimple == true;
 		}
 
 		/**
