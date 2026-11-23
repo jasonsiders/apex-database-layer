@@ -133,7 +133,7 @@ describe("c-soql-query-editor", () => {
 		expect(mappings.map((event) => event.detail.typeName)).toEqual([
 			"U__record",
 			"U__records",
-			...Array.from({ length: 10 }, (_, index) => `T__recordCollection${index + 1}`)
+			...Array.from({ length: 5 }, (_, index) => `T__recordCollection${index + 1}`)
 		]);
 		expect(mappings.every((event) => event.detail.typeValue === "Contact")).toBe(true);
 	});
@@ -335,30 +335,30 @@ describe("c-soql-query-editor", () => {
 	});
 
 	it("flags a condition when every slot of its type is taken", async () => {
-		const conditions = Array.from({ length: 11 }, (_, index) => ({
+		const conditions = Array.from({ length: 6 }, (_, index) => ({
 			field: "LastName",
 			operator: "EQUALS",
-			...(index < 10 ? { slot: `text${index + 1}` } : { value: "Old" })
+			...(index < 5 ? { slot: `text${index + 1}` } : { value: "Old" })
 		}));
 		const { element, events } = await render({ objectApiName: "Contact", fields: [], conditions, orderBy: [] });
 		// After Done, errors track each change; the slot error must win over the emptied row's
 		expect(element.validate()).toEqual([]);
 
-		await fire(valuePicker(element, 10), { value: "textVar", valueDataType: "reference" });
+		await fire(valuePicker(element, 5), { value: "textVar", valueDataType: "reference" });
 
 		const savedSlots = events.filter((event) => event.detail?.name?.startsWith("text"));
 		expect(savedSlots).toEqual([]);
-		expect(rows(element, "condition")[10].textContent).toContain("up to 10 resources");
-		expect(rows(element, "condition")[10].textContent).not.toContain("Enter a value.");
+		expect(rows(element, "condition")[5].textContent).toContain("up to 5 resources");
+		expect(rows(element, "condition")[5].textContent).not.toContain("Enter a value.");
 		// The old value is dropped rather than saved in place of the picked resource, so Done still flags the row:
-		expect(savedDefinition(events).conditions[10]).toEqual({ field: "LastName", operator: "EQUALS" });
-		const tooManyError = "This action takes up to 10 resources of this type.";
-		expect(element.validate()).toEqual([{ key: "condition-10", errorString: tooManyError }]);
+		expect(savedDefinition(events).conditions[5]).toEqual({ field: "LastName", operator: "EQUALS" });
+		const tooManyError = "This action takes up to 5 resources of this type.";
+		expect(element.validate()).toEqual([{ key: "condition-5", errorString: tooManyError }]);
 		// The error moves with its row through later edits:
 		rows(element, "condition")[0].querySelector("lightning-button-icon").click();
 		await flush();
-		expect(rows(element, "condition")[9].textContent).toContain("up to 10 resources");
-		expect(savedDefinition(events).conditions[9]).toEqual({ field: "LastName", operator: "EQUALS" });
+		expect(rows(element, "condition")[4].textContent).toContain("up to 5 resources");
+		expect(savedDefinition(events).conditions[4]).toEqual({ field: "LastName", operator: "EQUALS" });
 	});
 
 	it("removes a condition and its slot", async () => {
@@ -609,9 +609,7 @@ describe("c-soql-query-editor", () => {
 		const source = readFileSync(path.resolve(__dirname, "../../../classes/InvocableSoql.cls"), "utf8");
 		const declared = new Set([...source.matchAll(/public [\w<>]+ (\w+\d+);/g)].map((match) => match[1]));
 
-		const expected = prefixes.flatMap((prefix) =>
-			Array.from({ length: 10 }, (_, index) => `${prefix}${index + 1}`)
-		);
+		const expected = prefixes.flatMap((prefix) => Array.from({ length: 5 }, (_, index) => `${prefix}${index + 1}`));
 		expect(expected.filter((name) => !declared.has(name))).toEqual([]);
 		expect(declared.size).toBe(expected.length);
 	});

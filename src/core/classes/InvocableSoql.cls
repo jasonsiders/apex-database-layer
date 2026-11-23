@@ -447,36 +447,6 @@ public inherited sharing class InvocableSoql {
 			description='A text value for a query condition. The action\'s editor assigns it.'
 		)
 		public String text5;
-		/** @description A text value for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Text 6'
-			description='A text value for a query condition. The action\'s editor assigns it.'
-		)
-		public String text6;
-		/** @description A text value for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Text 7'
-			description='A text value for a query condition. The action\'s editor assigns it.'
-		)
-		public String text7;
-		/** @description A text value for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Text 8'
-			description='A text value for a query condition. The action\'s editor assigns it.'
-		)
-		public String text8;
-		/** @description A text value for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Text 9'
-			description='A text value for a query condition. The action\'s editor assigns it.'
-		)
-		public String text9;
-		/** @description A text value for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Text 10'
-			description='A text value for a query condition. The action\'s editor assigns it.'
-		)
-		public String text10;
 
 		// * Number *
 		/** @description A number value for a condition; the action's editor assigns it **/
@@ -509,36 +479,6 @@ public inherited sharing class InvocableSoql {
 			description='A number value for a query condition. The action\'s editor assigns it.'
 		)
 		public Decimal number5;
-		/** @description A number value for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Number 6'
-			description='A number value for a query condition. The action\'s editor assigns it.'
-		)
-		public Decimal number6;
-		/** @description A number value for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Number 7'
-			description='A number value for a query condition. The action\'s editor assigns it.'
-		)
-		public Decimal number7;
-		/** @description A number value for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Number 8'
-			description='A number value for a query condition. The action\'s editor assigns it.'
-		)
-		public Decimal number8;
-		/** @description A number value for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Number 9'
-			description='A number value for a query condition. The action\'s editor assigns it.'
-		)
-		public Decimal number9;
-		/** @description A number value for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Number 10'
-			description='A number value for a query condition. The action\'s editor assigns it.'
-		)
-		public Decimal number10;
 
 		// * Date *
 		/** @description A date value for a condition; the action's editor assigns it **/
@@ -571,36 +511,6 @@ public inherited sharing class InvocableSoql {
 			description='A date value for a query condition. The action\'s editor assigns it.'
 		)
 		public Date date5;
-		/** @description A date value for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Date 6'
-			description='A date value for a query condition. The action\'s editor assigns it.'
-		)
-		public Date date6;
-		/** @description A date value for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Date 7'
-			description='A date value for a query condition. The action\'s editor assigns it.'
-		)
-		public Date date7;
-		/** @description A date value for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Date 8'
-			description='A date value for a query condition. The action\'s editor assigns it.'
-		)
-		public Date date8;
-		/** @description A date value for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Date 9'
-			description='A date value for a query condition. The action\'s editor assigns it.'
-		)
-		public Date date9;
-		/** @description A date value for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Date 10'
-			description='A date value for a query condition. The action\'s editor assigns it.'
-		)
-		public Date date10;
 
 		// * Date/Time *
 		/** @description A date/time value for a condition; the action's editor assigns it **/
@@ -633,36 +543,6 @@ public inherited sharing class InvocableSoql {
 			description='A date/time value for a query condition. The action\'s editor assigns it.'
 		)
 		public DateTime dateTime5;
-		/** @description A date/time value for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Date/Time 6'
-			description='A date/time value for a query condition. The action\'s editor assigns it.'
-		)
-		public DateTime dateTime6;
-		/** @description A date/time value for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Date/Time 7'
-			description='A date/time value for a query condition. The action\'s editor assigns it.'
-		)
-		public DateTime dateTime7;
-		/** @description A date/time value for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Date/Time 8'
-			description='A date/time value for a query condition. The action\'s editor assigns it.'
-		)
-		public DateTime dateTime8;
-		/** @description A date/time value for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Date/Time 9'
-			description='A date/time value for a query condition. The action\'s editor assigns it.'
-		)
-		public DateTime dateTime9;
-		/** @description A date/time value for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Date/Time 10'
-			description='A date/time value for a query condition. The action\'s editor assigns it.'
-		)
-		public DateTime dateTime10;
 
 		// * Time *
 		/** @description A time value for a condition; the action's editor assigns it **/
@@ -695,36 +575,6 @@ public inherited sharing class InvocableSoql {
 			description='A time value for a query condition. The action\'s editor assigns it.'
 		)
 		public Time time5;
-		/** @description A time value for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Time 6'
-			description='A time value for a query condition. The action\'s editor assigns it.'
-		)
-		public Time time6;
-		/** @description A time value for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Time 7'
-			description='A time value for a query condition. The action\'s editor assigns it.'
-		)
-		public Time time7;
-		/** @description A time value for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Time 8'
-			description='A time value for a query condition. The action\'s editor assigns it.'
-		)
-		public Time time8;
-		/** @description A time value for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Time 9'
-			description='A time value for a query condition. The action\'s editor assigns it.'
-		)
-		public Time time9;
-		/** @description A time value for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Time 10'
-			description='A time value for a query condition. The action\'s editor assigns it.'
-		)
-		public Time time10;
 
 		// * Boolean *
 		/** @description A boolean value for a condition; the action's editor assigns it **/
@@ -757,36 +607,6 @@ public inherited sharing class InvocableSoql {
 			description='A boolean value for a query condition. The action\'s editor assigns it.'
 		)
 		public Boolean boolean5;
-		/** @description A boolean value for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Boolean 6'
-			description='A boolean value for a query condition. The action\'s editor assigns it.'
-		)
-		public Boolean boolean6;
-		/** @description A boolean value for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Boolean 7'
-			description='A boolean value for a query condition. The action\'s editor assigns it.'
-		)
-		public Boolean boolean7;
-		/** @description A boolean value for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Boolean 8'
-			description='A boolean value for a query condition. The action\'s editor assigns it.'
-		)
-		public Boolean boolean8;
-		/** @description A boolean value for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Boolean 9'
-			description='A boolean value for a query condition. The action\'s editor assigns it.'
-		)
-		public Boolean boolean9;
-		/** @description A boolean value for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Boolean 10'
-			description='A boolean value for a query condition. The action\'s editor assigns it.'
-		)
-		public Boolean boolean10;
 
 		// * Text Collection *
 		/** @description A collection of text values for a condition; the action's editor assigns it **/
@@ -819,36 +639,6 @@ public inherited sharing class InvocableSoql {
 			description='A collection of text values for a query condition. The action\'s editor assigns it.'
 		)
 		public List<String> textCollection5;
-		/** @description A collection of text values for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Text Collection 6'
-			description='A collection of text values for a query condition. The action\'s editor assigns it.'
-		)
-		public List<String> textCollection6;
-		/** @description A collection of text values for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Text Collection 7'
-			description='A collection of text values for a query condition. The action\'s editor assigns it.'
-		)
-		public List<String> textCollection7;
-		/** @description A collection of text values for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Text Collection 8'
-			description='A collection of text values for a query condition. The action\'s editor assigns it.'
-		)
-		public List<String> textCollection8;
-		/** @description A collection of text values for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Text Collection 9'
-			description='A collection of text values for a query condition. The action\'s editor assigns it.'
-		)
-		public List<String> textCollection9;
-		/** @description A collection of text values for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Text Collection 10'
-			description='A collection of text values for a query condition. The action\'s editor assigns it.'
-		)
-		public List<String> textCollection10;
 
 		// * Number Collection *
 		/** @description A collection of number values for a condition; the action's editor assigns it **/
@@ -881,36 +671,6 @@ public inherited sharing class InvocableSoql {
 			description='A collection of number values for a query condition. The action\'s editor assigns it.'
 		)
 		public List<Decimal> numberCollection5;
-		/** @description A collection of number values for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Number Collection 6'
-			description='A collection of number values for a query condition. The action\'s editor assigns it.'
-		)
-		public List<Decimal> numberCollection6;
-		/** @description A collection of number values for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Number Collection 7'
-			description='A collection of number values for a query condition. The action\'s editor assigns it.'
-		)
-		public List<Decimal> numberCollection7;
-		/** @description A collection of number values for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Number Collection 8'
-			description='A collection of number values for a query condition. The action\'s editor assigns it.'
-		)
-		public List<Decimal> numberCollection8;
-		/** @description A collection of number values for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Number Collection 9'
-			description='A collection of number values for a query condition. The action\'s editor assigns it.'
-		)
-		public List<Decimal> numberCollection9;
-		/** @description A collection of number values for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Number Collection 10'
-			description='A collection of number values for a query condition. The action\'s editor assigns it.'
-		)
-		public List<Decimal> numberCollection10;
 
 		// * Date Collection *
 		/** @description A collection of date values for a condition; the action's editor assigns it **/
@@ -943,36 +703,6 @@ public inherited sharing class InvocableSoql {
 			description='A collection of date values for a query condition. The action\'s editor assigns it.'
 		)
 		public List<Date> dateCollection5;
-		/** @description A collection of date values for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Date Collection 6'
-			description='A collection of date values for a query condition. The action\'s editor assigns it.'
-		)
-		public List<Date> dateCollection6;
-		/** @description A collection of date values for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Date Collection 7'
-			description='A collection of date values for a query condition. The action\'s editor assigns it.'
-		)
-		public List<Date> dateCollection7;
-		/** @description A collection of date values for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Date Collection 8'
-			description='A collection of date values for a query condition. The action\'s editor assigns it.'
-		)
-		public List<Date> dateCollection8;
-		/** @description A collection of date values for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Date Collection 9'
-			description='A collection of date values for a query condition. The action\'s editor assigns it.'
-		)
-		public List<Date> dateCollection9;
-		/** @description A collection of date values for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Date Collection 10'
-			description='A collection of date values for a query condition. The action\'s editor assigns it.'
-		)
-		public List<Date> dateCollection10;
 
 		// * Date/Time Collection *
 		/** @description A collection of date/time values for a condition; the action's editor assigns it **/
@@ -1005,36 +735,6 @@ public inherited sharing class InvocableSoql {
 			description='A collection of date/time values for a query condition. The action\'s editor assigns it.'
 		)
 		public List<DateTime> dateTimeCollection5;
-		/** @description A collection of date/time values for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Date/Time Collection 6'
-			description='A collection of date/time values for a query condition. The action\'s editor assigns it.'
-		)
-		public List<DateTime> dateTimeCollection6;
-		/** @description A collection of date/time values for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Date/Time Collection 7'
-			description='A collection of date/time values for a query condition. The action\'s editor assigns it.'
-		)
-		public List<DateTime> dateTimeCollection7;
-		/** @description A collection of date/time values for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Date/Time Collection 8'
-			description='A collection of date/time values for a query condition. The action\'s editor assigns it.'
-		)
-		public List<DateTime> dateTimeCollection8;
-		/** @description A collection of date/time values for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Date/Time Collection 9'
-			description='A collection of date/time values for a query condition. The action\'s editor assigns it.'
-		)
-		public List<DateTime> dateTimeCollection9;
-		/** @description A collection of date/time values for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Date/Time Collection 10'
-			description='A collection of date/time values for a query condition. The action\'s editor assigns it.'
-		)
-		public List<DateTime> dateTimeCollection10;
 
 		// * Record Collection *
 		/** @description A collection of records, matched by their IDs for a condition; the action's editor assigns it **/
@@ -1067,36 +767,6 @@ public inherited sharing class InvocableSoql {
 			description='A collection of records, matched by their IDs for a query condition. The action\'s editor assigns it.'
 		)
 		public List<SObject> recordCollection5;
-		/** @description A collection of records, matched by their IDs for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Record Collection 6'
-			description='A collection of records, matched by their IDs for a query condition. The action\'s editor assigns it.'
-		)
-		public List<SObject> recordCollection6;
-		/** @description A collection of records, matched by their IDs for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Record Collection 7'
-			description='A collection of records, matched by their IDs for a query condition. The action\'s editor assigns it.'
-		)
-		public List<SObject> recordCollection7;
-		/** @description A collection of records, matched by their IDs for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Record Collection 8'
-			description='A collection of records, matched by their IDs for a query condition. The action\'s editor assigns it.'
-		)
-		public List<SObject> recordCollection8;
-		/** @description A collection of records, matched by their IDs for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Record Collection 9'
-			description='A collection of records, matched by their IDs for a query condition. The action\'s editor assigns it.'
-		)
-		public List<SObject> recordCollection9;
-		/** @description A collection of records, matched by their IDs for a condition; the action's editor assigns it **/
-		@InvocableVariable(
-			label='Record Collection 10'
-			description='A collection of records, matched by their IDs for a query condition. The action\'s editor assigns it.'
-		)
-		public List<SObject> recordCollection10;
 
 		/**
 		 * @description Parsed by `DatabaseLayerUtils.AccessLevels.parse`, like the DML actions
@@ -1132,111 +802,56 @@ public inherited sharing class InvocableSoql {
 				'text3' => this.text3,
 				'text4' => this.text4,
 				'text5' => this.text5,
-				'text6' => this.text6,
-				'text7' => this.text7,
-				'text8' => this.text8,
-				'text9' => this.text9,
-				'text10' => this.text10,
 				'number1' => this.number1,
 				'number2' => this.number2,
 				'number3' => this.number3,
 				'number4' => this.number4,
 				'number5' => this.number5,
-				'number6' => this.number6,
-				'number7' => this.number7,
-				'number8' => this.number8,
-				'number9' => this.number9,
-				'number10' => this.number10,
 				'date1' => this.date1,
 				'date2' => this.date2,
 				'date3' => this.date3,
 				'date4' => this.date4,
 				'date5' => this.date5,
-				'date6' => this.date6,
-				'date7' => this.date7,
-				'date8' => this.date8,
-				'date9' => this.date9,
-				'date10' => this.date10,
 				'dateTime1' => this.dateTime1,
 				'dateTime2' => this.dateTime2,
 				'dateTime3' => this.dateTime3,
 				'dateTime4' => this.dateTime4,
 				'dateTime5' => this.dateTime5,
-				'dateTime6' => this.dateTime6,
-				'dateTime7' => this.dateTime7,
-				'dateTime8' => this.dateTime8,
-				'dateTime9' => this.dateTime9,
-				'dateTime10' => this.dateTime10,
 				'time1' => this.time1,
 				'time2' => this.time2,
 				'time3' => this.time3,
 				'time4' => this.time4,
 				'time5' => this.time5,
-				'time6' => this.time6,
-				'time7' => this.time7,
-				'time8' => this.time8,
-				'time9' => this.time9,
-				'time10' => this.time10,
 				'boolean1' => this.boolean1,
 				'boolean2' => this.boolean2,
 				'boolean3' => this.boolean3,
 				'boolean4' => this.boolean4,
 				'boolean5' => this.boolean5,
-				'boolean6' => this.boolean6,
-				'boolean7' => this.boolean7,
-				'boolean8' => this.boolean8,
-				'boolean9' => this.boolean9,
-				'boolean10' => this.boolean10,
 				'textCollection1' => this.textCollection1,
 				'textCollection2' => this.textCollection2,
 				'textCollection3' => this.textCollection3,
 				'textCollection4' => this.textCollection4,
 				'textCollection5' => this.textCollection5,
-				'textCollection6' => this.textCollection6,
-				'textCollection7' => this.textCollection7,
-				'textCollection8' => this.textCollection8,
-				'textCollection9' => this.textCollection9,
-				'textCollection10' => this.textCollection10,
 				'numberCollection1' => this.numberCollection1,
 				'numberCollection2' => this.numberCollection2,
 				'numberCollection3' => this.numberCollection3,
 				'numberCollection4' => this.numberCollection4,
 				'numberCollection5' => this.numberCollection5,
-				'numberCollection6' => this.numberCollection6,
-				'numberCollection7' => this.numberCollection7,
-				'numberCollection8' => this.numberCollection8,
-				'numberCollection9' => this.numberCollection9,
-				'numberCollection10' => this.numberCollection10,
 				'dateCollection1' => this.dateCollection1,
 				'dateCollection2' => this.dateCollection2,
 				'dateCollection3' => this.dateCollection3,
 				'dateCollection4' => this.dateCollection4,
 				'dateCollection5' => this.dateCollection5,
-				'dateCollection6' => this.dateCollection6,
-				'dateCollection7' => this.dateCollection7,
-				'dateCollection8' => this.dateCollection8,
-				'dateCollection9' => this.dateCollection9,
-				'dateCollection10' => this.dateCollection10,
 				'dateTimeCollection1' => this.dateTimeCollection1,
 				'dateTimeCollection2' => this.dateTimeCollection2,
 				'dateTimeCollection3' => this.dateTimeCollection3,
 				'dateTimeCollection4' => this.dateTimeCollection4,
 				'dateTimeCollection5' => this.dateTimeCollection5,
-				'dateTimeCollection6' => this.dateTimeCollection6,
-				'dateTimeCollection7' => this.dateTimeCollection7,
-				'dateTimeCollection8' => this.dateTimeCollection8,
-				'dateTimeCollection9' => this.dateTimeCollection9,
-				'dateTimeCollection10' => this.dateTimeCollection10,
 				'recordCollection1' => this.recordCollection1,
 				'recordCollection2' => this.recordCollection2,
 				'recordCollection3' => this.recordCollection3,
 				'recordCollection4' => this.recordCollection4,
-				'recordCollection5' => this.recordCollection5,
-				'recordCollection6' => this.recordCollection6,
-				'recordCollection7' => this.recordCollection7,
-				'recordCollection8' => this.recordCollection8,
-				'recordCollection9' => this.recordCollection9,
-				'recordCollection10' => this.recordCollection10
+				'recordCollection5' => this.recordCollection5
 			};
 		}
 	}

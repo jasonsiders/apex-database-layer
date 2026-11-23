@@ -121,8 +121,8 @@ const KINDS = {
 	TIME: "time"
 };
 const RECORD_SLOT_PREFIX = "recordCollection";
-// Mirrors InvocableSoql.Input's slots: 10 of each, named by type, ex: text1 or numberCollection3
-const SLOT_COUNT = 10;
+// Mirrors InvocableSoql.Input's slots: 5 of each, named by type, ex: text1 or numberCollection3
+const SLOT_COUNT = 5;
 const SLOT_PREFIXES = {
 	Boolean: "boolean",
 	Date: "date",
@@ -140,7 +140,7 @@ const USAGES = [
 ];
 
 /**
- * @description Names a slot type's slots, ex: `text1` to `text10`, matching `InvocableSoql.Input`
+ * @description Names a slot type's slots, ex: `text1` to `text5`, matching `InvocableSoql.Input`
  * @param {String} prefix The slot type, ex: `text`
  * @returns {Array} The slot names
  */
