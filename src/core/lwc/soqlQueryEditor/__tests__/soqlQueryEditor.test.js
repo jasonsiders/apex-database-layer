@@ -115,11 +115,20 @@ describe("c-soql-query-editor", () => {
 		expect(sections.map((section) => section.label)).toEqual([
 			"Select Contact Fields to Store",
 			"Filter Contact Records",
-			"Sort Contact Records",
-			"Query Options"
+			"Sort and Limit Contact Records",
+			"Advanced Query Options"
 		]);
 		expect(accordion.allowMultipleSectionsOpen).toBe(true);
 		expect(accordion.activeSectionName).toBe(sections[1].name);
+	});
+
+	it("puts Limit and Offset with the sort, since both depend on the order, and the rest in advanced", async () => {
+		const { element } = await render({ objectApiName: "Contact", conditions: [], fields: [], orderBy: [] });
+
+		const [, , sort, advanced] = element.shadowRoot.querySelectorAll("lightning-accordion-section");
+		const names = (section) => [...section.querySelectorAll(".editor-input")].map((input) => input.dataset.name);
+		expect(names(sort)).toEqual(["rowLimit", "rowOffset"]);
+		expect(names(advanced)).toEqual(["accessLevel", "usage"]);
 	});
 
 	it("starts the query when an object is chosen, typing the outputs and record slots to it", async () => {

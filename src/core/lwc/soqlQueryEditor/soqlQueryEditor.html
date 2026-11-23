@@ -198,20 +198,8 @@
 					icon-name="utility:add"
 					onclick={handleAddSort}
 				></lightning-button>
-			</lightning-accordion-section>
-			<lightning-accordion-section name="options" label="Query Options">
-				<lightning-combobox
-					class="editor-input"
-					data-name="accessLevel"
-					name="accessLevel"
-					label="Access Level"
-					field-level-help={accessLevelHelp}
-					options={accessLevels}
-					value={accessLevel}
-					onchange={handleAccessLevelChange}
-				></lightning-combobox>
 				<lightning-input
-					class="editor-input slds-var-m-top_x-small"
+					class="editor-input slds-var-m-top_small"
 					data-name="rowLimit"
 					type="number"
 					label="Limit"
@@ -232,6 +220,18 @@
 					value={rowOffset}
 					onchange={handleOffsetChange}
 				></lightning-input>
+			</lightning-accordion-section>
+			<lightning-accordion-section name="options" label="Advanced Query Options">
+				<lightning-combobox
+					class="editor-input"
+					data-name="accessLevel"
+					name="accessLevel"
+					label="Access Level"
+					field-level-help={accessLevelHelp}
+					options={accessLevels}
+					value={accessLevel}
+					onchange={handleAccessLevelChange}
+				></lightning-combobox>
 				<lightning-combobox
 					class="editor-input slds-var-m-top_x-small"
 					data-name="usage"

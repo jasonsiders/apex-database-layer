@@ -342,7 +342,7 @@ export default class SoqlQueryEditor extends FlowPropertyEditor {
 		const label = object?.label ?? this.objectApiName;
 		return {
 			filter: `Filter ${label} Records`,
-			sort: `Sort ${label} Records`,
+			sort: `Sort and Limit ${label} Records`,
 			fields: `Select ${label} Fields to Store`
 		};
 	}
