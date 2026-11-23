@@ -21,6 +21,43 @@
 			allow-multiple-sections-open
 			active-section-name="filter"
 		>
+			<lightning-accordion-section name="fields" label={sectionLabels.fields}>
+				<p class="slds-text-body_regular slds-var-m-bottom_small">
+					Records always include their ID, and the fields used in conditions. To store a parent's field, pick
+					its relationship first, ex: Account, then a field of the parent. All Fields stores every field you
+					can read.
+				</p>
+				<template for:each={fields} for:item="field">
+					<div key={field.key} class="editor-row slds-var-m-top_x-small" data-name="field">
+						<div class="editor-row-inputs">
+							<c-soql-field-path
+								data-index={field.index}
+								object-api-name={objectApiName}
+								value={field.value}
+								covered-paths={field.coveredPaths}
+								label="Field"
+								onchange={handleFieldChange}
+							></c-soql-field-path>
+						</div>
+						<lightning-button-icon
+							class="editor-row-remove"
+							data-index={field.index}
+							icon-name="utility:delete"
+							variant="border-filled"
+							alternative-text="Remove field"
+							title="Remove field"
+							onclick={handleRemoveField}
+						></lightning-button-icon>
+					</div>
+				</template>
+				<lightning-button
+					class="editor-add slds-var-m-top_small"
+					data-name="addField"
+					label="Add Field"
+					icon-name="utility:add"
+					onclick={handleAddField}
+				></lightning-button>
+			</lightning-accordion-section>
 			<lightning-accordion-section name="filter" label={sectionLabels.filter}>
 				<lightning-combobox
 					class="editor-input"
@@ -160,43 +197,6 @@
 					label="Add Sort Field"
 					icon-name="utility:add"
 					onclick={handleAddSort}
-				></lightning-button>
-			</lightning-accordion-section>
-			<lightning-accordion-section name="fields" label={sectionLabels.fields}>
-				<p class="slds-text-body_regular slds-var-m-bottom_small">
-					Records always include their ID, and the fields used in conditions. To store a parent's field, pick
-					its relationship first, ex: Account, then a field of the parent. All Fields stores every field you
-					can read.
-				</p>
-				<template for:each={fields} for:item="field">
-					<div key={field.key} class="editor-row slds-var-m-top_x-small" data-name="field">
-						<div class="editor-row-inputs">
-							<c-soql-field-path
-								data-index={field.index}
-								object-api-name={objectApiName}
-								value={field.value}
-								covered-paths={field.coveredPaths}
-								label="Field"
-								onchange={handleFieldChange}
-							></c-soql-field-path>
-						</div>
-						<lightning-button-icon
-							class="editor-row-remove"
-							data-index={field.index}
-							icon-name="utility:delete"
-							variant="border-filled"
-							alternative-text="Remove field"
-							title="Remove field"
-							onclick={handleRemoveField}
-						></lightning-button-icon>
-					</div>
-				</template>
-				<lightning-button
-					class="editor-add slds-var-m-top_small"
-					data-name="addField"
-					label="Add Field"
-					icon-name="utility:add"
-					onclick={handleAddField}
 				></lightning-button>
 			</lightning-accordion-section>
 			<lightning-accordion-section name="options" label="Query Options">
