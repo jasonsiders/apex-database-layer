@@ -171,12 +171,12 @@ public abstract inherited sharing class InvocableDml {
 		}
 
 		/**
-		 * @description Parsed by `DatabaseLayerUtils.toAccessLevel`
+		 * @description Parsed by `DatabaseLayerUtils.AccessLevels.parse`
 		 * @return The matching System.AccessLevel
 		 * @throws System.IllegalArgumentException When the value isn't blank, USER_MODE, or SYSTEM_MODE
 		 */
 		public System.AccessLevel getAccessLevel() {
-			return DatabaseLayer.Utils.toAccessLevel(this.accessLevel);
+			return DatabaseLayer.Utils.AccessLevels.parse(this.accessLevel);
 		}
 
 		/**

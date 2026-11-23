@@ -18,7 +18,7 @@ const LABEL_COLLATOR = new Intl.Collator(undefined, { sensitivity: "base" });
 const TYPE_ORDER = ["Boolean", "Currency", "Date", "DateTime", "Multipicklist", "Number", "Picklist", "String", "Time"];
 // Flow passes these resources to an input of the key's type, ex: a Currency field to a Number input
 const COMPATIBLE_TYPES = { Number: ["Currency", "Number"], String: ["Picklist", "String"] };
-// SOQL's date literal grammar, ex: TODAY or LAST_N_DAYS:30, mirroring Soql.DATE_LITERAL_PATTERN in Apex
+// SOQL's date literal grammar, ex: TODAY or LAST_N_DAYS:30, mirroring DatabaseLayerUtils.DATE_LITERAL_PATTERN in Apex
 export const DATE_LITERAL_PATTERN = new RegExp(
 	"^(YESTERDAY|TODAY|TOMORROW|(LAST|THIS|NEXT)_(WEEK|MONTH|QUARTER|YEAR|FISCAL_QUARTER|FISCAL_YEAR)|" +
 		"(LAST|NEXT)_90_DAYS|(LAST_N|NEXT_N)_(DAYS|WEEKS|MONTHS|QUARTERS|YEARS|FISCAL_QUARTERS|FISCAL_YEARS):\\d+|" +

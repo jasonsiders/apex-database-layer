@@ -22,13 +22,6 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	// Other constants
 	private static final Soql.LogicType DEFAULT_LOGIC_TYPE = Soql.LogicType.ALL_CONDITIONS;
 	private static final String ID_REFERENCE = 'Id';
-	// Matches the SOQL date literal grammar: the fixed keywords, plus the parameterized <LITERAL>:<n> forms.
-	// See https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_select_dateformats.htm
-	public static final Pattern DATE_LITERAL_PATTERN = Pattern.compile(
-		'(?i)^(YESTERDAY|TODAY|TOMORROW|(LAST|THIS|NEXT)_(WEEK|MONTH|QUARTER|YEAR|FISCAL_QUARTER|FISCAL_YEAR)|' +
-			'(LAST|NEXT)_90_DAYS|(LAST_N|NEXT_N)_(DAYS|WEEKS|MONTHS|QUARTERS|YEARS|FISCAL_QUARTERS|FISCAL_YEARS):\\d+|' +
-			'N_(DAYS|WEEKS|MONTHS|QUARTERS|YEARS|FISCAL_QUARTERS|FISCAL_YEARS)_AGO:\\d+)$'
-	);
 
 	// Member Properties:
 	/**
@@ -536,7 +529,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			// Note: System.AccessLevel is a weird enum - it isn't serializable,
 			// it does not have an enum name() property, and toString() does not output its name either:
 			get {
-				return (this.accessLevel == System.AccessLevel.SYSTEM_MODE) ? 'SYSTEM_MODE' : 'USER_MODE';
+				return DatabaseLayer.Utils.AccessLevels.getName(this.accessLevel);
 			}
 		}
 
@@ -812,7 +805,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		private String findParentEntity(SObjectField lookup) {
 			DescribeFieldResult describe = lookup?.getDescribe();
-			return DatabaseLayer.Utils.toEntityName(describe);
+			return DatabaseLayer.Utils.Schema.toEntityName(describe);
 		}
 
 		/**
@@ -1652,17 +1645,14 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 
 		private String processString(String value) {
 			// Allow special modifiers (bind variables, inner queries, & relative date literals) to pass through unmodified
-			if (value?.startsWith(':') == true || value?.startsWith('(') == true || this.isDateLiteral(value)) {
+			Boolean isDateLiteral = DatabaseLayer.Utils.isDateLiteral(value);
+			if (value?.startsWith(':') == true || value?.startsWith('(') == true || isDateLiteral) {
 				return value;
 			}
 			if (value != null && value.length() >= 19 && value.contains('T') && this.isValidDateTimePrefix(value)) {
 				return value;
 			}
 			return this.operator?.processStringValue(value);
-		}
-
-		private Boolean isDateLiteral(String value) {
-			return value != null && DATE_LITERAL_PATTERN.matcher(value)?.matches() == true;
 		}
 
 		private Boolean isValidDateTimePrefix(String value) {

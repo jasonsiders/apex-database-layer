@@ -104,7 +104,7 @@ public inherited sharing class InvocableSoql {
 	@AuraEnabled(cacheable=true)
 	public static List<InvocableSoql.FieldOption> getFields(String objectApiName) {
 		List<InvocableSoql.FieldOption> options = new List<InvocableSoql.FieldOption>{};
-		for (SObjectField field : DatabaseLayer.Utils.describeFields(objectApiName)) {
+		for (SObjectField field : DatabaseLayer.Utils.Schema.describeFields(objectApiName)) {
 			DescribeFieldResult describe = field?.getDescribe();
 			if (describe?.isAccessible() == true) {
 				InvocableSoql.FieldOption option = new InvocableSoql.FieldOption(describe, objectApiName);
@@ -337,7 +337,7 @@ public inherited sharing class InvocableSoql {
 		private FieldOption(DescribeFieldResult field, String objectApiName) {
 			List<SObjectType> parents = field?.getReferenceTo();
 			List<Schema.PicklistEntry> entries = field?.getPicklistValues();
-			String parentName = DatabaseLayer.Utils.toEntityName(field);
+			String parentName = DatabaseLayer.Utils.Schema.toEntityName(field);
 			Boolean isId = field?.getType() == Schema.DisplayType.ID;
 			this.apiName = field?.getName();
 			this.isFilterable = field?.isFilterable();
@@ -1099,12 +1099,12 @@ public inherited sharing class InvocableSoql {
 		public List<SObject> recordCollection10;
 
 		/**
-		 * @description Parsed by `DatabaseLayerUtils.toAccessLevel`, like the DML actions
+		 * @description Parsed by `DatabaseLayerUtils.AccessLevels.parse`, like the DML actions
 		 * @return The matching System.AccessLevel
 		 * @throws System.IllegalArgumentException When the value isn't blank, USER_MODE, or SYSTEM_MODE
 		 */
 		private System.AccessLevel getAccessLevel() {
-			return DatabaseLayer.Utils.toAccessLevel(this.accessLevel);
+			return DatabaseLayer.Utils.AccessLevels.parse(this.accessLevel);
 		}
 
 		/**
@@ -1682,12 +1682,12 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description Describes the object SOQL resolves a lookup to, per `DatabaseLayerUtils.toEntityName`
+		 * @description Describes the object SOQL resolves a lookup to, per `DatabaseLayerUtils.Schema.toEntityName`
 		 * @param lookup The lookup's describe
 		 * @return The parent object's describe
 		 */
 		private DescribeSObjectResult describeReference(DescribeFieldResult lookup) {
-			String parentName = DatabaseLayer.Utils.toEntityName(lookup);
+			String parentName = DatabaseLayer.Utils.Schema.toEntityName(lookup);
 			List<String> parentNames = new List<String>{ parentName };
 			return Schema.describeSObjects(parentNames, SObjectDescribeOptions.DEFERRED)?.get(0);
 		}
@@ -1896,8 +1896,7 @@ public inherited sharing class InvocableSoql {
 			if (InvocableSoql.TOKENS?.containsKey(this.operator) == false) {
 				throw new IllegalArgumentException('Invalid operator: ' + this.operator);
 			}
-			// Date literals are rendered as-is, since SOQL can't bind them, so only SOQL's own literals are allowed
-			if (this.dateLiteral != null && Soql.DATE_LITERAL_PATTERN?.matcher(this.dateLiteral)?.matches() == false) {
+			if (this.dateLiteral != null && DatabaseLayer.Utils.isDateLiteral(this.dateLiteral) == false) {
 				throw new IllegalArgumentException('Invalid date literal: ' + this.dateLiteral);
 			}
 		}
@@ -2102,7 +2101,7 @@ public inherited sharing class InvocableSoql {
 		 */
 		private InvocableSoql.Variant addInput(InvocableSoql.Input input) {
 			System.AccessLevel accessLevel = input?.getAccessLevel();
-			String levelName = (accessLevel == System.AccessLevel.SYSTEM_MODE) ? 'SYSTEM_MODE' : 'USER_MODE';
+			String levelName = DatabaseLayer.Utils.AccessLevels.getName(accessLevel);
 			String key = levelName + ':' + input?.queryDefinition;
 			InvocableSoql.Batch batch = this.batches?.get(key) ?? new InvocableSoql.Batch(input, accessLevel);
 			this.batches?.put(key, batch);

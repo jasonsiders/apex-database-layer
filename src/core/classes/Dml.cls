@@ -1696,7 +1696,7 @@ global inherited sharing virtual class Dml {
 			// System.AccessLevel is not JSON serializable
 			// Unlike other enums, it does not have a name() property, and toString() does not output its name either:
 			get {
-				return (this.accessLevel == System.AccessLevel.SYSTEM_MODE) ? 'SYSTEM_MODE' : 'USER_MODE';
+				return DatabaseLayer.Utils.AccessLevels.getName(this.accessLevel);
 			}
 		}
 		private String deleteCallback {

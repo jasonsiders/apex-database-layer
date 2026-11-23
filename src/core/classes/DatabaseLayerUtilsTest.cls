@@ -198,13 +198,13 @@ private class DatabaseLayerUtilsTest {
 	@IsTest
 	private static void shouldNameTheObjectSoqlResolvesALookupTo() {
 		Test.startTest();
-		String lookup = DatabaseLayer.Utils.toEntityName(Contact.AccountId?.getDescribe());
-		String polymorphic = DatabaseLayer.Utils.toEntityName(Case.OwnerId?.getDescribe());
+		String lookup = DatabaseLayer.Utils.Schema.toEntityName(Contact.AccountId?.getDescribe());
+		String polymorphic = DatabaseLayer.Utils.Schema.toEntityName(Case.OwnerId?.getDescribe());
 		// SOQL resolves by isNamePointing, not by how many objects the lookup references:
-		String namePointing = DatabaseLayer.Utils.toEntityName(AccountHistory.CreatedById?.getDescribe());
-		String severalObjects = DatabaseLayer.Utils.toEntityName(Document.FolderId?.getDescribe());
-		String selfResolving = DatabaseLayer.Utils.toEntityName(ObjectPermissions.ParentId?.getDescribe());
-		String notLookup = DatabaseLayer.Utils.toEntityName(Account.Name?.getDescribe());
+		String namePointing = DatabaseLayer.Utils.Schema.toEntityName(AccountHistory.CreatedById?.getDescribe());
+		String severalObjects = DatabaseLayer.Utils.Schema.toEntityName(Document.FolderId?.getDescribe());
+		String selfResolving = DatabaseLayer.Utils.Schema.toEntityName(ObjectPermissions.ParentId?.getDescribe());
+		String notLookup = DatabaseLayer.Utils.Schema.toEntityName(Account.Name?.getDescribe());
 		Test.stopTest();
 
 		Assert.areEqual('Account', lookup, 'Wrong lookup object');
