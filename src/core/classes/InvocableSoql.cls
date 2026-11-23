@@ -2068,6 +2068,141 @@ public inherited sharing class InvocableSoql {
 		}
 	}
 
+	/**
+	 * @description Finds the simple LIKE patterns a value matches by looking up its prefixes, suffixes, and
+	 * substrings, one per pattern length, instead of testing every pattern: 200 Contains values over 5,000 rows were
+	 * a million tests, over the CPU limit
+	 */
+	@TestVisible
+	private class LikePatternIndex {
+		/** @description Patterns without wildcards, ex: `abc`, by key **/
+		private Map<String, Set<Integer>> exact = new Map<String, Set<Integer>>{};
+		/** @description Patterns like `abc%`, by key, by key length **/
+		private Map<Integer, Map<String, Set<Integer>>> prefixes = new Map<Integer, Map<String, Set<Integer>>>{};
+		/** @description Patterns like `%abc%`, by key, by key length **/
+		private Map<Integer, Map<String, Set<Integer>>> substrings = new Map<Integer, Map<String, Set<Integer>>>{};
+		/** @description The number of distinct `%abc%` keys, which caps the work of testing each one **/
+		private Integer substringCount = 0;
+		/** @description Patterns like `%abc`, by key, by key length **/
+		private Map<Integer, Map<String, Set<Integer>>> suffixes = new Map<Integer, Map<String, Set<Integer>>>{};
+
+		/**
+		 * @description Adds a pattern
+		 * @param pattern A simple pattern
+		 * @param position The position its matches report
+		 */
+		@TestVisible
+		private void add(InvocableSoql.LikePattern pattern, Integer position) {
+			Map<String, Set<Integer>> keyed = this.findKeyed(pattern);
+			Set<Integer> positions = keyed?.get(pattern?.key);
+			Boolean isNewSubstring = positions == null && pattern?.isLeading && pattern?.isTrailing;
+			this.substringCount += isNewSubstring ? 1 : 0;
+			positions = positions ?? new Set<Integer>{};
+			positions?.add(position);
+			keyed?.put(pattern?.key, positions);
+		}
+
+		/**
+		 * @description Lists the patterns a value matches. A prefix or suffix longer than the value is the whole
+		 * value, which can't equal a key of that length, so it needs no length check
+		 * @param key A field value's key, from `InvocableSoql.toKey`
+		 * @return The matching patterns' positions; empty for a null key, which LIKE never matches
+		 */
+		@TestVisible
+		private Set<Integer> match(String key) {
+			Set<Integer> positions = new Set<Integer>{};
+			if (key != null) {
+				this.addMatches(positions, this.exact, key);
+				for (Integer length : this.prefixes?.keySet()) {
+					this.addMatches(positions, this.prefixes?.get(length), key?.left(length));
+				}
+				for (Integer length : this.suffixes?.keySet()) {
+					this.addMatches(positions, this.suffixes?.get(length), key?.right(length));
+				}
+				this.matchSubstrings(positions, key);
+			}
+			return positions;
+		}
+
+		/**
+		 * @description Picks the map a pattern belongs in, by its wildcards and key length
+		 * @param pattern A simple pattern
+		 * @return The map of its kind and length
+		 */
+		private Map<String, Set<Integer>> findKeyed(InvocableSoql.LikePattern pattern) {
+			Map<Integer, Map<String, Set<Integer>>> byLength;
+			if (pattern?.isLeading && pattern?.isTrailing) {
+				byLength = this.substrings;
+			} else if (pattern?.isLeading) {
+				byLength = this.suffixes;
+			} else if (pattern?.isTrailing) {
+				byLength = this.prefixes;
+			}
+			Integer length = pattern?.key?.length();
+			Map<String, Set<Integer>> keyed = byLength?.get(length) ?? new Map<String, Set<Integer>>{};
+			byLength?.put(length, keyed);
+			return (byLength == null) ? this.exact : keyed;
+		}
+
+		/**
+		 * @description Looks up each of the value's substrings of each pattern length, unless that's more work than
+		 * testing each pattern, ex: a long value against a few patterns
+		 * @param positions The matches so far, which receive these
+		 * @param key A field value's key
+		 */
+		private void matchSubstrings(Set<Integer> positions, String key) {
+			Integer lookups = 0;
+			for (Integer length : this.substrings?.keySet()) {
+				lookups += Math.max(key?.length() - length + 1, 0);
+			}
+			if (lookups <= this.substringCount) {
+				this.lookUpSubstrings(positions, key);
+			} else {
+				this.testSubstrings(positions, key);
+			}
+		}
+
+		/**
+		 * @description Looks up each of the value's substrings of each pattern length
+		 * @param positions The matches so far, which receive these
+		 * @param key A field value's key
+		 */
+		private void lookUpSubstrings(Set<Integer> positions, String key) {
+			for (Integer length : this.substrings?.keySet()) {
+				Map<String, Set<Integer>> keyed = this.substrings?.get(length);
+				for (Integer start = 0; start + length <= key?.length(); start++) {
+					String substring = key?.substring(start, start + length);
+					this.addMatches(positions, keyed, substring);
+				}
+			}
+		}
+
+		/**
+		 * @description Tests the value against each `%abc%` pattern
+		 * @param positions The matches so far, which receive these
+		 * @param key A field value's key
+		 */
+		private void testSubstrings(Set<Integer> positions, String key) {
+			for (Map<String, Set<Integer>> keyed : this.substrings?.values()) {
+				for (String substring : keyed?.keySet()) {
+					Set<Integer> matches = key?.contains(substring) == true ? keyed?.get(substring) : null;
+					positions?.addAll(matches ?? new Set<Integer>{});
+				}
+			}
+		}
+
+		/**
+		 * @description Adds the positions of the patterns with a key
+		 * @param positions The matches so far, which receive these
+		 * @param keyed Patterns by key
+		 * @param key The key to look up
+		 */
+		private void addMatches(Set<Integer> positions, Map<String, Set<Integer>> keyed, String key) {
+			Set<Integer> matches = keyed?.get(key);
+			positions?.addAll(matches ?? new Set<Integer>{});
+		}
+	}
+
 	/** @description Runs queries without sharing, which `Soql` inherits, since it's `inherited sharing` **/
 	private without sharing class SystemModeRunner {
 		/**
@@ -2088,7 +2223,7 @@ public inherited sharing class InvocableSoql {
 		private Boolean isCaseSensitive;
 		private Boolean isPattern;
 		/** @description Each variant's LIKE pattern, by position; empty for EQUALS and IN **/
-		private List<InvocableSoql.LikePattern> patterns = new List<InvocableSoql.LikePattern>{};
+		private InvocableSoql.LikePatternIndex patterns = new InvocableSoql.LikePatternIndex();
 		private InvocableSoql.Query query;
 		/** @description Each EQUALS or IN value's variants, by key; positions, so a duplicate value adds a row once **/
 		private Map<String, Set<Integer>> variantsByKey = new Map<String, Set<Integer>>{};
@@ -2191,7 +2326,7 @@ public inherited sharing class InvocableSoql {
 			Object value = this.variants?.get(position)?.values?.get(this.index);
 			if (this.isPattern == true) {
 				InvocableSoql.LikePattern pattern = new InvocableSoql.LikePattern((String) value, this.isCaseSensitive);
-				this.patterns?.add(pattern);
+				this.patterns?.add(pattern, position);
 			} else {
 				for (Object element : InvocableSoql.toList(value)) {
 					String key = InvocableSoql.toKey(element, this.isCaseSensitive);
@@ -2217,17 +2352,15 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description Tests the row's value against each variant's pattern
+		 * @description Looks up the variants whose pattern the row's value matches
 		 * @param key The row's key for the varying field
 		 * @return The variants whose pattern matches
 		 */
 		private List<InvocableSoql.Variant> matchPatterns(String key) {
 			List<InvocableSoql.Variant> matches = new List<InvocableSoql.Variant>{};
-			for (Integer position = 0; position < this.patterns?.size(); position++) {
-				if (this.patterns?.get(position)?.matches(key) == true) {
-					InvocableSoql.Variant variant = this.variants?.get(position);
-					matches?.add(variant);
-				}
+			for (Integer position : this.patterns?.match(key)) {
+				InvocableSoql.Variant variant = this.variants?.get(position);
+				matches?.add(variant);
 			}
 			return matches;
 		}

@@ -1343,6 +1343,31 @@ private class InvocableSoqlTest {
 	}
 
 	@IsTest
+	private static void shouldIndexLikePatternsByLength() {
+		InvocableSoql.LikePatternIndex mixed = InvocableSoqlTest.initPatternIndex(
+			new List<String>{ 'acme%', 'ac%', '%corp', '%me co%', '%o%', 'acme corp', '%', 'corp%' }
+		);
+		// Enough Contains patterns that looking up a short value's substrings beats testing each one:
+		List<String> letters = new List<String>{};
+		for (String letter : 'abcdefghijklmnopqrstuvwxyz'.split('')) {
+			letters.add('%' + letter + '%');
+		}
+		InvocableSoql.LikePatternIndex substrings = InvocableSoqlTest.initPatternIndex(letters);
+
+		Test.startTest();
+		Set<Integer> fullName = mixed.match('acme corp');
+		Set<Integer> shortName = mixed.match('ac');
+		Set<Integer> blank = mixed.match(null);
+		Set<Integer> twoLetters = substrings.match('ba');
+		Test.stopTest();
+
+		Assert.areEqual(new Set<Integer>{ 0, 1, 2, 3, 4, 5, 6 }, fullName, 'Wrong matches for a long value');
+		Assert.areEqual(new Set<Integer>{ 1, 6 }, shortName, 'Wrong matches for a short value');
+		Assert.isTrue(blank.isEmpty(), 'Matched a blank value: ' + blank);
+		Assert.areEqual(new Set<Integer>{ 0, 1 }, twoLetters, 'Wrong matches by substring');
+	}
+
+	@IsTest
 	private static void shouldReadAnEscapedBackslashBeforeATrailingWildcard() {
 		Test.startTest();
 		// `Back\\%` is the text `Back\`, then a wildcard; `Back\%` is the text `Back%`:
@@ -1527,6 +1552,14 @@ private class InvocableSoqlTest {
 		InvocableSoql.Query query = InvocableSoqlTest.initQuery('Account', new List<String>{ 'Name' });
 		query.conditions.add(InvocableSoqlTest.initSlotCondition(field, operator, slot));
 		return query;
+	}
+
+	private static InvocableSoql.LikePatternIndex initPatternIndex(List<String> patterns) {
+		InvocableSoql.LikePatternIndex index = new InvocableSoql.LikePatternIndex();
+		for (Integer position = 0; position < patterns.size(); position++) {
+			index.add(new InvocableSoql.LikePattern(patterns[position], false), position);
+		}
+		return index;
 	}
 
 	private static User initStandardUser() {
