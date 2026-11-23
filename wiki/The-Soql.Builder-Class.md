@@ -91,18 +91,24 @@ Resets the builder to its default state, clearing all previously set clauses and
 
 Selects all fields of the queried object, or of a parent object through its lookups, by querying the schema for its fields. In `USER_MODE` (the default), fields the running user cannot read are omitted, since user-mode SOQL fails on a field the user can't read instead of dropping it. In `SYSTEM_MODE`, every field is selected. The fields are resolved lazily, so `setAccessLevel` may be called before or after `selectAll`.
 
-A parent is named by its lookups, as tokens or as the lookup's path from the queried object. A polymorphic lookup, ex: `Case.OwnerId`, selects the fields SOQL allows on it without `TYPEOF`. A field that isn't a lookup throws an `IllegalArgumentException`.
+A parent is named by its lookups: up to six tokens, SOQL's limit; the lookup's path from the queried object; or a `Soql.ParentField` that ends in the lookup. A polymorphic lookup, ex: `Case.OwnerId`, selects the fields SOQL allows on it without `TYPEOF`. A field that isn't a lookup throws an `IllegalArgumentException`.
 
 ```java
 DatabaseLayer.Soql.newQuery(Case.SObjectType)
 	?.selectAll() // Subject, Status, ...
-	?.selectAll(new List<SObjectField>{ Case.ContactId }) // Contact.Name, Contact.Email, ...
-	?.selectAll(new List<SObjectField>{ Case.ContactId, Contact.AccountId }) // Contact.Account.Name, ...
+	?.selectAll(Case.ContactId) // Contact.Name, Contact.Email, ...
+	?.selectAll(Case.ContactId, Contact.AccountId) // Contact.Account.Name, ...
 	?.selectAll('CreatedById'); // CreatedBy.Name, ...
 ```
 
 - `Soql.Builder selectAll()`
-- `Soql.Builder selectAll(List<SObjectField> relationshipFieldChain)`
+- `Soql.Builder selectAll(SObjectField relationship1)`
+- `Soql.Builder selectAll(SObjectField relationship1, SObjectField relationship2)`
+- `Soql.Builder selectAll(SObjectField relationship1, SObjectField relationship2, SObjectField relationship3)`
+- `Soql.Builder selectAll(SObjectField relationship1, SObjectField relationship2, SObjectField relationship3, SObjectField relationship4)`
+- `Soql.Builder selectAll(SObjectField relationship1, SObjectField relationship2, SObjectField relationship3, SObjectField relationship4, SObjectField relationship5)`
+- `Soql.Builder selectAll(SObjectField relationship1, SObjectField relationship2, SObjectField relationship3, SObjectField relationship4, SObjectField relationship5, SObjectField relationship6)`
+- `Soql.Builder selectAll(Soql.ParentField lookupField)`
 - `Soql.Builder selectAll(String lookupFieldPath)`
 
 ### `setAccessLevel`

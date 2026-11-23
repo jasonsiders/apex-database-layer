@@ -1479,11 +1479,15 @@ public inherited sharing class InvocableSoql {
 		 * @param fieldName A field path, ex: "Account.Name", or "Account.*" for every field of the account
 		 */
 		private void addField(Soql builder, String fieldName) {
-			if (fieldName?.endsWith(InvocableSoql.ALL_FIELDS) == true) {
-				List<SObjectField> lookups = this.findLookups(fieldName);
-				builder?.selectAll(lookups);
-			} else {
+			Boolean isAllFields = fieldName?.endsWith(InvocableSoql.ALL_FIELDS) == true;
+			List<SObjectField> lookups = isAllFields ? this.findLookups(fieldName) : null;
+			if (isAllFields == false) {
 				builder?.addSelect(fieldName);
+			} else if (lookups?.isEmpty() == true) {
+				builder?.selectAll();
+			} else {
+				Soql.ParentField lookupField = new Soql.ParentField(lookups);
+				builder?.selectAll(lookupField);
 			}
 		}
 

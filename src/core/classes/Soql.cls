@@ -635,23 +635,117 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		global Soql.Builder selectAll() {
 			List<SObjectField> noLookups = new List<SObjectField>{};
-			return this.selectAll(noLookups);
+			return this.queueSelectAll(noLookups);
 		}
 
 		/**
-		 * @description Adds all fields of a parent object to the SELECT clause, through a chain of lookups,
-		 * ex: `new List<SObjectField>{ Case.ContactId, Contact.AccountId }` adds `Contact.Account.Name`, and so on.
-		 * A polymorphic lookup, ex: Case.OwnerId, adds the fields SOQL allows on it without TYPEOF.
-		 * @param relationshipFieldChain The lookups from the queried object to the parent, in order
+		 * @description Adds all fields of a parent object to the SELECT clause, 6 relationships away, SOQL's limit.
+		 * @param relationship1 First lookup
+		 * @param relationship2 Second lookup
+		 * @param relationship3 Third lookup
+		 * @param relationship4 Fourth lookup
+		 * @param relationship5 Fifth lookup
+		 * @param relationship6 Sixth lookup
 		 * @return This Builder instance for method chaining
-		 * @throws System.IllegalArgumentException When a field in the chain isn't a lookup
 		 */
-		global Soql.Builder selectAll(List<SObjectField> relationshipFieldChain) {
-			List<SObjectField> chain = relationshipFieldChain ?? new List<SObjectField>{};
-			this.validateLookups(chain);
-			this.selectAllChains = this.selectAllChains ?? new List<List<SObjectField>>{};
-			this.selectAllChains?.add(chain);
-			return this;
+		// One parameter per lookup, like Soql.ParentField's constructors, so callers can skip building a list
+		@SuppressWarnings('PMD.ExcessiveParameterList')
+		global Soql.Builder selectAll(
+			SObjectField relationship1,
+			SObjectField relationship2,
+			SObjectField relationship3,
+			SObjectField relationship4,
+			SObjectField relationship5,
+			SObjectField relationship6
+		) {
+			return this.queueSelectAll(
+				new List<SObjectField>{
+					relationship1,
+					relationship2,
+					relationship3,
+					relationship4,
+					relationship5,
+					relationship6
+				}
+			);
+		}
+
+		/**
+		 * @description Adds all fields of a parent object to the SELECT clause, 5 relationships away.
+		 * @param relationship1 First lookup
+		 * @param relationship2 Second lookup
+		 * @param relationship3 Third lookup
+		 * @param relationship4 Fourth lookup
+		 * @param relationship5 Fifth lookup
+		 * @return This Builder instance for method chaining
+		 */
+		// One parameter per lookup, like Soql.ParentField's constructors, so callers can skip building a list
+		@SuppressWarnings('PMD.ExcessiveParameterList')
+		global Soql.Builder selectAll(
+			SObjectField relationship1,
+			SObjectField relationship2,
+			SObjectField relationship3,
+			SObjectField relationship4,
+			SObjectField relationship5
+		) {
+			return this.queueSelectAll(
+				new List<SObjectField>{ relationship1, relationship2, relationship3, relationship4, relationship5 }
+			);
+		}
+
+		/**
+		 * @description Adds all fields of a parent object to the SELECT clause, 4 relationships away.
+		 * @param relationship1 First lookup
+		 * @param relationship2 Second lookup
+		 * @param relationship3 Third lookup
+		 * @param relationship4 Fourth lookup
+		 * @return This Builder instance for method chaining
+		 */
+		// One parameter per lookup, like Soql.ParentField's constructors, so callers can skip building a list
+		@SuppressWarnings('PMD.ExcessiveParameterList')
+		global Soql.Builder selectAll(
+			SObjectField relationship1,
+			SObjectField relationship2,
+			SObjectField relationship3,
+			SObjectField relationship4
+		) {
+			return this.queueSelectAll(
+				new List<SObjectField>{ relationship1, relationship2, relationship3, relationship4 }
+			);
+		}
+
+		/**
+		 * @description Adds all fields of a parent object to the SELECT clause, 3 relationships away.
+		 * @param relationship1 First lookup
+		 * @param relationship2 Second lookup
+		 * @param relationship3 Third lookup
+		 * @return This Builder instance for method chaining
+		 */
+		global Soql.Builder selectAll(
+			SObjectField relationship1,
+			SObjectField relationship2,
+			SObjectField relationship3
+		) {
+			return this.queueSelectAll(new List<SObjectField>{ relationship1, relationship2, relationship3 });
+		}
+
+		/**
+		 * @description Adds all fields of a parent object to the SELECT clause, 2 relationships away.
+		 * @param relationship1 First lookup
+		 * @param relationship2 Second lookup
+		 * @return This Builder instance for method chaining
+		 */
+		global Soql.Builder selectAll(SObjectField relationship1, SObjectField relationship2) {
+			return this.queueSelectAll(new List<SObjectField>{ relationship1, relationship2 });
+		}
+
+		/**
+		 * @description Adds all fields of a parent object to the SELECT clause, ex: Case.ContactId adds `Contact.Name`.
+		 * @param relationship1 The lookup
+		 * @return This Builder instance for method chaining
+		 */
+		global Soql.Builder selectAll(SObjectField relationship1) {
+			return this.queueSelectAll(new List<SObjectField>{ relationship1 });
 		}
 
 		/**
@@ -663,7 +757,34 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		global Soql.Builder selectAll(String lookupFieldPath) {
 			List<SObjectField> chain = this.toLookupChain(lookupFieldPath);
-			return this.selectAll(chain);
+			return this.queueSelectAll(chain);
+		}
+
+		/**
+		 * @description Adds all fields of a parent object to the SELECT clause, by a parent field that ends in its
+		 * lookup, ex: `new Soql.ParentField(Case.ContactId, Contact.AccountId)` adds `Contact.Account.Name`.
+		 * @param lookupField The lookup, after any relationships to its object
+		 * @return This Builder instance for method chaining
+		 * @throws System.IllegalArgumentException When the field doesn't end in a lookup of the queried object
+		 */
+		global Soql.Builder selectAll(Soql.ParentField lookupField) {
+			String lookupFieldPath = lookupField?.toString();
+			return this.selectAll(lookupFieldPath);
+		}
+
+		/**
+		 * @description Queues all fields of the object at the end of a chain of lookups, ex: Case.ContactId and
+		 * Contact.AccountId for `Contact.Account.Name`. A polymorphic lookup, ex: Case.OwnerId, takes the fields SOQL
+		 * allows on it without TYPEOF. The fields resolve lazily, once the access level is final.
+		 * @param lookups The lookups from the queried object to the parent, in order; empty for the queried object
+		 * @return This Builder instance for method chaining
+		 * @throws System.IllegalArgumentException When a field in the chain isn't a lookup
+		 */
+		private Soql.Builder queueSelectAll(List<SObjectField> lookups) {
+			this.validateLookups(lookups);
+			this.selectAllChains = this.selectAllChains ?? new List<List<SObjectField>>{};
+			this.selectAllChains?.add(lookups);
+			return this;
 		}
 
 		/**
