@@ -1978,7 +1978,11 @@ public inherited sharing class InvocableSoql {
 		private void parse(String pattern, Boolean isCaseSensitive) {
 			this.isLeading = pattern?.startsWith('%') == true;
 			String rest = this.isLeading ? pattern?.substring(1) : pattern;
-			this.isTrailing = rest?.endsWith('%') == true && rest?.endsWith('\\%') == false;
+			// Escaped backslashes go first, so `\\%` ends in a wildcard, and `\%` in a literal %
+			String withoutEscapedBackslashes = rest?.replace('\\\\', '');
+			this.isTrailing =
+				withoutEscapedBackslashes?.endsWith('%') == true &&
+				withoutEscapedBackslashes?.endsWith('\\%') == false;
 			String body = this.isTrailing ? rest?.removeEnd('%') : rest;
 			String unescaped = body?.replace('\\\\', '')?.replace('\\%', '')?.replace('\\_', '');
 			this.isSimple = unescaped?.containsAny('%_\\') == false;

@@ -1013,16 +1013,17 @@ private class InvocableSoqlTest {
 			'Acme' => new List<String>{ 'Acme Corp', 'ACME CORP', 'Acme Corporation' },
 			'50%' => new List<String>{ '50% Off_Co', '50% Offer' },
 			'Caf' => new List<String>{ 'Café Noir', 'CAFÉ NOIR' },
-			'o\'' => new List<String>{ 'O\'Brien & Sons' }
+			'o\'' => new List<String>{ 'O\'Brien & Sons' },
+			'Back\\' => new List<String>{ 'Back\\slash Ltd' }
 		};
-		// A blank pattern runs alone. So does `Back\`: its pattern ends in `\\%`, which the split reads as a literal %
-		Set<String> loneTitles = new Set<String>{ null, 'Back\\' };
+		// A blank pattern runs alone:
+		Set<String> loneTitles = new Set<String>{ null };
 
 		Test.startTest();
 		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(inputs);
 		Test.stopTest();
 
-		Assert.areEqual(3, spy.queries?.size(), 'Wrong # of queries');
+		Assert.areEqual(2, spy.queries?.size(), 'Wrong # of queries');
 		// Mocks don't filter, so a lone query gets every row:
 		List<String> allNames = InvocableSoqlTest.getNames(new InvocableSoql.Output(accounts, null));
 		for (Integer index = 0; index < inputs.size(); index++) {
@@ -1260,6 +1261,19 @@ private class InvocableSoqlTest {
 		Assert.areEqual('ABC', sensitive, 'Wrong case-sensitive key');
 		Assert.isTrue(isInsensitiveMatch, 'Case-insensitive pattern did not match');
 		Assert.isFalse(isSensitiveMatch, 'Case-sensitive pattern matched the wrong case');
+	}
+
+	@IsTest
+	private static void shouldReadAnEscapedBackslashBeforeATrailingWildcard() {
+		Test.startTest();
+		// `Back\\%` is the text `Back\`, then a wildcard; `Back\%` is the text `Back%`:
+		InvocableSoql.LikePattern wildcard = new InvocableSoql.LikePattern('Back\\\\%', false);
+		InvocableSoql.LikePattern literal = new InvocableSoql.LikePattern('Back\\%', false);
+		Test.stopTest();
+
+		Assert.isTrue(wildcard.matches('back\\slash ltd'), 'Escaped backslash hid the trailing wildcard');
+		Assert.isTrue(literal.matches('back%'), 'Escaped % did not match itself');
+		Assert.isFalse(literal.matches('back%s'), 'Escaped % matched as a wildcard');
 	}
 
 	// **** HELPERS **** //
