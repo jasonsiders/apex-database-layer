@@ -304,7 +304,7 @@ public inherited sharing class InvocableSoql {
 		/** @description Conditions can only use filterable fields **/
 		@AuraEnabled
 		public Boolean isFilterable;
-		/** @description A name-pointing lookup, ex: Task.WhoId, takes record collections of any object **/
+		/** @description A lookup to several objects or a name-pointing one, ex: Task.WhoId, takes records of any object **/
 		@AuraEnabled
 		public Boolean isPolymorphic;
 		/** @description ORDER BY can only use sortable fields **/
@@ -335,12 +335,14 @@ public inherited sharing class InvocableSoql {
 		 * @param objectApiName The field's object
 		 */
 		private FieldOption(DescribeFieldResult field, String objectApiName) {
+			List<SObjectType> parents = field?.getReferenceTo();
 			List<Schema.PicklistEntry> entries = field?.getPicklistValues();
 			String parentName = DatabaseLayer.Utils.toEntityName(field);
 			Boolean isId = field?.getType() == Schema.DisplayType.ID;
 			this.apiName = field?.getName();
 			this.isFilterable = field?.isFilterable();
-			this.isPolymorphic = field?.isNamePointing();
+			// A name-pointing lookup drills into Name, which holds no records, so it takes any object's too
+			this.isPolymorphic = parents?.size() > 1 || field?.isNamePointing() == true;
 			this.isSortable = field?.isSortable();
 			this.label = field?.getLabel();
 			this.picklistValues = InvocableSoql.initPicklistOptions(entries);
@@ -1100,7 +1102,7 @@ public inherited sharing class InvocableSoql {
 		 * @return The matching System.AccessLevel
 		 * @throws System.IllegalArgumentException When the value isn't blank, USER_MODE, or SYSTEM_MODE
 		 */
-		public System.AccessLevel getAccessLevel() {
+		private System.AccessLevel getAccessLevel() {
 			return DatabaseLayer.Utils.toAccessLevel(this.accessLevel);
 		}
 
@@ -1110,7 +1112,7 @@ public inherited sharing class InvocableSoql {
 		 * @return The slot's value
 		 * @throws System.IllegalArgumentException When no slot has that name
 		 */
-		public Object getSlotValue(String name) {
+		private Object getSlotValue(String name) {
 			this.slotValues = this.slotValues ?? this.initSlotValues();
 			if (this.slotValues?.containsKey(name) == false) {
 				throw new IllegalArgumentException('Invalid slot: ' + name);
@@ -1309,7 +1311,7 @@ public inherited sharing class InvocableSoql {
 		 * @param value A value, or a collection of values
 		 * @return The value as the field's type; a collection becomes a list of that type
 		 */
-		public Object coerce(Integer index, Object value) {
+		private Object coerce(Integer index, Object value) {
 			Type valueType = this.getValueType(index);
 			return (value instanceof Iterable<Object>)
 				? this.coerceList((Iterable<Object>) value, valueType)
@@ -1322,7 +1324,7 @@ public inherited sharing class InvocableSoql {
 		 * @param index The condition's index
 		 * @return The field's value, or null if a parent is blank
 		 */
-		public Object getFieldValue(SObject record, Integer index) {
+		private Object getFieldValue(SObject record, Integer index) {
 			List<String> names = this.conditionPaths?.get(index);
 			Integer lastIndex = names?.size() - 1;
 			SObject parent = record;
@@ -1348,7 +1350,7 @@ public inherited sharing class InvocableSoql {
 		 * @param index The condition's index
 		 * @return Whether the condition's field compares text case-sensitively
 		 */
-		public Boolean isCaseSensitive(Integer index) {
+		private Boolean isCaseSensitive(Integer index) {
 			return this.conditionFields?.get(index)?.isCaseSensitive() == true;
 		}
 
@@ -1358,7 +1360,7 @@ public inherited sharing class InvocableSoql {
 		 * @param index The condition whose values differ between interviews
 		 * @return Whether interviews that differ only in this condition can share one query
 		 */
-		public Boolean isMergeable(Integer index) {
+		private Boolean isMergeable(Integer index) {
 			Boolean isAllConditions = this.getLogicName() == 'AND';
 			Schema.DisplayType fieldType = this.conditionFields?.get(index)?.getType();
 			// Equality on a multi-select picklist compares the whole set of values, which a split can't reproduce
@@ -1380,7 +1382,7 @@ public inherited sharing class InvocableSoql {
 		 * @param index The condition's index
 		 * @return Whether the condition's value is a LIKE pattern
 		 */
-		public Boolean isPattern(Integer index) {
+		private Boolean isPattern(Integer index) {
 			String operator = this.getOperator(index);
 			return InvocableSoql.TOKENS?.get(operator) == 'LIKE';
 		}
@@ -1391,7 +1393,8 @@ public inherited sharing class InvocableSoql {
 		 * @return One value per condition, in condition order: Is Null's true or false, else null for conditions that
 		 * don't bind one
 		 */
-		public List<Object> resolveValues(InvocableSoql.Input input) {
+		@TestVisible
+		private List<Object> resolveValues(InvocableSoql.Input input) {
 			List<Object> values = new List<Object>{};
 			for (Integer index = 0; index < this.conditions?.size(); index++) {
 				Object value = this.resolveValue(index, input);
@@ -1406,7 +1409,8 @@ public inherited sharing class InvocableSoql {
 		 * @param accessLevel The access level to query in
 		 * @return The query, ready to run
 		 */
-		public Soql toSoql(List<Object> values, System.AccessLevel accessLevel) {
+		@TestVisible
+		private Soql toSoql(List<Object> values, System.AccessLevel accessLevel) {
 			InvocableSoql.Filter whereClause = new InvocableSoql.Filter(this, values, false);
 			Map<String, Object> binds = this.initBinds(values);
 			return (Soql) this.initSoql(whereClause, accessLevel)?.addBind(binds);
@@ -1418,7 +1422,8 @@ public inherited sharing class InvocableSoql {
 		 * @param accessLevel The access level to query in, which decides the fields that all-field selections include
 		 * @return The query, with values filled in
 		 */
-		public String toQueryString(List<Object> values, System.AccessLevel accessLevel) {
+		@TestVisible
+		private String toQueryString(List<Object> values, System.AccessLevel accessLevel) {
 			InvocableSoql.Filter whereClause = new InvocableSoql.Filter(this, values, true);
 			return this.initSoql(whereClause, accessLevel)?.toString();
 		}
@@ -1826,7 +1831,7 @@ public inherited sharing class InvocableSoql {
 		 * @description Null checks, date literals, INCLUDES, and EXCLUDES are rendered in place; everything else binds
 		 * @return Whether the condition binds a value
 		 */
-		public Boolean isBound() {
+		private Boolean isBound() {
 			Boolean isLiteral =
 				InvocableSoql.LITERAL_OPERATORS?.contains(this.operator) == true ||
 				this.operator == InvocableSoql.NULL_CHECK;
@@ -2053,7 +2058,7 @@ public inherited sharing class InvocableSoql {
 		 * @param inputs One input per flow interview
 		 * @return One output per input, in the same order
 		 */
-		public List<InvocableSoql.Output> run(List<InvocableSoql.Input> inputs) {
+		private List<InvocableSoql.Output> run(List<InvocableSoql.Input> inputs) {
 			List<InvocableSoql.Variant> variants = this.addInputs(inputs);
 			for (InvocableSoql.Batch batch : this.batches?.values()) {
 				batch?.run();

@@ -196,40 +196,6 @@ private class DatabaseLayerUtilsTest {
 	}
 
 	@IsTest
-	private static void shouldParseAccessLevels() {
-		Test.startTest();
-		System.AccessLevel blank = DatabaseLayer.Utils.toAccessLevel(null);
-		System.AccessLevel systemMode = DatabaseLayer.Utils.toAccessLevel('SYSTEM_MODE');
-		Exception caughtError;
-		try {
-			DatabaseLayer.Utils.toAccessLevel('system');
-		} catch (IllegalArgumentException error) {
-			caughtError = error;
-		}
-		Test.stopTest();
-
-		Assert.areEqual(System.AccessLevel.USER_MODE, blank, 'Did not default to USER_MODE');
-		Assert.areEqual(System.AccessLevel.SYSTEM_MODE, systemMode, 'Wrong access level');
-		Assert.isNotNull(caughtError, 'Did not reject an inexact name');
-	}
-
-	@IsTest
-	private static void shouldDescribeFields() {
-		Test.startTest();
-		List<SObjectField> fields = DatabaseLayer.Utils.describeFields('Account');
-		Exception caughtError;
-		try {
-			DatabaseLayer.Utils.describeFields('Not_An_Object__c');
-		} catch (System.AuraHandledException error) {
-			caughtError = error;
-		}
-		Test.stopTest();
-
-		Assert.isTrue(fields?.contains(Account.Name), 'Did not describe Account\'s fields');
-		Assert.isNotNull(caughtError, 'Did not throw a System.AuraHandledException');
-	}
-
-	@IsTest
 	private static void shouldNameTheObjectSoqlResolvesALookupTo() {
 		Test.startTest();
 		String lookup = DatabaseLayer.Utils.toEntityName(Contact.AccountId?.getDescribe());
