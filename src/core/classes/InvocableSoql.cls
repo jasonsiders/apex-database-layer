@@ -1055,19 +1055,23 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description Whether Apex can check a variant's value for the condition: not a blank range bound, nor a
-		 * blank LIKE pattern or one with wildcards in its middle, which only SOQL can match
+		 * @description Whether Apex can check a variant's value for the condition: not a LIKE pattern with wildcards in
+		 * its middle, which only SOQL can match. SOQL treats a blank range bound as true, and a blank pattern as Is
+		 * Null, but both as false under NOT. A varying condition is never under NOT, so only its blanks are checkable
 		 * @param index The condition's index
 		 * @param value A variant's value for it
+		 * @param isVarying Whether the condition's values differ between variants
 		 * @return Whether a merged query's split can check the value
 		 */
-		private Boolean isCheckableValue(Integer index, Object value) {
+		private Boolean isCheckableValue(Integer index, Object value, Boolean isVarying) {
 			String operator = this.getOperator(index);
 			Boolean isRange = InvocableSoql.RANGE_OPERATORS?.contains(operator);
 			Boolean isPattern = this.isPattern(index);
 			String pattern = isPattern ? (String) value : null;
-			Boolean isSimple = String.isNotEmpty(pattern) && new InvocableSoql.LikePattern(pattern, false)?.isSimple;
-			return (isRange == false || value != null) && (isPattern == false || isSimple);
+			Boolean isBlank = isPattern ? String.isEmpty(pattern) : value == null;
+			Boolean isSimple = isPattern == false || new InvocableSoql.LikePattern(pattern, false)?.isSimple == true;
+			Boolean hasBlankBound = isBlank && (isRange || isPattern);
+			return hasBlankBound ? isVarying : isSimple;
 		}
 
 		/**
@@ -1964,7 +1968,7 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description Matches like SOQL would
+		 * @description Matches like SOQL would: a blank pattern, as `LIKE null` or `LIKE ''`, matches blank values
 		 * @param candidate A field value's key, from `InvocableSoql.toKey`
 		 * @return Whether the value matches
 		 */
@@ -1978,7 +1982,7 @@ public inherited sharing class InvocableSoql {
 			} else if (this.isTrailing) {
 				isMatch = candidate?.startsWith(this.key);
 			} else {
-				isMatch = candidate?.equals(this.key);
+				isMatch = (candidate ?? '').equals(this.key);
 			}
 			return isMatch == true;
 		}
@@ -2000,7 +2004,7 @@ public inherited sharing class InvocableSoql {
 			String unescaped = body?.replace('\\\\', '')?.replace('\\%', '')?.replace('\\_', '');
 			this.isSimple = unescaped?.containsAny('%_\\') == false;
 			String text = this.unescape(body);
-			this.key = InvocableSoql.toKey(text, isCaseSensitive);
+			this.key = InvocableSoql.toKey(text, isCaseSensitive) ?? '';
 		}
 
 		/**
@@ -2059,13 +2063,13 @@ public inherited sharing class InvocableSoql {
 		 * @description Lists the patterns a value matches. A prefix or suffix longer than the value is the whole
 		 * value, which can't equal a key of that length, so it needs no length check
 		 * @param key A field value's key, from `InvocableSoql.toKey`
-		 * @return The matching patterns' positions; empty for a null key, which LIKE never matches
+		 * @return The matching patterns' positions; only blank patterns for a null key, as SOQL matches `LIKE null`
 		 */
 		@TestVisible
 		private Set<Integer> match(String key) {
 			Set<Integer> positions = new Set<Integer>{};
+			this.addMatches(positions, this.exact, key ?? '');
 			if (key != null) {
-				this.addMatches(positions, this.exact, key);
 				for (Integer length : this.prefixes?.keySet()) {
 					this.addMatches(positions, this.prefixes?.get(length), key?.left(length));
 				}
@@ -2420,7 +2424,8 @@ public inherited sharing class InvocableSoql {
 				Boolean isCheckable = true;
 				for (Integer index : this.checkedIndexes) {
 					Object value = variant?.values?.get(index);
-					isCheckable &= this.query?.isCheckableValue(index, value);
+					Boolean isVarying = this.varyingIndexes?.contains(index);
+					isCheckable &= this.query?.isCheckableValue(index, value, isVarying);
 				}
 				if (isCheckable) {
 					checkable?.add(variant);
@@ -2987,6 +2992,8 @@ public inherited sharing class InvocableSoql {
 		/** @description Each variant's bound, loosest first, so a row passes a run of them from the start **/
 		private List<InvocableSoql.RangeBound> loosestFirst = new List<InvocableSoql.RangeBound>{};
 		private Decimal rowOrdinal;
+		/** @description The variants without a bound, which SOQL passes every row for, even a blank field **/
+		private Set<Integer> unbounded = new Set<Integer>{};
 
 		/**
 		 * @description Orders each variant's bound
@@ -3006,9 +3013,15 @@ public inherited sharing class InvocableSoql {
 				Decimal ordinal = InvocableSoql.toOrdinal(value);
 				InvocableSoql.RangeBound bound = new InvocableSoql.RangeBound(ordinal, position, direction);
 				this.bounds?.add(bound);
-				this.loosestFirst?.add(bound);
+				if (ordinal == null) {
+					this.unbounded?.add(position);
+				} else {
+					this.loosestFirst?.add(bound);
+				}
 			}
 			this.loosestFirst?.sort();
+			// A variant without a bound needs every row, so the merged query can't bound the field
+			this.isDropped = this.unbounded?.isEmpty() == false;
 		}
 
 		/**
@@ -3017,9 +3030,12 @@ public inherited sharing class InvocableSoql {
 		 */
 		public override void close(Integer position) {
 			super.close(position);
-			InvocableSoql.RangeBound bound = this.bounds?.get(position);
-			Integer next = this.loosestFirst?.indexOf(bound);
-			this.loosestFirst?.remove(next);
+			Boolean isUnbounded = this.unbounded?.remove(position) == true;
+			if (isUnbounded == false) {
+				InvocableSoql.RangeBound bound = this.bounds?.get(position);
+				Integer next = this.loosestFirst?.indexOf(bound);
+				this.loosestFirst?.remove(next);
+			}
 		}
 
 		/**
@@ -3032,11 +3048,12 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description Collects the bounds the row's value passes, from the loosest until one fails
-		 * @return Their variants' positions; none for a blank field
+		 * @description Collects the bounds the row's value passes, from the loosest until one fails, and the variants
+		 * without one
+		 * @return Their variants' positions; only those without a bound for a blank field
 		 */
 		public override Set<Integer> match() {
-			Set<Integer> matched = new Set<Integer>{};
+			Set<Integer> matched = this.unbounded?.clone();
 			Integer next = 0;
 			Boolean isPassing = this.rowOrdinal != null;
 			while (isPassing && next < this.loosestFirst?.size()) {
@@ -3061,11 +3078,17 @@ public inherited sharing class InvocableSoql {
 		/**
 		 * @description Compares the row's value with the variant's bound
 		 * @param position The variant's position
-		 * @return Whether the row passes, or null for a blank field, which SOQL treats as unknown
+		 * @return Whether the row passes: always without a bound; null for a blank field, which SOQL treats as unknown
 		 */
 		public override Boolean test(Integer position) {
 			Decimal bound = this.bounds?.get(position)?.ordinal;
-			return (this.rowOrdinal == null) ? null : this.passes(bound);
+			Boolean isPassing;
+			if (bound == null) {
+				isPassing = true;
+			} else if (this.rowOrdinal != null) {
+				isPassing = this.passes(bound);
+			}
+			return isPassing;
 		}
 
 		/**

@@ -862,6 +862,25 @@ private with sharing class InvocableSoqlTest {
 	}
 
 	@IsTest
+	private static void shouldMergeBlankPatternsAsBlankFields() {
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(InvocableSoqlTest.initAccounts());
+		InvocableSoql.Query query = InvocableSoqlTest.initSlotQuery('Site', 'CONTAINS', 'text1');
+		List<InvocableSoql.Input> inputs = new List<InvocableSoql.Input>{
+			InvocableSoqlTest.initTextInput(query, 'as'),
+			InvocableSoqlTest.initTextInput(query, null)
+		};
+
+		Test.startTest();
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(inputs);
+		Test.stopTest();
+
+		// A blank value binds `LIKE null`, which SOQL matches to blank fields:
+		Assert.areEqual(1, spy.queries?.size(), 'Wrong # of queries');
+		Assert.areEqual(new List<String>{ 'Acme' }, InvocableSoqlTest.getNames(outputs[0]), 'Wrong 1st output');
+		Assert.areEqual(new List<String>{ 'Gamma' }, InvocableSoqlTest.getNames(outputs[1]), 'Wrong blank output');
+	}
+
+	@IsTest
 	private static void shouldRunComplexLikePatternsSeparately() {
 		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(InvocableSoqlTest.initAccounts());
 		InvocableSoql.Query query = InvocableSoqlTest.initSlotQuery('Name', 'LIKE', 'text1');
@@ -1228,21 +1247,17 @@ private with sharing class InvocableSoqlTest {
 			'o\'' => new List<String>{ 'O\'Brien & Sons' },
 			'Back\\' => new List<String>{ 'Back\\slash Ltd' }
 		};
-		// A blank pattern runs alone:
-		Set<String> loneTitles = new Set<String>{ null };
 
 		Test.startTest();
 		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(inputs);
 		Test.stopTest();
 
-		Assert.areEqual(2, spy.queries?.size(), 'Wrong # of queries');
-		// Mocks don't filter, so a lone query gets every row:
-		List<String> allNames = InvocableSoqlTest.getNames(new InvocableSoql.Output(accounts, null));
+		// A blank pattern merges too, and matches blank names, of which there are none:
+		Assert.areEqual(1, spy.queries?.size(), 'Wrong # of queries');
 		for (Integer index = 0; index < inputs.size(); index++) {
 			String title = inputs[index].text1;
 			List<String> names = InvocableSoqlTest.getNames(outputs[index]);
-			List<String> mergedNames = expectedNames.get(title) ?? new List<String>{};
-			List<String> expected = loneTitles.contains(title) ? allNames : mergedNames;
+			List<String> expected = expectedNames.get(title) ?? new List<String>{};
 			Assert.areEqual(expected, names, 'Wrong output for title ' + title);
 		}
 	}
@@ -1339,12 +1354,42 @@ private with sharing class InvocableSoqlTest {
 		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(inputs);
 		Test.stopTest();
 
-		// The query reads past the loosest bound, and a blank bound runs alone:
-		Assert.areEqual(2, spy.queries?.size(), 'Wrong # of queries');
-		Assert.areEqual(Date.newInstance(1990, 1, 1), spy.queries?.get(0)?.binds?.get('bind0'), 'Wrong merged bound');
+		// SOQL passes every row for a blank bound, even a blank field, so the query reads them all:
+		Assert.areEqual(1, spy.queries?.size(), 'Wrong # of queries');
+		String merged = spy.queries?.get(0)?.toString();
+		Assert.isTrue(merged?.endsWith('WHERE Id != null'), merged);
 		Assert.areEqual(new List<SObject>{ contacts[1] }, outputs[0].records, 'Wrong 1st output');
 		Assert.areEqual(new List<SObject>{ contacts[1] }, outputs[1].records, 'Wrong 2nd output');
-		Assert.areEqual(3, outputs[2].records?.size(), 'Mocks do not filter, so the lone query gets every row');
+		Assert.areEqual(new List<SObject>{ contacts[0] }, outputs[2].records, 'Wrong blank bound output');
+	}
+
+	@IsTest
+	private static void shouldKeepMatchingInterviewsThatStillNeedRows() {
+		List<Account> accounts = InvocableSoqlTest.initAccounts();
+		accounts[0].NumberOfEmployees = 2001;
+		accounts[1].NumberOfEmployees = 1992;
+		accounts[2].NumberOfEmployees = 2005;
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(accounts);
+		InvocableSoql.Query query = InvocableSoqlTest.initSlotQuery('NumberOfEmployees', 'GREATER_THAN', 'number1');
+		query.rowLimit = 2;
+		List<InvocableSoql.Input> inputs = new List<InvocableSoql.Input>{
+			InvocableSoqlTest.initInput(query),
+			InvocableSoqlTest.initInput(query),
+			InvocableSoqlTest.initInput(query)
+		};
+		inputs[0].number1 = 2000;
+		inputs[1].number1 = 1995;
+		inputs[2].number1 = 1990;
+
+		Test.startTest();
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(inputs);
+		Test.stopTest();
+
+		// The loosest interview fills on the 2nd row, and the others still get the 3rd:
+		Assert.areEqual(1990, spy.queries?.get(0)?.binds?.get('bind0'), 'Wrong merged bound');
+		Assert.areEqual(new List<String>{ 'Acme', 'Gamma' }, InvocableSoqlTest.getNames(outputs[0]), 'Wrong 1st');
+		Assert.areEqual(new List<String>{ 'Acme', 'Gamma' }, InvocableSoqlTest.getNames(outputs[1]), 'Wrong 2nd');
+		Assert.areEqual(new List<String>{ 'Acme', 'Beta' }, InvocableSoqlTest.getNames(outputs[2]), 'Wrong 3rd');
 	}
 
 	@IsTest
@@ -1422,14 +1467,20 @@ private with sharing class InvocableSoqlTest {
 		first.date1 = Date.newInstance(1995, 1, 1);
 		InvocableSoql.Input second = InvocableSoqlTest.initTextInput(query, accountIds[1]);
 		second.date1 = Date.newInstance(2005, 1, 1);
+		InvocableSoql.Input blank = InvocableSoqlTest.initTextInput(query, accountIds[0]);
+		List<InvocableSoql.Input> inputs = new List<InvocableSoql.Input>{ first, second, blank };
 
 		Test.startTest();
-		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(new List<InvocableSoql.Input>{ first, second });
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(inputs);
 		Test.stopTest();
 
+		// A blank bound passes every row, so the query leaves the range to Apex:
 		Assert.areEqual(1, spy.queries?.size(), 'Wrong # of queries');
+		String merged = spy.queries?.get(0)?.toString();
+		Assert.isTrue(merged?.endsWith('WHERE AccountId = :bind0 AND Id != null'), merged);
 		Assert.areEqual(new List<SObject>{ contacts[0] }, outputs[0].records, 'Wrong 1st output');
 		Assert.areEqual(new List<SObject>{ contacts[2] }, outputs[1].records, 'Wrong 2nd output');
+		Assert.areEqual(new List<SObject>{ contacts[0], contacts[1] }, outputs[2].records, 'Wrong blank output');
 	}
 
 	@IsTest

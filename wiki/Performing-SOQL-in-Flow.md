@@ -43,7 +43,7 @@ The operators depend on the field's type, in Get Records' wording:
 
 **Contains**, **Starts With**, and **Ends With** match their value literally, so a `%` or `_` in it is a character, not a wildcard. **Like** passes its value through as a SOQL pattern, wildcards and all.
 
-Unlike Get Records, a blank value, ex: an unset resource, makes **Contains**, **Starts With**, and **Ends With** match nothing, since the condition becomes `LIKE null`. Get Records matches every record instead.
+Unlike Get Records, a blank value, ex: an unset resource, makes **Contains**, **Starts With**, and **Ends With** match only records where the field is blank, since the condition becomes `LIKE null`. Get Records matches every record instead. A blank value on a range, ex: Greater Than an unset date, matches every record.
 
 ### Values
 
@@ -91,19 +91,19 @@ When many flow interviews run the action at once (ex: a record-triggered flow on
 1. Interviews with the same query, access level, and values share one query.
 2. Other interviews share one merged query that matches any of their values. Apex then checks each row against each interview's conditions. A condition whose values differ between interviews widens in the merged query:
 
-    | Operator                                                                                    | Merged query                                        |
-    | ------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-    | Equals, In, Contains, Starts With, Ends With, Like                                          | Matches any interview's values                      |
-    | Greater Than, Less Than, and their Or Equal forms, on numbers, dates, date/times, and times | Reads past the loosest value, ex: the earliest date |
-    | Does Not Equal, Not In, Is Null                                                             | Leaves the condition out                            |
+    | Operator                                                                                    | Merged query                                                                                           |
+    | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+    | Equals, In, Contains, Starts With, Ends With, Like                                          | Matches any interview's values                                                                         |
+    | Greater Than, Less Than, and their Or Equal forms, on numbers, dates, date/times, and times | Reads past the loosest value, ex: the earliest date, or leaves the condition out when a value is blank |
+    | Does Not Equal, Not In, Is Null                                                             | Leaves the condition out                                                                               |
 
     A condition whose value is the same for every interview stays in the merged query. Apex also checks it when a row could pass without it, ex: under **Any Condition Is Met (OR)**.
 
-3. An interview runs its own query when Apex can't check one of its values: a blank value on a range, or a Like pattern with a wildcard in its middle, ex: `A%e`.
+3. An interview runs its own query when Apex can't check one of its values: a Like pattern with a wildcard in its middle, ex: `A%e`. So does a blank value on a range, Contains, Starts With, Ends With, or Like that every interview shares, under OR or `NOT`, since SOQL treats such a blank as false under `NOT`.
 4. Every interview runs its own query when either of these is true:
 
     - A condition whose values differ is under `NOT` in custom logic, which would narrow the rows instead of widening them.
-    - Apex would have to check a condition it can't: a date literal, Includes, Excludes, a range on text, a multi-select picklist, or a currency field in an org with several currencies. Apex never has to when every row must pass the condition, as with **All Conditions Are Met (AND)**.
+    - Apex would have to check a condition it can't: a date literal, Includes, Excludes, a range on text, a multi-select picklist, or a currency field in an org with several currencies. Apex never has to when every interview has the same value and every row must pass the condition, as with **All Conditions Are Met (AND)**.
 
 Apex compares values the way SOQL does: text ignores case, except on case-sensitive fields, and a blank matches blank fields. Like Get Records, it ignores case the same way in every locale, where SOQL follows the running user's. A merged query can miss rows a lone query finds for a few letters, ex: the Turkish `İ` and `ı`, or the Greek `ς`.
 
@@ -111,15 +111,15 @@ The limit and offset apply to each interview's rows after the split. A merged qu
 
 For example, in a record-triggered flow on Contact:
 
-| Conditions                                                                          | Queries for 200 contacts                                                      |
-| ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| Account ID Equals {!$Record.AccountId}                                              | 1: `AccountId IN :accountIds`, with a blank among them                        |
-| The same, with a limit of 1                                                         | 1: the merged query, then the first row for each contact                      |
-| Account ID Equals {!$Record.AccountId}, and Contact ID Does Not Equal {!$Record.Id} | 1: the query leaves out Does Not Equal, and Apex drops each contact's own row |
-| Account ID Equals {!$Record.AccountId} OR Title Equals {!$Record.Title}             | 1: matches any contact's account or title                                     |
-| Birthdate Greater Than {!$Record.Birthdate}                                         | 1: reads past the earliest birthdate                                          |
-| Birthdate Greater Than {!$Record.Birthdate}, with some contacts lacking a birthdate | 2: the merged query, and one for the contacts with no birthdate               |
-| NOT (Title Equals {!$Record.Title})                                                 | 1 per distinct title, which past 100 exceeds the synchronous limit            |
+| Conditions                                                                                                          | Queries for 200 contacts                                                                         |
+| ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Account ID Equals {!$Record.AccountId}                                                                              | 1: `AccountId = :accountIds`, a list with a blank among them                                     |
+| The same, with a limit of 1                                                                                         | 1: the merged query, then the first row for each contact                                         |
+| Account ID Equals {!$Record.AccountId}, and Contact ID Does Not Equal {!$Record.Id}                                 | 1: the query leaves out Does Not Equal, and Apex drops each contact's own row                    |
+| Account ID Equals {!$Record.AccountId} OR Title Equals {!$Record.Title}                                             | 1: matches any contact's account or title                                                        |
+| Birthdate Greater Than {!$Record.Birthdate}                                                                         | 1: reads past the earliest birthdate                                                             |
+| Account ID Equals {!$Record.AccountId}, and Birthdate Greater Than {!$Record.Birthdate}, with some birthdates blank | 1: a blank birthdate matches every record, so the query leaves out the range, and Apex checks it |
+| NOT (Title Equals {!$Record.Title})                                                                                 | 1 per distinct title, which past 100 exceeds the synchronous limit                               |
 
 Each distinct query counts against the transaction's SOQL limit: 100 queries in a synchronous transaction, 200 in an asynchronous one. A batch that can't merge can exceed it, which fails every interview in the batch.
 
