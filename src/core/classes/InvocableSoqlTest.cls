@@ -64,10 +64,8 @@ private class InvocableSoqlTest {
 		input.number1 = 50.0;
 		input.dateTime1 = DateTime.newInstanceGmt(2000, 1, 1, 12, 30, 0);
 		// Differing only in its number, this interview merges with the first, so the query binds a list of them:
-		InvocableSoql.Input other = (InvocableSoql.Input) JSON.deserialize(
-			JSON.serialize(input),
-			InvocableSoql.Input.class
-		);
+		String inputJson = JSON.serialize(input);
+		InvocableSoql.Input other = (InvocableSoql.Input) JSON.deserialize(inputJson, InvocableSoql.Input.class);
 		other.number1 = 60.0;
 
 		Test.startTest();

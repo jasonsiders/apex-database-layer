@@ -304,7 +304,7 @@ public inherited sharing class InvocableSoql {
 		/** @description Conditions can only use filterable fields **/
 		@AuraEnabled
 		public Boolean isFilterable;
-		/** @description A lookup to several objects or a name-pointing one, ex: Task.WhoId, takes records of any object **/
+		/** @description A multi-object or name-pointing lookup, ex: Task.WhoId, takes records of any object **/
 		@AuraEnabled
 		public Boolean isPolymorphic;
 		/** @description ORDER BY can only use sortable fields **/
@@ -1276,8 +1276,8 @@ public inherited sharing class InvocableSoql {
 	}
 
 	/**
-	 * @description A `SOQL: Get Record(s)` query, parsed from the JSON its editor writes. Builds the query, binding every
-	 * value, and resolves each interview's values for it
+	 * @description A `SOQL: Get Record(s)` query, parsed from the JSON its editor writes. Builds the query, binding
+	 * every value, and resolves each interview's values for it
 	 */
 	public class Query {
 		/** @description Filters, combined by `conditionLogic` **/
@@ -1297,12 +1297,12 @@ public inherited sharing class InvocableSoql {
 		/** @description A `Soql.Usage` name, ex: ALL_ROWS or FOR_UPDATE; SOQL allows one at a time **/
 		public String usage;
 
-		/** @description Each condition's field, in condition order, for coercing values and splitting merged results **/
+		/** @description Each condition's field, in order, for coercing values and splitting merged results **/
 		private transient List<DescribeFieldResult> conditionFields;
 		/** @description Each condition's field path, split once, since a merged query reads it from every row **/
 		private transient List<List<String>> conditionPaths;
 		private transient DescribeSObjectResult objectDescribe;
-		/** @description The expanded SELECT clauses, by access level, since user mode omits fields the user can't read **/
+		/** @description Expanded SELECT clauses by access level, since user mode omits fields the user can't read **/
 		private transient Map<System.AccessLevel, Set<String>> selectClausesByAccessLevel;
 
 		/**
@@ -1440,8 +1440,8 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description Adds the SELECT clauses, expanded once per access level, since a batch builds a query and a query
-		 * string for each variant, and each all-field selection describes every field of its object
+		 * @description Adds the SELECT clauses, expanded once per access level, since a batch builds a query and a
+		 * query string for each variant, and each all-field selection describes every field of its object
 		 * @param builder The query being built
 		 */
 		private void addSelect(Soql builder) {
@@ -1487,8 +1487,8 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description Adds the WHERE clause, unless there are no conditions, since a blank one would leave a dangling AND
-		 * before any condition a SOQL plugin adds
+		 * @description Adds the WHERE clause, unless there are no conditions, since a blank one would leave a dangling
+		 * AND before any condition a SOQL plugin adds
 		 * @param builder The query being built
 		 * @param whereClause The WHERE clause, with binds or values
 		 */
@@ -1516,8 +1516,8 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description JSON converts flow values and the editor's text alike; Id.valueOf also lengthens 15-character IDs,
-		 * so they match the 18-character IDs that queries return
+		 * @description JSON converts flow values and the editor's text alike; Id.valueOf also lengthens 15-character
+		 * IDs, so they match the 18-character IDs that queries return
 		 * @param value A single value
 		 * @param valueType The field's Apex type
 		 * @return The value as the field's type
@@ -1525,7 +1525,7 @@ public inherited sharing class InvocableSoql {
 		private Object coerceValue(Object value, Type valueType) {
 			InvocableSoql.checkWholeNumber(value, valueType);
 			Boolean isId = valueType == Id.class && value != null;
-			// JSON reads a time without a zone, ex: "10:30", in the user's time zone; Time fields hold the time as typed
+			// JSON reads a zoneless time, ex: "10:30", in the user's time zone; Time fields hold the time as typed
 			Boolean isLocalTime =
 				value instanceof String &&
 				valueType == Time.class &&
@@ -1692,8 +1692,8 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description Contains, Starts With, and Ends With match their text literally, so `%` and `_` in it are escaped
-		 * before the wildcards are added
+		 * @description Contains, Starts With, and Ends With match their text literally, so `%` and `_` in it are
+		 * escaped before the wildcards are added
 		 * @param index The condition's index
 		 * @param value The coerced value
 		 * @return The LIKE pattern, or the value for other operators
@@ -1736,7 +1736,7 @@ public inherited sharing class InvocableSoql {
 		private Set<Id> getRecordIds(List<SObject> records) {
 			Map<Id, SObject> recordsById = new Map<Id, SObject>();
 			recordsById?.putAll(records);
-			// After putAll from a typed list, ex: List<Account>, containsKey(null) misses the null key; keySet() finds it
+			// After putAll from a typed list, ex: List<Account>, containsKey(null) misses null; keySet() finds it
 			if (recordsById?.keySet()?.contains(null) == true) {
 				throw new IllegalArgumentException('Record Collection contains a record with no ID');
 			}
@@ -1896,7 +1896,7 @@ public inherited sharing class InvocableSoql {
 				throw new IllegalArgumentException('Invalid operator: ' + this.operator);
 			}
 			// Date literals are rendered as-is, since SOQL can't bind them, so only SOQL's own literals are allowed
-			if (this.dateLiteral != null && !Soql.DATE_LITERAL_PATTERN.matcher(this.dateLiteral).matches()) {
+			if (this.dateLiteral != null && Soql.DATE_LITERAL_PATTERN?.matcher(this.dateLiteral)?.matches() == false) {
 				throw new IllegalArgumentException('Invalid date literal: ' + this.dateLiteral);
 			}
 		}
@@ -2045,9 +2045,9 @@ public inherited sharing class InvocableSoql {
 	/**
 	 * @description Runs a batch of `SOQL: Get Record(s)` interviews in as few queries as it can, since Flow sends every
 	 * interview at the element in one call. Interviews with the same query, access level, and values share one query.
-	 * Interviews whose values differ in exactly one EQUALS, IN, or LIKE-style condition share one merged query, whose rows
-	 * are split back to each interview by comparing that field in Apex. Everything else runs one query per distinct set of
-	 * values; see `InvocableSoql.Query.isMergeable` for when merging applies
+	 * Interviews whose values differ in exactly one EQUALS, IN, or LIKE-style condition share one merged query, whose
+	 * rows are split back to each interview by comparing that field in Apex. Everything else runs one query per
+	 * distinct set of values; see `InvocableSoql.Query.isMergeable` for when merging applies
 	 */
 	private class Planner {
 		/** @description Interviews that share a query definition and access level, by both **/
