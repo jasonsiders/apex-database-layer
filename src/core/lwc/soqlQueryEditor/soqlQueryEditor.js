@@ -1,4 +1,4 @@
-import { LightningElement, api, wire } from "lwc";
+import { api, wire } from "lwc";
 import getObjects from "@salesforce/apex/InvocableSoql.getObjects";
 import {
 	DATE_LITERAL_PATTERN,
@@ -8,12 +8,9 @@ import {
 	parsePath,
 	toBooleanConstant
 } from "c/flowResourceMenu";
+import FlowPropertyEditor, { ACCESS_LEVELS, ACCESS_LEVEL_HELP, NONE_OPTION } from "c/flowPropertyEditor";
 import { getAllFieldsPath, resolveField } from "c/soqlFieldPath";
 
-const ACCESS_LEVELS = [
-	{ label: "User Mode", value: "USER_MODE" },
-	{ label: "System Mode", value: "SYSTEM_MODE" }
-];
 const CUSTOM = "CUSTOM";
 const DATE_LITERALS = [
 	"TODAY",
@@ -133,8 +130,7 @@ const SLOT_PREFIXES = {
 };
 const RECORD_SLOTS = toSlotNames(RECORD_SLOT_PREFIX);
 const USAGES = [
-	// Flow Builder can't save a blank literal, so choosing None removes the option
-	{ label: "--None--", value: "" },
+	NONE_OPTION,
 	{ label: "All Rows (include deleted and archived records)", value: "ALL_ROWS" },
 	{ label: "For Update (lock the records for this transaction)", value: "FOR_UPDATE" }
 ];
@@ -262,45 +258,22 @@ function toCoveredPaths(fields) {
  * the query options Get Records lacks. Saves the query as JSON in `queryDefinition`, and each value that comes from a
  * resource to a free slot input of its type, which the query names.
  */
-export default class SoqlQueryEditor extends LightningElement {
-	/**
-	 * @description From Flow Builder: outputs of actions that store them automatically, for drilling into
-	 * @type {Object}
-	 */
-	@api automaticOutputVariables;
-	/**
-	 * @description From Flow Builder: the flow's resources
-	 * @type {Object}
-	 */
-	@api builderContext;
-	/**
-	 * @description From Flow Builder: the element being edited, so pickers offer only resources available at that point
-	 * @type {Object}
-	 */
-	@api elementInfo;
-	/**
-	 * @description From Flow Builder: the action's generic object types
-	 * @type {Array}
-	 */
-	@api genericTypeMappings;
-
+export default class SoqlQueryEditor extends FlowPropertyEditor {
+	accessLevelHelp = ACCESS_LEVEL_HELP;
 	accessLevels = ACCESS_LEVELS;
 	directions = DIRECTIONS;
 	logicOptions = LOGIC_OPTIONS;
 	nullOrders = NULL_ORDERS;
 	usages = USAGES;
 	_definition = parseDefinition();
-	_errors = {};
 	// Each condition's field, by path, once resolved
 	_fields = {};
 	// Once Flow Builder validates, errors track each change, so a fixed problem's error clears
 	_hasValidated = false;
-	_inputVariables = [];
 	_isCustomLogic = false;
 	_objects = [];
 	// The JSON this editor last saved, so Flow Builder echoing it back doesn't reset rows still being filled in
 	_savedJson;
-	_values = {};
 
 	// **** GETTERS **** //
 	get accessLevel() {
@@ -313,10 +286,6 @@ export default class SoqlQueryEditor extends LightningElement {
 
 	get conditions() {
 		return this._definition.conditions.map((condition, index) => this._initCondition(condition, index));
-	}
-
-	get elementName() {
-		return this.elementInfo?.apiName;
 	}
 
 	get errors() {
@@ -639,15 +608,6 @@ export default class SoqlQueryEditor extends LightningElement {
 
 	// **** PRIVATE **** //
 	/**
-	 * @description Fires a Custom Property Editor event to Flow Builder
-	 * @param {String} type The event type
-	 * @param {Object} detail The event's details
-	 */
-	_dispatch(type, detail) {
-		this.dispatchEvent(new CustomEvent(type, { bubbles: true, cancelable: false, composed: true, detail }));
-	}
-
-	/**
 	 * @description Finds the lowest slot of a type that no other condition uses
 	 * @param {String} prefix The slot type, ex: `text` or `recordCollection`
 	 * @param {Number} index The condition taking the slot, whose own slot counts as free
@@ -761,17 +721,6 @@ export default class SoqlQueryEditor extends LightningElement {
 	}
 
 	/**
-	 * @description Indexes the saved inputs by name. A new action's inputs arrive blank, not null; Flow Builder can't
-	 * save a blank literal, so blank means unset.
-	 * @returns {Object} Each saved input, by name
-	 */
-	_initValues() {
-		const saved = this._inputVariables.filter((input) => input.value !== "");
-		const entries = saved.map((input) => [input.name, input]);
-		return Object.fromEntries(entries);
-	}
-
-	/**
 	 * @description Finds the query's problems, and shows each by its input
 	 * @returns {Array} `{ key, errorString }` for each problem; empty when the query is valid
 	 */
@@ -794,7 +743,7 @@ export default class SoqlQueryEditor extends LightningElement {
 	 */
 	_releaseSlot(condition) {
 		if (condition?.slot) {
-			this._dispatch("configuration_editor_input_value_deleted", { name: condition.slot });
+			this._deleteInput(condition.slot);
 		}
 	}
 
@@ -819,24 +768,6 @@ export default class SoqlQueryEditor extends LightningElement {
 		const fields = await Promise.all(requests);
 		const entries = paths.map((path, index) => [path, fields[index]]);
 		this._fields = { ...this._fields, ...Object.fromEntries(entries) };
-	}
-
-	/**
-	 * @description Saves a value to the action, or removes it when cleared
-	 * @param {String} name The input's name
-	 * @param {String} value The value
-	 * @param {String} valueDataType The value's data type
-	 */
-	_saveInput(name, value, valueDataType) {
-		if (value == null || value === "") {
-			this._dispatch("configuration_editor_input_value_deleted", { name });
-		} else {
-			this._dispatch("configuration_editor_input_value_changed", {
-				name,
-				newValue: value,
-				newValueDataType: valueDataType
-			});
-		}
 	}
 
 	/**
@@ -865,17 +796,6 @@ export default class SoqlQueryEditor extends LightningElement {
 			const error = `This action takes up to ${SLOT_COUNT} resources of this type.`;
 			this._releaseSlot(condition);
 			this._replaceCondition(index, { field: condition.field, operator: condition.operator, error });
-		}
-	}
-
-	/**
-	 * @description Types one of the action's generic inputs or outputs to an object
-	 * @param {String} typeName The generic type, ex: `U__records`
-	 * @param {String} typeValue The object, ex: `Account`
-	 */
-	_setGenericType(typeName, typeValue) {
-		if (typeValue) {
-			this._dispatch("configuration_editor_generic_type_mapping_changed", { typeName, typeValue });
 		}
 	}
 

@@ -205,7 +205,7 @@
 					data-name="accessLevel"
 					name="accessLevel"
 					label="Access Level"
-					field-level-help="USER_MODE (default) enforces the running user's object permissions, field-level security, and sharing rules. SYSTEM_MODE ignores object permissions and field-level security, but sharing rules still apply."
+					field-level-help={accessLevelHelp}
 					options={accessLevels}
 					value={accessLevel}
 					onchange={handleAccessLevelChange}
