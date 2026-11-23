@@ -959,6 +959,81 @@ private class InvocableSoqlTest {
 		}
 	}
 
+	// A record-triggered flow on Contact gets accounts by the contact's title, as users type it: case, accents, quotes,
+	// wildcards, and backslashes. Each title's expected rows are what SOQL returned for it alone, in a scratch org
+	@IsTest
+	private static void shouldRunOneQueryForATriggerBatchOfText() {
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(InvocableSoqlTest.initTextAccounts());
+		InvocableSoql.Query query = InvocableSoqlTest.initSlotQuery('Name', 'EQUALS', 'text1');
+		List<InvocableSoql.Input> inputs = InvocableSoqlTest.initTitleInputs(query);
+		Map<String, List<String>> expectedNames = new Map<String, List<String>>{
+			'acme corp' => new List<String>{ 'Acme Corp', 'ACME CORP' },
+			'ACME Corp' => new List<String>{ 'Acme Corp', 'ACME CORP' },
+			'Acme Corporation' => new List<String>{ 'Acme Corporation' },
+			'café noir' => new List<String>{ 'Café Noir', 'CAFÉ NOIR' },
+			'O\'Brien & Sons' => new List<String>{ 'O\'Brien & Sons' },
+			'50% Off_Co' => new List<String>{ '50% Off_Co' },
+			'50% off_co' => new List<String>{ '50% Off_Co' },
+			'Back\\slash Ltd' => new List<String>{ 'Back\\slash Ltd' },
+			'Zeta' => new List<String>{ 'Zeta' },
+			'zeta' => new List<String>{ 'Zeta' }
+		};
+
+		Test.startTest();
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(inputs);
+		Test.stopTest();
+
+		// Every title merges, including the blank one; the rest match nothing:
+		Assert.areEqual(1, spy.queries?.size(), 'Wrong # of queries');
+		for (Integer index = 0; index < inputs.size(); index++) {
+			String title = inputs[index].text1;
+			List<String> names = InvocableSoqlTest.getNames(outputs[index]);
+			List<String> expected = expectedNames.get(title) ?? new List<String>{};
+			Assert.areEqual(expected, names, 'Wrong output for title ' + title);
+		}
+	}
+
+	@IsTest
+	private static void shouldMergeATriggerBatchOfTextPrefixes() {
+		List<Account> accounts = InvocableSoqlTest.initTextAccounts();
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(accounts);
+		InvocableSoql.Query query = InvocableSoqlTest.initSlotQuery('Name', 'STARTS_WITH', 'text1');
+		List<InvocableSoql.Input> inputs = InvocableSoqlTest.initTitleInputs(query);
+		Map<String, List<String>> expectedNames = new Map<String, List<String>>{
+			'acme corp' => new List<String>{ 'Acme Corp', 'ACME CORP', 'Acme Corporation' },
+			'ACME Corp' => new List<String>{ 'Acme Corp', 'ACME CORP', 'Acme Corporation' },
+			'Acme Corporation' => new List<String>{ 'Acme Corporation' },
+			'café noir' => new List<String>{ 'Café Noir', 'CAFÉ NOIR' },
+			'O\'Brien & Sons' => new List<String>{ 'O\'Brien & Sons' },
+			'50% Off_Co' => new List<String>{ '50% Off_Co' },
+			'50% off_co' => new List<String>{ '50% Off_Co' },
+			'Back\\slash Ltd' => new List<String>{ 'Back\\slash Ltd' },
+			'Zeta' => new List<String>{ 'Zeta', 'zeta labs' },
+			'zeta' => new List<String>{ 'Zeta', 'zeta labs' },
+			'Acme' => new List<String>{ 'Acme Corp', 'ACME CORP', 'Acme Corporation' },
+			'50%' => new List<String>{ '50% Off_Co', '50% Offer' },
+			'Caf' => new List<String>{ 'Café Noir', 'CAFÉ NOIR' },
+			'o\'' => new List<String>{ 'O\'Brien & Sons' }
+		};
+		// A blank pattern runs alone. So does `Back\`: its pattern ends in `\\%`, which the split reads as a literal %
+		Set<String> loneTitles = new Set<String>{ null, 'Back\\' };
+
+		Test.startTest();
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(inputs);
+		Test.stopTest();
+
+		Assert.areEqual(3, spy.queries?.size(), 'Wrong # of queries');
+		// Mocks don't filter, so a lone query gets every row:
+		List<String> allNames = InvocableSoqlTest.getNames(new InvocableSoql.Output(accounts, null));
+		for (Integer index = 0; index < inputs.size(); index++) {
+			String title = inputs[index].text1;
+			List<String> names = InvocableSoqlTest.getNames(outputs[index]);
+			List<String> mergedNames = expectedNames.get(title) ?? new List<String>{};
+			List<String> expected = loneTitles.contains(title) ? allNames : mergedNames;
+			Assert.areEqual(expected, names, 'Wrong output for title ' + title);
+		}
+	}
+
 	@IsTest
 	private static void shouldRunSeparatelyWhenOnlyAnIdsNotEqualsVaries() {
 		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(new List<SObject>{});
@@ -1216,6 +1291,59 @@ private class InvocableSoqlTest {
 			accountIds.add(accountId);
 		}
 		return accountIds;
+	}
+
+	private static List<Account> initTextAccounts() {
+		List<Account> accounts = new List<Account>{};
+		List<String> names = new List<String>{
+			'Acme Corp',
+			'ACME CORP',
+			'Acme Corporation',
+			'Café Noir',
+			'CAFÉ NOIR',
+			'O\'Brien & Sons',
+			'50% Off_Co',
+			'50% Offer',
+			'Back\\slash Ltd',
+			'Zeta',
+			'zeta labs'
+		};
+		for (String name : names) {
+			Account account = InvocableSoqlTest.initAccount(name, null);
+			accounts.add(account);
+		}
+		return accounts;
+	}
+
+	private static List<InvocableSoql.Input> initTitleInputs(InvocableSoql.Query query) {
+		// Flow's trigger batch size, cycling through titles a user might type, ex: text1 = {!$Record.Title}
+		List<String> titles = new List<String>{
+			'acme corp',
+			'ACME Corp',
+			'Acme Corporation',
+			'café noir',
+			'O\'Brien & Sons',
+			'50% Off_Co',
+			'50% off_co',
+			'Back\\slash Ltd',
+			'No Match Inc',
+			null,
+			'Zeta',
+			'zeta',
+			'Acme',
+			'Ac%',
+			'50%',
+			'50_',
+			'Back\\',
+			'Caf',
+			'o\''
+		};
+		List<InvocableSoql.Input> inputs = new List<InvocableSoql.Input>{};
+		for (Integer index = 0; index < 200; index++) {
+			String title = titles[Math.mod(index, titles.size())];
+			inputs.add(InvocableSoqlTest.initTextInput(query, title));
+		}
+		return inputs;
 	}
 
 	private static InvocableSoql.Query initSiblingQuery() {
