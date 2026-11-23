@@ -105,9 +105,9 @@ When many flow interviews run the action at once (ex: a record-triggered flow on
     - A condition whose values differ is under `NOT` in custom logic, which would narrow the rows instead of widening them.
     - Apex would have to check a condition it can't: a date literal, Includes, Excludes, a range on text, a multi-select picklist, or a currency field in an org with several currencies. Apex never has to when every interview has the same value and every row must pass the condition, as with **All Conditions Are Met (AND)**.
 
-Apex compares values the way SOQL does: text ignores case, except on case-sensitive fields, and a blank matches blank fields. Like Get Records, it ignores case the same way in every locale, where SOQL follows the running user's. A merged query can miss rows a lone query finds for a few letters, ex: the Turkish `İ` and `ı`, or the Greek `ς`.
+Apex compares values the way SOQL does: text ignores case, except on case-sensitive fields, and a blank matches blank fields. Like Get Records, it ignores case the same way in every locale, where SOQL follows the running user's. For a few letters, ex: the Turkish `İ` and `ı`, or the Greek `ς`, a merged query can miss rows a lone query finds, or for Does Not Equal and Not In, keep rows it leaves out.
 
-The limit and offset apply to each interview's rows after the split. A merged query reads every row any interview could need, as Get Records does: a limit of 1 over accounts with thousands of contacts each, a range on a large table, or a Does Not Equal with no other condition can reach SOQL's 50,000-row limit.
+The limit and offset apply to each interview's rows after the split. A merged query reads every row any interview could need, as Get Records does. When several conditions vary, it also reads their combinations, ex: rows with one contact's account and another contact's title, which no interview needs. A limit of 1 over accounts with thousands of contacts each, a range on a large table, a Does Not Equal with no other condition, or a common combination can reach SOQL's 50,000-row limit.
 
 For example, in a record-triggered flow on Contact:
 
