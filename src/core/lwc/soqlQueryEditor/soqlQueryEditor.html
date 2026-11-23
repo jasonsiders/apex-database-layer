@@ -198,28 +198,30 @@
 					icon-name="utility:add"
 					onclick={handleAddSort}
 				></lightning-button>
-				<lightning-input
-					class="editor-input slds-var-m-top_small"
-					data-name="rowLimit"
-					type="number"
-					label="Limit"
-					field-level-help="The most records to get. Batches of interviews with a limit can't share a query."
-					min="1"
-					max="50000"
-					value={rowLimit}
-					onchange={handleLimitChange}
-				></lightning-input>
-				<lightning-input
-					class="editor-input slds-var-m-top_x-small"
-					data-name="rowOffset"
-					type="number"
-					label="Offset"
-					field-level-help="How many records to skip. Batches of interviews with an offset can't share a query."
-					min="0"
-					max="2000"
-					value={rowOffset}
-					onchange={handleOffsetChange}
-				></lightning-input>
+				<div class="editor-row-columns limit-columns slds-var-m-top_small">
+					<lightning-input
+						class="editor-input"
+						data-name="rowLimit"
+						type="number"
+						label="Limit"
+						field-level-help="The most records to get. Batches of interviews with a limit can't share a query."
+						min="1"
+						max="50000"
+						value={rowLimit}
+						onchange={handleLimitChange}
+					></lightning-input>
+					<lightning-input
+						class="editor-input"
+						data-name="rowOffset"
+						type="number"
+						label="Offset"
+						field-level-help="How many records to skip. Batches of interviews with an offset can't share a query."
+						min="0"
+						max="2000"
+						value={rowOffset}
+						onchange={handleOffsetChange}
+					></lightning-input>
+				</div>
 			</lightning-accordion-section>
 			<lightning-accordion-section name="options" label="Advanced Query Options">
 				<lightning-combobox
