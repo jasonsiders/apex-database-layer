@@ -96,17 +96,12 @@ A parent is named by its lookups, as tokens or as the lookup's path from the que
 ```java
 DatabaseLayer.Soql.newQuery(Case.SObjectType)
 	?.selectAll() // Subject, Status, ...
-	?.selectAll(Case.ContactId) // Contact.Name, Contact.Email, ...
-	?.selectAll(Case.ContactId, Contact.AccountId) // Contact.Account.Name, ...
+	?.selectAll(new List<SObjectField>{ Case.ContactId }) // Contact.Name, Contact.Email, ...
+	?.selectAll(new List<SObjectField>{ Case.ContactId, Contact.AccountId }) // Contact.Account.Name, ...
 	?.selectAll('CreatedById'); // CreatedBy.Name, ...
 ```
 
 - `Soql.Builder selectAll()`
-- `Soql.Builder selectAll(SObjectField relationship1)`
-- `Soql.Builder selectAll(SObjectField relationship1, SObjectField relationship2)`
-- `Soql.Builder selectAll(SObjectField relationship1, SObjectField relationship2, SObjectField relationship3)`
-- `Soql.Builder selectAll(SObjectField relationship1, SObjectField relationship2, SObjectField relationship3, SObjectField relationship4)`
-- `Soql.Builder selectAll(SObjectField relationship1, SObjectField relationship2, SObjectField relationship3, SObjectField relationship4, SObjectField relationship5)`
 - `Soql.Builder selectAll(List<SObjectField> relationshipFieldChain)`
 - `Soql.Builder selectAll(String lookupFieldPath)`
 

@@ -295,7 +295,9 @@ private class SoqlTest {
 		Test.stopTest();
 
 		Assert.isTrue(soql?.selectClauses?.isEmpty(), 'Did not clear SELECT clauses');
-		Soql pending = DatabaseLayer.Soql.newQuery(User.SObjectType)?.selectAll(User.ProfileId)?.toSoql();
+		Soql pending = DatabaseLayer.Soql.newQuery(User.SObjectType)
+			?.selectAll(new List<SObjectField>{ User.ProfileId })
+			?.toSoql();
 		pending?.deselectAll();
 		Assert.isTrue(pending?.selectClauses?.isEmpty(), 'Did not clear pending parent fields');
 	}
@@ -366,7 +368,7 @@ private class SoqlTest {
 		Test.startTest();
 		System.runAs(restrictedUser) {
 			userModeFields = DatabaseLayer.Soql.newQuery(Contact.SObjectType)
-				?.selectAll(Contact.AccountId)
+				?.selectAll(new List<SObjectField>{ Contact.AccountId })
 				?.toSoql()
 				?.selectClauses;
 		}
@@ -391,10 +393,10 @@ private class SoqlTest {
 		Test.startTest();
 		Soql soql = DatabaseLayer.Soql.newQuery(Case.SObjectType)
 			?.setAccessLevel(System.AccessLevel.SYSTEM_MODE)
-			?.selectAll(Case.ContactId)
-			?.selectAll(Case.ContactId, Contact.AccountId)
+			?.selectAll(new List<SObjectField>{ Case.ContactId })
+			?.selectAll(new List<SObjectField>{ Case.ContactId, Contact.AccountId })
 			?.selectAll('CreatedById')
-			?.selectAll(Case.OwnerId)
+			?.selectAll(new List<SObjectField>{ Case.OwnerId })
 			?.toSoql();
 		List<Case> cases = (List<Case>) soql?.query();
 		Test.stopTest();
@@ -418,9 +420,17 @@ private class SoqlTest {
 		Test.startTest();
 		Soql soql = DatabaseLayer.Soql.newQuery(Case.SObjectType)
 			?.setAccessLevel(System.AccessLevel.SYSTEM_MODE)
-			?.selectAll(Case.ContactId, Contact.AccountId, Account.OwnerId)
-			?.selectAll(Case.ContactId, Contact.AccountId, Account.OwnerId, User.ManagerId)
-			?.selectAll(Case.ContactId, Contact.AccountId, Account.OwnerId, User.ManagerId, User.ManagerId)
+			?.selectAll(new List<SObjectField>{ Case.ContactId, Contact.AccountId, Account.OwnerId })
+			?.selectAll(new List<SObjectField>{ Case.ContactId, Contact.AccountId, Account.OwnerId, User.ManagerId })
+			?.selectAll(
+				new List<SObjectField>{
+					Case.ContactId,
+					Contact.AccountId,
+					Account.OwnerId,
+					User.ManagerId,
+					User.ManagerId
+				}
+			)
 			?.toSoql();
 		Test.stopTest();
 
@@ -1982,7 +1992,8 @@ private class SoqlTest {
 		Exception caught;
 		try {
 			if (field != null) {
-				builder?.selectAll(field);
+				List<SObjectField> chain = new List<SObjectField>{ field };
+				builder?.selectAll(chain);
 			} else {
 				builder?.selectAll(path);
 			}
