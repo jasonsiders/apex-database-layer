@@ -165,6 +165,30 @@ public inherited sharing class InvocableSoql {
 	}
 
 	/**
+	 * @description Builds an empty list of a field's type, since SOQL can't bind a `List<Object>`
+	 * @param valueType The field's Apex type
+	 * @return The list
+	 */
+	private static List<Object> initList(Type valueType) {
+		String listTypeName = 'List<' + valueType?.getName() + '>';
+		return (List<Object>) Type.forName(listTypeName)?.newInstance();
+	}
+
+	/**
+	 * @description Whether a typed list takes the values as they are, the same as `InvocableSoql.Query.coerceValue`
+	 * would convert them: a `List<Id>` checks and lengthens each ID it's given, and text and numbers already of their
+	 * field's type need no conversion
+	 * @param values A collection of values
+	 * @param valueType The field's Apex type
+	 * @return True if the values can be added to the field's list as they are
+	 */
+	private static Boolean isNativeList(Iterable<Object> values, Type valueType) {
+		Boolean isText = valueType == String.class && values instanceof List<String>;
+		Boolean isNumber = valueType == Decimal.class && values instanceof List<Decimal>;
+		return valueType == Id.class || isText || isNumber;
+	}
+
+	/**
 	 * @description Joins tokens with spaces, except inside parentheses, ex: `(A OR B)`
 	 * @param output The criteria so far
 	 * @param token The next token
@@ -1168,17 +1192,17 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description Coerces each value in a collection, since a list can't be converted to another element type
+		 * @description Coerces each value in a collection, since a list can't be converted to another element type.
+		 * Values a typed list takes as they are skip `coerceValue`, which costs about 100 times as much per value
 		 * @param values The values
 		 * @param valueType The field's Apex type
 		 * @return A list of the field's type
 		 */
 		private List<Object> coerceList(Iterable<Object> values, Type valueType) {
-			String listTypeName = 'List<' + valueType?.getName() + '>';
-			Type listType = Type.forName(listTypeName);
-			List<Object> coerced = (List<Object>) listType?.newInstance();
+			List<Object> coerced = InvocableSoql.initList(valueType);
+			Boolean isNative = InvocableSoql.isNativeList(values, valueType);
 			for (Object value : values) {
-				Object element = this.coerceValue(value, valueType);
+				Object element = isNative ? value : this.coerceValue(value, valueType);
 				coerced?.add(element);
 			}
 			return coerced;
@@ -2088,18 +2112,20 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description Unions every variant's value, coerced as one list, since SOQL binds are strictly typed. EQUALS
-		 * and LIKE bind a list as they would a single value, ex: `Name = :list` matches any of them
+		 * @description Unions every variant's value, already coerced, into one list of the field's type, since SOQL
+		 * binds are strictly typed. EQUALS and LIKE bind a list as they would a single value, ex: `Name = :list`
+		 * matches any of them
 		 * @return The merged value
 		 */
 		private Object getMergedValue() {
-			List<Object> merged = new List<Object>{};
+			Type valueType = this.query?.getValueType(this.index);
+			List<Object> merged = InvocableSoql.initList(valueType);
 			for (InvocableSoql.Variant variant : this.variants) {
 				Object value = variant?.values?.get(this.index);
-				List<Object> values = InvocableSoql.toList(value);
-				merged?.addAll(values);
+				Boolean isList = value instanceof List<Object>;
+				merged?.addAll(isList ? (List<Object>) value : new List<Object>{ value });
 			}
-			return this.query?.coerce(this.index, merged);
+			return merged;
 		}
 
 		/**

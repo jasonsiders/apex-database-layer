@@ -1253,6 +1253,29 @@ private class InvocableSoqlTest {
 	}
 
 	@IsTest
+	private static void shouldMatchFifteenCharacterIdsInCollections() {
+		List<Account> accounts = InvocableSoqlTest.initAccounts();
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(accounts);
+		InvocableSoql.Query query = InvocableSoqlTest.initSlotQuery('Id', 'IN', 'textCollection1');
+		InvocableSoql.Input shortIds = InvocableSoqlTest.initInput(query);
+		shortIds.textCollection1 = new List<String>{ String.valueOf(accounts[0].Id).left(15) };
+		InvocableSoql.Input longIds = InvocableSoqlTest.initInput(query);
+		longIds.textCollection1 = new List<String>{ accounts[1].Id };
+		InvocableSoql.Input invalidIds = InvocableSoqlTest.initInput(query);
+		invalidIds.textCollection1 = new List<String>{ 'not-an-id' };
+
+		Test.startTest();
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(new List<InvocableSoql.Input>{ shortIds, longIds });
+		Exception caughtError = InvocableSoqlTest.invokeAndCatch(invalidIds);
+		Test.stopTest();
+
+		Assert.areEqual(1, spy.queries?.size(), 'Wrong # of queries');
+		Assert.areEqual(accounts[0].Id, outputs[0].record?.Id, 'Wrong 1st output');
+		Assert.areEqual(accounts[1].Id, outputs[1].record?.Id, 'Wrong 2nd output');
+		Assert.isInstanceOfType(caughtError, StringException.class, 'Wrong error: ' + caughtError);
+	}
+
+	@IsTest
 	private static void shouldKeepQueryOrderWhenSplitting() {
 		// The split keeps each interview's rows in the order the query returned them:
 		InvocableSoqlTest.mockRows(
