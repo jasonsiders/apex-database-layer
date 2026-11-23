@@ -498,6 +498,7 @@ private class InvocableSoqlTest {
 		Map<String, InvocableSoql.FieldOption> taskFieldsByName = InvocableSoqlTest.indexFields('Task');
 		InvocableSoql.FieldOption folderId = InvocableSoqlTest.indexFields('Document').get('FolderId');
 		InvocableSoql.FieldOption createdById = InvocableSoqlTest.indexFields('AccountHistory').get('CreatedById');
+		InvocableSoql.FieldOption permissionSetId = InvocableSoqlTest.indexFields('ObjectPermissions').get('ParentId');
 		Test.stopTest();
 
 		Assert.isTrue(taskFieldsByName.get('WhoId')?.isPolymorphic, 'WhoId looks up to Contacts and Leads');
@@ -509,6 +510,9 @@ private class InvocableSoqlTest {
 		// CreatedById only holds User IDs, but SOQL resolves it to Name:
 		Assert.isTrue(createdById?.isPolymorphic, 'A name-pointing lookup takes any object\'s records');
 		Assert.areEqual('Name', createdById?.referenceTo, 'Name-pointing lookups drill into Name');
+		// ParentId is name-pointing too, but SOQL resolves it to PermissionSet, so it only takes permission sets:
+		Assert.areEqual('PermissionSet', permissionSetId?.referenceTo, 'Wrong parent object');
+		Assert.isFalse(permissionSetId?.isPolymorphic, 'ParentId only takes permission sets');
 		InvocableSoql.FieldOption accountId = fieldsByName.get('AccountId');
 		Assert.areEqual('Account', accountId?.relationshipName, 'Wrong relationship name');
 		Assert.areEqual('Account', accountId?.referenceTo, 'Wrong parent object');

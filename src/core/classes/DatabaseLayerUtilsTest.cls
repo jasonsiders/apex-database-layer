@@ -203,6 +203,7 @@ private class DatabaseLayerUtilsTest {
 		// SOQL resolves by isNamePointing, not by how many objects the lookup references:
 		String namePointing = DatabaseLayer.Utils.toEntityName(AccountHistory.CreatedById?.getDescribe());
 		String severalObjects = DatabaseLayer.Utils.toEntityName(Document.FolderId?.getDescribe());
+		String selfResolving = DatabaseLayer.Utils.toEntityName(ObjectPermissions.ParentId?.getDescribe());
 		String notLookup = DatabaseLayer.Utils.toEntityName(Account.Name?.getDescribe());
 		Test.stopTest();
 
@@ -210,6 +211,11 @@ private class DatabaseLayerUtilsTest {
 		Assert.areEqual('Name', polymorphic, 'Wrong polymorphic lookup object');
 		Assert.areEqual('Name', namePointing, 'Wrong name-pointing lookup object');
 		Assert.areEqual('Folder', severalObjects, 'Wrong multi-object lookup object');
+		Assert.areEqual(
+			'PermissionSet',
+			selfResolving,
+			'Wrong object for a name-pointing lookup SOQL resolves directly'
+		);
 		Assert.isNull(notLookup, 'Named an object for a field that is not a lookup');
 	}
 }

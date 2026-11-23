@@ -9,6 +9,8 @@ public without sharing class DatabaseLayerUtils {
 	};
 	/** @description The object SOQL resolves a name-pointing lookup to, ex: Case.Owner **/
 	private static final String POLYMORPHIC_ENTITY = 'Name';
+	/** @description Objects SOQL resolves their name-pointing lookups to, ex: ObjectPermissions.Parent **/
+	private static final Set<String> SELF_RESOLVING_ENTITIES = new Set<String>{ 'LegalEntity', 'PermissionSet' };
 	// Note: These properties do not use traditional naming conventions to support a 'namespace-like' API
 	/**
 	 * @description Utility for managing Schema.ChildRelationship objects.
@@ -95,16 +97,19 @@ public without sharing class DatabaseLayerUtils {
 	/**
 	 * @description Names the object SOQL resolves a lookup's relationship to. A name-pointing lookup, ex: Case.OwnerId
 	 * or AccountHistory.CreatedById, resolves to the Name object, the only one whose fields SOQL allows on it without
-	 * TYPEOF. Other lookups resolve to their first object, even with several, ex: Document.FolderId to Folder
+	 * TYPEOF, unless it points only to an object in SELF_RESOLVING_ENTITIES. Other lookups resolve to their first
+	 * object, even with several, ex: Document.FolderId to Folder
 	 * @param lookup The lookup's describe
 	 * @return The object's name, or null for a field that isn't a lookup
 	 */
 	public String toEntityName(DescribeFieldResult lookup) {
 		List<SObjectType> parentTypes = lookup?.getReferenceTo();
-		SObjectType firstParent = parentTypes?.isEmpty() == false ? parentTypes?.get(0) : null;
-		// shortcut: a few name-pointing lookups, ex: ObjectPermissions.ParentId, resolve to their object; Apex's
-		// describe can't tell them apart, so they get the Name object's fields
-		return (lookup?.isNamePointing() == true) ? DatabaseLayerUtils.POLYMORPHIC_ENTITY : firstParent?.toString();
+		String firstParent = parentTypes?.isEmpty() == false ? parentTypes?.get(0)?.toString() : null;
+		// Apex's describe can't tell these apart; probing every target type in an org found only these
+		Boolean isSelfResolving =
+			parentTypes?.size() == 1 && DatabaseLayerUtils.SELF_RESOLVING_ENTITIES?.contains(firstParent);
+		Boolean isPolymorphic = lookup?.isNamePointing() == true && isSelfResolving == false;
+		return isPolymorphic ? DatabaseLayerUtils.POLYMORPHIC_ENTITY : firstParent;
 	}
 
 	private Map<String, String> loadParameters() {

@@ -304,7 +304,7 @@ public inherited sharing class InvocableSoql {
 		/** @description Conditions can only use filterable fields **/
 		@AuraEnabled
 		public Boolean isFilterable;
-		/** @description A multi-object or name-pointing lookup, ex: Task.WhoId, takes records of any object **/
+		/** @description A lookup to several objects, or that SOQL resolves to Name, ex: Task.WhoId, takes any records **/
 		@AuraEnabled
 		public Boolean isPolymorphic;
 		/** @description ORDER BY can only use sortable fields **/
@@ -341,8 +341,9 @@ public inherited sharing class InvocableSoql {
 			Boolean isId = field?.getType() == Schema.DisplayType.ID;
 			this.apiName = field?.getName();
 			this.isFilterable = field?.isFilterable();
-			// A name-pointing lookup drills into Name, which holds no records, so it takes any object's too
-			this.isPolymorphic = parents?.size() > 1 || field?.isNamePointing() == true;
+			String firstParent = parents?.isEmpty() == false ? parents?.get(0)?.toString() : null;
+			// A lookup that resolves to Name drills into an object that holds no records, so it takes any object's
+			this.isPolymorphic = parents?.size() > 1 || parentName != firstParent;
 			this.isSortable = field?.isSortable();
 			this.label = field?.getLabel();
 			this.picklistValues = InvocableSoql.initPicklistOptions(entries);
