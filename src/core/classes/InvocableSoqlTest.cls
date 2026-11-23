@@ -1363,21 +1363,36 @@ private with sharing class InvocableSoqlTest {
 			new Contact(Id = MockRecord.initRecordId(Contact.SObjectType), EmailBouncedDate = noon.addSeconds(-1))
 		};
 		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(accounts);
-		List<InvocableSoql.Input> numberInputs = InvocableSoqlTest.initRangeInputs('Account', 'NumberOfEmployees');
+		List<InvocableSoql.Input> numberInputs = InvocableSoqlTest.initRangeInputs(
+			'Account',
+			'NumberOfEmployees',
+			'LESS_OR_EQUAL',
+			'number1'
+		);
 		numberInputs[0].number1 = 15;
 		numberInputs[1].number1 = 20;
-		List<InvocableSoql.Input> timeInputs = InvocableSoqlTest.initRangeInputs('BusinessHours', 'MondayStartTime');
+		List<InvocableSoql.Input> timeInputs = InvocableSoqlTest.initRangeInputs(
+			'BusinessHours',
+			'MondayStartTime',
+			'LESS_THAN',
+			'time1'
+		);
 		timeInputs[0].time1 = Time.newInstance(9, 0, 0, 0);
 		timeInputs[1].time1 = Time.newInstance(11, 0, 0, 0);
-		List<InvocableSoql.Input> dateTimeInputs = InvocableSoqlTest.initRangeInputs('Contact', 'EmailBouncedDate');
+		List<InvocableSoql.Input> dateTimeInputs = InvocableSoqlTest.initRangeInputs(
+			'Contact',
+			'EmailBouncedDate',
+			'GREATER_OR_EQUAL',
+			'dateTime1'
+		);
 		dateTimeInputs[0].dateTime1 = noon.addSeconds(-1);
 		dateTimeInputs[1].dateTime1 = DateTime.newInstance(noon.getTime() + 500);
 
 		Test.startTest();
 		List<InvocableSoql.Output> numberOutputs = InvocableSoql.invoke(numberInputs);
-		MockSoql.setGlobalMock(new InvocableSoqlTest.QuerySpy(hours));
+		InvocableSoqlTest.mockRows(hours);
 		List<InvocableSoql.Output> timeOutputs = InvocableSoql.invoke(timeInputs);
-		MockSoql.setGlobalMock(new InvocableSoqlTest.QuerySpy(contacts));
+		InvocableSoqlTest.mockRows(contacts);
 		List<InvocableSoql.Output> dateTimeOutputs = InvocableSoql.invoke(dateTimeInputs);
 		Test.stopTest();
 
@@ -1906,19 +1921,14 @@ private with sharing class InvocableSoqlTest {
 		return input;
 	}
 
-	private static List<InvocableSoql.Input> initRangeInputs(String objectApiName, String field) {
-		Map<String, String> slots = new Map<String, String>{
-			'NumberOfEmployees' => 'number1',
-			'MondayStartTime' => 'time1',
-			'EmailBouncedDate' => 'dateTime1'
-		};
-		Map<String, String> operators = new Map<String, String>{
-			'NumberOfEmployees' => 'LESS_OR_EQUAL',
-			'MondayStartTime' => 'LESS_THAN',
-			'EmailBouncedDate' => 'GREATER_OR_EQUAL'
-		};
+	private static List<InvocableSoql.Input> initRangeInputs(
+		String objectApiName,
+		String field,
+		String operator,
+		String slot
+	) {
 		InvocableSoql.Query query = InvocableSoqlTest.initQuery(objectApiName, new List<String>{ 'Name' });
-		query.conditions.add(InvocableSoqlTest.initSlotCondition(field, operators.get(field), slots.get(field)));
+		query.conditions.add(InvocableSoqlTest.initSlotCondition(field, operator, slot));
 		return new List<InvocableSoql.Input>{ InvocableSoqlTest.initInput(query), InvocableSoqlTest.initInput(query) };
 	}
 
