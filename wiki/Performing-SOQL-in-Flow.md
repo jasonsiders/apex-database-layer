@@ -88,11 +88,10 @@ When many flow interviews run the action at once (ex: a record-triggered flow on
 2. Interviews whose values differ in exactly one condition share one merged query, when all of these are true:
 
     - The condition logic is **All Conditions Are Met (AND)**.
-    - The query has no limit and no offset, which would cut rows from the merged query that belong to some interviews.
     - The condition's operator is Equals, In (including record collections), Contains, Starts With, Ends With, or Like with a simple pattern: text with an optional `%` at either end, ex: `Acme%`.
     - The field isn't a multi-select picklist, or a currency field in an org with several currencies, where SOQL compares converted amounts but returns each record's own.
 
-    The merged query takes every interview's value, then the action gives each interview the rows whose field matches its own value. It compares text the way SOQL does: ignoring case, except on case-sensitive fields.
+    The merged query takes every interview's value, then the action gives each interview the rows whose field matches its own value. It compares text the way SOQL does: ignoring case, except on case-sensitive fields. The limit and offset apply to each interview's rows after the split, so the merged query reads every matching row: a limit of 1 over accounts with thousands of contacts each can reach SOQL's 50,000-row limit.
 
 3. Everything else runs one query per distinct set of values. Interviews whose varying value is blank share one query, since `= null` means **Is Null**.
 
@@ -104,7 +103,7 @@ For example, in a record-triggered flow on Contact, with the condition **Account
 | 200 contacts on 150 different accounts                       | 1: `AccountId = :accountIds`, then split                      |
 | 200 contacts on 150 accounts, 10 with no account             | 2: the merged query, and one for no account                   |
 | 200 contacts, filtered by account and by their own last name | 200: two conditions vary, which exceeds the synchronous limit |
-| 200 contacts on 150 accounts, with a limit of 1              | 150: one per account, which exceeds the synchronous limit     |
+| 200 contacts on 150 accounts, with a limit of 1              | 1: the merged query, then the first row for each contact      |
 
 Each distinct query counts against the transaction's SOQL limit: 100 queries in a synchronous transaction, 200 in an asynchronous one. A batch that can't merge can exceed it, which fails every interview in the batch. To keep a batch within the limit, vary only one condition per query, or move the varying values into one collection and use **In**.
 

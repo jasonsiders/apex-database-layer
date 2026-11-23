@@ -972,7 +972,8 @@ public inherited sharing class InvocableSoql {
 
 		/**
 		 * @description Merging interviews unions one condition's values, then splits the rows by that field, which only
-		 * gives each interview its own rows when every condition must match, and no row is cut by LIMIT or OFFSET
+		 * gives each interview its own rows when every condition must match. LIMIT and OFFSET apply to each
+		 * interview's rows after the split
 		 * @param index The condition whose values differ between interviews
 		 * @return Whether interviews that differ only in this condition can share one query
 		 */
@@ -986,8 +987,6 @@ public inherited sharing class InvocableSoql {
 				fieldType == Schema.DisplayType.CURRENCY && UserInfo.isMultiCurrencyOrganization();
 			String operator = this.getOperator(index);
 			return isAllConditions &&
-				this.rowLimit == null &&
-				this.rowOffset == null &&
 				isMultiPicklist == false &&
 				isConvertedCurrency == false &&
 				InvocableSoql.MERGEABLE_OPERATORS?.contains(operator) == true;
@@ -1030,6 +1029,34 @@ public inherited sharing class InvocableSoql {
 			InvocableSoql.Filter whereClause = new InvocableSoql.Filter(this, values, false);
 			Map<String, Object> binds = this.initBinds(values);
 			return (Soql) this.initSoql(whereClause, accessLevel)?.addBind(binds);
+		}
+
+		/**
+		 * @description Builds a merged query, without LIMIT and OFFSET, which `page` applies to each interview's rows
+		 * @param values One value per condition, the varying one holding every interview's values
+		 * @param accessLevel The access level to query in
+		 * @return The query, ready to run
+		 */
+		private Soql toMergedSoql(List<Object> values, System.AccessLevel accessLevel) {
+			Soql builder = this.toSoql(values, accessLevel);
+			return (Soql) builder?.setRowLimit(null)?.setRowOffset(null);
+		}
+
+		/**
+		 * @description Applies OFFSET and LIMIT to one interview's rows from a merged query, which keeps query order
+		 * @param rows The interview's rows
+		 * @return The rows OFFSET and LIMIT keep
+		 */
+		private List<SObject> page(List<SObject> rows) {
+			Integer first = this.rowOffset ?? 0;
+			Integer size = rows?.size();
+			Integer last = Math.min(size, first + (this.rowLimit ?? size));
+			List<SObject> kept = new List<SObject>{};
+			for (Integer position = first; position < last; position++) {
+				SObject row = rows?.get(position);
+				kept?.add(row);
+			}
+			return kept;
 		}
 
 		/**
@@ -1843,7 +1870,7 @@ public inherited sharing class InvocableSoql {
 			List<Object> values = mergeable?.get(0)?.values?.clone();
 			Object mergedValue = splitter?.getMergedValue();
 			values?.set(index, mergedValue);
-			List<SObject> rows = this.query?.toSoql(values, this.accessLevel)?.query();
+			List<SObject> rows = this.query?.toMergedSoql(values, this.accessLevel)?.query();
 			splitter?.split(rows);
 		}
 	}
@@ -1967,7 +1994,7 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description Gives each variant the rows that match its value, in query order
+		 * @description Gives each variant the rows that match its value, in query order, then applies OFFSET and LIMIT
 		 * @param rows The merged query's rows
 		 */
 		private void split(List<SObject> rows) {
@@ -1976,6 +2003,9 @@ public inherited sharing class InvocableSoql {
 			}
 			for (SObject row : rows) {
 				this.addRow(row);
+			}
+			for (InvocableSoql.Variant variant : this.variants) {
+				variant.records = this.query?.page(variant?.records);
 			}
 		}
 

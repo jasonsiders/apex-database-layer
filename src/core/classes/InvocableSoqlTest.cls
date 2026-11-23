@@ -819,23 +819,30 @@ private class InvocableSoqlTest {
 	}
 
 	@IsTest
-	private static void shouldRunSeparatelyWithLimit() {
-		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(new List<SObject>{});
-		InvocableSoql.Query query = InvocableSoqlTest.initSlotQuery('Name', 'IN', 'textCollection1');
+	private static void shouldMergeWithLimitAndOffset() {
+		List<Account> accounts = InvocableSoqlTest.initAccounts();
+		accounts.add(InvocableSoqlTest.initAccount('Delta', 'East'));
+		accounts.add(InvocableSoqlTest.initAccount('Echo', 'East'));
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(accounts);
+		InvocableSoql.Query query = InvocableSoqlTest.initSlotQuery('Site', 'EQUALS', 'text1');
 		query.rowLimit = 1;
-		InvocableSoql.Input first = InvocableSoqlTest.initInput(query);
-		first.textCollection1 = new List<String>{ 'Acme' };
-		InvocableSoql.Input second = InvocableSoqlTest.initInput(query);
-		second.textCollection1 = new List<String>{ 'Beta' };
+		query.rowOffset = 1;
+		List<InvocableSoql.Input> inputs = new List<InvocableSoql.Input>{
+			InvocableSoqlTest.initTextInput(query, 'East'),
+			InvocableSoqlTest.initTextInput(query, 'West')
+		};
 
 		Test.startTest();
-		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(new List<InvocableSoql.Input>{ first, second });
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(inputs);
 		Test.stopTest();
 
-		// Merged, LIMIT 1 would cut one interview's row:
-		Assert.areEqual(2, spy.queries?.size(), 'Wrong # of queries');
-		Assert.isTrue(outputs[0].queryString?.endsWith('Name IN (\'Acme\') LIMIT 1'), outputs[0].queryString);
-		Assert.isTrue(outputs[1].queryString?.endsWith('Name IN (\'Beta\') LIMIT 1'), outputs[1].queryString);
+		// The merged query takes every row, then each interview skips and keeps its own, in query order:
+		Assert.areEqual(1, spy.queries?.size(), 'Wrong # of queries');
+		Assert.isNull(spy.queries?.get(0)?.rowLimit, 'Merged query kept the limit');
+		Assert.isNull(spy.queries?.get(0)?.rowOffset, 'Merged query kept the offset');
+		Assert.areEqual(new List<String>{ 'Delta' }, InvocableSoqlTest.getNames(outputs[0]), 'Wrong 1st output');
+		Assert.areEqual(new List<String>{}, InvocableSoqlTest.getNames(outputs[1]), 'Wrong 2nd output');
+		Assert.isTrue(outputs[0].queryString?.endsWith('Site = \'East\' LIMIT 1 OFFSET 1'), outputs[0].queryString);
 	}
 
 	@IsTest
