@@ -104,6 +104,30 @@ private class InvocableSoqlTest {
 	}
 
 	@IsTest
+	private static void shouldBindBlankDatesAndTimesAsNull() {
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(new List<SObject>{});
+		InvocableSoql.Query query = InvocableSoqlTest.initQuery('Contact', null);
+		query.conditions.add(InvocableSoqlTest.initSlotCondition('Birthdate', 'EQUALS', 'date1'));
+		query.conditions.add(InvocableSoqlTest.initSlotCondition('EmailBouncedDate', 'EQUALS', 'dateTime1'));
+		InvocableSoql.Query timeQuery = InvocableSoqlTest.initQuery('BusinessHours', null);
+		timeQuery.conditions.add(InvocableSoqlTest.initSlotCondition('MondayStartTime', 'EQUALS', 'time1'));
+
+		Test.startTest();
+		InvocableSoql.Output output = InvocableSoqlTest.invoke(InvocableSoqlTest.initInput(query));
+		InvocableSoql.Output timeOutput = InvocableSoqlTest.invoke(InvocableSoqlTest.initInput(timeQuery));
+		Test.stopTest();
+
+		// Like Get Records, a blank resource finds blank fields; JSON alone can't read null as a date:
+		Map<String, Object> binds = spy.queries?.get(0)?.binds;
+		Assert.isTrue(binds?.containsKey('bind0') && binds?.get('bind0') == null, 'Wrong date bind: ' + binds);
+		Assert.isTrue(
+			output?.queryString?.endsWith('Birthdate = null AND EmailBouncedDate = null'),
+			output?.queryString
+		);
+		Assert.isTrue(timeOutput?.queryString?.endsWith('MondayStartTime = null'), timeOutput?.queryString);
+	}
+
+	@IsTest
 	private static void shouldMatchRecordCollectionByIds() {
 		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(new List<SObject>{});
 		Account account = InvocableSoqlTest.initAccount('Acme', null);

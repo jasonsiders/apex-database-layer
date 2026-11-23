@@ -1210,23 +1210,28 @@ public inherited sharing class InvocableSoql {
 
 		/**
 		 * @description JSON converts flow values and the editor's text alike; Id.valueOf also lengthens 15-character
-		 * IDs, so they match the 18-character IDs that queries return
+		 * IDs, so they match the 18-character IDs that queries return. A blank stays null, since JSON can't read null
+		 * as a date, date/time, or time
 		 * @param value A single value
 		 * @param valueType The field's Apex type
 		 * @return The value as the field's type
 		 */
 		private Object coerceValue(Object value, Type valueType) {
-			InvocableSoql.checkWholeNumber(value, valueType);
-			Boolean isId = valueType == Id.class && value != null;
-			// JSON reads a zoneless time, ex: "10:30", in the user's time zone; Time fields hold the time as typed
-			Boolean isLocalTime =
-				value instanceof String &&
-				valueType == Time.class &&
-				((String) value).endsWith('Z') == false;
-			Object zoned = isLocalTime ? value + 'Z' : value;
-			String text = String.valueOf(value);
-			String serialized = isId ? null : JSON.serialize(zoned);
-			return isId ? Id.valueOf(text) : JSON.deserialize(serialized, valueType);
+			Object coerced;
+			if (value != null) {
+				InvocableSoql.checkWholeNumber(value, valueType);
+				Boolean isId = valueType == Id.class;
+				// JSON reads a zoneless time, ex: "10:30", in the user's time zone; Time fields hold the time as typed
+				Boolean isLocalTime =
+					value instanceof String &&
+					valueType == Time.class &&
+					((String) value).endsWith('Z') == false;
+				Object zoned = isLocalTime ? value + 'Z' : value;
+				String text = String.valueOf(value);
+				String serialized = isId ? null : JSON.serialize(zoned);
+				coerced = isId ? Id.valueOf(text) : JSON.deserialize(serialized, valueType);
+			}
+			return coerced;
 		}
 
 		/**
