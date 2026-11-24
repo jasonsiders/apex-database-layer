@@ -1,5 +1,5 @@
 <template>
-	<div class="editor-section">
+	<div class="editor-section slds-p-around_small">
 		<h3 class="slds-text-heading_small slds-var-m-bottom_small">Get Records of This Object</h3>
 		<c-flow-resource-picker
 			data-name="objectApiName"
@@ -17,7 +17,7 @@
 	</div>
 	<template lwc:if={objectApiName}>
 		<lightning-accordion
-			class="editor-sections slds-border_top slds-border_bottom"
+			class="editor-sections slds-show slds-border_top slds-border_bottom"
 			allow-multiple-sections-open
 			active-section-name="filter"
 		>
@@ -28,8 +28,12 @@
 					can read.
 				</p>
 				<template for:each={fields} for:item="field">
-					<div key={field.key} class="editor-row slds-var-m-top_x-small" data-name="field">
-						<div class="editor-row-inputs">
+					<div
+						key={field.key}
+						class="editor-row slds-grid slds-grid_vertical-align-start slds-var-m-top_x-small"
+						data-name="field"
+					>
+						<div class="editor-row-inputs slds-col">
 							<c-soql-field-path
 								data-index={field.index}
 								object-api-name={objectApiName}
@@ -51,7 +55,7 @@
 					</div>
 				</template>
 				<lightning-button
-					class="editor-add slds-var-m-top_small"
+					class="slds-show_inline-block slds-var-m-top_small"
 					data-name="addField"
 					label="Add Field"
 					icon-name="utility:add"
@@ -60,7 +64,7 @@
 			</lightning-accordion-section>
 			<lightning-accordion-section name="filter" label={sectionLabels.filter}>
 				<lightning-combobox
-					class="editor-input"
+					class="editor-input slds-show"
 					data-name="conditionLogic"
 					name="logicMode"
 					label="Condition Requirements"
@@ -70,7 +74,7 @@
 				></lightning-combobox>
 				<template lwc:if={isCustomLogic}>
 					<lightning-input
-						class="editor-input slds-var-m-top_x-small"
+						class="editor-input slds-show slds-var-m-top_x-small"
 						data-name="customLogic"
 						label="Condition Logic"
 						placeholder="Ex: 1 AND (2 OR 3)"
@@ -82,9 +86,13 @@
 					</p>
 				</template>
 				<template for:each={conditions} for:item="condition">
-					<div key={condition.key} class="editor-row slds-var-m-top_small" data-name="condition">
+					<div
+						key={condition.key}
+						class="editor-row slds-grid slds-grid_vertical-align-start slds-var-m-top_small"
+						data-name="condition"
+					>
 						<span class="editor-row-prefix slds-text-title_bold">{condition.prefix}</span>
-						<div class="editor-row-inputs">
+						<div class="editor-row-inputs slds-col">
 							<div class="editor-row-columns condition-columns">
 								<c-soql-field-path
 									data-index={condition.index}
@@ -141,7 +149,7 @@
 					</div>
 				</template>
 				<lightning-button
-					class="editor-add slds-var-m-top_small"
+					class="slds-show_inline-block slds-var-m-top_small"
 					data-name="addCondition"
 					label="Add Condition"
 					icon-name="utility:add"
@@ -150,8 +158,12 @@
 			</lightning-accordion-section>
 			<lightning-accordion-section name="sort" label={sectionLabels.sort}>
 				<template for:each={orderBy} for:item="sortOrder">
-					<div key={sortOrder.key} class="editor-row slds-var-m-top_small" data-name="sortOrder">
-						<div class="editor-row-inputs editor-row-columns sort-columns">
+					<div
+						key={sortOrder.key}
+						class="editor-row slds-grid slds-grid_vertical-align-start slds-var-m-top_small"
+						data-name="sortOrder"
+					>
+						<div class="editor-row-inputs slds-col editor-row-columns sort-columns">
 							<c-soql-field-path
 								data-index={sortOrder.index}
 								data-property="field"
@@ -192,7 +204,7 @@
 					</div>
 				</template>
 				<lightning-button
-					class="editor-add slds-var-m-top_small"
+					class="slds-show_inline-block slds-var-m-top_small"
 					data-name="addSort"
 					label="Add Sort Field"
 					icon-name="utility:add"
@@ -200,7 +212,7 @@
 				></lightning-button>
 				<div class="editor-row-columns limit-columns slds-var-m-top_small">
 					<lightning-input
-						class="editor-input"
+						class="editor-input slds-show"
 						data-name="rowLimit"
 						type="number"
 						label="Limit"
@@ -211,7 +223,7 @@
 						onchange={handleLimitChange}
 					></lightning-input>
 					<lightning-input
-						class="editor-input"
+						class="editor-input slds-show"
 						data-name="rowOffset"
 						type="number"
 						label="Offset"
@@ -229,7 +241,7 @@
 			</lightning-accordion-section>
 			<lightning-accordion-section name="options" label="Advanced Query Options">
 				<lightning-combobox
-					class="editor-input"
+					class="editor-input slds-show"
 					data-name="accessLevel"
 					name="accessLevel"
 					label="Access Level"
@@ -239,7 +251,7 @@
 					onchange={handleAccessLevelChange}
 				></lightning-combobox>
 				<lightning-combobox
-					class="editor-input slds-var-m-top_x-small"
+					class="editor-input slds-show slds-var-m-top_x-small"
 					data-name="usage"
 					name="usage"
 					label="Rows"
