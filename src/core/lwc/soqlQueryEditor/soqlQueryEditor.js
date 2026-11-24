@@ -9,7 +9,7 @@ import {
 	toBooleanConstant
 } from "c/flowResourceMenu";
 import FlowPropertyEditor, { ACCESS_LEVELS, ACCESS_LEVEL_HELP, NONE_OPTION } from "c/flowPropertyEditor";
-import { getAllFieldsPath, resolveField } from "c/soqlFieldPath";
+import { getAllFieldsPath, resolveField } from "c/soqlFieldMenu";
 
 const CUSTOM = "CUSTOM";
 const DATE_LITERALS = [
@@ -229,7 +229,7 @@ function parseDefinition(json) {
 	let parsed = {};
 	try {
 		parsed = JSON.parse(json || "{}");
-	} catch (error) {
+	} catch {
 		// A definition edited by hand into invalid JSON starts over, rather than breaking the editor
 		parsed = {};
 	}
