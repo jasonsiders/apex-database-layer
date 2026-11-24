@@ -14,6 +14,20 @@ Because the action uses `DatabaseLayer.Soql`, [plugins](./Plugin:-Soql.PreAndPos
 
 ---
 
+## Differences from Get Records
+
+The action looks like Get Records, but doesn't always behave like it. Check these before you swap one for the other:
+
+- **Access level**: the action defaults to `USER_MODE`. In a record-triggered flow, Get Records runs in system context without sharing, so the same query can find fewer records, or fail the user's save when it selects a field they can't read. Set Access Level to `SYSTEM_MODE` to match Get Records. See [Inputs](#inputs).
+- **Blank values**: a blank value on **Contains**, **Starts With**, or **Ends With** matches only records where the field is blank, where Get Records matches every record. A blank value on a range, ex: Greater Than an unset date, matches every record. See [Operators](#operators).
+- **Bulk runs**: interviews whose values differ share one merged query, which can read many more rows than any one interview needs, and can reach SOQL's 50,000-row limit. Interviews that can't merge run one query each, and a batch of them can exceed the 100-query limit. Either way, a query that fails fails every interview that shares it. See [Bulk Behavior](#bulk-behavior).
+- **Text case**: Apex splits a merged query's rows ignoring case the same way in every locale, where SOQL follows the running user's, so for a few letters, ex: the Turkish `İ` and `ı`, a merged query can miss rows a lone query finds. See [Bulk Behavior](#bulk-behavior).
+- **Rows**: **For Update** locks every row the query reads until the transaction ends, and can't sort. **All Rows** includes deleted and archived records.
+- **Resources**: the action takes up to 5 resources of each type. See [Values](#values).
+- **Mocks**: mocks don't filter, so a merged query's mock records go to no interview unless they populate the field the split uses. See [Testing with Mocks](#testing-with-mocks).
+
+---
+
 ## Building the Query
 
 In Flow Builder, add an **Action** element and search for `SOQL:`, under the **Database Layer** category. The action's editor mirrors Get Records. Below the object, click a section's heading to open or close it; only **Filter Records** starts open:
