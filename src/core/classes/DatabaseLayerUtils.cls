@@ -103,14 +103,16 @@ public without sharing class DatabaseLayerUtils {
 	 */
 	public class AccessLevels {
 		/** @description Flows pass access levels as text, so each valid value maps to its System.AccessLevel **/
-		private final Map<String, System.AccessLevel> levelsByName = new Map<String, System.AccessLevel>{
-			'SYSTEM_MODE' => System.AccessLevel.SYSTEM_MODE,
-			'USER_MODE' => System.AccessLevel.USER_MODE
-		};
+		private final Map<String, System.AccessLevel> levelsByName;
 
-		@SuppressWarnings('PMD.EmptyStatementBlock')
+		/**
+		 * @description Private, so only this file constructs it
+		 */
 		private AccessLevels() {
-			// Don't allow construction outside of this file
+			this.levelsByName = new Map<String, System.AccessLevel>{
+				'SYSTEM_MODE' => System.AccessLevel.SYSTEM_MODE,
+				'USER_MODE' => System.AccessLevel.USER_MODE
+			};
 		}
 
 		/**
@@ -244,13 +246,16 @@ public without sharing class DatabaseLayerUtils {
 	 */
 	public class Schema {
 		/** @description The object SOQL resolves a name-pointing lookup to, ex: Case.Owner **/
-		private final String polymorphicEntity = 'Name';
+		private final String polymorphicEntity;
 		/** @description Objects SOQL resolves their name-pointing lookups to, ex: ObjectPermissions.Parent **/
-		private final Set<String> selfResolvingEntities = new Set<String>{ 'LegalEntity', 'PermissionSet' };
+		private final Set<String> selfResolvingEntities;
 
-		@SuppressWarnings('PMD.EmptyStatementBlock')
+		/**
+		 * @description Private, so only this file constructs it
+		 */
 		private Schema() {
-			// Don't allow construction outside of this file
+			this.polymorphicEntity = 'Name';
+			this.selfResolvingEntities = new Set<String>{ 'LegalEntity', 'PermissionSet' };
 		}
 
 		/**
@@ -443,7 +448,7 @@ public without sharing class DatabaseLayerUtils {
 
 		private List<Schema.ChildRelationship> getRelationshipList(SObjectType objectType) {
 			DescribeSObjectResult objectDescribe = DatabaseLayer.Utils.Schema.describeObject(objectType);
-			return objectDescribe?.getChildRelationships() ?? new List<Schema.ChildRelationship>();
+			return objectDescribe?.getChildRelationships() ?? new List<Schema.ChildRelationship>{};
 		}
 
 		private void mapRelationships(SObjectType objectType) {

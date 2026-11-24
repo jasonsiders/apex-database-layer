@@ -458,7 +458,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		// Backing state for selectClauses:
 		private transient Set<String> resolvedSelectClauses;
 		// The pending selectAll requests, which wait for the final access level
-		private transient Soql.SelectAll pendingSelectAll = new Soql.SelectAll();
+		private transient Soql.SelectAll pendingSelectAll;
 		/**
 		 * @description The configured access level for the query execution.
 		 */
@@ -1880,7 +1880,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		global ParentField(List<SObjectField> relationshipFieldChain) {
 			// A copy, so a caller that reuses its list can't change this field's lookups
-			List<SObjectField> fields = relationshipFieldChain ?? new List<SObjectField>();
+			List<SObjectField> fields = relationshipFieldChain ?? new List<SObjectField>{};
 			this.fieldChain = new List<SObjectField>(fields);
 			this.computeReferences(this.fieldChain);
 		}
@@ -2177,8 +2177,16 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	 * the entire query rather than dropping inaccessible fields from the results.
 	 */
 	private class SelectAll {
-		private Boolean includesQueriedObject = false;
-		private List<Soql.ParentField> lookupFields = new List<Soql.ParentField>{};
+		private Boolean includesQueriedObject;
+		private List<Soql.ParentField> lookupFields;
+
+		/**
+		 * @description Starts with no requests
+		 */
+		public SelectAll() {
+			this.includesQueriedObject = false;
+			this.lookupFields = new List<Soql.ParentField>{};
+		}
 
 		/**
 		 * @description Requests every field of the queried object
@@ -2297,7 +2305,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		private List<SObjectField> getAllFields(String entityName) {
 			DescribeSObjectResult objectDescribe = DatabaseLayer.Utils.Schema.describeObject(entityName);
-			return objectDescribe?.fields?.getMap()?.values() ?? new List<SObjectField>();
+			return objectDescribe?.fields?.getMap()?.values() ?? new List<SObjectField>{};
 		}
 
 		/**
