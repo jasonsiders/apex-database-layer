@@ -104,6 +104,14 @@
 	],
 	"Account": [
 		{
+			"apiName": "NumberOfEmployees",
+			"label": "Employees",
+			"type": "INTEGER",
+			"isFilterable": true,
+			"isSortable": true,
+			"picklistValues": []
+		},
+		{
 			"apiName": "AnnualRevenue",
 			"label": "Annual Revenue",
 			"type": "CURRENCY",

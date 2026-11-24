@@ -204,7 +204,7 @@
 						data-name="rowLimit"
 						type="number"
 						label="Limit"
-						field-level-help="The most records to get. Batches of interviews with a limit can't share a query."
+						field-level-help="The most records each interview gets. Interviews in a batch can still share one query, which can read more records than this."
 						min="1"
 						max="50000"
 						value={rowLimit}
@@ -215,7 +215,7 @@
 						data-name="rowOffset"
 						type="number"
 						label="Offset"
-						field-level-help="How many records to skip. Batches of interviews with an offset can't share a query."
+						field-level-help="How many records each interview skips. Interviews in a batch can still share one query, which reads the skipped records too."
 						min="0"
 						max="2000"
 						value={rowOffset}

@@ -596,6 +596,23 @@ describe("c-flow-resource-picker", () => {
 		}
 	});
 
+	it("trims spaces around typed literals that aren't text, which Apex can't parse, and keeps text as typed", async () => {
+		const number = await render({ type: "Number" });
+		const date = await render({ type: "Date", allowsDateLiterals: true });
+		const text = await render({ type: "String" });
+
+		await type(number.element, " 42 ");
+		await blur(number.element);
+		await type(date.element, " TODAY");
+		await blur(date.element);
+		await type(text.element, " padded ");
+		await blur(text.element);
+
+		expect(lastChange(number.onChange)).toEqual({ name: "accessLevel", value: "42", valueDataType: "Number" });
+		expect(lastChange(date.onChange)).toEqual({ name: "accessLevel", value: "TODAY", valueDataType: "Date" });
+		expect(lastChange(text.onChange)).toEqual({ name: "accessLevel", value: " padded ", valueDataType: "String" });
+	});
+
 	it("takes SOQL date literals in a date input that allows them", async () => {
 		const { element, onChange } = await render({ type: "Date", allowsDateLiterals: true });
 
