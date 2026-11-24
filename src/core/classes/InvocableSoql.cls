@@ -1212,14 +1212,13 @@ public inherited sharing class InvocableSoql {
 		 */
 		private void addField(Soql builder, String fieldName) {
 			Boolean isAllFields = fieldName?.endsWith(InvocableSoql.ALL_FIELDS) == true;
-			List<SObjectField> lookups = isAllFields ? this.findLookups(fieldName) : null;
+			String relationshipPath = isAllFields ? this.toRelationshipPath(fieldName) : null;
 			if (isAllFields == false) {
 				builder?.addSelect(fieldName);
-			} else if (lookups?.isEmpty() == true) {
+			} else if (String.isBlank(relationshipPath)) {
 				builder?.selectAll();
 			} else {
-				Soql.ParentField lookupField = new Soql.ParentField(lookups);
-				builder?.selectAll(lookupField);
+				builder?.selectAll(relationshipPath);
 			}
 		}
 
@@ -1347,30 +1346,33 @@ public inherited sharing class InvocableSoql {
 		 */
 		private void describePath(String path) {
 			if (path?.endsWith(InvocableSoql.ALL_FIELDS) == true) {
-				this.findLookups(path);
+				String relationshipPath = this.toRelationshipPath(path);
+				this.findLookups(relationshipPath);
 			} else {
 				this.describeField(path);
 			}
 		}
 
 		/**
-		 * @description Follows a path's relationships, ex: "Account.Owner.*", to the lookups that lead to its object
+		 * @description Strips the `*` from a path, ex: "Account.Owner" for "Account.Owner.*"
 		 * @param path A path ending in `*`
-		 * @return The lookups, in order; empty for the queried object itself
+		 * @return The relationships to the path's object; blank for the queried object itself
+		 */
+		private String toRelationshipPath(String path) {
+			return path?.removeEnd(InvocableSoql.ALL_FIELDS)?.removeEnd('.');
+		}
+
+		/**
+		 * @description Follows relationships, ex: "Account.Owner", to the lookups that lead to their object, per
+		 * `DatabaseLayerUtils.Schema.findLookups`
+		 * @param relationshipPath Relationship names joined by dots
+		 * @return The lookups, in order; empty for a blank path, the queried object itself
 		 * @throws System.IllegalArgumentException When a relationship doesn't exist
 		 */
-		private List<SObjectField> findLookups(String path) {
-			String relationshipPath = path?.removeEnd(InvocableSoql.ALL_FIELDS)?.removeEnd('.');
-			Boolean isTop = String.isBlank(relationshipPath);
-			List<String> relationshipNames = isTop ? new List<String>{} : relationshipPath?.split('\\.');
-			List<SObjectField> lookups = new List<SObjectField>{};
-			DescribeSObjectResult parent = this.objectDescribe;
-			for (String relationshipName : relationshipNames) {
-				DescribeFieldResult lookup = this.findLookup(parent, relationshipName, path);
-				lookups?.add(lookup?.getSObjectField());
-				parent = this.describeReference(lookup);
-			}
-			return lookups;
+		private List<SObjectField> findLookups(String relationshipPath) {
+			return String.isBlank(relationshipPath)
+				? new List<SObjectField>{}
+				: DatabaseLayer.Utils.Schema.findLookups(this.objectApiName, relationshipPath);
 		}
 
 		/**
@@ -1383,15 +1385,26 @@ public inherited sharing class InvocableSoql {
 			List<String> names = path?.split('\\.') ?? new List<String>{ null };
 			Integer lastIndex = names?.size() - 1;
 			String fieldName = names?.remove(lastIndex);
-			DescribeSObjectResult parent = this.objectDescribe;
-			for (String relationshipName : names) {
-				parent = this.describeParent(parent, relationshipName, path);
-			}
+			String relationshipPath = String.join(names, '.');
+			DescribeSObjectResult parent = this.describePathObject(relationshipPath);
 			SObjectField field = parent?.fields?.getMap()?.get(fieldName);
 			if (field == null) {
 				throw new IllegalArgumentException('Invalid field for ' + this.objectApiName + ': ' + path);
 			}
 			return field?.getDescribe();
+		}
+
+		/**
+		 * @description Describes the object at the end of a relationship path
+		 * @param relationshipPath Relationship names joined by dots
+		 * @return The object's describe; the queried object's for a blank path
+		 * @throws System.IllegalArgumentException When a relationship doesn't exist
+		 */
+		private DescribeSObjectResult describePathObject(String relationshipPath) {
+			List<SObjectField> lookups = this.findLookups(relationshipPath);
+			Integer lastIndex = lookups?.size() - 1;
+			DescribeFieldResult lookup = (lastIndex >= 0) ? lookups?.get(lastIndex)?.getDescribe() : null;
+			return (lookup != null) ? this.describeReference(lookup) : this.objectDescribe;
 		}
 
 		/**
@@ -1404,39 +1417,6 @@ public inherited sharing class InvocableSoql {
 				throw new IllegalArgumentException('Missing object');
 			}
 			return DatabaseLayer.Utils.Schema.describeObject(this.objectApiName);
-		}
-
-		/**
-		 * @description Finds a parent object's describe through a relationship, ex: Account's for "Account"
-		 * @param child The object holding the lookup
-		 * @param relationshipName The relationship name
-		 * @param path The whole field path, for the error
-		 * @return The parent object's describe
-		 * @throws System.IllegalArgumentException When the object has no relationship by that name
-		 */
-		private DescribeSObjectResult describeParent(
-			DescribeSObjectResult child,
-			String relationshipName,
-			String path
-		) {
-			DescribeFieldResult lookup = this.findLookup(child, relationshipName, path);
-			return this.describeReference(lookup);
-		}
-
-		/**
-		 * @description Finds the lookup with the relationship name, ex: AccountId for "Account"
-		 * @param child The object holding the lookup
-		 * @param relationshipName The relationship name
-		 * @param path The whole field path, for the error
-		 * @return The lookup's describe
-		 * @throws System.IllegalArgumentException When the object has no relationship by that name
-		 */
-		private DescribeFieldResult findLookup(DescribeSObjectResult child, String relationshipName, String path) {
-			SObjectField lookup = DatabaseLayer.Utils.Schema.findLookup(child, relationshipName);
-			if (lookup == null) {
-				throw new IllegalArgumentException('Invalid field for ' + this.objectApiName + ': ' + path);
-			}
-			return lookup?.getDescribe();
 		}
 
 		/**

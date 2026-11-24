@@ -393,7 +393,7 @@ private class SoqlTest {
 			?.setAccessLevel(System.AccessLevel.SYSTEM_MODE)
 			?.selectAll(Case.ContactId)
 			?.selectAll(new Soql.ParentField(Case.ContactId, Contact.AccountId))
-			?.selectAll('CreatedById')
+			?.selectAll('CreatedBy')
 			?.selectAll(Case.OwnerId)
 			?.toSoql();
 		List<Case> cases = (List<Case>) soql?.query();
