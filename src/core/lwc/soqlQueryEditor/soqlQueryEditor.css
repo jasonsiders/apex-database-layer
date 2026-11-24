@@ -1,32 +1,29 @@
 /* Flow pads the editor; bleeding past it gives full-width dividers, like native sections */
-.editor-section {
-	margin: 0 -0.75rem;
-	padding: 0.75rem;
+.editor-section,
+.editor-sections {
+	margin: 0 calc(-1 * var(--slds-g-spacing-3, 0.75rem));
 }
 
 /* As wide as c-flow-resource-picker's input, so every input in the panel lines up */
 .editor-input {
-	display: block;
 	max-width: 23rem;
 }
 
 /* A condition, sort field, or stored field on one line, like Get Records: prefix, inputs, then remove button */
 .editor-row {
-	align-items: flex-start;
-	display: flex;
-	gap: 0.5rem;
+	gap: var(--slds-g-spacing-2, 0.5rem);
 }
 
+/* Lets the inputs shrink below their content's width, so long values don't push the remove button out */
 .editor-row-inputs {
-	flex: 1;
 	min-width: 0;
 }
 
-/* Columns keep their place when a row has no operator or value yet, so rows line up */
+/* Columns keep their place when a row has no operator or value yet, so rows line up; SLDS has no grid utility */
 .editor-row-columns {
 	align-items: start;
 	display: grid;
-	gap: 0.5rem;
+	gap: var(--slds-g-spacing-2, 0.5rem);
 }
 
 /* Get Records' proportions: Field, Operator, Value */
@@ -53,16 +50,5 @@
 /* As tall as an input, so the prefix's text centers on it */
 .editor-row-prefix {
 	line-height: 2rem;
-	min-width: 2rem;
-}
-
-/* lightning-button's host is inline, which ignores top margin; Get Records leaves a gap above its add buttons */
-.editor-add {
-	display: inline-block;
-}
-
-/* Bleeds past Flow's padding like .editor-section, so the dividers between sections span the panel */
-.editor-sections {
-	display: block;
-	margin: 0 -0.75rem;
+	min-width: var(--slds-g-sizing-9, 2rem);
 }

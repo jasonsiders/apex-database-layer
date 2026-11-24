@@ -393,7 +393,7 @@ private class SoqlTest {
 			?.setAccessLevel(System.AccessLevel.SYSTEM_MODE)
 			?.selectAll(Case.ContactId)
 			?.selectAll(new Soql.ParentField(Case.ContactId, Contact.AccountId))
-			?.selectAll('CreatedById')
+			?.selectAll('CreatedBy')
 			?.selectAll(Case.OwnerId)
 			?.toSoql();
 		List<Case> cases = (List<Case>) soql?.query();
@@ -445,6 +445,24 @@ private class SoqlTest {
 	}
 
 	@IsTest
+	private static void shouldSelectAllParentFieldsWhenTheLookupListChangesAfterward() {
+		List<SObjectField> lookups = new List<SObjectField>{ Case.ContactId };
+		Soql.ParentField contactLookup = new Soql.ParentField(lookups);
+		lookups?.add(Contact.AccountId);
+
+		Test.startTest();
+		Soql soql = DatabaseLayer.Soql.newQuery(Case.SObjectType)
+			?.setAccessLevel(System.AccessLevel.SYSTEM_MODE)
+			?.selectAll(contactLookup)
+			?.toSoql();
+		Test.stopTest();
+
+		Set<String> fields = soql?.selectClauses;
+		Assert.isTrue(fields?.contains('Contact.LastName'), 'Missing Contact fields');
+		Assert.isFalse(fields?.contains('Contact.AccountNumber'), 'Selected Account fields under Contact');
+	}
+
+	@IsTest
 	private static void shouldRejectSelectAllOfFieldsThatAreNotLookups() {
 		Soql.Builder builder = DatabaseLayer.Soql.newQuery(Case.SObjectType);
 
@@ -452,12 +470,14 @@ private class SoqlTest {
 		Exception tokenError = SoqlTest.catchSelectAll(builder, Case.Subject, null);
 		Exception pathError = SoqlTest.catchSelectAll(builder, null, 'Contact.Bogus');
 		Exception nullError = SoqlTest.catchSelectAll(builder, null, null);
+		Exception blankError = SoqlTest.catchSelectAll(builder, null, '');
 		Test.stopTest();
 
 		Assert.isInstanceOfType(tokenError, IllegalArgumentException.class, 'Did not reject a non-lookup field');
 		Assert.isInstanceOfType(pathError, IllegalArgumentException.class, 'Did not reject an unknown path');
 		// A null path would otherwise select every field of the queried object:
 		Assert.isInstanceOfType(nullError, IllegalArgumentException.class, 'Did not reject a null path');
+		Assert.isInstanceOfType(blankError, IllegalArgumentException.class, 'Did not reject a blank path');
 	}
 
 	@IsTest

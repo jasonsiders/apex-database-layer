@@ -5,7 +5,7 @@ import SoqlQueryEditor from "c/soqlQueryEditor";
 import getObjects from "@salesforce/apex/InvocableSoql.getObjects";
 import getFields from "@salesforce/apex/InvocableSoql.getFields";
 import CONTEXT from "../../flowResourceMenu/__tests__/data/context.json";
-import FIELDS from "../../soqlFieldPath/__tests__/data/fields.json";
+import FIELDS from "../../soqlFieldMenu/__tests__/data/fields.json";
 
 jest.mock(
 	"@salesforce/apex/InvocableSoql.getObjects",
