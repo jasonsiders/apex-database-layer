@@ -1400,6 +1400,28 @@ private with sharing class InvocableSoqlTest {
 	}
 
 	@IsTest
+	private static void shouldNotMergeLockedRowsByIdUnderOr() {
+		List<Account> accounts = InvocableSoqlTest.initAccounts();
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(accounts);
+		InvocableSoql.Query query = InvocableSoqlTest.initSlotQuery('Id', 'EQUALS', 'text1');
+		query.conditions.add(InvocableSoqlTest.initCondition('Site', 'EQUALS', 'East'));
+		query.conditionLogic = '1 OR 2';
+		query.usage = 'FOR_UPDATE';
+		query.rowLimit = 1;
+		List<InvocableSoql.Input> inputs = new List<InvocableSoql.Input>{
+			InvocableSoqlTest.initTextInput(query, accounts[1].Id),
+			InvocableSoqlTest.initTextInput(query, accounts[2].Id)
+		};
+
+		Test.startTest();
+		InvocableSoql.invoke(inputs);
+		Test.stopTest();
+
+		// Under OR, each interview can find more than its ID's row, so a merged query would lock every East account:
+		Assert.areEqual(2, spy.queries?.size(), 'Wrong # of queries');
+	}
+
+	@IsTest
 	private static void shouldNotMergeLockedRowsByNotEquals() {
 		List<Account> accounts = InvocableSoqlTest.initAccounts();
 		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(accounts);
