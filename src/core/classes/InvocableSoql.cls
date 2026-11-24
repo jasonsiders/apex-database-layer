@@ -1114,14 +1114,20 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description Builds a merged query: without LIMIT and OFFSET, which `page` applies to each interview's rows,
-		 * and without the conditions the split applies alone
+		 * @description Builds a merged query: without OFFSET, which `page` applies to each interview's rows, and
+		 * without the conditions the split applies alone
 		 * @param values One value per condition, each varying one widened to cover every interview's values
 		 * @param omitted The indexes of the conditions the split applies
+		 * @param rowLimit The merged query's limit, or null to read every row any interview could need
 		 * @param accessLevel The access level to query in
 		 * @return The query, ready to run
 		 */
-		private Soql toMergedSoql(List<Object> values, Set<Integer> omitted, System.AccessLevel accessLevel) {
+		private Soql toMergedSoql(
+			List<Object> values,
+			Set<Integer> omitted,
+			Integer rowLimit,
+			System.AccessLevel accessLevel
+		) {
 			InvocableSoql.Filter whereClause = new InvocableSoql.Filter(this, values, false);
 			whereClause.omitted = omitted;
 			Map<String, Object> binds = this.initBinds(values);
@@ -1129,7 +1135,7 @@ public inherited sharing class InvocableSoql {
 				binds?.remove(InvocableSoql.BIND_PREFIX + index);
 			}
 			Soql builder = this.initSoql(whereClause, accessLevel);
-			return (Soql) builder?.setRowLimit(null)?.setRowOffset(null)?.addBind(binds);
+			return (Soql) builder?.setRowLimit(rowLimit)?.setRowOffset(null)?.addBind(binds);
 		}
 
 		/**
@@ -1927,7 +1933,8 @@ public inherited sharing class InvocableSoql {
 		 */
 		private void runMerged(InvocableSoql.Splitter splitter) {
 			List<Object> values = splitter?.getMergedValues();
-			Soql merged = this.query?.toMergedSoql(values, splitter?.droppedIndexes, this.accessLevel);
+			Integer rowLimit = splitter?.getMergedLimit();
+			Soql merged = this.query?.toMergedSoql(values, splitter?.droppedIndexes, rowLimit, this.accessLevel);
 			List<SObject> rows = this.runQuery(merged);
 			splitter?.split(rows);
 		}
@@ -2216,8 +2223,9 @@ public inherited sharing class InvocableSoql {
 		private Splitter(InvocableSoql.Query query, List<InvocableSoql.Variant> candidates) {
 			InvocableSoql.LogicNode root = query?.logicTree;
 			this.query = query;
+			this.capacity = (query?.rowLimit == null) ? null : query?.rowLimit + (query?.rowOffset ?? 0);
 			this.findVaryingIndexes(root, candidates);
-			Boolean isMergeable = root != null && this.plan(root, true, false);
+			Boolean isMergeable = root != null && this.plan(root, true, false) && this.isLockable();
 			this.findCheckedIndexes(root);
 			List<InvocableSoql.Variant> checkable = isMergeable
 				? this.findCheckable(candidates)
@@ -2226,6 +2234,60 @@ public inherited sharing class InvocableSoql {
 				this.variants = checkable;
 				this.initMatchers();
 			}
+		}
+
+		/**
+		 * @description Limits the merged query when only exclusions by ID vary. Each ID excludes one row at most, so
+		 * every variant finds the rows it keeps within its limit and offset, plus the IDs it excludes
+		 * @return The limit, or null to read every row any variant could need
+		 */
+		private Integer getMergedLimit() {
+			Boolean isIdExclusion = this.capacity != null;
+			for (Integer index : this.varyingIndexes) {
+				isIdExclusion &= this.isIdExclusion(index);
+			}
+			return isIdExclusion ? this.capacity + this.countMostExcludedIds() : null;
+		}
+
+		/**
+		 * @description Counts the most IDs any variant excludes, across its varying conditions
+		 * @return The count
+		 */
+		private Integer countMostExcludedIds() {
+			Integer most = 0;
+			for (InvocableSoql.Variant variant : this.variants) {
+				Integer excluded = 0;
+				for (Integer index : this.varyingIndexes) {
+					Object value = variant?.values?.get(index);
+					excluded += InvocableSoql.toList(value)?.size();
+				}
+				most = Math.max(most, excluded);
+			}
+			return most;
+		}
+
+		/**
+		 * @description Whether a condition excludes records by their own ID, ex: `Id != {!$Record.Id}`
+		 * @param index The condition's index
+		 * @return Whether it's Not Equals or Not In on the queried object's ID
+		 */
+		private Boolean isIdExclusion(Integer index) {
+			String operator = this.query?.getOperator(index);
+			String field = this.query?.conditions?.get(index)?.field;
+			return (operator == 'NOT_EQUALS' || operator == 'NOT_IN') && field == 'Id';
+		}
+
+		/**
+		 * @description Whether merging keeps For Update's locks to the rows the interviews lock on their own: only one
+		 * varying Equals or In, with no limit or offset, reads no other rows
+		 * @return Whether the variants can merge, as far as locking goes
+		 */
+		private Boolean isLockable() {
+			List<Integer> indexes = new List<Integer>(this.varyingIndexes);
+			String operator = (indexes?.size() == 1) ? this.query?.getOperator(indexes[0]) : null;
+			Boolean isUnion = operator == 'EQUALS' || operator == 'IN';
+			Boolean isPaged = this.capacity != null || this.query?.rowOffset != null;
+			return this.query?.usage != 'FOR_UPDATE' || (isUnion && isPaged == false);
 		}
 
 		/**
@@ -2249,8 +2311,6 @@ public inherited sharing class InvocableSoql {
 		 * @param rows The merged query's rows
 		 */
 		private void split(List<SObject> rows) {
-			Integer rowLimit = this.query?.rowLimit;
-			this.capacity = (rowLimit == null) ? null : rowLimit + (this.query?.rowOffset ?? 0);
 			for (InvocableSoql.Variant variant : this.variants) {
 				variant.records = new List<SObject>{};
 			}
