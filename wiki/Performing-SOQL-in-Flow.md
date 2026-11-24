@@ -100,14 +100,17 @@ When many flow interviews run the action at once (ex: a record-triggered flow on
     A condition whose value is the same for every interview stays in the merged query. Apex also checks it when a row could pass without it, ex: under **Any Condition Is Met (OR)**.
 
 3. An interview runs its own query when Apex can't check one of its values: a Like pattern with a wildcard in its middle, ex: `A%e`. So does a blank value on a range, Contains, Starts With, Ends With, or Like that every interview shares, under OR or `NOT`, since SOQL treats such a blank as false under `NOT`.
-4. Every interview runs its own query when either of these is true:
+4. Every interview runs its own query when any of these is true:
 
     - A condition whose values differ is under `NOT` in custom logic, which would narrow the rows instead of widening them.
     - Apex would have to check a condition it can't: a date literal, Includes, Excludes, a range on text, a multi-select picklist, or a currency field in an org with several currencies. Apex never has to when every interview has the same value and every row must pass the condition, as with **All Conditions Are Met (AND)**.
+    - **Rows** is For Update, and the merged query would read rows no interview asked for, since it locks every row it reads. For Update merges only when one condition's values differ, it's Equals or In, and there's no limit or offset.
 
 Apex compares values the way SOQL does: text ignores case, except on case-sensitive fields, and a blank matches blank fields. Like Get Records, it ignores case the same way in every locale, where SOQL follows the running user's. For a few letters, ex: the Turkish `İ` and `ı`, or the Greek `ς`, a merged query can miss rows a lone query finds, or for Does Not Equal and Not In, keep rows it leaves out.
 
-The limit and offset apply to each interview's rows after the split. A merged query reads every row any interview could need, as Get Records does. When several conditions vary, it also reads their combinations, ex: rows with one contact's account and another contact's title, which no interview needs. A limit of 1 over accounts with thousands of contacts each, a range on a large table, a Does Not Equal with no other condition, or a common combination can reach SOQL's 50,000-row limit.
+The limit and offset apply to each interview's rows after the split. A merged query reads every row any interview could need, as Get Records does. When several conditions vary, it also reads their combinations, ex: rows with one contact's account and another contact's title, which no interview needs. A limit of 1 over accounts with thousands of contacts each, a range on a large table, a Does Not Equal on a field other than the ID with no other condition, or a common combination can reach SOQL's 50,000-row limit.
+
+When the only conditions whose values differ are Does Not Equal or Not In on the record's ID, the merged query keeps a limit: the limit and offset, plus the most IDs any interview excludes. Each ID excludes one row at most, so every interview still finds its rows.
 
 For example, in a record-triggered flow on Contact:
 
@@ -115,6 +118,7 @@ For example, in a record-triggered flow on Contact:
 | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
 | Account ID Equals {!$Record.AccountId}                                                                              | 1: `AccountId = :accountIds`, a list with a blank among them                                     |
 | The same, with a limit of 1                                                                                         | 1: the merged query, then the first row for each contact                                         |
+| Contact ID Does Not Equal {!$Record.Id}, with a limit of 1                                                          | 1: reads 2 rows, then gives each contact the first that isn't its own                            |
 | Account ID Equals {!$Record.AccountId}, and Contact ID Does Not Equal {!$Record.Id}                                 | 1: the query leaves out Does Not Equal, and Apex drops each contact's own row                    |
 | Account ID Equals {!$Record.AccountId} OR Title Equals {!$Record.Title}                                             | 1: matches any contact's account or title                                                        |
 | Birthdate Greater Than {!$Record.Birthdate}                                                                         | 1: reads past the earliest birthdate                                                             |
