@@ -5,8 +5,28 @@
 import { parsePath } from "c/flowResourceMenu";
 import { getAllFieldsPath } from "c/soqlFieldMenu";
 
-// Mirrors InvocableSoql.Input's slots: 5 of each type, ex: text1 to text5
+// Mirrors InvocableSoql.Input's slots: 5 of each, named by type, ex: text1 or numberCollection3
 export const SLOT_COUNT = 5;
+export const RECORD_SLOT_PREFIX = "recordCollection";
+export const SLOT_PREFIXES = {
+	Boolean: "boolean",
+	Date: "date",
+	DateTime: "dateTime",
+	Number: "number",
+	String: "text",
+	Time: "time"
+};
+const COMPARISONS = ["LESS_THAN", "GREATER_THAN", "LESS_OR_EQUAL", "GREATER_OR_EQUAL"];
+// The operators each kind of field offers, in Get Records' order
+export const OPERATORS = {
+	boolean: ["EQUALS", "NOT_EQUALS"],
+	id: ["EQUALS", "NOT_EQUALS", "IN", "NOT_IN", "IS_NULL"],
+	multipicklist: ["INCLUDES", "EXCLUDES", "EQUALS", "NOT_EQUALS", "IS_NULL"],
+	ordered: ["EQUALS", "NOT_EQUALS", ...COMPARISONS, "IN", "NOT_IN", "IS_NULL"],
+	text: ["EQUALS", "NOT_EQUALS", "CONTAINS", "STARTS_WITH", "ENDS_WITH", "LIKE", "IN", "NOT_IN", "IS_NULL"],
+	// Flow has no Time collections, so Time fields can't use IN
+	time: ["EQUALS", "NOT_EQUALS", ...COMPARISONS, "IS_NULL"]
+};
 // Like Get Records, Is Null takes True or False: False finds the records whose field has a value
 const NULL_CHECK_FIELD = { type: "BOOLEAN" };
 const KINDS = {

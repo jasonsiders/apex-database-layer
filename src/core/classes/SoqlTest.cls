@@ -452,12 +452,14 @@ private class SoqlTest {
 		Exception tokenError = SoqlTest.catchSelectAll(builder, Case.Subject, null);
 		Exception pathError = SoqlTest.catchSelectAll(builder, null, 'Contact.Bogus');
 		Exception nullError = SoqlTest.catchSelectAll(builder, null, null);
+		Exception blankError = SoqlTest.catchSelectAll(builder, null, '');
 		Test.stopTest();
 
 		Assert.isInstanceOfType(tokenError, IllegalArgumentException.class, 'Did not reject a non-lookup field');
 		Assert.isInstanceOfType(pathError, IllegalArgumentException.class, 'Did not reject an unknown path');
 		// A null path would otherwise select every field of the queried object:
 		Assert.isInstanceOfType(nullError, IllegalArgumentException.class, 'Did not reject a null path');
+		Assert.isInstanceOfType(blankError, IllegalArgumentException.class, 'Did not reject a blank path');
 	}
 
 	@IsTest

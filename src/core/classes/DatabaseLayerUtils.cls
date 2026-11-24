@@ -286,6 +286,15 @@ public without sharing class DatabaseLayerUtils {
 		}
 
 		/**
+		 * @description Describes an object by its token, DEFERRED so its fields are only described once read
+		 * @param objectType The object
+		 * @return The object's describe, or null without an object
+		 */
+		public DescribeSObjectResult describeObject(SObjectType objectType) {
+			return objectType?.getDescribe(SObjectDescribeOptions.DEFERRED);
+		}
+
+		/**
 		 * @description Finds an object's lookup by its relationship name, ex: Contact.AccountId for "Account"
 		 * @param objectDescribe The object holding the lookup
 		 * @param relationshipName The relationship name, in any case
@@ -304,19 +313,22 @@ public without sharing class DatabaseLayerUtils {
 		/**
 		 * @description Follows relationships from an object to the lookups that reach a parent, ex: Contact.AccountId,
 		 * then Account.OwnerId, for "Account.Owner" from Contact
-		 * @param objectApiName The object the path starts from
+		 * @param objectDescribe The object the path starts from
 		 * @param relationshipPath Relationship names joined by dots, in any case
-		 * @return The lookups, in order
-		 * @throws System.IllegalArgumentException When the path is blank, or names a relationship that doesn't exist
+		 * @return The lookups, in order; empty for a blank path, the object itself
+		 * @throws System.IllegalArgumentException When the path names a relationship that doesn't exist
 		 */
-		public List<SObjectField> findLookups(String objectApiName, String relationshipPath) {
-			List<String> relationshipNames = relationshipPath?.split('\\.') ?? new List<String>{ null };
+		public List<SObjectField> findLookups(DescribeSObjectResult objectDescribe, String relationshipPath) {
+			List<String> relationshipNames = String.isBlank(relationshipPath)
+				? new List<String>{}
+				: relationshipPath.split('\\.');
 			List<SObjectField> lookups = new List<SObjectField>{};
-			DescribeSObjectResult child = this.describeObject(objectApiName);
+			SObjectField lookup;
 			for (String relationshipName : relationshipNames) {
-				SObjectField lookup = this.findRequiredLookup(child, relationshipName, relationshipPath);
+				// Each step's object is the previous lookup's parent, so the path's last parent is never described
+				DescribeSObjectResult child = (lookup == null) ? objectDescribe : this.describeParent(lookup);
+				lookup = this.findRequiredLookup(child, relationshipName, relationshipPath);
 				lookups?.add(lookup);
-				child = this.describeParent(lookup);
 			}
 			return lookups;
 		}
@@ -343,7 +355,7 @@ public without sharing class DatabaseLayerUtils {
 		 * @param lookup The lookup
 		 * @return The parent object's describe
 		 */
-		private DescribeSObjectResult describeParent(SObjectField lookup) {
+		public DescribeSObjectResult describeParent(SObjectField lookup) {
 			DescribeFieldResult lookupDescribe = lookup?.getDescribe();
 			String parentName = this.toEntityName(lookupDescribe);
 			return this.describeObject(parentName);
@@ -430,10 +442,7 @@ public without sharing class DatabaseLayerUtils {
 		}
 
 		private List<Schema.ChildRelationship> getRelationshipList(SObjectType objectType) {
-			String objectApiName = objectType?.toString();
-			DescribeSObjectResult objectDescribe = (objectApiName != null)
-				? DatabaseLayer.Utils.Schema.describeObject(objectApiName)
-				: null;
+			DescribeSObjectResult objectDescribe = DatabaseLayer.Utils.Schema.describeObject(objectType);
 			return objectDescribe?.getChildRelationships() ?? new List<Schema.ChildRelationship>();
 		}
 

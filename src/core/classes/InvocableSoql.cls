@@ -1347,7 +1347,7 @@ public inherited sharing class InvocableSoql {
 		private void describePath(String path) {
 			if (path?.endsWith(InvocableSoql.ALL_FIELDS) == true) {
 				String relationshipPath = this.toRelationshipPath(path);
-				this.findLookups(relationshipPath);
+				DatabaseLayer.Utils.Schema.findLookups(this.objectDescribe, relationshipPath);
 			} else {
 				this.describeField(path);
 			}
@@ -1360,19 +1360,6 @@ public inherited sharing class InvocableSoql {
 		 */
 		private String toRelationshipPath(String path) {
 			return path?.removeEnd(InvocableSoql.ALL_FIELDS)?.removeEnd('.');
-		}
-
-		/**
-		 * @description Follows relationships, ex: "Account.Owner", to the lookups that lead to their object, per
-		 * `DatabaseLayerUtils.Schema.findLookups`
-		 * @param relationshipPath Relationship names joined by dots
-		 * @return The lookups, in order; empty for a blank path, the queried object itself
-		 * @throws System.IllegalArgumentException When a relationship doesn't exist
-		 */
-		private List<SObjectField> findLookups(String relationshipPath) {
-			return String.isBlank(relationshipPath)
-				? new List<SObjectField>{}
-				: DatabaseLayer.Utils.Schema.findLookups(this.objectApiName, relationshipPath);
 		}
 
 		/**
@@ -1401,10 +1388,10 @@ public inherited sharing class InvocableSoql {
 		 * @throws System.IllegalArgumentException When a relationship doesn't exist
 		 */
 		private DescribeSObjectResult describePathObject(String relationshipPath) {
-			List<SObjectField> lookups = this.findLookups(relationshipPath);
+			List<SObjectField> lookups = DatabaseLayer.Utils.Schema.findLookups(this.objectDescribe, relationshipPath);
 			Integer lastIndex = lookups?.size() - 1;
-			DescribeFieldResult lookup = (lastIndex >= 0) ? lookups?.get(lastIndex)?.getDescribe() : null;
-			return (lookup != null) ? this.describeReference(lookup) : this.objectDescribe;
+			SObjectField lookup = (lastIndex >= 0) ? lookups?.get(lastIndex) : null;
+			return (lookup != null) ? DatabaseLayer.Utils.Schema.describeParent(lookup) : this.objectDescribe;
 		}
 
 		/**
@@ -1417,16 +1404,6 @@ public inherited sharing class InvocableSoql {
 				throw new IllegalArgumentException('Missing object');
 			}
 			return DatabaseLayer.Utils.Schema.describeObject(this.objectApiName);
-		}
-
-		/**
-		 * @description Describes the object SOQL resolves a lookup to, per `DatabaseLayerUtils.Schema.toEntityName`
-		 * @param lookup The lookup's describe
-		 * @return The parent object's describe
-		 */
-		private DescribeSObjectResult describeReference(DescribeFieldResult lookup) {
-			String parentName = DatabaseLayer.Utils.Schema.toEntityName(lookup);
-			return DatabaseLayer.Utils.Schema.describeObject(parentName);
 		}
 
 		/**

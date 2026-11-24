@@ -658,15 +658,14 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			SObjectField relationship5,
 			SObjectField relationship6
 		) {
-			List<SObjectField> lookups = new List<SObjectField>{
+			Soql.ParentField lookupField = new Soql.ParentField(
 				relationship1,
 				relationship2,
 				relationship3,
 				relationship4,
 				relationship5,
 				relationship6
-			};
-			Soql.ParentField lookupField = new Soql.ParentField(lookups);
+			);
 			return this.selectAll(lookupField);
 		}
 
@@ -688,14 +687,13 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			SObjectField relationship4,
 			SObjectField relationship5
 		) {
-			List<SObjectField> lookups = new List<SObjectField>{
+			Soql.ParentField lookupField = new Soql.ParentField(
 				relationship1,
 				relationship2,
 				relationship3,
 				relationship4,
 				relationship5
-			};
-			Soql.ParentField lookupField = new Soql.ParentField(lookups);
+			);
 			return this.selectAll(lookupField);
 		}
 
@@ -715,13 +713,12 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			SObjectField relationship3,
 			SObjectField relationship4
 		) {
-			List<SObjectField> lookups = new List<SObjectField>{
+			Soql.ParentField lookupField = new Soql.ParentField(
 				relationship1,
 				relationship2,
 				relationship3,
 				relationship4
-			};
-			Soql.ParentField lookupField = new Soql.ParentField(lookups);
+			);
 			return this.selectAll(lookupField);
 		}
 
@@ -737,8 +734,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			SObjectField relationship2,
 			SObjectField relationship3
 		) {
-			List<SObjectField> lookups = new List<SObjectField>{ relationship1, relationship2, relationship3 };
-			Soql.ParentField lookupField = new Soql.ParentField(lookups);
+			Soql.ParentField lookupField = new Soql.ParentField(relationship1, relationship2, relationship3);
 			return this.selectAll(lookupField);
 		}
 
@@ -749,8 +745,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @return This Builder instance for method chaining
 		 */
 		global Soql.Builder selectAll(SObjectField relationship1, SObjectField relationship2) {
-			List<SObjectField> lookups = new List<SObjectField>{ relationship1, relationship2 };
-			Soql.ParentField lookupField = new Soql.ParentField(lookups);
+			Soql.ParentField lookupField = new Soql.ParentField(relationship1, relationship2);
 			return this.selectAll(lookupField);
 		}
 
@@ -773,8 +768,10 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @throws System.IllegalArgumentException When the path is blank, or a relationship doesn't exist
 		 */
 		global Soql.Builder selectAll(String relationshipPath) {
-			List<SObjectField> lookups = DatabaseLayer.Utils.Schema.findLookups(this.entity, relationshipPath);
-			Soql.ParentField lookupField = new Soql.ParentField(lookups);
+			DescribeSObjectResult objectDescribe = DatabaseLayer.Utils.Schema.describeObject(this.entity);
+			List<SObjectField> lookups = DatabaseLayer.Utils.Schema.findLookups(objectDescribe, relationshipPath);
+			// A blank path has no lookups, which selectAll(Soql.ParentField) rejects
+			Soql.ParentField lookupField = (lookups?.isEmpty() == false) ? new Soql.ParentField(lookups) : null;
 			return this.selectAll(lookupField);
 		}
 

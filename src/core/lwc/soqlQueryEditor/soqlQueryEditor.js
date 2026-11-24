@@ -4,7 +4,10 @@ import { DATE_LITERAL_PATTERN, REFERENCE, REQUIRED_ERROR, compareLabels, toBoole
 import FlowPropertyEditor, { ACCESS_LEVELS, ACCESS_LEVEL_HELP, NONE_OPTION } from "c/flowPropertyEditor";
 import { resolveField } from "c/soqlFieldMenu";
 import {
+	OPERATORS,
+	RECORD_SLOT_PREFIX,
 	SLOT_COUNT,
+	SLOT_PREFIXES,
 	dropCoveredFields,
 	hasMixedOperators,
 	isWellFormed,
@@ -87,18 +90,7 @@ const OPERATOR_LABELS = {
 };
 // Operators that take a collection, and those that take INCLUDES or EXCLUDES picklist values
 const COLLECTION_OPERATORS = ["IN", "NOT_IN"];
-const COMPARISONS = ["LESS_THAN", "GREATER_THAN", "LESS_OR_EQUAL", "GREATER_OR_EQUAL"];
 const MULTI_VALUE_OPERATORS = ["INCLUDES", "EXCLUDES"];
-// The operators each kind of field offers, in Get Records' order
-const OPERATORS = {
-	boolean: ["EQUALS", "NOT_EQUALS"],
-	id: ["EQUALS", "NOT_EQUALS", "IN", "NOT_IN", "IS_NULL"],
-	multipicklist: ["INCLUDES", "EXCLUDES", "EQUALS", "NOT_EQUALS", "IS_NULL"],
-	ordered: ["EQUALS", "NOT_EQUALS", ...COMPARISONS, "IN", "NOT_IN", "IS_NULL"],
-	text: ["EQUALS", "NOT_EQUALS", "CONTAINS", "STARTS_WITH", "ENDS_WITH", "LIKE", "IN", "NOT_IN", "IS_NULL"],
-	// Flow has no Time collections, so Time fields can't use IN
-	time: ["EQUALS", "NOT_EQUALS", ...COMPARISONS, "IS_NULL"]
-};
 // Combobox options for each kind's operators, built once
 const OPERATOR_OPTIONS = Object.fromEntries(
 	Object.entries(OPERATORS).map(([kind, operators]) => [
@@ -106,16 +98,6 @@ const OPERATOR_OPTIONS = Object.fromEntries(
 		operators.map((operator) => ({ label: OPERATOR_LABELS[operator], value: operator }))
 	])
 );
-const RECORD_SLOT_PREFIX = "recordCollection";
-// Mirrors InvocableSoql.Input's slots, named by type, ex: text1 or numberCollection3
-const SLOT_PREFIXES = {
-	Boolean: "boolean",
-	Date: "date",
-	DateTime: "dateTime",
-	Number: "number",
-	String: "text",
-	Time: "time"
-};
 const RECORD_SLOTS = toSlotNames(RECORD_SLOT_PREFIX);
 // The Limit and Offset inputs' bounds, which they show but don't enforce; SOQL rejects an offset over 2,000
 const ROW_LIMIT_RANGE = { min: 1, max: 50000, errorString: "Enter a limit from 1 to 50,000." };

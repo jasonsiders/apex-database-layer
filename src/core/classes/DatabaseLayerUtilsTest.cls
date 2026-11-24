@@ -305,9 +305,10 @@ private class DatabaseLayerUtilsTest {
 	@IsTest
 	private static void shouldFindTheLookupsAlongARelationshipPath() {
 		List<SObjectField> expected = new List<SObjectField>{ Case.ContactId, Contact.AccountId, Account.OwnerId };
+		DescribeSObjectResult caseDescribe = Case.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED);
 
 		Test.startTest();
-		List<SObjectField> lookups = DatabaseLayer.Utils.Schema.findLookups('Case', 'contact.Account.Owner');
+		List<SObjectField> lookups = DatabaseLayer.Utils.Schema.findLookups(caseDescribe, 'contact.Account.Owner');
 		Test.stopTest();
 
 		Assert.areEqual(expected, lookups, 'Wrong lookups');
@@ -316,9 +317,10 @@ private class DatabaseLayerUtilsTest {
 	@IsTest
 	private static void shouldFindLookupsThroughAPolymorphicRelationship() {
 		List<SObjectField> expected = new List<SObjectField>{ Case.OwnerId };
+		DescribeSObjectResult caseDescribe = Case.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED);
 
 		Test.startTest();
-		List<SObjectField> lookups = DatabaseLayer.Utils.Schema.findLookups('Case', 'Owner');
+		List<SObjectField> lookups = DatabaseLayer.Utils.Schema.findLookups(caseDescribe, 'Owner');
 		Test.stopTest();
 
 		Assert.areEqual(expected, lookups, 'Wrong lookups');
@@ -326,11 +328,12 @@ private class DatabaseLayerUtilsTest {
 
 	@IsTest
 	private static void shouldRejectAnUnknownRelationshipInAPath() {
+		DescribeSObjectResult caseDescribe = Case.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED);
 		Exception caught;
 
 		Test.startTest();
 		try {
-			DatabaseLayer.Utils.Schema.findLookups('Case', 'Contact.Bogus');
+			DatabaseLayer.Utils.Schema.findLookups(caseDescribe, 'Contact.Bogus');
 		} catch (IllegalArgumentException error) {
 			caught = error;
 		}
@@ -340,17 +343,31 @@ private class DatabaseLayerUtilsTest {
 	}
 
 	@IsTest
-	private static void shouldRejectABlankRelationshipPath() {
-		Exception caught;
+	private static void shouldFindNoLookupsForABlankRelationshipPath() {
+		DescribeSObjectResult caseDescribe = Case.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED);
 
 		Test.startTest();
-		try {
-			DatabaseLayer.Utils.Schema.findLookups('Case', null);
-		} catch (IllegalArgumentException error) {
-			caught = error;
-		}
+		List<SObjectField> lookups = DatabaseLayer.Utils.Schema.findLookups(caseDescribe, null);
 		Test.stopTest();
 
-		Assert.isNotNull(caught, 'Did not reject a blank path');
+		Assert.isTrue(lookups?.isEmpty(), 'Found lookups for a blank path');
+	}
+
+	@IsTest
+	private static void shouldDescribeTheObjectALookupPointsTo() {
+		Test.startTest();
+		DescribeSObjectResult parent = DatabaseLayer.Utils.Schema.describeParent(Contact.AccountId);
+		Test.stopTest();
+
+		Assert.areEqual(Account.SObjectType, parent?.getSObjectType(), 'Wrong parent object');
+	}
+
+	@IsTest
+	private static void shouldDescribeAnObjectByItsToken() {
+		Test.startTest();
+		DescribeSObjectResult describe = DatabaseLayer.Utils.Schema.describeObject(Contact.SObjectType);
+		Test.stopTest();
+
+		Assert.areEqual(Contact.SObjectType, describe?.getSObjectType(), 'Wrong object');
 	}
 }
