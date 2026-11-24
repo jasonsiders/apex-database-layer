@@ -2210,6 +2210,8 @@ public inherited sharing class InvocableSoql {
 		/** @description A checker for each condition Apex checks, by index **/
 		private Map<Integer, InvocableSoql.ConditionMatcher> matchersByIndex = new Map<Integer, InvocableSoql.ConditionMatcher>{};
 		private InvocableSoql.Query query;
+		/** @description Conditions every row must pass, those joined to the rest only by AND, by index **/
+		private Set<Integer> requiredIndexes = new Set<Integer>{};
 		/** @description Conditions in the logic whose values differ between variants, by index **/
 		private Set<Integer> varyingIndexes = new Set<Integer>{};
 		/** @description The variants the merged query serves, by position; fewer than two when none can merge **/
@@ -2252,15 +2254,17 @@ public inherited sharing class InvocableSoql {
 
 		/**
 		 * @description Whether merging keeps For Update's locks to the rows the interviews lock on their own: only one
-		 * varying Equals or In reads no other rows, with no limit, or for Equals on the ID, which finds one row at
-		 * most, with any limit
+		 * varying Equals or In reads no other rows, with no limit, or for Equals on the ID joined to the rest only by
+		 * AND, which finds one row at most, with any limit
 		 * @return Whether the variants can merge, as far as locking goes
 		 */
 		private Boolean isLockable() {
 			List<Integer> indexes = new List<Integer>(this.varyingIndexes);
 			InvocableSoql.Condition varying = (indexes?.size() == 1) ? this.query?.conditions?.get(indexes[0]) : null;
 			Boolean isUnion = varying?.operator == 'EQUALS' || varying?.operator == 'IN';
-			Boolean isIdLookup = varying?.operator == 'EQUALS' && varying?.field == 'Id';
+			// Under OR, the rest of the logic can find rows past the ID's, which the merged query reads with no limit
+			Boolean isRequired = this.requiredIndexes?.containsAll(this.varyingIndexes);
+			Boolean isIdLookup = varying?.operator == 'EQUALS' && varying?.field == 'Id' && isRequired;
 			// No offset to check: `validatePaging` already rejects one with For Update
 			return this.query?.usage != 'FOR_UPDATE' || (isUnion && (this.capacity == null || isIdLookup));
 		}
@@ -2619,8 +2623,8 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description Marks the parts of the logic the query guarantees, and those without varying conditions, then
-		 * checks that Apex can check the rest
+		 * @description Marks the parts of the logic the query guarantees, those without varying conditions, and the
+		 * conditions every row must pass, then checks that Apex can check the rest
 		 * @param node A part of the logic
 		 * @param isRequired Whether every row must pass it, as for a part joined to the rest only by AND
 		 * @param isNegated Whether it's under NOT
@@ -2636,6 +2640,9 @@ public inherited sharing class InvocableSoql {
 				node.isUniform &= child?.isUniform;
 			}
 			node.isSkipped = isRequired && node?.isUniform;
+			if (isRequired && node?.index != null) {
+				this.requiredIndexes?.add(node?.index);
+			}
 			// A varying condition widens, which NOT would turn into narrowing
 			Boolean isCheckable =
 				node?.index == null ||
