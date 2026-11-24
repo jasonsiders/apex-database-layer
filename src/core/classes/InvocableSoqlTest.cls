@@ -1302,13 +1302,39 @@ private with sharing class InvocableSoqlTest {
 		// Each ID excludes one row at most, so every interview's rows are within its limit, offset, and one more:
 		Assert.areEqual(1, spy.queries?.size(), 'Wrong # of queries');
 		Assert.areEqual(3, spy.queries?.get(0)?.rowLimit, 'Wrong merged limit');
-		Assert.areEqual(new List<String>{ 'Gamma' }, InvocableSoqlTest.getNames(outputs[0]), 'Wrong 1st output');
-		Assert.areEqual(new List<String>{ 'Gamma' }, InvocableSoqlTest.getNames(outputs[1]), 'Wrong 2nd output');
+		List<String> firstNames = InvocableSoqlTest.getNames(outputs[0]);
+		List<String> secondNames = InvocableSoqlTest.getNames(outputs[1]);
+		Assert.areEqual(new List<String>{ 'Gamma' }, firstNames, 'Wrong 1st output');
+		Assert.areEqual(new List<String>{ 'Gamma' }, secondNames, 'Wrong 2nd output');
+	}
+
+	@IsTest
+	private static void shouldLimitAMergedQueryByTheMostIdsAnyInterviewExcludes() {
+		List<Account> accounts = InvocableSoqlTest.initAccounts();
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(accounts);
+		InvocableSoql.Query query = InvocableSoqlTest.initSlotQuery('Id', 'NOT_IN', 'textCollection1');
+		query.rowLimit = 1;
+		InvocableSoql.Input first = InvocableSoqlTest.initInput(query);
+		first.textCollection1 = new List<String>{ accounts[0].Id, accounts[1].Id };
+		InvocableSoql.Input second = InvocableSoqlTest.initInput(query);
+		second.textCollection1 = new List<String>{ accounts[0].Id };
+
+		Test.startTest();
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(new List<InvocableSoql.Input>{ first, second });
+		Test.stopTest();
+
+		Assert.areEqual(1, spy.queries?.size(), 'Wrong # of queries');
+		Assert.areEqual(3, spy.queries?.get(0)?.rowLimit, 'Wrong merged limit');
+		List<String> firstNames = InvocableSoqlTest.getNames(outputs[0]);
+		List<String> secondNames = InvocableSoqlTest.getNames(outputs[1]);
+		Assert.areEqual(new List<String>{ 'Gamma' }, firstNames, 'Wrong 1st output');
+		Assert.areEqual(new List<String>{ 'Beta' }, secondNames, 'Wrong 2nd output');
 	}
 
 	@IsTest
 	private static void shouldNotLimitAMergedQueryThatExcludesOtherFields() {
-		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(InvocableSoqlTest.initAccounts());
+		List<Account> accounts = InvocableSoqlTest.initAccounts();
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(accounts);
 		InvocableSoql.Query query = InvocableSoqlTest.initSlotQuery('Name', 'NOT_EQUALS', 'text1');
 		query.rowLimit = 1;
 		List<InvocableSoql.Input> inputs = new List<InvocableSoql.Input>{
@@ -1323,45 +1349,63 @@ private with sharing class InvocableSoqlTest {
 		// A name can exclude any number of rows, so no limit is sure to leave each interview its rows:
 		Assert.areEqual(1, spy.queries?.size(), 'Wrong # of queries');
 		Assert.isNull(spy.queries?.get(0)?.rowLimit, 'Merged query has a limit');
-		Assert.areEqual(new List<String>{ 'Beta' }, InvocableSoqlTest.getNames(outputs[0]), 'Wrong 1st output');
-		Assert.areEqual(new List<String>{ 'Acme' }, InvocableSoqlTest.getNames(outputs[1]), 'Wrong 2nd output');
+		List<String> firstNames = InvocableSoqlTest.getNames(outputs[0]);
+		List<String> secondNames = InvocableSoqlTest.getNames(outputs[1]);
+		Assert.areEqual(new List<String>{ 'Beta' }, firstNames, 'Wrong 1st output');
+		Assert.areEqual(new List<String>{ 'Acme' }, secondNames, 'Wrong 2nd output');
 	}
 
 	@IsTest
 	private static void shouldMergeLockedRowsByEquals() {
-		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(InvocableSoqlTest.initAccounts());
+		List<Account> accounts = InvocableSoqlTest.initAccounts();
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(accounts);
 		InvocableSoql.Query query = InvocableSoqlTest.initSlotQuery('Site', 'EQUALS', 'text1');
 		query.usage = 'FOR_UPDATE';
+		List<InvocableSoql.Input> inputs = InvocableSoqlTest.initSiteInputs(query);
 
 		Test.startTest();
-		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(InvocableSoqlTest.initSiteInputs(query));
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(inputs);
 		Test.stopTest();
 
 		// The merged query locks only rows some interview locks on its own:
 		Assert.areEqual(1, spy.queries?.size(), 'Wrong # of queries');
-		Assert.areEqual(new List<String>{ 'Acme' }, InvocableSoqlTest.getNames(outputs[0]), 'Wrong 1st output');
-		Assert.areEqual(new List<String>{ 'Beta' }, InvocableSoqlTest.getNames(outputs[1]), 'Wrong 2nd output');
+		List<String> firstNames = InvocableSoqlTest.getNames(outputs[0]);
+		List<String> secondNames = InvocableSoqlTest.getNames(outputs[1]);
+		Assert.areEqual(new List<String>{ 'Acme' }, firstNames, 'Wrong 1st output');
+		Assert.areEqual(new List<String>{ 'Beta' }, secondNames, 'Wrong 2nd output');
 	}
 
 	@IsTest
-	private static void shouldNotMergeLockedRowsThatAWiderQueryWouldRead() {
-		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(InvocableSoqlTest.initAccounts());
-		InvocableSoql.Query excluding = InvocableSoqlTest.initSlotQuery('Site', 'NOT_EQUALS', 'text1');
-		excluding.usage = 'FOR_UPDATE';
-		InvocableSoql.Query limited = InvocableSoqlTest.initSlotQuery('Site', 'EQUALS', 'text1');
-		limited.usage = 'FOR_UPDATE';
-		limited.rowLimit = 1;
+	private static void shouldNotMergeLockedRowsByNotEquals() {
+		List<Account> accounts = InvocableSoqlTest.initAccounts();
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(accounts);
+		InvocableSoql.Query query = InvocableSoqlTest.initSlotQuery('Site', 'NOT_EQUALS', 'text1');
+		query.usage = 'FOR_UPDATE';
+		List<InvocableSoql.Input> inputs = InvocableSoqlTest.initSiteInputs(query);
 
 		Test.startTest();
-		InvocableSoql.invoke(InvocableSoqlTest.initSiteInputs(excluding));
-		Integer excludingQueries = spy.queries?.size();
-		InvocableSoql.invoke(InvocableSoqlTest.initSiteInputs(limited));
-		Integer limitedQueries = spy.queries?.size() - excludingQueries;
+		InvocableSoql.invoke(inputs);
 		Test.stopTest();
 
-		// A merged query would lock rows no interview asked for: every row for Not Equals, every match for a limit
-		Assert.areEqual(2, excludingQueries, 'Merged a locking Not Equals');
-		Assert.areEqual(2, limitedQueries, 'Merged a locking query with a limit');
+		// A merged query would leave the condition out, and lock every row:
+		Assert.areEqual(2, spy.queries?.size(), 'Wrong # of queries');
+	}
+
+	@IsTest
+	private static void shouldNotMergeLockedRowsWithALimit() {
+		List<Account> accounts = InvocableSoqlTest.initAccounts();
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(accounts);
+		InvocableSoql.Query query = InvocableSoqlTest.initSlotQuery('Site', 'EQUALS', 'text1');
+		query.usage = 'FOR_UPDATE';
+		query.rowLimit = 1;
+		List<InvocableSoql.Input> inputs = InvocableSoqlTest.initSiteInputs(query);
+
+		Test.startTest();
+		InvocableSoql.invoke(inputs);
+		Test.stopTest();
+
+		// A merged query reads past each interview's limit, and would lock every match:
+		Assert.areEqual(2, spy.queries?.size(), 'Wrong # of queries');
 	}
 
 	@IsTest

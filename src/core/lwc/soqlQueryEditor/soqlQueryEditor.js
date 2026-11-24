@@ -879,7 +879,8 @@ export default class SoqlQueryEditor extends FlowPropertyEditor {
 	_validateValue(condition) {
 		const fieldType = toValueField(this._fields[condition.field], condition.operator)?.type;
 		const isWholeNumber = ["INTEGER", "LONG"].includes(fieldType);
-		const isFraction = isWholeNumber && condition.value != null && !Number.isInteger(Number(condition.value));
+		const number = Number(condition.value);
+		const isFraction = isWholeNumber && condition.value != null && !Number.isInteger(number);
 		return isFraction ? "Enter a whole number." : null;
 	}
 

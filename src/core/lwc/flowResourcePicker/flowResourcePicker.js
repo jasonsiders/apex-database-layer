@@ -762,10 +762,11 @@ export default class FlowResourcePicker extends LightningElement {
 		const parsed = this._parseText();
 		const referencePath = parsed.isComplete ? parsed.path : null;
 		const isUnfinished = parsed.isReference && !parsed.isComplete;
-		const hasText = this._text.trim() !== "";
+		const trimmed = this._text.trim();
+		const hasText = trimmed !== "";
 		const dataType = toLiteralType(this._text, this.type, this.allowsDateLiterals);
 		// Apex parses other literals strictly, so spaces around them would fail every run
-		const text = dataType === "String" ? this._text : this._text.trim();
+		const text = dataType === "String" ? this._text : trimmed;
 		const literal = { value: text, dataType, isLiteral: true };
 		const isInvalid = isUnfinished || (hasText && !isAssignable(literal, this.target));
 		if (referencePath) {

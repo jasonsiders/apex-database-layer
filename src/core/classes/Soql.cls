@@ -875,7 +875,9 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		private List<SObjectField> toLookupChain(String lookupFieldPath) {
 			// A blank path is one step no object has, so it throws below rather than select the queried object's fields
-			List<String> names = String.isBlank(lookupFieldPath) ? new List<String>{ '' } : lookupFieldPath.split('\\.');
+			List<String> names = String.isBlank(lookupFieldPath)
+				? new List<String>{ '' }
+				: lookupFieldPath.split('\\.');
 			List<SObjectField> chain = new List<SObjectField>{};
 			String entityName = this.entity;
 			for (Integer index = 0; index < names?.size(); index++) {
