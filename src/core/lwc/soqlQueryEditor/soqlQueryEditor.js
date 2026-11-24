@@ -879,8 +879,8 @@ export default class SoqlQueryEditor extends FlowPropertyEditor {
 	_validateValue(condition) {
 		const fieldType = toValueField(this._fields[condition.field], condition.operator)?.type;
 		const isWholeNumber = ["INTEGER", "LONG"].includes(fieldType);
-		const number = Number(condition.value);
-		const isFraction = isWholeNumber && condition.value != null && !Number.isInteger(number);
+		// Checks the text, since a JS number rounds off a fraction Apex's Decimal keeps, ex: 42.0000000000000001
+		const isFraction = isWholeNumber && /\.\d*[1-9]/.test(condition.value ?? "");
 		return isFraction ? "Enter a whole number." : null;
 	}
 

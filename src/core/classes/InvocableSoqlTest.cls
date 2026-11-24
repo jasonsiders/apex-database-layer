@@ -1376,6 +1376,30 @@ private with sharing class InvocableSoqlTest {
 	}
 
 	@IsTest
+	private static void shouldMergeLockedRowsByIdWithALimit() {
+		List<Account> accounts = InvocableSoqlTest.initAccounts();
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(accounts);
+		InvocableSoql.Query query = InvocableSoqlTest.initSlotQuery('Id', 'EQUALS', 'text1');
+		query.usage = 'FOR_UPDATE';
+		query.rowLimit = 1;
+		List<InvocableSoql.Input> inputs = new List<InvocableSoql.Input>{
+			InvocableSoqlTest.initTextInput(query, accounts[0].Id),
+			InvocableSoqlTest.initTextInput(query, accounts[1].Id)
+		};
+
+		Test.startTest();
+		List<InvocableSoql.Output> outputs = InvocableSoql.invoke(inputs);
+		Test.stopTest();
+
+		// Each ID finds one row at most, so the merged query locks only rows the interviews lock on their own:
+		Assert.areEqual(1, spy.queries?.size(), 'Wrong # of queries');
+		List<String> firstNames = InvocableSoqlTest.getNames(outputs[0]);
+		List<String> secondNames = InvocableSoqlTest.getNames(outputs[1]);
+		Assert.areEqual(new List<String>{ 'Acme' }, firstNames, 'Wrong 1st output');
+		Assert.areEqual(new List<String>{ 'Beta' }, secondNames, 'Wrong 2nd output');
+	}
+
+	@IsTest
 	private static void shouldNotMergeLockedRowsByNotEquals() {
 		List<Account> accounts = InvocableSoqlTest.initAccounts();
 		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(accounts);

@@ -104,7 +104,7 @@ When many flow interviews run the action at once (ex: a record-triggered flow on
 
     - A condition whose values differ is under `NOT` in custom logic, which would narrow the rows instead of widening them.
     - Apex would have to check a condition it can't: a date literal, Includes, Excludes, a range on text, a multi-select picklist, or a currency field in an org with several currencies. Apex never has to when every interview has the same value and every row must pass the condition, as with **All Conditions Are Met (AND)**.
-    - **Rows** is For Update, and the merged query would read rows no interview asked for, since it locks every row it reads. For Update merges only when one condition's values differ, it's Equals or In, and there's no limit or offset.
+    - **Rows** is For Update, and the merged query would read rows no interview asked for, since it locks every row it reads. For Update merges only when one condition's values differ, it's Equals or In, and there's no limit, or it's Equals on the record's ID, which finds one row at most, with any limit.
 
 Apex compares values the way SOQL does: text ignores case, except on case-sensitive fields, and a blank matches blank fields. Like Get Records, it ignores case the same way in every locale, where SOQL follows the running user's. For a few letters, ex: the Turkish `İ` and `ı`, or the Greek `ς`, a merged query can miss rows a lone query finds, or for Does Not Equal and Not In, keep rows it leaves out.
 

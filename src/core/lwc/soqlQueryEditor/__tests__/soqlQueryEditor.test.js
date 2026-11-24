@@ -607,12 +607,17 @@ describe("c-soql-query-editor", () => {
 			fields: [],
 			conditions: [
 				{ field: "NumberOfEmployees", operator: "LESS_THAN", value: "42.5" },
-				{ field: "NumberOfEmployees", operator: "GREATER_THAN", value: "10.0" }
+				{ field: "NumberOfEmployees", operator: "GREATER_THAN", value: "10.0" },
+				// Too precise for a JS number, which would round it to 42; Apex's Decimal keeps the fraction
+				{ field: "NumberOfEmployees", operator: "NOT_EQUALS", value: "42.0000000000000001" }
 			],
 			orderBy: []
 		});
 
-		expect(element.validate()).toEqual([{ key: "condition-0", errorString: "Enter a whole number." }]);
+		expect(element.validate()).toEqual([
+			{ key: "condition-0", errorString: "Enter a whole number." },
+			{ key: "condition-2", errorString: "Enter a whole number." }
+		]);
 	});
 
 	it("flags a limit or offset outside its input's bounds, which Flow Builder would otherwise save", async () => {

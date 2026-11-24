@@ -2252,15 +2252,17 @@ public inherited sharing class InvocableSoql {
 
 		/**
 		 * @description Whether merging keeps For Update's locks to the rows the interviews lock on their own: only one
-		 * varying Equals or In, with no limit, reads no other rows
+		 * varying Equals or In reads no other rows, with no limit, or for Equals on the ID, which finds one row at
+		 * most, with any limit
 		 * @return Whether the variants can merge, as far as locking goes
 		 */
 		private Boolean isLockable() {
 			List<Integer> indexes = new List<Integer>(this.varyingIndexes);
-			String operator = (indexes?.size() == 1) ? this.query?.getOperator(indexes[0]) : null;
-			Boolean isUnion = operator == 'EQUALS' || operator == 'IN';
+			InvocableSoql.Condition varying = (indexes?.size() == 1) ? this.query?.conditions?.get(indexes[0]) : null;
+			Boolean isUnion = varying?.operator == 'EQUALS' || varying?.operator == 'IN';
+			Boolean isIdLookup = varying?.operator == 'EQUALS' && varying?.field == 'Id';
 			// No offset to check: `validatePaging` already rejects one with For Update
-			return this.query?.usage != 'FOR_UPDATE' || (isUnion && this.capacity == null);
+			return this.query?.usage != 'FOR_UPDATE' || (isUnion && (this.capacity == null || isIdLookup));
 		}
 
 		/**
