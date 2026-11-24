@@ -586,6 +586,40 @@ describe("c-soql-query-editor", () => {
 		expect(element.shadowRoot.textContent).toContain("can't sort the records it locks");
 	});
 
+	it("flags an offset with For Update, since SOQL can't skip the records it locks", async () => {
+		const { element } = await render({
+			objectApiName: "Contact",
+			fields: [],
+			conditions: [],
+			orderBy: [],
+			rowOffset: 0,
+			usage: "FOR_UPDATE"
+		});
+
+		expect(element.validate().map((error) => error.key)).toEqual(["usage"]);
+		await flush();
+		expect(element.shadowRoot.textContent).toContain("can't skip the records it locks");
+	});
+
+	it("flags a fraction for a whole-number field, which Apex rejects on every run", async () => {
+		const { element } = await render({
+			objectApiName: "Account",
+			fields: [],
+			conditions: [
+				{ field: "NumberOfEmployees", operator: "LESS_THAN", value: "42.5" },
+				{ field: "NumberOfEmployees", operator: "GREATER_THAN", value: "10.0" },
+				// Too precise for a JS number, which would round it to 42; Apex's Decimal keeps the fraction
+				{ field: "NumberOfEmployees", operator: "NOT_EQUALS", value: "42.0000000000000001" }
+			],
+			orderBy: []
+		});
+
+		expect(element.validate()).toEqual([
+			{ key: "condition-0", errorString: "Enter a whole number." },
+			{ key: "condition-2", errorString: "Enter a whole number." }
+		]);
+	});
+
 	it("flags a limit or offset outside its input's bounds, which Flow Builder would otherwise save", async () => {
 		const { element } = await render({
 			objectApiName: "Contact",

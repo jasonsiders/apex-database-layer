@@ -1475,7 +1475,8 @@ public inherited sharing class InvocableSoql {
 		 * @return The value, ready to bind
 		 */
 		private Object prepareValue(Integer index, Object value) {
-			Boolean isCollection = InvocableSoql.COLLECTION_OPERATORS?.contains(this.getOperator(index));
+			String operator = this.getOperator(index);
+			Boolean isCollection = InvocableSoql.COLLECTION_OPERATORS?.contains(operator);
 			Object collection = (value == null && isCollection) ? new List<Object>{} : value;
 			Object recordIds = (collection instanceof List<SObject>)
 				? this.getRecordIds((List<SObject>) collection)
@@ -1927,7 +1928,9 @@ public inherited sharing class InvocableSoql {
 		 */
 		private void runMerged(InvocableSoql.Splitter splitter) {
 			List<Object> values = splitter?.getMergedValues();
+			Integer rowLimit = splitter?.getMergedLimit();
 			Soql merged = this.query?.toMergedSoql(values, splitter?.droppedIndexes, this.accessLevel);
+			merged?.setRowLimit(rowLimit);
 			List<SObject> rows = this.runQuery(merged);
 			splitter?.split(rows);
 		}
@@ -2071,10 +2074,14 @@ public inherited sharing class InvocableSoql {
 			this.addMatches(positions, this.exact, key ?? '');
 			if (key != null) {
 				for (Integer length : this.prefixes?.keySet()) {
-					this.addMatches(positions, this.prefixes?.get(length), key?.left(length));
+					Map<String, Set<Integer>> keyed = this.prefixes?.get(length);
+					String prefix = key?.left(length);
+					this.addMatches(positions, keyed, prefix);
 				}
 				for (Integer length : this.suffixes?.keySet()) {
-					this.addMatches(positions, this.suffixes?.get(length), key?.right(length));
+					Map<String, Set<Integer>> keyed = this.suffixes?.get(length);
+					String suffix = key?.right(length);
+					this.addMatches(positions, keyed, suffix);
 				}
 				this.matchSubstrings(positions, key);
 			}
@@ -2216,8 +2223,9 @@ public inherited sharing class InvocableSoql {
 		private Splitter(InvocableSoql.Query query, List<InvocableSoql.Variant> candidates) {
 			InvocableSoql.LogicNode root = query?.logicTree;
 			this.query = query;
+			this.capacity = (query?.rowLimit == null) ? null : query?.rowLimit + (query?.rowOffset ?? 0);
 			this.findVaryingIndexes(root, candidates);
-			Boolean isMergeable = root != null && this.plan(root, true, false);
+			Boolean isMergeable = root != null && this.plan(root, true, false) && this.isLockable();
 			this.findCheckedIndexes(root);
 			List<InvocableSoql.Variant> checkable = isMergeable
 				? this.findCheckable(candidates)
@@ -2226,6 +2234,35 @@ public inherited sharing class InvocableSoql {
 				this.variants = checkable;
 				this.initMatchers();
 			}
+		}
+
+		/**
+		 * @description Limits the merged query when only exclusions by ID vary. Each ID excludes one row at most, so
+		 * every variant finds the rows it keeps within its limit and offset, plus the IDs it excludes
+		 * @return The limit, or null to read every row any variant could need
+		 */
+		private Integer getMergedLimit() {
+			Integer mergedLimit = this.capacity;
+			for (Integer index : this.varyingIndexes) {
+				Integer excluded = this.matchersByIndex?.get(index)?.countMostExcluded();
+				mergedLimit = (mergedLimit == null || excluded == null) ? null : mergedLimit + excluded;
+			}
+			return mergedLimit;
+		}
+
+		/**
+		 * @description Whether merging keeps For Update's locks to the rows the interviews lock on their own: only one
+		 * varying Equals or In reads no other rows, with no limit, or for Equals on the ID, which finds one row at
+		 * most, with any limit
+		 * @return Whether the variants can merge, as far as locking goes
+		 */
+		private Boolean isLockable() {
+			List<Integer> indexes = new List<Integer>(this.varyingIndexes);
+			InvocableSoql.Condition varying = (indexes?.size() == 1) ? this.query?.conditions?.get(indexes[0]) : null;
+			Boolean isUnion = varying?.operator == 'EQUALS' || varying?.operator == 'IN';
+			Boolean isIdLookup = varying?.operator == 'EQUALS' && varying?.field == 'Id';
+			// No offset to check: `validatePaging` already rejects one with For Update
+			return this.query?.usage != 'FOR_UPDATE' || (isUnion && (this.capacity == null || isIdLookup));
 		}
 
 		/**
@@ -2249,8 +2286,6 @@ public inherited sharing class InvocableSoql {
 		 * @param rows The merged query's rows
 		 */
 		private void split(List<SObject> rows) {
-			Integer rowLimit = this.query?.rowLimit;
-			this.capacity = (rowLimit == null) ? null : rowLimit + (this.query?.rowOffset ?? 0);
 			for (InvocableSoql.Variant variant : this.variants) {
 				variant.records = new List<SObject>{};
 			}
@@ -2774,6 +2809,14 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
+		 * @description The most rows the condition excludes for any variant, when that's known
+		 * @return The count, or null when it can exclude any number of rows
+		 */
+		public virtual Integer countMostExcluded() {
+			return null;
+		}
+
+		/**
 		 * @description Stops matching a variant that has every row it keeps. Lookups by key or pattern find few
 		 * variants, so only checkers that look through every variant drop it
 		 * @param position The variant's position
@@ -2827,6 +2870,21 @@ public inherited sharing class InvocableSoql {
 			for (Integer position = 0; position < values?.size(); position++) {
 				this.addVariant(position);
 			}
+		}
+
+		/**
+		 * @description Not Equals and Not In on the queried object's ID exclude one row per ID at most, ex:
+		 * `Id != {!$Record.Id}`
+		 * @return The most IDs any variant excludes, or null for other conditions
+		 */
+		public override Integer countMostExcluded() {
+			Boolean isIdField = this.query?.conditions?.get(this.index)?.field == 'Id';
+			Integer most = 0;
+			for (Object value : this.values) {
+				Integer excluded = InvocableSoql.toList(value)?.size();
+				most = Math.max(most, excluded);
+			}
+			return (this.isNegated && isIdField) ? most : null;
 		}
 
 		/**

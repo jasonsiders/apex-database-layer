@@ -858,7 +858,7 @@ export default class SoqlQueryEditor extends FlowPropertyEditor {
 	}
 
 	/**
-	 * @description Checks that a condition has a field, an operator, and a value
+	 * @description Checks that a condition has a field, an operator, and a value Apex takes
 	 * @param {Object} condition The condition
 	 * @param {Number} index The condition's position
 	 * @returns {Object} An error, or null
@@ -867,7 +867,21 @@ export default class SoqlQueryEditor extends FlowPropertyEditor {
 		const hasValue =
 			Boolean(condition.slot) || condition.value != null || condition.values || condition.dateLiteral;
 		const isComplete = condition.field && condition.operator && hasValue;
-		return isComplete ? null : { key: `condition-${index}`, errorString: condition.error ?? REQUIRED_ERROR };
+		const errorString = isComplete ? this._validateValue(condition) : (condition.error ?? REQUIRED_ERROR);
+		return errorString ? { key: `condition-${index}`, errorString } : null;
+	}
+
+	/**
+	 * @description Checks a typed value: Apex rejects a fraction for a whole-number field
+	 * @param {Object} condition A complete condition
+	 * @returns {String} An error, or null
+	 */
+	_validateValue(condition) {
+		const fieldType = toValueField(this._fields[condition.field], condition.operator)?.type;
+		const isWholeNumber = ["INTEGER", "LONG"].includes(fieldType);
+		// Checks the text, since a JS number rounds off a fraction Apex's Decimal keeps, ex: 42.0000000000000001
+		const isFraction = isWholeNumber && /\.\d*[1-9]/.test(condition.value ?? "");
+		return isFraction ? "Enter a whole number." : null;
 	}
 
 	/**
@@ -890,18 +904,16 @@ export default class SoqlQueryEditor extends FlowPropertyEditor {
 	}
 
 	/**
-	 * @description Checks the Rows option: SOQL rejects sort fields with For Update
+	 * @description Checks the Rows option: SOQL rejects sort fields with For Update, and Apex rejects an offset
 	 * @returns {Object} An error, or null
 	 */
 	_validateUsage() {
 		const isSorted = this._definition.orderBy.some((sortOrder) => sortOrder.field);
+		const isSkipped = this._definition.rowOffset != null;
 		const isLocked = this._definition.usage === "FOR_UPDATE";
-		return isSorted && isLocked
-			? {
-					key: "usage",
-					errorString:
-						"SOQL can't sort the records it locks. Remove the sort fields, or pick another Rows option."
-				}
-			: null;
+		const errorString = isSorted
+			? "SOQL can't sort the records it locks. Remove the sort fields, or pick another Rows option."
+			: "SOQL can't skip the records it locks. Remove the offset, or pick another Rows option.";
+		return isLocked && (isSorted || isSkipped) ? { key: "usage", errorString } : null;
 	}
 }
