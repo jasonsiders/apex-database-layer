@@ -2,11 +2,6 @@
  * @description Internal utility class providing framework-specific functionality in a pseudo-namespace pattern.
  */
 public without sharing class DatabaseLayerUtils {
-	/** @description Flows pass access levels as text, so each valid value maps to its System.AccessLevel **/
-	private static final Map<String, System.AccessLevel> ACCESS_LEVELS = new Map<String, System.AccessLevel>{
-		'SYSTEM_MODE' => System.AccessLevel.SYSTEM_MODE,
-		'USER_MODE' => System.AccessLevel.USER_MODE
-	};
 	// Matches the SOQL date literal grammar: the fixed keywords, plus the parameterized <LITERAL>:<n> forms.
 	// See https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_select_dateformats.htm
 	private static final Pattern DATE_LITERAL_PATTERN = Pattern.compile(
@@ -14,10 +9,6 @@ public without sharing class DatabaseLayerUtils {
 			'(LAST|NEXT)_90_DAYS|(LAST_N|NEXT_N)_(DAYS|WEEKS|MONTHS|QUARTERS|YEARS|FISCAL_QUARTERS|FISCAL_YEARS):\\d+|' +
 			'N_(DAYS|WEEKS|MONTHS|QUARTERS|YEARS|FISCAL_QUARTERS|FISCAL_YEARS)_AGO:\\d+)$'
 	);
-	/** @description The object SOQL resolves a name-pointing lookup to, ex: Case.Owner **/
-	private static final String POLYMORPHIC_ENTITY = 'Name';
-	/** @description Objects SOQL resolves their name-pointing lookups to, ex: ObjectPermissions.Parent **/
-	private static final Set<String> SELF_RESOLVING_ENTITIES = new Set<String>{ 'LegalEntity', 'PermissionSet' };
 	// Note: These properties do not use traditional naming conventions to support a 'namespace-like' API
 	/**
 	 * @description Utility for converting System.AccessLevel to and from its name.
@@ -111,6 +102,12 @@ public without sharing class DatabaseLayerUtils {
 	 * its name, ex: for flow inputs and JSON output
 	 */
 	public class AccessLevels {
+		/** @description Flows pass access levels as text, so each valid value maps to its System.AccessLevel **/
+		private final Map<String, System.AccessLevel> levelsByName = new Map<String, System.AccessLevel>{
+			'SYSTEM_MODE' => System.AccessLevel.SYSTEM_MODE,
+			'USER_MODE' => System.AccessLevel.USER_MODE
+		};
+
 		@SuppressWarnings('PMD.EmptyStatementBlock')
 		private AccessLevels() {
 			// Don't allow construction outside of this file
@@ -134,7 +131,7 @@ public without sharing class DatabaseLayerUtils {
 		 */
 		public System.AccessLevel parse(String name) {
 			String levelName = String.isBlank(name) ? 'USER_MODE' : name;
-			System.AccessLevel level = DatabaseLayerUtils.ACCESS_LEVELS?.get(levelName);
+			System.AccessLevel level = this.levelsByName?.get(levelName);
 			if (level == null) {
 				throw new IllegalArgumentException('Invalid access level: ' + levelName);
 			}
@@ -246,6 +243,11 @@ public without sharing class DatabaseLayerUtils {
 	 * @description Utility for describing objects and fields the way SOQL reads them.
 	 */
 	public class Schema {
+		/** @description The object SOQL resolves a name-pointing lookup to, ex: Case.Owner **/
+		private final String polymorphicEntity = 'Name';
+		/** @description Objects SOQL resolves their name-pointing lookups to, ex: ObjectPermissions.Parent **/
+		private final Set<String> selfResolvingEntities = new Set<String>{ 'LegalEntity', 'PermissionSet' };
+
 		@SuppressWarnings('PMD.EmptyStatementBlock')
 		private Schema() {
 			// Don't allow construction outside of this file
@@ -300,9 +302,29 @@ public without sharing class DatabaseLayerUtils {
 		}
 
 		/**
+		 * @description Follows relationships from an object to the lookups that reach a parent, ex: Contact.AccountId,
+		 * then Account.OwnerId, for "Account.Owner" from Contact
+		 * @param objectApiName The object the path starts from
+		 * @param relationshipPath Relationship names joined by dots, in any case
+		 * @return The lookups, in order
+		 * @throws System.IllegalArgumentException When the path is blank, or names a relationship that doesn't exist
+		 */
+		public List<SObjectField> findLookups(String objectApiName, String relationshipPath) {
+			List<String> relationshipNames = relationshipPath?.split('\\.') ?? new List<String>{ null };
+			List<SObjectField> lookups = new List<SObjectField>{};
+			DescribeSObjectResult child = this.describeObject(objectApiName);
+			for (String relationshipName : relationshipNames) {
+				SObjectField lookup = this.findRequiredLookup(child, relationshipName, relationshipPath);
+				lookups?.add(lookup);
+				child = this.describeParent(lookup);
+			}
+			return lookups;
+		}
+
+		/**
 		 * @description Names the object SOQL resolves a lookup's relationship to. A name-pointing lookup, ex: Case.OwnerId
 		 * or AccountHistory.CreatedById, resolves to the Name object, the only one whose fields SOQL allows on it without
-		 * TYPEOF, unless it points only to an object in SELF_RESOLVING_ENTITIES. Other lookups resolve to their first
+		 * TYPEOF, unless it points only to an object in selfResolvingEntities. Other lookups resolve to their first
 		 * object, even with several, ex: Document.FolderId to Folder
 		 * @param lookup The lookup's describe
 		 * @return The object's name, or null for a field that isn't a lookup
@@ -311,10 +333,41 @@ public without sharing class DatabaseLayerUtils {
 			List<SObjectType> parentTypes = lookup?.getReferenceTo();
 			String firstParent = parentTypes?.isEmpty() == false ? parentTypes?.get(0)?.toString() : null;
 			// Apex's describe can't tell these apart; probing every target type in an org found only these
-			Boolean isSelfResolving =
-				parentTypes?.size() == 1 && DatabaseLayerUtils.SELF_RESOLVING_ENTITIES?.contains(firstParent);
+			Boolean isSelfResolving = parentTypes?.size() == 1 && this.selfResolvingEntities?.contains(firstParent);
 			Boolean isPolymorphic = lookup?.isNamePointing() == true && isSelfResolving == false;
-			return isPolymorphic ? DatabaseLayerUtils.POLYMORPHIC_ENTITY : firstParent;
+			return isPolymorphic ? this.polymorphicEntity : firstParent;
+		}
+
+		/**
+		 * @description Describes the object SOQL resolves a lookup to, per {@link toEntityName}
+		 * @param lookup The lookup
+		 * @return The parent object's describe
+		 */
+		private DescribeSObjectResult describeParent(SObjectField lookup) {
+			DescribeFieldResult lookupDescribe = lookup?.getDescribe();
+			String parentName = this.toEntityName(lookupDescribe);
+			return this.describeObject(parentName);
+		}
+
+		/**
+		 * @description Finds one step of a relationship path
+		 * @param child The object holding the lookup
+		 * @param relationshipName The relationship name
+		 * @param relationshipPath The whole path, for the error
+		 * @return The lookup
+		 * @throws System.IllegalArgumentException When the object has no relationship by that name
+		 */
+		private SObjectField findRequiredLookup(
+			DescribeSObjectResult child,
+			String relationshipName,
+			String relationshipPath
+		) {
+			SObjectField lookup = this.findLookup(child, relationshipName);
+			if (lookup == null) {
+				String objectName = child?.getName();
+				throw new IllegalArgumentException('Invalid relationship for ' + objectName + ': ' + relationshipPath);
+			}
+			return lookup;
 		}
 	}
 
@@ -377,8 +430,11 @@ public without sharing class DatabaseLayerUtils {
 		}
 
 		private List<Schema.ChildRelationship> getRelationshipList(SObjectType objectType) {
-			return objectType?.getDescribe(Schema.SObjectDescribeOptions.DEFERRED)?.getChildRelationships() ??
-				new List<Schema.ChildRelationship>();
+			String objectApiName = objectType?.toString();
+			DescribeSObjectResult objectDescribe = (objectApiName != null)
+				? DatabaseLayer.Utils.Schema.describeObject(objectApiName)
+				: null;
+			return objectDescribe?.getChildRelationships() ?? new List<Schema.ChildRelationship>();
 		}
 
 		private void mapRelationships(SObjectType objectType) {

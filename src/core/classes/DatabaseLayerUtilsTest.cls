@@ -196,27 +196,70 @@ private class DatabaseLayerUtilsTest {
 	}
 
 	@IsTest
-	private static void shouldNameTheObjectSoqlResolvesALookupTo() {
+	private static void shouldNameTheObjectALookupPointsTo() {
+		DescribeFieldResult lookup = Contact.AccountId?.getDescribe();
+
 		Test.startTest();
-		String lookup = DatabaseLayer.Utils.Schema.toEntityName(Contact.AccountId?.getDescribe());
-		String polymorphic = DatabaseLayer.Utils.Schema.toEntityName(Case.OwnerId?.getDescribe());
-		// SOQL resolves by isNamePointing, not by how many objects the lookup references:
-		String namePointing = DatabaseLayer.Utils.Schema.toEntityName(AccountHistory.CreatedById?.getDescribe());
-		String severalObjects = DatabaseLayer.Utils.Schema.toEntityName(Document.FolderId?.getDescribe());
-		String selfResolving = DatabaseLayer.Utils.Schema.toEntityName(ObjectPermissions.ParentId?.getDescribe());
-		String notLookup = DatabaseLayer.Utils.Schema.toEntityName(Account.Name?.getDescribe());
+		String entityName = DatabaseLayer.Utils.Schema.toEntityName(lookup);
 		Test.stopTest();
 
-		Assert.areEqual('Account', lookup, 'Wrong lookup object');
-		Assert.areEqual('Name', polymorphic, 'Wrong polymorphic lookup object');
-		Assert.areEqual('Name', namePointing, 'Wrong name-pointing lookup object');
-		Assert.areEqual('Folder', severalObjects, 'Wrong multi-object lookup object');
-		Assert.areEqual(
-			'PermissionSet',
-			selfResolving,
-			'Wrong object for a name-pointing lookup SOQL resolves directly'
-		);
-		Assert.isNull(notLookup, 'Named an object for a field that is not a lookup');
+		Assert.areEqual('Account', entityName, 'Wrong lookup object');
+	}
+
+	@IsTest
+	private static void shouldNameTheNameObjectForAPolymorphicLookup() {
+		DescribeFieldResult lookup = Case.OwnerId?.getDescribe();
+
+		Test.startTest();
+		String entityName = DatabaseLayer.Utils.Schema.toEntityName(lookup);
+		Test.stopTest();
+
+		Assert.areEqual('Name', entityName, 'Wrong polymorphic lookup object');
+	}
+
+	@IsTest
+	private static void shouldNameTheNameObjectForANamePointingLookupToOneObject() {
+		// SOQL resolves by isNamePointing, not by how many objects the lookup references
+		DescribeFieldResult lookup = AccountHistory.CreatedById?.getDescribe();
+
+		Test.startTest();
+		String entityName = DatabaseLayer.Utils.Schema.toEntityName(lookup);
+		Test.stopTest();
+
+		Assert.areEqual('Name', entityName, 'Wrong name-pointing lookup object');
+	}
+
+	@IsTest
+	private static void shouldNameTheFirstObjectForALookupToSeveralObjects() {
+		DescribeFieldResult lookup = Document.FolderId?.getDescribe();
+
+		Test.startTest();
+		String entityName = DatabaseLayer.Utils.Schema.toEntityName(lookup);
+		Test.stopTest();
+
+		Assert.areEqual('Folder', entityName, 'Wrong multi-object lookup object');
+	}
+
+	@IsTest
+	private static void shouldNameTheObjectForASelfResolvingLookup() {
+		DescribeFieldResult lookup = ObjectPermissions.ParentId?.getDescribe();
+
+		Test.startTest();
+		String entityName = DatabaseLayer.Utils.Schema.toEntityName(lookup);
+		Test.stopTest();
+
+		Assert.areEqual('PermissionSet', entityName, 'Wrong object for a name-pointing lookup SOQL resolves directly');
+	}
+
+	@IsTest
+	private static void shouldNameNoObjectForAFieldThatIsNotALookup() {
+		DescribeFieldResult field = Account.Name?.getDescribe();
+
+		Test.startTest();
+		String entityName = DatabaseLayer.Utils.Schema.toEntityName(field);
+		Test.stopTest();
+
+		Assert.isNull(entityName, 'Named an object for a field that is not a lookup');
 	}
 
 	@IsTest
@@ -234,12 +277,80 @@ private class DatabaseLayerUtilsTest {
 
 		Test.startTest();
 		SObjectField lookup = DatabaseLayer.Utils.Schema.findLookup(contactDescribe, 'account');
-		SObjectField notRelationship = DatabaseLayer.Utils.Schema.findLookup(contactDescribe, 'LastName');
-		SObjectField noObject = DatabaseLayer.Utils.Schema.findLookup(null, 'Account');
 		Test.stopTest();
 
 		Assert.areEqual(Contact.AccountId, lookup, 'Wrong lookup');
-		Assert.isNull(notRelationship, 'Found a lookup by a field name, not a relationship name');
-		Assert.isNull(noObject, 'Found a lookup without an object');
+	}
+
+	@IsTest
+	private static void shouldNotFindALookupByAFieldName() {
+		DescribeSObjectResult contactDescribe = Contact.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED);
+
+		Test.startTest();
+		SObjectField lookup = DatabaseLayer.Utils.Schema.findLookup(contactDescribe, 'LastName');
+		Test.stopTest();
+
+		Assert.isNull(lookup, 'Found a lookup by a field name, not a relationship name');
+	}
+
+	@IsTest
+	private static void shouldNotFindALookupWithoutAnObject() {
+		Test.startTest();
+		SObjectField lookup = DatabaseLayer.Utils.Schema.findLookup(null, 'Account');
+		Test.stopTest();
+
+		Assert.isNull(lookup, 'Found a lookup without an object');
+	}
+
+	@IsTest
+	private static void shouldFindTheLookupsAlongARelationshipPath() {
+		List<SObjectField> expected = new List<SObjectField>{ Case.ContactId, Contact.AccountId, Account.OwnerId };
+
+		Test.startTest();
+		List<SObjectField> lookups = DatabaseLayer.Utils.Schema.findLookups('Case', 'contact.Account.Owner');
+		Test.stopTest();
+
+		Assert.areEqual(expected, lookups, 'Wrong lookups');
+	}
+
+	@IsTest
+	private static void shouldFindLookupsThroughAPolymorphicRelationship() {
+		List<SObjectField> expected = new List<SObjectField>{ Case.OwnerId };
+
+		Test.startTest();
+		List<SObjectField> lookups = DatabaseLayer.Utils.Schema.findLookups('Case', 'Owner');
+		Test.stopTest();
+
+		Assert.areEqual(expected, lookups, 'Wrong lookups');
+	}
+
+	@IsTest
+	private static void shouldRejectAnUnknownRelationshipInAPath() {
+		Exception caught;
+
+		Test.startTest();
+		try {
+			DatabaseLayer.Utils.Schema.findLookups('Case', 'Contact.Bogus');
+		} catch (IllegalArgumentException error) {
+			caught = error;
+		}
+		Test.stopTest();
+
+		Assert.isNotNull(caught, 'Did not reject an unknown relationship');
+	}
+
+	@IsTest
+	private static void shouldRejectABlankRelationshipPath() {
+		Exception caught;
+
+		Test.startTest();
+		try {
+			DatabaseLayer.Utils.Schema.findLookups('Case', null);
+		} catch (IllegalArgumentException error) {
+			caught = error;
+		}
+		Test.stopTest();
+
+		Assert.isNotNull(caught, 'Did not reject a blank path');
 	}
 }
