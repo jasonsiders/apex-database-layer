@@ -1879,7 +1879,9 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @param relationshipFieldChain List of SObjectFields representing the relationship chain
 		 */
 		global ParentField(List<SObjectField> relationshipFieldChain) {
-			this.fieldChain = relationshipFieldChain ?? new List<SObjectField>();
+			// A copy, so a caller that reuses its list can't change this field's lookups
+			List<SObjectField> fields = relationshipFieldChain ?? new List<SObjectField>();
+			this.fieldChain = new List<SObjectField>(fields);
 			this.computeReferences(this.fieldChain);
 		}
 

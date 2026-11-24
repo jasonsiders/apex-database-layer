@@ -445,6 +445,24 @@ private class SoqlTest {
 	}
 
 	@IsTest
+	private static void shouldSelectAllParentFieldsWhenTheLookupListChangesAfterward() {
+		List<SObjectField> lookups = new List<SObjectField>{ Case.ContactId };
+		Soql.ParentField contactLookup = new Soql.ParentField(lookups);
+		lookups?.add(Contact.AccountId);
+
+		Test.startTest();
+		Soql soql = DatabaseLayer.Soql.newQuery(Case.SObjectType)
+			?.setAccessLevel(System.AccessLevel.SYSTEM_MODE)
+			?.selectAll(contactLookup)
+			?.toSoql();
+		Test.stopTest();
+
+		Set<String> fields = soql?.selectClauses;
+		Assert.isTrue(fields?.contains('Contact.LastName'), 'Missing Contact fields');
+		Assert.isFalse(fields?.contains('Contact.AccountNumber'), 'Selected Account fields under Contact');
+	}
+
+	@IsTest
 	private static void shouldRejectSelectAllOfFieldsThatAreNotLookups() {
 		Soql.Builder builder = DatabaseLayer.Soql.newQuery(Case.SObjectType);
 
