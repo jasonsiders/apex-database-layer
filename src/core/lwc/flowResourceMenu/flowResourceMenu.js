@@ -201,6 +201,8 @@ const GLOBAL_ENTRIES = GLOBAL_VARIABLES.map((global) => [global.value, initGloba
 const GLOBALS_BY_VALUE = new Map(GLOBAL_ENTRIES);
 // Scopes walk the flow's connectors, so each builder context gets one per element, not one per keystroke
 const SCOPES = new WeakMap();
+// Each target's listed values as a set, since every menu item checks them, ex: thousands of objects
+const LISTED_VALUES = new WeakMap();
 
 const GLOBAL_CONSTANTS = [
 	{ value: "$GlobalConstant.False", label: "False", dataType: "Boolean" },
@@ -366,7 +368,9 @@ export function isAssignable(item, target) {
 	// The host lists values its input takes, ex: date literals for a Date input; typing mustn't reach unlisted values
 	// of a picklist-only target
 	const isListed =
-		Boolean(item.isLiteral) && (target?.picklistValues ?? []).some(({ value }) => value === item.value);
+		Boolean(item.isLiteral) &&
+		Boolean(target?.picklistValues) &&
+		toListedValues(target.picklistValues).has(item.value);
 	const matchesScalar =
 		(isScalar && matchesScalarShape && types.includes(item.dataType)) || matchesRecordIds || isListed;
 	const matchesMode = !target?.isPicklistOnly || isListed;
@@ -416,6 +420,19 @@ function applyTarget(sections, target, context) {
 				.filter((item) => item.isSelectable || item.isDrillable)
 		}))
 		.filter((section) => section.items.length);
+}
+
+/**
+ * @description The values a target lists, as a set, built once per list
+ * @param {Array} picklistValues The target's `{ value }` options
+ * @returns {Set} The values
+ */
+function toListedValues(picklistValues) {
+	if (!LISTED_VALUES.has(picklistValues)) {
+		const values = picklistValues.map(({ value }) => value);
+		LISTED_VALUES.set(picklistValues, new Set(values));
+	}
+	return LISTED_VALUES.get(picklistValues);
 }
 
 /**

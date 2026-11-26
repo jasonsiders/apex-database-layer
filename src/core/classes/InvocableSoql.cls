@@ -100,7 +100,7 @@ public inherited sharing class InvocableSoql {
 	public static List<InvocableSoql.ObjectOption> getObjects() {
 		List<InvocableSoql.ObjectOption> options = new List<InvocableSoql.ObjectOption>{};
 		for (SObjectType objectType : Schema.getGlobalDescribe()?.values()) {
-			DescribeSObjectResult describe = objectType?.getDescribe(SObjectDescribeOptions.DEFERRED);
+			DescribeSObjectResult describe = DatabaseLayer.Utils.Schema.describeObject(objectType);
 			if (describe?.isQueryable() == true && describe?.isDeprecatedAndHidden() == false) {
 				InvocableSoql.ObjectOption option = new InvocableSoql.ObjectOption(describe);
 				options?.add(option);
@@ -783,6 +783,8 @@ public inherited sharing class InvocableSoql {
 		private transient List<DescribeFieldResult> conditionFields;
 		/** @description Each condition's field path, split once, since a merged query reads it from every row **/
 		private transient List<List<String>> conditionPaths;
+		/** @description The condition logic by condition number, validated once, which each WHERE clause renders **/
+		private transient InvocableSoql.ConditionLogic logic;
 		/** @description The condition logic, parsed once, which a merged query checks for each variant **/
 		private transient InvocableSoql.LogicNode logicTree;
 		private transient DescribeSObjectResult objectDescribe;
@@ -889,8 +891,7 @@ public inherited sharing class InvocableSoql {
 		 * @return Whether the condition's value is a LIKE pattern
 		 */
 		private Boolean isPattern(Integer index) {
-			String operator = this.getOperator(index);
-			return InvocableSoql.OPERATORS?.get(operator)?.toString() == 'LIKE';
+			return this.conditions?.get(index)?.isPattern() == true;
 		}
 
 		/**
@@ -918,13 +919,13 @@ public inherited sharing class InvocableSoql {
 		@TestVisible
 		private Soql toSoql(List<Object> values, System.AccessLevel accessLevel) {
 			InvocableSoql.Filter whereClause = new InvocableSoql.Filter(this, values, false);
-			Map<String, Object> binds = this.initBinds(values);
+			Map<String, Object> binds = this.initBinds(values, whereClause?.omitted);
 			return (Soql) this.initSoql(whereClause, accessLevel)?.addBind(binds);
 		}
 
 		/**
-		 * @description Builds a merged query: without LIMIT and OFFSET, which `page` applies to each interview's rows,
-		 * and without the conditions the split applies alone
+		 * @description Builds a merged query: without OFFSET, which `page` applies to each interview's rows, and without
+		 * the conditions the split applies alone. The caller sets its LIMIT
 		 * @param values One value per condition, each varying one widened to cover every interview's values
 		 * @param omitted The indexes of the conditions the split applies
 		 * @param accessLevel The access level to query in
@@ -933,12 +934,9 @@ public inherited sharing class InvocableSoql {
 		private Soql toMergedSoql(List<Object> values, Set<Integer> omitted, System.AccessLevel accessLevel) {
 			InvocableSoql.Filter whereClause = new InvocableSoql.Filter(this, values, false);
 			whereClause.omitted = omitted;
-			Map<String, Object> binds = this.initBinds(values);
-			for (Integer index : omitted) {
-				binds?.remove(InvocableSoql.BIND_PREFIX + index);
-			}
+			Map<String, Object> binds = this.initBinds(values, omitted);
 			Soql builder = this.initSoql(whereClause, accessLevel);
-			return (Soql) builder?.setRowLimit(null)?.setRowOffset(null)?.addBind(binds);
+			return (Soql) builder?.setRowOffset(null)?.addBind(binds);
 		}
 
 		/**
@@ -994,9 +992,7 @@ public inherited sharing class InvocableSoql {
 				Set<String> clauses = builder?.selectClauses?.clone();
 				this.selectClausesByAccessLevel?.put(accessLevel, clauses);
 			} else {
-				for (String clause : cached) {
-					builder?.addSelect(clause);
-				}
+				builder?.selectClauses?.addAll(cached);
 			}
 		}
 
@@ -1063,12 +1059,11 @@ public inherited sharing class InvocableSoql {
 			}
 			this.describeOtherFields();
 			this.validatePaging();
-			// Renders the WHERE clause once, so bad condition logic fails before any query runs
+			this.logic = this.initLogic();
+			// Renders the WHERE clause once, so logic naming a missing condition fails before any query runs
 			List<Object> blankValues = new List<Object>(this.conditions?.size());
-			InvocableSoql.Filter blankFilter = new InvocableSoql.Filter(this, blankValues, true);
-			blankFilter?.toString();
-			InvocableSoql.ConditionLogic logic = blankFilter?.getLogic();
-			this.logicTree = new InvocableSoql.LogicParser(logic)?.parse();
+			new InvocableSoql.Filter(this, blankValues, true)?.toString();
+			this.logicTree = new InvocableSoql.LogicParser(this.logic)?.parse();
 			return this;
 		}
 
@@ -1226,6 +1221,28 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
+		 * @description AND and OR join every condition; anything else is custom logic
+		 * @return The logic, by condition number, ex: "1 AND 2"
+		 * @throws System.IllegalArgumentException When custom logic holds anything but numbers, AND, OR, NOT, and
+		 * parentheses, or isn't well formed
+		 */
+		private InvocableSoql.ConditionLogic initLogic() {
+			String logic = this.getLogicName();
+			List<String> numbers = new List<String>{};
+			for (Integer index = 1; index <= this.conditions?.size(); index++) {
+				String conditionNumber = String.valueOf(index);
+				numbers?.add(conditionNumber);
+			}
+			Boolean isPreset = logic == 'AND' || logic == 'OR';
+			String expanded = isPreset ? String.join(numbers, ' ' + logic + ' ') : logic;
+			InvocableSoql.ConditionLogic conditionLogic = new InvocableSoql.ConditionLogic(expanded);
+			if (isPreset == false && conditionLogic?.isValid() == false) {
+				throw new IllegalArgumentException('Invalid condition logic: ' + this.conditionLogic);
+			}
+			return conditionLogic;
+		}
+
+		/**
 		 * @description The condition logic, upper-cased; blank means AND
 		 * @return AND, OR, or custom logic
 		 */
@@ -1247,12 +1264,14 @@ public inherited sharing class InvocableSoql {
 		/**
 		 * @description Binds each condition's value by its index, ex: `:bind0`
 		 * @param values One value per condition
+		 * @param omitted The indexes of conditions a merged query leaves out, which bind nothing
 		 * @return The binds
 		 */
-		private Map<String, Object> initBinds(List<Object> values) {
+		private Map<String, Object> initBinds(List<Object> values, Set<Integer> omitted) {
 			Map<String, Object> binds = new Map<String, Object>{};
 			for (Integer index = 0; index < this.conditions?.size(); index++) {
-				if (this.conditions?.get(index)?.isBound() == true) {
+				Boolean isBound = this.conditions?.get(index)?.isBound() == true;
+				if (isBound && omitted?.contains(index) != true) {
 					Object value = values?.get(index);
 					binds?.put(InvocableSoql.BIND_PREFIX + index, value);
 				}
@@ -1322,6 +1341,14 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
+		 * @description Contains, Starts With, Ends With, and Like bind a LIKE pattern; the rest bind values
+		 * @return Whether the condition's value is a LIKE pattern
+		 */
+		private Boolean isPattern() {
+			return InvocableSoql.OPERATORS?.get(this.operator)?.toString() == 'LIKE';
+		}
+
+		/**
 		 * @description The definition holds collections in `values`, and anything else in `value`
 		 * @return The static value or values
 		 */
@@ -1347,7 +1374,7 @@ public inherited sharing class InvocableSoql {
 				operand = new InvocableSoql.Literal(this.values)?.toString();
 			} else if (isLiteral == false) {
 				operand = ':' + InvocableSoql.BIND_PREFIX + index;
-			} else if (InvocableSoql.OPERATORS?.get(this.operator)?.toString() == 'LIKE') {
+			} else if (this.isPattern()) {
 				operand = new InvocableSoql.Literal(value)?.toPattern();
 			} else {
 				operand = new InvocableSoql.Literal(value)?.toString();
@@ -1557,15 +1584,21 @@ public inherited sharing class InvocableSoql {
 
 		/**
 		 * @description Whether a typed list takes the values as they are, the same as `coerceValue` would convert
-		 * them: a `List<Id>` checks and lengthens each ID it's given, and text and numbers already of their field's
-		 * type need no conversion
+		 * them: a `List<Id>` checks and lengthens each ID it's given, and text, numbers, dates, and date/times already
+		 * of their field's type need no conversion
 		 * @param values A collection of values
 		 * @return True if the values can be added to the field's list as they are
 		 */
 		private Boolean isNativeList(Iterable<Object> values) {
 			Boolean isText = this.valueType == String.class && values instanceof List<String>;
 			Boolean isNumber = this.valueType == Decimal.class && values instanceof List<Decimal>;
-			return this.valueType == Id.class || isText || isNumber;
+			Boolean isDate = this.valueType == Date.class && values instanceof List<Date>;
+			// A List<Date> is also an instance of List<DateTime>, so it's ruled out
+			Boolean isDateTime =
+				this.valueType == DateTime.class &&
+				values instanceof List<DateTime> &&
+				(values instanceof List<Date>) == false;
+			return this.valueType == Id.class || isText || isNumber || isDate || isDateTime;
 		}
 	}
 
@@ -1615,7 +1648,7 @@ public inherited sharing class InvocableSoql {
 			Integer depth = 0;
 			// The depth of each NOT still waiting for its operand to end
 			List<Integer> openNots = new List<Integer>{};
-			InvocableSoql.ConditionLogic logic = this.getLogic();
+			InvocableSoql.ConditionLogic logic = this.query?.logic;
 			for (String token : logic?.tokens) {
 				depth += (token == '(') ? 1 : 0;
 				depth -= (token == ')') ? 1 : 0;
@@ -1657,28 +1690,6 @@ public inherited sharing class InvocableSoql {
 		private String renderToken(String token) {
 			String keyword = (token == 'NOT') ? '(NOT' : token;
 			return token?.isNumeric() == true ? this.renderCondition(token) : keyword;
-		}
-
-		/**
-		 * @description AND and OR join every condition; anything else is custom logic
-		 * @return The logic, by condition number, ex: "1 AND 2"
-		 * @throws System.IllegalArgumentException When custom logic holds anything but numbers, AND, OR, NOT, and
-		 * parentheses, or isn't well formed
-		 */
-		private InvocableSoql.ConditionLogic getLogic() {
-			String logic = this.query?.getLogicName();
-			List<String> numbers = new List<String>{};
-			for (Integer index = 1; index <= this.query?.conditions?.size(); index++) {
-				String conditionNumber = String.valueOf(index);
-				numbers?.add(conditionNumber);
-			}
-			Boolean isPreset = logic == 'AND' || logic == 'OR';
-			String expanded = isPreset ? String.join(numbers, ' ' + logic + ' ') : logic;
-			InvocableSoql.ConditionLogic conditionLogic = new InvocableSoql.ConditionLogic(expanded);
-			if (isPreset == false && conditionLogic?.isValid() == false) {
-				throw new IllegalArgumentException('Invalid condition logic: ' + this.query?.conditionLogic);
-			}
-			return conditionLogic;
 		}
 
 		/**

@@ -217,8 +217,8 @@
 						type="number"
 						label="Limit"
 						field-level-help="The most records each interview gets. Interviews in a batch can still share one query, which can read more records than this."
-						min="1"
-						max="50000"
+						min={rowLimitRange.min}
+						max={rowLimitRange.max}
 						value={rowLimit}
 						onchange={handleLimitChange}
 					></lightning-input>
@@ -228,8 +228,8 @@
 						type="number"
 						label="Offset"
 						field-level-help="How many records each interview skips. Interviews in a batch can still share one query, which reads the skipped records too."
-						min="0"
-						max="2000"
+						min={rowOffsetRange.min}
+						max={rowOffsetRange.max}
 						value={rowOffset}
 						onchange={handleOffsetChange}
 					></lightning-input>

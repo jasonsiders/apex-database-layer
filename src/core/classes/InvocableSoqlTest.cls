@@ -492,6 +492,32 @@ private with sharing class InvocableSoqlTest {
 	}
 
 	@IsTest
+	private static void shouldBindDateCollections() {
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(new List<SObject>{});
+		InvocableSoql.Query query = InvocableSoqlTest.initQuery('Contact', null);
+		InvocableSoql.Condition birthdates = InvocableSoqlTest.initCondition('Birthdate', 'IN', null);
+		birthdates.slot = 'dateCollection1';
+		query.conditions.add(birthdates);
+		InvocableSoql.Condition modifiedDates = InvocableSoqlTest.initCondition('LastModifiedDate', 'IN', null);
+		modifiedDates.slot = 'dateTimeCollection1';
+		query.conditions.add(modifiedDates);
+		InvocableSoql.Input input = InvocableSoqlTest.initInput(query);
+		List<Date> dates = new List<Date>{ Date.newInstance(2000, 1, 15) };
+		input.dateCollection1 = dates;
+		List<DateTime> dateTimes = new List<DateTime>{ DateTime.newInstanceGmt(2000, 1, 1, 12, 30, 0) };
+		input.dateTimeCollection1 = dateTimes;
+
+		Test.startTest();
+		InvocableSoqlTest.invoke(input);
+		Test.stopTest();
+
+		Map<String, Object> binds = spy.queries?.get(0)?.binds;
+		Assert.areEqual(dates, binds?.get('bind0'), 'Wrong dates');
+		Assert.isInstanceOfType(binds?.get('bind1'), List<DateTime>.class, 'Wrong date/time list type');
+		Assert.areEqual(dateTimes, binds?.get('bind1'), 'Wrong date/times');
+	}
+
+	@IsTest
 	private static void shouldCoerceStaticValues() {
 		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(new List<SObject>{});
 		Id accountId = MockRecord.initRecordId(Account.SObjectType);
