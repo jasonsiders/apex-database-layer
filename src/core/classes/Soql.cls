@@ -2199,12 +2199,13 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	private class SelectAll implements Soql.Selectable {
 		private Soql.Builder builder;
 		private Set<String> exclusions;
-		// The last expansion, reused while the access level and requests stay the same, since logging plugins read
-		// the query several times per run
+		// The last expansion, reused while the object, access level, and requests stay the same, since logging plugins
+		// read the query several times per run
 		// shortcut: ignores the running user, so a builder read on both sides of System.runAs reuses stale USER_MODE
 		// fields; add UserInfo.getUserId() to the check if that comes up outside tests
 		private System.AccessLevel expandedAccessLevel;
 		private List<String> expandedClauses;
+		private String expandedEntity;
 		private Boolean includesQueriedObject;
 		private List<Soql.ParentField> lookupFields;
 
@@ -2263,9 +2264,12 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		public List<String> expand() {
 			System.AccessLevel accessLevel = this.builder?.accessLevel;
-			if (this.expandedClauses == null || this.expandedAccessLevel != accessLevel) {
+			String entity = this.builder?.entity;
+			Boolean isStale = this.expandedAccessLevel != accessLevel || this.expandedEntity != entity;
+			if (this.expandedClauses == null || isStale) {
 				this.expandedClauses = this.expandRequests(accessLevel);
 				this.expandedAccessLevel = accessLevel;
+				this.expandedEntity = entity;
 			}
 			return this.expandedClauses;
 		}

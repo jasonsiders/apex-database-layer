@@ -552,6 +552,26 @@ private class SoqlTest {
 	}
 
 	@IsTest
+	private static void shouldSelectAllFieldsOfTheLatestRequestsAndObject() {
+		Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)
+			?.setAccessLevel(System.AccessLevel.SYSTEM_MODE)
+			?.selectAll()
+			?.toSoql();
+		Set<String> accountFields = soql?.selectClauses;
+
+		Test.startTest();
+		soql?.selectAll(Account.OwnerId);
+		Set<String> withOwnerFields = soql?.selectClauses;
+		soql?.setFrom(Contact.SObjectType);
+		Set<String> contactFields = soql?.selectClauses;
+		Test.stopTest();
+
+		Assert.isFalse(accountFields?.contains('Owner.Name'), 'Selected Owner fields before requesting them');
+		Assert.isTrue(withOwnerFields?.contains('Owner.Name'), 'Did not select Owner fields requested after a read');
+		Assert.isTrue(contactFields?.contains('LastName'), 'Did not select the fields of the new object');
+	}
+
+	@IsTest
 	private static void shouldRenderSelectAllAsItsClauses() {
 		Integer numAllFields = SObjectType.Account?.fields?.getMap()?.size();
 		Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)
