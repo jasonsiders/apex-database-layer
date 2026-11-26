@@ -20,8 +20,8 @@ The action looks like Get Records, but doesn't always behave like it. Check thes
 
 - **Access level**: the action defaults to `USER_MODE`. In a record-triggered flow, Get Records runs in system context without sharing, so the same query can find fewer records, or fail the user's save when it selects a field they can't read. Set Access Level to `SYSTEM_MODE` to match Get Records. See [Inputs](#inputs).
 - **Blank values**: a blank value on **Contains**, **Starts With**, or **Ends With** matches only records where the field is blank, where Get Records matches every record. A blank value on a range, ex: Greater Than an unset date, matches every record. See [Operators](#operators).
-- **Bulk runs**: interviews whose values differ share one merged query, which can read many more rows than any one interview needs, and can reach SOQL's 50,000-row limit. Interviews that can't merge run one query each, and a batch of them can exceed the 100-query limit. Either way, a query that fails fails every interview that shares it. See [Bulk Behavior](#bulk-behavior).
-- **Text case**: Apex splits a merged query's rows ignoring case the same way in every locale, where SOQL follows the running user's, so for a few letters, ex: the Turkish `İ` and `ı`, a merged query can miss rows a lone query finds. See [Bulk Behavior](#bulk-behavior).
+- **Bulk runs**: like Get Records, interviews share a query where they can. Some conditions prevent that, and then a bulk run has the potential to exceed SOQL's 100-query or 50,000-row limit, which fails the transaction. See [Bulk Behavior](#bulk-behavior) to avoid it.
+- **Text case**: a merged query's rows are matched in Apex, which ignores case the same way in every locale, where SOQL follows the running user's. For a few letters, ex: the Turkish `İ` and `ı`, a merged query can miss rows a lone query finds, or, for Does Not Equal and Not In, keep rows it leaves out.
 - **Rows**: **For Update** locks every row the query reads until the transaction ends, and can't sort. **All Rows** includes deleted and archived records.
 - **Resources**: the action takes up to 5 resources of each type. See [Values](#values).
 - **Mocks**: mocks don't filter, so a merged query's mock records go to no interview unless they populate the field the split uses. See [Testing with Mocks](#testing-with-mocks).
@@ -100,48 +100,34 @@ The [Nebula Logger plugin](./Plugin:-Nebula-Logger), or any other [SOQL plugin](
 
 ## Bulk Behavior
 
-When many flow interviews run the action at once (ex: a record-triggered flow on a 200-record update), Flow passes every interview to the action in one call. Like Get Records, the action runs one query for them where it can, then gives each interview its own rows:
+When many interviews run the action at once, ex: a record-triggered flow on a 200-record update, Flow passes them to the action in one call. Like Get Records, the action runs one merged query for them where it can, then gives each interview its own rows. Some conditions prevent that, and then a bulk run has the potential to:
 
-1. Interviews with the same query, access level, and values share one query.
-2. Other interviews share one merged query that matches any of their values. Apex then checks each row against each interview's conditions. A condition whose values differ between interviews widens in the merged query:
+- **Run too many queries**: interviews that can't merge run one query each. Past 100 queries in a synchronous transaction, or 200 in an asynchronous one, the transaction fails.
+- **Read too many rows**: a merged query reads every row any interview could need. Past 50,000 rows, the transaction fails.
 
-    | Operator                                                                                    | Merged query                                                                                           |
-    | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-    | Equals, In, Contains, Starts With, Ends With, Like                                          | Matches any interview's values                                                                         |
-    | Greater Than, Less Than, and their Or Equal forms, on numbers, dates, date/times, and times | Reads past the loosest value, ex: the earliest date, or leaves the condition out when a value is blank |
-    | Does Not Equal, Not In, Is Null                                                             | Leaves the condition out                                                                               |
+A query that fails for any other reason, ex: an invalid value, fails every interview that shares it.
 
-    A condition whose value is the same for every interview stays in the merged query. Apex also checks it when a row could pass without it, ex: under **Any Condition Is Met (OR)**.
+Neither limit is a problem for most queries. Follow the guidelines below, then [test a bulk run](#testing-a-bulk-run).
 
-3. An interview runs its own query when Apex can't check one of its values: a Like pattern with a wildcard in its middle, ex: `A%e`. So does a blank value on a range, Contains, Starts With, Ends With, or Like that every interview shares, under OR or `NOT`, since SOQL treats such a blank as false under `NOT`.
-4. Every interview runs its own query when any of these is true:
+### Keeping to One Query
 
-    - A condition whose values differ is under `NOT` in custom logic, which would narrow the rows instead of widening them.
-    - Apex would have to check a condition it can't: a date literal, Includes, Excludes, a range on text, a multi-select picklist, or a currency field in an org with several currencies. Apex never has to when every interview has the same value and every row must pass the condition, as with **All Conditions Are Met (AND)**.
-    - **Rows** is For Update, and the merged query would read rows no interview asked for, since it locks every row it reads. For Update merges only when one condition's values differ, it's Equals or In, and there's no limit, or it's Equals on the record's ID, joined to the other conditions only by AND, which finds one row at most, with any limit.
+Interviews merge when Apex can check each condition whose value differs between them:
 
-Apex compares values the way SOQL does: text ignores case, except on case-sensitive fields, and a blank matches blank fields. Like Get Records, it ignores case the same way in every locale, where SOQL follows the running user's. For a few letters, ex: the Turkish `İ` and `ı`, or the Greek `ς`, a merged query can miss rows a lone query finds, or for Does Not Equal and Not In, keep rows it leaves out.
+- Values that differ merge on Equals, In, Contains, Starts With, Ends With, Like, Does Not Equal, Not In, and ranges on numbers, dates, date/times, and times. Prefer Equals or In, ex: Account ID Equals {!$Record.AccountId}.
+- Don't put a value that differs under `NOT` in custom logic. `NOT (Title Equals {!$Record.Title})` runs one query per distinct title; Title Does Not Equal {!$Record.Title} merges.
+- Give these the same value in every interview, joined to the rest by AND: date literals, Includes, Excludes, ranges on text, multi-select picklists, and currency fields in an org with several currencies.
+- Don't put a wildcard in the middle of a Like pattern whose value differs, ex: `A%e`. Wildcards at either end merge.
+- With **For Update**, vary only one condition, Equals or In, with no limit. Or vary only ID Equals, joined to the rest by AND, with any limit.
 
-The limit and offset apply to each interview's rows after the split. A merged query reads every row any interview could need, as Get Records does. When several conditions vary, it also reads their combinations, ex: rows with one contact's account and another contact's title, which no interview needs. A limit of 1 over accounts with thousands of contacts each, a range on a large table, a Does Not Equal on a field other than the ID with no other condition, or a common combination can reach SOQL's 50,000-row limit.
+### Keeping Queries Selective
 
-When the only conditions whose values differ are Does Not Equal or Not In on the record's ID, the merged query keeps a limit: the limit and offset, plus the most IDs any interview excludes. Each ID excludes one row at most, so every interview still finds its rows.
+- Join broad conditions to a selective one by AND. When their values differ, a merged query leaves out Does Not Equal and Not In, and reads a range from its loosest value, ex: the earliest birthdate. Alone, either can read most of a large table. Pair them with a selective Equals, ex: Account ID Equals {!$Record.AccountId}.
+- Vary as few conditions as you can. When several differ, a merged query also reads their combinations, ex: rows with one contact's account and another contact's title.
+- Don't rely on a limit. The limit applies to each interview after the split, so a limit of 1 over accounts with thousands of contacts each still reads every contact. The exception is when only exclusions by ID differ, ex: Contact ID Does Not Equal {!$Record.Id}.
 
-For example, in a record-triggered flow on Contact:
+### Testing a Bulk Run
 
-| Conditions                                                                                                          | Queries for 200 contacts                                                                         |
-| ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| Account ID Equals {!$Record.AccountId}                                                                              | 1: `AccountId = :accountIds`, a list with a blank among them                                     |
-| The same, with a limit of 1                                                                                         | 1: the merged query, then the first row for each contact                                         |
-| Contact ID Does Not Equal {!$Record.Id}, with a limit of 1                                                          | 1: reads 2 rows, then gives each contact the first that isn't its own                            |
-| Account ID Equals {!$Record.AccountId}, and Contact ID Does Not Equal {!$Record.Id}                                 | 1: the query leaves out Does Not Equal, and Apex drops each contact's own row                    |
-| Account ID Equals {!$Record.AccountId} OR Title Equals {!$Record.Title}                                             | 1: matches any contact's account or title                                                        |
-| Birthdate Greater Than {!$Record.Birthdate}                                                                         | 1: reads past the earliest birthdate                                                             |
-| Account ID Equals {!$Record.AccountId}, and Birthdate Greater Than {!$Record.Birthdate}, with some birthdates blank | 1: a blank birthdate matches every record, so the query leaves out the range, and Apex checks it |
-| NOT (Title Equals {!$Record.Title})                                                                                 | 1 per distinct title, which past 100 exceeds the synchronous limit                               |
-
-Each distinct query counts against the transaction's SOQL limit: 100 queries in a synchronous transaction, 200 in an asynchronous one. A batch that can't merge can exceed it, which fails every interview in the batch.
-
-A query that fails, ex: from an invalid value, fails every interview that shares it.
+Before you activate the flow, run it on as many records as it will see at once, ex: insert or update 200 records in an Apex test without mocks. Check `Limits.getQueries()`, or the SOQL count in the debug log. The [Nebula Logger plugin](./Plugin:-Nebula-Logger) logs each query the action runs.
 
 ---
 
