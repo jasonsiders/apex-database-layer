@@ -40,22 +40,23 @@ public inherited sharing class InvocableSoql {
 	/** @description Takes true or false, like Get Records: false finds the records whose field has a value **/
 	private static final String NULL_CHECK = 'IS_NULL';
 	private static final Pattern TOKEN_PATTERN = Pattern.compile('(?i)\\d+|AND|OR|NOT|\\(|\\)');
-	private static final Map<String, String> TOKENS = new Map<String, String>{
-		'CONTAINS' => 'LIKE',
-		'ENDS_WITH' => 'LIKE',
-		'EQUALS' => '=',
-		'EXCLUDES' => 'EXCLUDES',
-		'GREATER_OR_EQUAL' => '>=',
-		'GREATER_THAN' => '>',
-		'IN' => 'IN',
-		'INCLUDES' => 'INCLUDES',
-		'IS_NULL' => '=',
-		'LESS_OR_EQUAL' => '<=',
-		'LESS_THAN' => '<',
-		'LIKE' => 'LIKE',
-		'NOT_EQUALS' => '!=',
-		'NOT_IN' => 'NOT IN',
-		'STARTS_WITH' => 'LIKE'
+	/** @description Each operator's SOQL token, from `Soql` where it has one **/
+	private static final Map<String, Soql.Operator> OPERATORS = new Map<String, Soql.Operator>{
+		'CONTAINS' => Soql.CONTAINS,
+		'ENDS_WITH' => Soql.ENDS_WITH,
+		'EQUALS' => Soql.EQUALS,
+		'EXCLUDES' => new InvocableSoql.Operator('EXCLUDES'),
+		'GREATER_OR_EQUAL' => Soql.GREATER_OR_EQUAL,
+		'GREATER_THAN' => Soql.GREATER_THAN,
+		'IN' => Soql.IN_COLLECTION,
+		'INCLUDES' => new InvocableSoql.Operator('INCLUDES'),
+		'IS_NULL' => Soql.EQUALS,
+		'LESS_OR_EQUAL' => Soql.LESS_OR_EQUAL,
+		'LESS_THAN' => Soql.LESS_THAN,
+		'LIKE' => new InvocableSoql.Operator('LIKE'),
+		'NOT_EQUALS' => Soql.NOT_EQUALS,
+		'NOT_IN' => Soql.NOT_IN_COLLECTION,
+		'STARTS_WITH' => Soql.STARTS_WITH
 	};
 	/** @description SOQL binds are strictly typed, ex: a Decimal can't bind to an Integer field; the rest are text **/
 	private static final Map<Schema.DisplayType, Type> VALUE_TYPES = new Map<Schema.DisplayType, Type>{
@@ -1081,7 +1082,7 @@ public inherited sharing class InvocableSoql {
 		 */
 		private Boolean isPattern(Integer index) {
 			String operator = this.getOperator(index);
-			return InvocableSoql.TOKENS?.get(operator) == 'LIKE';
+			return InvocableSoql.OPERATORS?.get(operator)?.toString() == 'LIKE';
 		}
 
 		/**
@@ -1534,7 +1535,7 @@ public inherited sharing class InvocableSoql {
 		public String dateLiteral;
 		/** @description The field API name, including parent fields, ex: "Account.Name" **/
 		public String field;
-		/** @description A key of `TOKENS`, ex: EQUALS **/
+		/** @description A key of `OPERATORS`, ex: EQUALS **/
 		public String operator;
 		/** @description The slot holding the value, ex: "text1", when it comes from a flow resource **/
 		public String slot;
@@ -1580,7 +1581,7 @@ public inherited sharing class InvocableSoql {
 				operand = InvocableSoql.formatLiteral(this.values);
 			} else if (isLiteral == false) {
 				operand = ':' + InvocableSoql.BIND_PREFIX + index;
-			} else if (InvocableSoql.TOKENS?.get(this.operator) == 'LIKE') {
+			} else if (InvocableSoql.OPERATORS?.get(this.operator)?.toString() == 'LIKE') {
 				operand = InvocableSoql.formatPattern(value);
 			} else {
 				operand = InvocableSoql.formatLiteral(value);
@@ -1598,7 +1599,7 @@ public inherited sharing class InvocableSoql {
 		private String render(Integer index, Object value, Boolean isLiteral) {
 			Boolean isNotNull = this.operator == InvocableSoql.NULL_CHECK && value == false;
 			String tokenKey = isNotNull ? 'NOT_EQUALS' : this.operator;
-			String token = InvocableSoql.TOKENS?.get(tokenKey);
+			String token = InvocableSoql.OPERATORS?.get(tokenKey)?.toString();
 			String operand = this.renderOperand(index, value, isLiteral);
 			return this.field + ' ' + token + ' ' + operand;
 		}
@@ -1608,7 +1609,7 @@ public inherited sharing class InvocableSoql {
 		 * @throws System.IllegalArgumentException When the operator is unknown, or the date literal is malformed
 		 */
 		private void validate() {
-			if (InvocableSoql.TOKENS?.containsKey(this.operator) == false) {
+			if (InvocableSoql.OPERATORS?.containsKey(this.operator) == false) {
 				throw new IllegalArgumentException('Invalid operator: ' + this.operator);
 			}
 			if (this.dateLiteral != null && DatabaseLayer.Utils.isDateLiteral(this.dateLiteral) == false) {
@@ -1637,6 +1638,17 @@ public inherited sharing class InvocableSoql {
 				? null
 				: Soql.NullOrder.valueOf(this.nullOrder);
 			return (nullOrderType == null) ? order : order?.setNullOrder(nullOrderType);
+		}
+	}
+
+	/** @description Operators `Soql` doesn't define: LIKE with a pattern as is, INCLUDES, and EXCLUDES **/
+	private class Operator extends Soql.Operator {
+		/**
+		 * @description Builds the operator
+		 * @param token The SOQL operator token, ex: INCLUDES
+		 */
+		private Operator(String token) {
+			super(token);
 		}
 	}
 
