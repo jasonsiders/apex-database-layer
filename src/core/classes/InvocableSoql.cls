@@ -747,15 +747,16 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description Copies the records, so one interview's changes to the collection don't reach another's
+		 * @description Shares the records with interviews that ran the same query, since Flow copies each output into
+		 * its interview's own variables
 		 * @param records The records found for this interview
 		 * @param queryString This interview's query, with its values filled in
 		 */
 		public Output(List<SObject> records, String queryString) {
 			this();
 			this.queryString = queryString;
-			this.records?.addAll(records);
-			this.record = records?.isEmpty() == false ? records?.get(0) : null;
+			this.records = records ?? this.records;
+			this.record = this.records?.isEmpty() == false ? this.records?.get(0) : null;
 		}
 	}
 
