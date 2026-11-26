@@ -538,6 +538,7 @@ private class SoqlTest {
 				?.selectAll()
 				?.addSelect(Account.Name)
 				?.deselect(Account.Description)
+				?.deselect(Account.Industry)
 				?.setAccessLevel(System.AccessLevel.SYSTEM_MODE)
 				?.toSoql();
 			numSystemModeFields = soql?.selectClauses?.size();
@@ -546,7 +547,7 @@ private class SoqlTest {
 		}
 		Test.stopTest();
 
-		Assert.areEqual(numAllFields - 1, numSystemModeFields, 'SYSTEM_MODE should select all but Description');
+		Assert.areEqual(numAllFields - 2, numSystemModeFields, 'SYSTEM_MODE should select all but the deselected');
 		Assert.isTrue(numUserModeFields < numSystemModeFields, 'USER_MODE should omit inaccessible fields');
 	}
 

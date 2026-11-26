@@ -1041,9 +1041,21 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		global Soql.Builder deselect(String fieldName) {
 			this.selectables?.remove(new Soql.SelectClause(fieldName));
-			this.pendingSelectAll?.exclude(fieldName);
+			this.excludeFromSelectAll(fieldName);
 			this.pendingSelectAll = null;
 			return this;
+		}
+
+		/**
+		 * @description Leaves a field out of every {@link selectAll} request made so far
+		 * @param fieldName The field name to leave out
+		 */
+		private void excludeFromSelectAll(String fieldName) {
+			for (Soql.Selectable selectable : this.selectables ?? new Set<Soql.Selectable>{}) {
+				if (selectable instanceof Soql.SelectAll) {
+					((Soql.SelectAll) selectable)?.exclude(fieldName);
+				}
+			}
 		}
 
 		/**
@@ -2187,6 +2199,12 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	private class SelectAll implements Soql.Selectable {
 		private Soql.Builder builder;
 		private Set<String> exclusions;
+		// The last expansion, reused while the access level and requests stay the same, since logging plugins read
+		// the query several times per run
+		// shortcut: ignores the running user, so a builder read on both sides of System.runAs reuses stale USER_MODE
+		// fields; add UserInfo.getUserId() to the check if that comes up outside tests
+		private System.AccessLevel expandedAccessLevel;
+		private List<String> expandedClauses;
 		private Boolean includesQueriedObject;
 		private List<Soql.ParentField> lookupFields;
 
@@ -2216,6 +2234,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		public void exclude(String clause) {
 			this.exclusions?.add(clause);
+			this.expandedClauses = null;
 		}
 
 		/**
@@ -2223,6 +2242,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		public void addQueriedObject() {
 			this.includesQueriedObject = true;
+			this.expandedClauses = null;
 		}
 
 		/**
@@ -2234,6 +2254,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		public void addParent(Soql.ParentField lookupField) {
 			this.validateLookups(lookupField);
 			this.lookupFields?.add(lookupField);
+			this.expandedClauses = null;
 		}
 
 		/**
@@ -2241,7 +2262,21 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @return The clauses, ex: `Name` or `Contact.Account.Name`
 		 */
 		public List<String> expand() {
-			Boolean isSystemMode = this.builder?.accessLevel == System.AccessLevel.SYSTEM_MODE;
+			System.AccessLevel accessLevel = this.builder?.accessLevel;
+			if (this.expandedClauses == null || this.expandedAccessLevel != accessLevel) {
+				this.expandedClauses = this.expandRequests(accessLevel);
+				this.expandedAccessLevel = accessLevel;
+			}
+			return this.expandedClauses;
+		}
+
+		/**
+		 * @description Expands every request into SELECT clauses
+		 * @param accessLevel The access level to expand at
+		 * @return The clauses
+		 */
+		private List<String> expandRequests(System.AccessLevel accessLevel) {
+			Boolean isSystemMode = accessLevel == System.AccessLevel.SYSTEM_MODE;
 			List<String> clauses = this.includesQueriedObject
 				? this.expandObject(this.builder?.entity, '', isSystemMode)
 				: new List<String>{};
