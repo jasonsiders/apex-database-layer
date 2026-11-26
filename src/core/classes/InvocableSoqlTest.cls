@@ -1893,9 +1893,9 @@ private with sharing class InvocableSoqlTest {
 	@IsTest
 	private static void shouldCompareCaseSensitiveFieldsExactly() {
 		Test.startTest();
-		String insensitive = InvocableSoql.toKey('ABC', false);
-		String sensitive = InvocableSoql.toKey('ABC', true);
-		String candidate = InvocableSoql.toKey('xABC', false);
+		String insensitive = new InvocableSoql.ValueComparer(false).toKey('ABC');
+		String sensitive = new InvocableSoql.ValueComparer(true).toKey('ABC');
+		String candidate = new InvocableSoql.ValueComparer(false).toKey('xABC');
 		Boolean isInsensitiveMatch = new InvocableSoql.LikePattern('%bc', false).matches(candidate);
 		Boolean isSensitiveMatch = new InvocableSoql.LikePattern('%bc', true).matches('xABC');
 		Test.stopTest();
