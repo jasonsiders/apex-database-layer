@@ -880,7 +880,7 @@ public inherited sharing class InvocableSoql {
 			Boolean isPattern = this.isPattern(index);
 			String pattern = isPattern ? (String) value : null;
 			Boolean isBlank = isPattern ? String.isEmpty(pattern) : value == null;
-			Boolean isSimple = isPattern == false || new InvocableSoql.LikePattern(pattern, false)?.isSimple == true;
+			Boolean isSimple = isPattern == false || new InvocableSoql.LikePattern(pattern)?.isSimple == true;
 			Boolean hasBlankBound = isBlank && (isRange || isPattern);
 			return hasBlankBound ? isVarying : isSimple;
 		}
@@ -1889,16 +1889,15 @@ public inherited sharing class InvocableSoql {
 		/**
 		 * @description Parses the pattern
 		 * @param pattern The pattern, as bound
-		 * @param isCaseSensitive Whether the field compares text case-sensitively
 		 */
 		@TestVisible
-		private LikePattern(String pattern, Boolean isCaseSensitive) {
-			this.parse(pattern, isCaseSensitive);
+		private LikePattern(String pattern) {
+			this.parse(pattern);
 		}
 
 		/**
 		 * @description Matches like SOQL would: a blank pattern, as `LIKE null` or `LIKE ''`, matches blank values
-		 * @param candidate A field value's key, from `InvocableSoql.toKey`
+		 * @param candidate A field value's key, from a case-insensitive `ValueComparer.toKey`
 		 * @return Whether the value matches
 		 */
 		@TestVisible
@@ -1917,11 +1916,11 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description Reads the pattern's wildcards and literal text
+		 * @description Reads the pattern's wildcards and literal text, as a key that ignores case, since SOQL's LIKE
+		 * does, even on case-sensitive fields
 		 * @param pattern The pattern, as bound
-		 * @param isCaseSensitive Whether the field compares text case-sensitively
 		 */
-		private void parse(String pattern, Boolean isCaseSensitive) {
+		private void parse(String pattern) {
 			this.isLeading = pattern?.startsWith('%') == true;
 			String rest = this.isLeading ? pattern?.substring(1) : pattern;
 			// Escaped backslashes go first, so `\\%` ends in a wildcard, and `\%` in a literal %
@@ -1933,7 +1932,7 @@ public inherited sharing class InvocableSoql {
 			String unescaped = body?.replace('\\\\', '')?.replace('\\%', '')?.replace('\\_', '');
 			this.isSimple = unescaped?.containsAny('%_\\') == false;
 			String text = this.unescape(body);
-			this.key = new InvocableSoql.ValueComparer(isCaseSensitive)?.toKey(text) ?? '';
+			this.key = new InvocableSoql.ValueComparer(false)?.toKey(text) ?? '';
 		}
 
 		/**
@@ -2812,7 +2811,6 @@ public inherited sharing class InvocableSoql {
 	private abstract class ConditionMatcher {
 		protected InvocableSoql.ValueComparer comparer;
 		protected Integer index;
-		protected Boolean isCaseSensitive;
 		/** @description Whether the merged query leaves the condition out when its values vary **/
 		protected Boolean isDropped = false;
 		/** @description Whether a lookup finds few variants, so an AND can check the rest for just those **/
@@ -2833,8 +2831,8 @@ public inherited sharing class InvocableSoql {
 		 */
 		protected ConditionMatcher(InvocableSoql.Query query, Integer index, List<Object> values) {
 			this.index = index;
-			this.isCaseSensitive = query?.isCaseSensitive(index);
-			this.comparer = new InvocableSoql.ValueComparer(this.isCaseSensitive);
+			Boolean isCaseSensitive = query?.isCaseSensitive(index);
+			this.comparer = new InvocableSoql.ValueComparer(isCaseSensitive);
 			this.query = query;
 			this.values = values;
 			for (Integer position = 0; position < values?.size(); position++) {
@@ -3069,9 +3067,11 @@ public inherited sharing class InvocableSoql {
 		private PatternMatcher(InvocableSoql.Query query, Integer index, List<Object> values) {
 			super(query, index, values);
 			this.isSelective = true;
+			// SOQL's LIKE ignores case, even on case-sensitive fields
+			this.comparer = new InvocableSoql.ValueComparer(false);
 			for (Integer position = 0; position < values?.size(); position++) {
 				String value = (String) this.values?.get(position);
-				InvocableSoql.LikePattern pattern = new InvocableSoql.LikePattern(value, this.isCaseSensitive);
+				InvocableSoql.LikePattern pattern = new InvocableSoql.LikePattern(value);
 				this.patterns?.add(pattern);
 				this.patternIndex?.add(pattern, position);
 			}

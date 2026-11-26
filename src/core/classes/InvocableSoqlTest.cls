@@ -1943,14 +1943,13 @@ private with sharing class InvocableSoqlTest {
 		String insensitive = new InvocableSoql.ValueComparer(false).toKey('ABC');
 		String sensitive = new InvocableSoql.ValueComparer(true).toKey('ABC');
 		String candidate = new InvocableSoql.ValueComparer(false).toKey('xABC');
-		Boolean isInsensitiveMatch = new InvocableSoql.LikePattern('%bc', false).matches(candidate);
-		Boolean isSensitiveMatch = new InvocableSoql.LikePattern('%bc', true).matches('xABC');
+		Boolean isPatternMatch = new InvocableSoql.LikePattern('%bc').matches(candidate);
 		Test.stopTest();
 
 		Assert.areEqual('abc', insensitive, 'Wrong case-insensitive key');
 		Assert.areEqual('ABC', sensitive, 'Wrong case-sensitive key');
-		Assert.isTrue(isInsensitiveMatch, 'Case-insensitive pattern did not match');
-		Assert.isFalse(isSensitiveMatch, 'Case-sensitive pattern matched the wrong case');
+		// SOQL's LIKE ignores case, even on case-sensitive fields:
+		Assert.isTrue(isPatternMatch, 'Pattern did not ignore case');
 	}
 
 	@IsTest
@@ -1979,8 +1978,8 @@ private with sharing class InvocableSoqlTest {
 	private static void shouldReadAnEscapedBackslashBeforeATrailingWildcard() {
 		Test.startTest();
 		// `Back\\%` is the text `Back\`, then a wildcard; `Back\%` is the text `Back%`:
-		InvocableSoql.LikePattern wildcard = new InvocableSoql.LikePattern('Back\\\\%', false);
-		InvocableSoql.LikePattern literal = new InvocableSoql.LikePattern('Back\\%', false);
+		InvocableSoql.LikePattern wildcard = new InvocableSoql.LikePattern('Back\\\\%');
+		InvocableSoql.LikePattern literal = new InvocableSoql.LikePattern('Back\\%');
 		Test.stopTest();
 
 		Assert.isTrue(wildcard.matches('back\\slash ltd'), 'Escaped backslash hid the trailing wildcard');
@@ -2212,7 +2211,7 @@ private with sharing class InvocableSoqlTest {
 	private static InvocableSoql.LikePatternIndex initPatternIndex(List<String> patterns) {
 		InvocableSoql.LikePatternIndex index = new InvocableSoql.LikePatternIndex();
 		for (Integer position = 0; position < patterns.size(); position++) {
-			index.add(new InvocableSoql.LikePattern(patterns[position], false), position);
+			index.add(new InvocableSoql.LikePattern(patterns[position]), position);
 		}
 		return index;
 	}

@@ -104,6 +104,7 @@ When many interviews run the action at once, ex: a record-triggered flow on a 20
 
 - **Run too many queries**: interviews that can't merge run one query each. Past 100 queries in a synchronous transaction, or 200 in an asynchronous one, the transaction fails.
 - **Read too many rows**: a merged query reads every row any interview could need. Past 50,000 rows, the transaction fails.
+- **Use too much CPU time**: Apex checks a merged query's rows against each interview's conditions. Past 10 seconds in a synchronous transaction, or 60 in an asynchronous one, the transaction fails.
 
 A query that fails for any other reason, ex: an invalid value, fails every interview that shares it.
 
@@ -123,6 +124,7 @@ Interviews merge when Apex can check each condition whose value differs between 
 
 - Join broad conditions to a selective one by AND. When their values differ, a merged query leaves out Does Not Equal and Not In, and reads a range from its loosest value, ex: the earliest birthdate. Alone, either can read most of a large table. Pair them with a selective Equals, ex: Account ID Equals {!$Record.AccountId}.
 - Vary as few conditions as you can. When several differ, a merged query also reads their combinations, ex: rows with one contact's account and another contact's title.
+- When ranges or Contains differ, also vary an Equals or In joined to them by AND. Without one, Apex checks every row against most interviews' ranges or patterns. In testing, 200 interviews took about 4 seconds of CPU time over 600 rows, and 9 over 1,000.
 - Don't rely on a limit. The limit applies to each interview after the split, so a limit of 1 over accounts with thousands of contacts each still reads every contact. The exception is when only exclusions by ID differ, ex: Contact ID Does Not Equal {!$Record.Id}.
 
 ### Testing a Bulk Run
