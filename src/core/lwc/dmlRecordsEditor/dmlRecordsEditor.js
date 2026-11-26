@@ -264,7 +264,8 @@ export default class DmlRecordsEditor extends FlowPropertyEditor {
 	 */
 	@api
 	validate() {
-		return this._setErrors([this._validateRecords(), this._validateMatchField()]);
+		const checks = [this._validateRecords(), this._validateMatchField()];
+		return this._setErrors(checks);
 	}
 
 	// **** WIRED **** //

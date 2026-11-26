@@ -2074,15 +2074,15 @@ private class SoqlTest {
 		PermissionSet access = new PermissionSet(Label = 'Accounts and Contacts', Name = 'AccountsAndContacts');
 		insert access;
 		List<SObject> permissions = new List<SObject>{
-			new ObjectPermissions(ParentId = access.Id, SobjectType = 'Account', PermissionsRead = true),
-			new ObjectPermissions(ParentId = access.Id, SobjectType = 'Contact', PermissionsRead = true),
+			new ObjectPermissions(ParentId = access?.Id, SobjectType = 'Account', PermissionsRead = true),
+			new ObjectPermissions(ParentId = access?.Id, SobjectType = 'Contact', PermissionsRead = true),
 			new FieldPermissions(
-				ParentId = access.Id,
+				ParentId = access?.Id,
 				SobjectType = 'Account',
 				Field = 'Account.Industry',
 				PermissionsRead = true
 			),
-			new PermissionSetAssignment(AssigneeId = restrictedUser.Id, PermissionSetId = access.Id)
+			new PermissionSetAssignment(AssigneeId = restrictedUser?.Id, PermissionSetId = access?.Id)
 		};
 		insert permissions;
 		return restrictedUser;

@@ -35,6 +35,7 @@ global class DatabaseLayerTestUtils {
 	 * @return The user
 	 */
 	public static User insertUser(String profileName) {
+		// Inline SOQL and DML, since tests that mock DatabaseLayer still need a real user
 		Profile userProfile = [SELECT Id FROM Profile WHERE Name = :profileName LIMIT 1];
 		DatabaseLayerTestUtils.userCount++;
 		String username = 'user' + DatabaseLayerTestUtils.userCount + '.' + DateTime.now()?.getTime();

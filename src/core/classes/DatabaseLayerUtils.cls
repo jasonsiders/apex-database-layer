@@ -245,7 +245,7 @@ public without sharing class DatabaseLayerUtils {
 	 * @description Utility for describing objects and fields the way SOQL reads them.
 	 */
 	public class Schema {
-		/** @description Each object's lookups by lower-cased relationship name, since mapping them describes every field **/
+		/** @description Each object's lookups by relationship name, since indexing them describes every field **/
 		private final Map<String, Map<String, SObjectField>> lookupsByObject;
 		/** @description The object SOQL resolves a name-pointing lookup to, ex: Case.Owner **/
 		private final String polymorphicEntity;
@@ -320,17 +320,25 @@ public without sharing class DatabaseLayerUtils {
 		 */
 		private Map<String, SObjectField> mapLookups(DescribeSObjectResult objectDescribe) {
 			String objectName = objectDescribe?.getName();
-			Map<String, SObjectField> lookups = this.lookupsByObject?.get(objectName);
-			if (lookups == null) {
-				lookups = new Map<String, SObjectField>{};
-				List<SObjectField> fields = objectDescribe?.fields?.getMap()?.values() ?? new List<SObjectField>{};
-				for (SObjectField field : fields) {
-					String relationshipName = field?.getDescribe()?.getRelationshipName();
-					if (relationshipName != null) {
-						lookups?.put(relationshipName?.toLowerCase(), field);
-					}
+			Map<String, SObjectField> lookups = this.lookupsByObject?.get(objectName) ??
+				this.indexLookups(objectDescribe);
+			this.lookupsByObject?.put(objectName, lookups);
+			return lookups;
+		}
+
+		/**
+		 * @description Indexes an object's lookups by relationship name, describing each of its fields
+		 * @param objectDescribe The object holding the lookups
+		 * @return The lookups, by lower-cased relationship name
+		 */
+		private Map<String, SObjectField> indexLookups(DescribeSObjectResult objectDescribe) {
+			Map<String, SObjectField> lookups = new Map<String, SObjectField>{};
+			List<SObjectField> fields = objectDescribe?.fields?.getMap()?.values() ?? new List<SObjectField>{};
+			for (SObjectField field : fields) {
+				String relationshipName = field?.getDescribe()?.getRelationshipName();
+				if (relationshipName != null) {
+					lookups?.put(relationshipName?.toLowerCase(), field);
 				}
-				this.lookupsByObject?.put(objectName, lookups);
 			}
 			return lookups;
 		}
