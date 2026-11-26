@@ -500,9 +500,7 @@ private with sharing class InvocableSoqlTest {
 		InvocableSoql.Query query = InvocableSoqlTest.initQuery('Contact', null);
 		// Flow's Blank Value is an empty string, which isn't an ID:
 		query.conditions.add(InvocableSoqlTest.initCondition('AccountId', 'EQUALS', ''));
-		InvocableSoql.Condition accountIds = InvocableSoqlTest.initCondition('AccountId', 'IN', null);
-		accountIds.slot = 'textCollection1';
-		query.conditions.add(accountIds);
+		query.conditions.add(InvocableSoqlTest.initSlotCondition('AccountId', 'IN', 'textCollection1'));
 		InvocableSoql.Input input = InvocableSoqlTest.initInput(query);
 		input.textCollection1 = new List<String>{ '' };
 
@@ -519,12 +517,8 @@ private with sharing class InvocableSoqlTest {
 	private static void shouldBindDateCollections() {
 		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(new List<SObject>{});
 		InvocableSoql.Query query = InvocableSoqlTest.initQuery('Contact', null);
-		InvocableSoql.Condition birthdates = InvocableSoqlTest.initCondition('Birthdate', 'IN', null);
-		birthdates.slot = 'dateCollection1';
-		query.conditions.add(birthdates);
-		InvocableSoql.Condition modifiedDates = InvocableSoqlTest.initCondition('LastModifiedDate', 'IN', null);
-		modifiedDates.slot = 'dateTimeCollection1';
-		query.conditions.add(modifiedDates);
+		query.conditions.add(InvocableSoqlTest.initSlotCondition('Birthdate', 'IN', 'dateCollection1'));
+		query.conditions.add(InvocableSoqlTest.initSlotCondition('LastModifiedDate', 'IN', 'dateTimeCollection1'));
 		InvocableSoql.Input input = InvocableSoqlTest.initInput(query);
 		List<Date> dates = new List<Date>{ Date.newInstance(2000, 1, 15) };
 		input.dateCollection1 = dates;

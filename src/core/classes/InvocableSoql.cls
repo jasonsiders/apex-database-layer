@@ -833,12 +833,14 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description SOQL compares text case-insensitively, except on case-sensitive fields
+		 * @description SOQL compares text case-insensitively, except on case-sensitive fields, where LIKE still ignores
+		 * case
 		 * @param index The condition's index
-		 * @return Whether the condition's field compares text case-sensitively
+		 * @return Whether the condition compares text case-sensitively
 		 */
 		private Boolean isCaseSensitive(Integer index) {
-			return this.conditionFields?.get(index)?.isCaseSensitive() == true;
+			Boolean isCaseSensitiveField = this.conditionFields?.get(index)?.isCaseSensitive() == true;
+			return isCaseSensitiveField && this.isPattern(index) == false;
 		}
 
 		/**
@@ -922,7 +924,7 @@ public inherited sharing class InvocableSoql {
 		@TestVisible
 		private Soql toSoql(List<Object> values, System.AccessLevel accessLevel) {
 			InvocableSoql.Filter whereClause = new InvocableSoql.Filter(this, values, false);
-			Map<String, Object> binds = this.initBinds(values, whereClause?.omitted);
+			Map<String, Object> binds = this.initBinds(values, null);
 			return (Soql) this.initSoql(whereClause, accessLevel)?.addBind(binds);
 		}
 
@@ -1074,9 +1076,6 @@ public inherited sharing class InvocableSoql {
 			this.describeOtherFields();
 			this.validatePaging();
 			this.logic = this.initLogic();
-			// Renders the WHERE clause once, so logic naming a missing condition fails before any query runs
-			List<Object> blankValues = new List<Object>(this.conditions?.size());
-			new InvocableSoql.Filter(this, blankValues, true)?.toString();
 			this.logicTree = new InvocableSoql.LogicParser(this.logic)?.parse();
 			return this;
 		}
@@ -1239,7 +1238,7 @@ public inherited sharing class InvocableSoql {
 		 * @description AND and OR join every condition; anything else is custom logic
 		 * @return The logic, by condition number, ex: "1 AND 2"
 		 * @throws System.IllegalArgumentException When custom logic holds anything but numbers, AND, OR, NOT, and
-		 * parentheses, or isn't well formed
+		 * parentheses, isn't well formed, or names a missing condition
 		 */
 		private InvocableSoql.ConditionLogic initLogic() {
 			String logic = this.getLogicName();
@@ -1251,7 +1250,8 @@ public inherited sharing class InvocableSoql {
 			Boolean isPreset = logic == 'AND' || logic == 'OR';
 			String expanded = isPreset ? String.join(numbers, ' ' + logic + ' ') : logic;
 			InvocableSoql.ConditionLogic conditionLogic = new InvocableSoql.ConditionLogic(expanded);
-			if (isPreset == false && conditionLogic?.isValid() == false) {
+			Integer conditionCount = this.conditions?.size();
+			if (isPreset == false && conditionLogic?.isValid(conditionCount) == false) {
 				throw new IllegalArgumentException('Invalid condition logic: ' + this.conditionLogic);
 			}
 			return conditionLogic;
@@ -1721,13 +1721,9 @@ public inherited sharing class InvocableSoql {
 		 * passes, which keeps the logic around it, ex: under OR
 		 * @param conditionNumber The condition's number, starting at 1
 		 * @return The condition, as SOQL
-		 * @throws System.IllegalArgumentException When no condition has that number
 		 */
 		private String renderCondition(String conditionNumber) {
 			Integer index = Integer.valueOf(conditionNumber) - 1;
-			if (index < 0 || index >= this.query?.conditions?.size()) {
-				throw new IllegalArgumentException('Invalid condition logic: ' + this.query?.conditionLogic);
-			}
 			Boolean isOmitted = this.omitted?.contains(index) == true;
 			Object value = this.values?.get(index);
 			return isOmitted ? 'Id != null' : this.query?.conditions?.get(index)?.render(index, value, this.isLiteral);
@@ -2008,7 +2004,7 @@ public inherited sharing class InvocableSoql {
 		/**
 		 * @description Lists the patterns a value matches. A prefix or suffix longer than the value is the whole
 		 * value, which can't equal a key of that length, so it needs no length check
-		 * @param key A field value's key, from `InvocableSoql.toKey`
+		 * @param key A field value's key, from `InvocableSoql.ValueComparer.toKey`
 		 * @return The matching patterns' positions; only blank patterns for a null key, as SOQL matches `LIKE null`
 		 */
 		@TestVisible
@@ -2615,11 +2611,26 @@ public inherited sharing class InvocableSoql {
 
 		/**
 		 * @description Custom logic holds only numbers, AND, OR, NOT, and parentheses, each where SOQL allows it
+		 * @param conditionCount The number of conditions
 		 * @return Whether the logic is valid custom logic
 		 */
-		private Boolean isValid() {
+		private Boolean isValid(Integer conditionCount) {
 			Boolean isAllowed = InvocableSoql.CUSTOM_LOGIC_PATTERN.matcher(this.text).matches();
-			return isAllowed && this.isWellFormed();
+			return isAllowed && this.isWellFormed() && this.namesConditions(conditionCount);
+		}
+
+		/**
+		 * @description Whether each number in the logic names a condition
+		 * @param conditionCount The number of conditions
+		 * @return True if every number is from 1 to the number of conditions
+		 */
+		private Boolean namesConditions(Integer conditionCount) {
+			Boolean isNamed = true;
+			for (String token : this.tokens) {
+				Integer conditionNumber = (token?.isNumeric() == true) ? Integer.valueOf(token) : 1;
+				isNamed = isNamed && conditionNumber >= 1 && conditionNumber <= conditionCount;
+			}
+			return isNamed;
 		}
 
 		/**
@@ -3007,7 +3018,7 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description Keys a value per `InvocableSoql.toKey`, with '' as null, since SOQL matches '' to blank fields
+		 * @description Keys a value per `InvocableSoql.ValueComparer.toKey`, with '' as null, since SOQL matches '' to blank fields
 		 * @param value A value
 		 * @return Its key
 		 */
@@ -3085,8 +3096,6 @@ public inherited sharing class InvocableSoql {
 		private PatternMatcher(InvocableSoql.Query query, Integer index, List<Object> values) {
 			super(query, index, values);
 			this.isSelective = true;
-			// SOQL's LIKE ignores case, even on case-sensitive fields
-			this.comparer = new InvocableSoql.ValueComparer(false);
 			for (Integer position = 0; position < values?.size(); position++) {
 				String value = (String) this.values?.get(position);
 				InvocableSoql.LikePattern pattern = new InvocableSoql.LikePattern(value);
@@ -3234,7 +3243,7 @@ public inherited sharing class InvocableSoql {
 
 		/**
 		 * @description Compares the row's value with a bound by the operator
-		 * @param bound A bound, per `InvocableSoql.toOrdinal`
+		 * @param bound A bound, per `InvocableSoql.ValueComparer.toOrdinal`
 		 * @return Whether the row's value passes
 		 */
 		private Boolean passes(Decimal bound) {
@@ -3251,7 +3260,7 @@ public inherited sharing class InvocableSoql {
 
 		/**
 		 * @description Holds a bound
-		 * @param ordinal The bound, per `InvocableSoql.toOrdinal`
+		 * @param ordinal The bound, per `InvocableSoql.ValueComparer.toOrdinal`
 		 * @param position Its variant's position
 		 * @param direction 1 to sort lowest first, or -1 for highest first
 		 */
