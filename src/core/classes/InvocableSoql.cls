@@ -1553,9 +1553,18 @@ public inherited sharing class InvocableSoql {
 				Object zoned = isLocalTime ? value + 'Z' : value;
 				String text = String.valueOf(value);
 				String serialized = isId ? null : JSON.serialize(zoned);
-				coerced = isId ? Id.valueOf(text) : JSON.deserialize(serialized, this.valueType);
+				coerced = isId ? this.coerceId(text) : JSON.deserialize(serialized, this.valueType);
 			}
 			return coerced;
+		}
+
+		/**
+		 * @description Reads an ID; a blank one, ex: Flow's Blank Value, is null, since an empty string isn't an ID
+		 * @param text The ID, 15 or 18 characters, or blank
+		 * @return The 18-character ID, or null when blank
+		 */
+		private Id coerceId(String text) {
+			return String.isBlank(text) ? null : Id.valueOf(text);
 		}
 
 		/**
@@ -1584,8 +1593,8 @@ public inherited sharing class InvocableSoql {
 
 		/**
 		 * @description Whether a typed list takes the values as they are, the same as `coerceValue` would convert
-		 * them: a `List<Id>` checks and lengthens each ID it's given, and text, numbers, dates, and date/times already
-		 * of their field's type need no conversion
+		 * them: text, numbers, dates, and date/times already of their field's type need no conversion. IDs always
+		 * convert, since a blank one is null
 		 * @param values A collection of values
 		 * @return True if the values can be added to the field's list as they are
 		 */
@@ -1598,7 +1607,7 @@ public inherited sharing class InvocableSoql {
 				this.valueType == DateTime.class &&
 				values instanceof List<DateTime> &&
 				(values instanceof List<Date>) == false;
-			return this.valueType == Id.class || isText || isNumber || isDate || isDateTime;
+			return isText || isNumber || isDate || isDateTime;
 		}
 	}
 

@@ -2245,7 +2245,8 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		/**
-		 * @description Expands a parent into SELECT clauses, through its relationships, ex: `Contact.Account.Name`
+		 * @description Expands a parent into SELECT clauses, through its relationships, ex: `Contact.Account.Name`.
+		 * USER_MODE can't follow a lookup the running user can't read, so a parent behind one adds no clauses
 		 * @param lookupField The lookups to the parent
 		 * @param isSystemMode Whether the query ignores field-level security
 		 * @return The parent's clauses
@@ -2253,7 +2254,9 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		private List<String> expandParent(Soql.ParentField lookupField, Boolean isSystemMode) {
 			String prefix = lookupField?.getRelationshipName() + '.';
 			String entityName = this.findParentEntity(lookupField);
-			return this.expandObject(entityName, prefix, isSystemMode);
+			List<SObjectField> lookups = lookupField?.fieldChain;
+			Boolean isReachable = isSystemMode || this.filterAccessible(lookups)?.size() == lookups?.size();
+			return isReachable ? this.expandObject(entityName, prefix, isSystemMode) : new List<String>{};
 		}
 
 		/**

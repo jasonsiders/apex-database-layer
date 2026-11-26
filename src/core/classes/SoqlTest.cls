@@ -377,6 +377,29 @@ private class SoqlTest {
 	}
 
 	@IsTest
+	private static void shouldOmitParentFieldsBehindAnInaccessibleLookup() {
+		// The user can read Account.Industry, but not Contact.AccountId, the only way USER_MODE reaches it
+		User restrictedUser = SoqlTest.buildUserWithoutAccountLookup();
+		Set<String> userModeFields;
+		Exception caught;
+
+		Test.startTest();
+		System.runAs(restrictedUser) {
+			Soql soql = DatabaseLayer.Soql.newQuery(Contact.SObjectType)?.selectAll(Contact.AccountId)?.toSoql();
+			userModeFields = soql?.selectClauses;
+			try {
+				soql?.query();
+			} catch (System.QueryException error) {
+				caught = error;
+			}
+		}
+		Test.stopTest();
+
+		Assert.areEqual(0, SoqlTest.countFieldsUnder(userModeFields, 'Account.'), 'Selected unreachable fields');
+		Assert.isNull(caught, 'USER_MODE query failed: ' + caught?.getMessage());
+	}
+
+	@IsTest
 	private static void shouldSelectAllParentFields() {
 		Integer numContactFields = SObjectType.Contact?.fields?.getMap()?.size();
 		Integer numAccountFields = SObjectType.Account?.fields?.getMap()?.size();
@@ -2042,19 +2065,26 @@ private class SoqlTest {
 
 	private static User buildRestrictedUser() {
 		// Chatter Free grants no access to Account, so every one of its fields is inaccessible
-		Profile chatterFree = [SELECT Id FROM Profile WHERE Name = 'Chatter Free User' LIMIT 1];
-		User restrictedUser = new User(
-			Alias = 'restrict',
-			EmailEncodingKey = 'UTF-8',
-			Email = 'restricted@example.com.invalid',
-			LanguageLocaleKey = 'en_US',
-			LastName = 'Restricted',
-			LocaleSidKey = 'en_US',
-			ProfileId = chatterFree?.Id,
-			TimeZoneSidKey = 'America/New_York',
-			Username = 'restricted' + DateTime.now()?.getTime() + '@example.com.invalid'
-		);
-		insert restrictedUser;
+		return DatabaseLayerTestUtils.insertUser('Chatter Free User');
+	}
+
+	private static User buildUserWithoutAccountLookup() {
+		// Minimum Access grants nothing, so the permission set's access is all the user has
+		User restrictedUser = DatabaseLayerTestUtils.insertUser('Minimum Access - Salesforce');
+		PermissionSet access = new PermissionSet(Label = 'Accounts and Contacts', Name = 'AccountsAndContacts');
+		insert access;
+		List<SObject> permissions = new List<SObject>{
+			new ObjectPermissions(ParentId = access.Id, SobjectType = 'Account', PermissionsRead = true),
+			new ObjectPermissions(ParentId = access.Id, SobjectType = 'Contact', PermissionsRead = true),
+			new FieldPermissions(
+				ParentId = access.Id,
+				SobjectType = 'Account',
+				Field = 'Account.Industry',
+				PermissionsRead = true
+			),
+			new PermissionSetAssignment(AssigneeId = restrictedUser.Id, PermissionSetId = access.Id)
+		};
+		insert permissions;
 		return restrictedUser;
 	}
 

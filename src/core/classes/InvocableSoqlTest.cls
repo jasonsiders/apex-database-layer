@@ -423,7 +423,7 @@ private with sharing class InvocableSoqlTest {
 		// Activities are private by default, so another user can't see this task unless sharing is ignored
 		DatabaseLayer.useRealSoql();
 		insert new Task(Subject = 'Hidden');
-		User viewer = InvocableSoqlTest.initStandardUser();
+		User viewer = DatabaseLayerTestUtils.insertUser('Standard User');
 		InvocableSoql.Query query = InvocableSoqlTest.initQuery('Task', null);
 		query.conditions.add(InvocableSoqlTest.initCondition('Subject', 'EQUALS', 'Hidden'));
 		InvocableSoql.Input systemMode = InvocableSoqlTest.initInput(query);
@@ -489,6 +489,27 @@ private with sharing class InvocableSoqlTest {
 		for (Exception error : errors) {
 			Assert.isInstanceOfType(error, IllegalArgumentException.class, 'Wrong error: ' + error);
 		}
+	}
+
+	@IsTest
+	private static void shouldBindBlankIdsAsNull() {
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(new List<SObject>{});
+		InvocableSoql.Query query = InvocableSoqlTest.initQuery('Contact', null);
+		// Flow's Blank Value is an empty string, which isn't an ID:
+		query.conditions.add(InvocableSoqlTest.initCondition('AccountId', 'EQUALS', ''));
+		InvocableSoql.Condition accountIds = InvocableSoqlTest.initCondition('AccountId', 'IN', null);
+		accountIds.slot = 'textCollection1';
+		query.conditions.add(accountIds);
+		InvocableSoql.Input input = InvocableSoqlTest.initInput(query);
+		input.textCollection1 = new List<String>{ '' };
+
+		Test.startTest();
+		InvocableSoqlTest.invoke(input);
+		Test.stopTest();
+
+		Map<String, Object> binds = spy.queries?.get(0)?.binds;
+		Assert.isNull(binds?.get('bind0'), 'A blank ID should bind as null');
+		Assert.areEqual(new List<Id>{ null }, binds?.get('bind1'), 'Blank IDs should bind as null');
 	}
 
 	@IsTest
@@ -2194,23 +2215,6 @@ private with sharing class InvocableSoqlTest {
 			index.add(new InvocableSoql.LikePattern(patterns[position], false), position);
 		}
 		return index;
-	}
-
-	private static User initStandardUser() {
-		Profile standard = [SELECT Id FROM Profile WHERE Name = 'Standard User' LIMIT 1];
-		User viewer = new User(
-			Alias = 'viewer',
-			EmailEncodingKey = 'UTF-8',
-			Email = 'viewer@example.com.invalid',
-			LanguageLocaleKey = 'en_US',
-			LastName = 'Viewer',
-			LocaleSidKey = 'en_US',
-			ProfileId = standard?.Id,
-			TimeZoneSidKey = 'America/New_York',
-			Username = 'viewer' + DateTime.now()?.getTime() + '@example.com.invalid'
-		);
-		insert viewer;
-		return viewer;
 	}
 
 	private static InvocableSoql.Input initTextInput(InvocableSoql.Query query, String text1) {
