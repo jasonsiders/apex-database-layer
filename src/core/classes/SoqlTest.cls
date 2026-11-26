@@ -584,7 +584,8 @@ private class SoqlTest {
 		String rendered = selectAll?.toString();
 		Test.stopTest();
 
-		Assert.areEqual(numAllFields, rendered?.split(', ')?.size(), 'Wrong # of rendered clauses');
+		Integer numRendered = rendered?.split(', ')?.size();
+		Assert.areEqual(numAllFields, numRendered, 'Wrong # of rendered clauses');
 	}
 
 	@IsTest

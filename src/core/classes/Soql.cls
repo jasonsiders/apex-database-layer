@@ -2197,7 +2197,9 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	 */
 	@TestVisible
 	private class SelectAll implements Soql.Selectable {
+		// The query, read at each expansion for its object and access level
 		private Soql.Builder builder;
+		// Clauses deselected after these requests
 		private Set<String> exclusions;
 		// The last expansion, reused while the object, access level, and requests stay the same, since logging plugins
 		// read the query several times per run
@@ -2415,6 +2417,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	 * Equal to any clause with the same text, matching case, so the SELECT clause holds each once.
 	 */
 	private class SelectClause implements Soql.Selectable {
+		// The clause's text, ex: `Name` or `Owner.Name`
 		private String clause;
 
 		/**
