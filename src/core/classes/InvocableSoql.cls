@@ -1172,7 +1172,8 @@ public inherited sharing class InvocableSoql {
 
 		/**
 		 * @description Contains, Starts With, and Ends With match their text literally, so `%` and `_` in it are
-		 * escaped before the wildcards are added
+		 * escaped before the wildcards are added. Empty text binds null, like an unset resource, so it matches blank
+		 * fields, where `%%` would match every value
 		 * @param index The condition's index
 		 * @param value The coerced value
 		 * @return The LIKE pattern, or the value for other operators
@@ -1185,7 +1186,7 @@ public inherited sharing class InvocableSoql {
 			String text = isPattern
 				? ((String) value).replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
 				: null;
-			String pattern = (isLeading ? '%' : '') + text + (isTrailing ? '%' : '');
+			String pattern = String.isEmpty(text) ? null : (isLeading ? '%' : '') + text + (isTrailing ? '%' : '');
 			return isPattern ? pattern : value;
 		}
 

@@ -931,6 +931,25 @@ private with sharing class InvocableSoqlTest {
 	}
 
 	@IsTest
+	private static void shouldBindEmptyTextPatternsAsNull() {
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(new List<SObject>{});
+		InvocableSoql.Query query = InvocableSoqlTest.initQuery('Account', null);
+		// Flow's Empty String is as blank as an unset resource, so it matches blank fields, not every value:
+		query.conditions.add(InvocableSoqlTest.initCondition('Site', 'CONTAINS', ''));
+		query.conditions.add(InvocableSoqlTest.initCondition('Site', 'STARTS_WITH', ''));
+		query.conditions.add(InvocableSoqlTest.initCondition('Site', 'ENDS_WITH', ''));
+
+		Test.startTest();
+		InvocableSoqlTest.invoke(InvocableSoqlTest.initInput(query));
+		Test.stopTest();
+
+		Map<String, Object> binds = spy.queries?.get(0)?.binds;
+		Assert.isNull(binds?.get('bind0'), 'Empty Contains should bind as null');
+		Assert.isNull(binds?.get('bind1'), 'Empty Starts With should bind as null');
+		Assert.isNull(binds?.get('bind2'), 'Empty Ends With should bind as null');
+	}
+
+	@IsTest
 	private static void shouldRunComplexLikePatternsSeparately() {
 		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(InvocableSoqlTest.initAccounts());
 		InvocableSoql.Query query = InvocableSoqlTest.initSlotQuery('Name', 'LIKE', 'text1');

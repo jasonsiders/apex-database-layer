@@ -19,7 +19,7 @@ Because the action uses `DatabaseLayer.Soql`, [plugins](./Plugin:-Soql.PreAndPos
 The action looks like Get Records, but doesn't always behave like it. Check these before you swap one for the other:
 
 - **Access level**: the action defaults to `USER_MODE`. In a record-triggered flow, Get Records runs in system context without sharing, so the same query can find fewer records, or fail the user's save when it selects a field they can't read. `SYSTEM_MODE` skips object permissions and field-level security, but still applies sharing unless the org opts out. See [Inputs](#inputs).
-- **Blank values**: a blank value on **Contains**, **Starts With**, or **Ends With** matches only records where the field is blank, where Get Records matches every record. A blank value on a range, ex: Greater Than an unset date, matches every record. See [Operators](#operators).
+- **Blank values**: a blank value, ex: an unset resource or Empty String, on **Contains**, **Starts With**, or **Ends With** matches only records where the field is blank, where Get Records matches every record. A blank value on a range, ex: Greater Than an unset date, matches every record. See [Operators](#operators).
 - **Bulk runs**: like Get Records, interviews share a query where they can. Some conditions prevent that, and then a bulk run has the potential to exceed SOQL's 100-query or 50,000-row limit, which fails the transaction. See [Bulk Behavior](#bulk-behavior) to avoid it.
 - **Text case**: a merged query's rows are matched in Apex, which ignores case the same way in every locale, where SOQL follows the running user's. For a few letters, ex: the Turkish `İ` and `ı`, a merged query can miss rows a lone query finds, or, for Does Not Equal and Not In, keep rows it leaves out.
 - **Rows**: **For Update** locks every row the query reads until the transaction ends, and can't sort. **All Rows** includes deleted and archived records.
@@ -57,7 +57,7 @@ The operators depend on the field's type, in Get Records' wording:
 
 **Contains**, **Starts With**, and **Ends With** match their value literally, so a `%` or `_` in it is a character, not a wildcard. **Like** passes its value through as a SOQL pattern, wildcards and all.
 
-Unlike Get Records, a blank value, ex: an unset resource, makes **Contains**, **Starts With**, and **Ends With** match only records where the field is blank, since the condition becomes `LIKE null`. Get Records matches every record instead. A blank value on a range, ex: Greater Than an unset date, matches every record.
+Unlike Get Records, a blank value, ex: an unset resource or Empty String, makes **Contains**, **Starts With**, and **Ends With** match only records where the field is blank, since the condition becomes `LIKE null`. Get Records matches every record instead. A blank value on a range, ex: Greater Than an unset date, matches every record.
 
 ### Values
 
