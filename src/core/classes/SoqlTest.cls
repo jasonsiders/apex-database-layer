@@ -525,6 +525,62 @@ private class SoqlTest {
 	}
 
 	@IsTest
+	private static void shouldSelectAllFieldsAtTheLatestAccessLevel() {
+		// Adding, removing, or reading fields doesn't fix selectAll() to the access level at that moment
+		Integer numAllFields = SObjectType.Account?.fields?.getMap()?.size();
+		User restrictedUser = SoqlTest.buildRestrictedUser();
+		Integer numSystemModeFields;
+		Integer numUserModeFields;
+
+		Test.startTest();
+		System.runAs(restrictedUser) {
+			Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)
+				?.selectAll()
+				?.addSelect(Account.Name)
+				?.deselect(Account.Description)
+				?.setAccessLevel(System.AccessLevel.SYSTEM_MODE)
+				?.toSoql();
+			numSystemModeFields = soql?.selectClauses?.size();
+			soql?.setAccessLevel(System.AccessLevel.USER_MODE);
+			numUserModeFields = soql?.selectClauses?.size();
+		}
+		Test.stopTest();
+
+		Assert.areEqual(numAllFields - 1, numSystemModeFields, 'SYSTEM_MODE should select all but Description');
+		Assert.isTrue(numUserModeFields < numSystemModeFields, 'USER_MODE should omit inaccessible fields');
+	}
+
+	@IsTest
+	private static void shouldRenderSelectAllAsItsClauses() {
+		Integer numAllFields = SObjectType.Account?.fields?.getMap()?.size();
+		Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)
+			?.setAccessLevel(System.AccessLevel.SYSTEM_MODE)
+			?.toSoql();
+		Soql.SelectAll selectAll = new Soql.SelectAll(soql);
+		selectAll?.addQueriedObject();
+
+		Test.startTest();
+		String rendered = selectAll?.toString();
+		Test.stopTest();
+
+		Assert.areEqual(numAllFields, rendered?.split(', ')?.size(), 'Wrong # of rendered clauses');
+	}
+
+	@IsTest
+	private static void shouldSelectAllFieldsAgainAfterDeselect() {
+		Test.startTest();
+		Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)
+			?.selectAll()
+			?.deselect(Account.Name)
+			?.selectAll()
+			?.toSoql();
+		Test.stopTest();
+
+		Assert.isTrue(soql?.selectClauses?.contains('Name'), 'selectAll() after deselect should select Name');
+		Assert.isFalse(soql?.toString()?.contains('Name, Name'), 'Selected Name twice');
+	}
+
+	@IsTest
 	private static void shouldNotQuoteRelativeDateLiterals() {
 		Soql soql = DatabaseLayer.Soql.newQuery(Opportunity.SObjectType)
 			?.addWhere(Opportunity.CloseDate, Soql.EQUALS, 'THIS_FISCAL_QUARTER')

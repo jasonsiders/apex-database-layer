@@ -992,10 +992,21 @@ public inherited sharing class InvocableSoql {
 			Set<String> cached = this.selectClausesByAccessLevel?.get(accessLevel);
 			if (cached == null) {
 				this.addFields(builder);
-				Set<String> clauses = builder?.selectClauses?.clone();
+				Set<String> clauses = builder?.selectClauses;
 				this.selectClausesByAccessLevel?.put(accessLevel, clauses);
 			} else {
-				builder?.selectClauses?.addAll(cached);
+				this.addClauses(builder, cached);
+			}
+		}
+
+		/**
+		 * @description Adds SELECT clauses as text
+		 * @param builder The query being built
+		 * @param clauses The clauses, already expanded
+		 */
+		private void addClauses(Soql builder, Set<String> clauses) {
+			for (String clause : clauses) {
+				builder?.addSelect(clause);
 			}
 		}
 
