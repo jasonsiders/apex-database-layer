@@ -456,8 +456,9 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	 */
 	global abstract class Builder {
 		// Backing state for selectClauses, which renders it on each read, so selectAll expands at the latest access level
+		@TestVisible
 		private transient Set<Soql.Selectable> selectables;
-		// The selectAll requests made since the last deselect, which applies only to requests made before it
+		// The selectAll requests, which expand at each read of selectClauses
 		private transient Soql.SelectAll pendingSelectAll;
 		/**
 		 * @description The configured access level for the query execution.
@@ -508,6 +509,13 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 					clauses?.addAll(rendered);
 				}
 				return clauses;
+			}
+			protected set {
+				this.pendingSelectAll = null;
+				this.selectables = new Set<Soql.Selectable>{};
+				for (String clause : value ?? new Set<String>{}) {
+					this.addSelect(clause);
+				}
 			}
 		}
 		/**
@@ -599,8 +607,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			this.groupByClauses = new List<String>();
 			this.havingCriteria = new Soql.ConditionalLogic();
 			this.orderByClauses = new List<String>();
-			this.pendingSelectAll = null;
-			this.selectables = new Set<Soql.Selectable>{ new Soql.SelectClause(ID_REFERENCE) };
+			this.selectClauses = new Set<String>{ ID_REFERENCE };
 			this.whereCriteria = new Soql.ConditionalLogic();
 			return this;
 		}
@@ -790,8 +797,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		/**
-		 * @description Gets the {@link selectAll} requests made since the last deselect, adding them to the SELECT
-		 * clause at the first request
+		 * @description Gets the {@link selectAll} requests, adding them to the SELECT clause at the first request
 		 * @return The pending requests
 		 */
 		private Soql.SelectAll getPendingSelectAll() {
@@ -1041,21 +1047,8 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		global Soql.Builder deselect(String fieldName) {
 			this.selectables?.remove(new Soql.SelectClause(fieldName));
-			this.excludeFromSelectAll(fieldName);
-			this.pendingSelectAll = null;
+			this.pendingSelectAll?.exclude(fieldName);
 			return this;
-		}
-
-		/**
-		 * @description Leaves a field out of every {@link selectAll} request made so far
-		 * @param fieldName The field name to leave out
-		 */
-		private void excludeFromSelectAll(String fieldName) {
-			for (Soql.Selectable selectable : this.selectables ?? new Set<Soql.Selectable>{}) {
-				if (selectable instanceof Soql.SelectAll) {
-					((Soql.SelectAll) selectable)?.exclude(fieldName);
-				}
-			}
 		}
 
 		/**
@@ -2245,6 +2238,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		public void addQueriedObject() {
 			this.includesQueriedObject = true;
+			this.reinclude('');
 			this.expandedClauses = null;
 		}
 
@@ -2257,6 +2251,8 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		public void addParent(Soql.ParentField lookupField) {
 			this.validateLookups(lookupField);
 			this.lookupFields?.add(lookupField);
+			String prefix = lookupField?.getRelationshipName() + '.';
+			this.reinclude(prefix);
 			this.expandedClauses = null;
 		}
 
@@ -2289,6 +2285,21 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			List<String> parentClauses = this.expandParents(isSystemMode);
 			clauses?.addAll(parentClauses);
 			return clauses;
+		}
+
+		/**
+		 * @description Selects deselected fields again when a request adds them, so a selectAll after a deselect
+		 * selects the field again, while fields of other objects stay deselected
+		 * @param prefix The relationships to the requested object, ex: 'Contact.'; blank for the queried object
+		 */
+		private void reinclude(String prefix) {
+			for (String clause : this.exclusions?.clone()) {
+				String fieldName = clause?.removeStart(prefix);
+				Boolean isRequested = clause?.startsWith(prefix) == true && fieldName?.contains('.') == false;
+				if (isRequested) {
+					this.exclusions?.remove(clause);
+				}
+			}
 		}
 
 		/**

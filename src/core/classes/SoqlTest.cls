@@ -603,6 +603,35 @@ private class SoqlTest {
 	}
 
 	@IsTest
+	private static void shouldReselectOnlyTheFieldsALaterSelectAllAdds() {
+		Test.startTest();
+		Soql soql = DatabaseLayer.Soql.newQuery(Case.SObjectType)
+			?.setAccessLevel(System.AccessLevel.SYSTEM_MODE)
+			?.selectAll(Case.ContactId, Contact.AccountId)
+			?.deselect('Contact.Account.Name')
+			?.deselect('Contact.Name')
+			?.selectAll(Case.ContactId)
+			?.toSoql();
+		Test.stopTest();
+
+		Set<String> fields = soql?.selectClauses;
+		Integer numSelectables = ((Soql.Builder) soql)?.selectables?.size();
+		Assert.isTrue(fields?.contains('Contact.Name'), 'selectAll(Case.ContactId) should select Contact.Name again');
+		Assert.isFalse(fields?.contains('Contact.Account.Name'), 'Selected Contact.Account.Name again');
+		Assert.areEqual(2, numSelectables, 'Should keep Id and one set of selectAll requests');
+	}
+
+	@IsTest
+	private static void shouldReplaceSelectClausesWhenASubclassAssignsThem() {
+		Test.startTest();
+		Soql soql = new SoqlTest.AssigningSoql();
+		Test.stopTest();
+
+		Set<String> expected = new Set<String>{ 'Id', 'Name' };
+		Assert.areEqual(expected, soql?.selectClauses, 'Wrong SELECT clauses');
+	}
+
+	@IsTest
 	private static void shouldNotQuoteRelativeDateLiterals() {
 		Soql soql = DatabaseLayer.Soql.newQuery(Opportunity.SObjectType)
 			?.addWhere(Opportunity.CloseDate, Soql.EQUALS, 'THIS_FISCAL_QUARTER')
@@ -2364,6 +2393,22 @@ private class SoqlTest {
 	}
 
 	// **** INNER **** //
+	/**
+	 * @description A subclass that assigns its SELECT clauses, as subscriber subclasses could before they were
+	 * rendered on each read
+	 */
+	private class AssigningSoql extends Soql {
+		/**
+		 * @description Assigns the clauses, replacing any selection, including selectAll requests made before
+		 */
+		private AssigningSoql() {
+			super();
+			this.setFrom(Account.SObjectType);
+			this.selectAll();
+			this.selectClauses = new Set<String>{ 'Id', 'Name' };
+		}
+	}
+
 	private class SampleWrapper {
 		public Integer numRecords;
 		public String profileName;
