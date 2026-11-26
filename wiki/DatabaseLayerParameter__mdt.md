@@ -35,6 +35,16 @@ See [Plugin: Dml.PreAndPostProcessor](./Plugin:-Dml.PreAndPostProcessor) for ful
 
 See [Plugin: Soql.PreAndPostProcessor](./Plugin:-Soql.PreAndPostProcessor) for full setup instructions.
 
+### `InvocableSoqlSystemModeWithoutSharing`
+
+|                   |                                                                                                          |
+| ----------------- | -------------------------------------------------------------------------------------------------------- |
+| **Purpose**       | Makes the [SOQL flow action](./Performing-SOQL-in-Flow)'s `SYSTEM_MODE` ignore sharing, like Get Records |
+| **Value**         | `true` to ignore sharing. Any other value, or no record, applies sharing                                 |
+| **Example Value** | `true`                                                                                                   |
+
+> _**Warning**: Anyone with access to the `InvocableSoql` Apex class can call the action through the REST API and choose the query. With this parameter on, they can read any record in the org._
+
 ## How Parameters Are Loaded
 
 Parameters are read at runtime using `DatabaseLayerParameter__mdt.getInstance()` — no SOQL is consumed. The framework caches the results for the duration of the transaction.

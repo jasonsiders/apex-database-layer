@@ -21,7 +21,7 @@ import {
 
 /** @description Help for the Access Level input, matching its description in Apex */
 const ACCESS_LEVEL_HELP =
-	"USER_MODE (default) enforces the running user's object permissions, field-level security, and sharing rules. SYSTEM_MODE ignores all three, like Get Records in a flow that runs in system context without sharing.";
+	"USER_MODE (default) enforces the running user's object permissions, field-level security, and sharing rules. SYSTEM_MODE ignores object permissions and field-level security, but sharing rules still apply unless the InvocableSoqlSystemModeWithoutSharing parameter is true.";
 const CUSTOM = "CUSTOM";
 const DATE_LITERALS = [
 	"TODAY",

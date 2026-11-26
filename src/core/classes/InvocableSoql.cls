@@ -72,6 +72,8 @@ public inherited sharing class InvocableSoql {
 		Schema.DisplayType.REFERENCE => Id.class,
 		Schema.DisplayType.TIME => Time.class
 	};
+	/** @description Opts the org into SYSTEM_MODE without sharing; off by default, see `InvocableSoql.Batch.runQuery` **/
+	private static final String WITHOUT_SHARING_PARAMETER = 'InvocableSoqlSystemModeWithoutSharing';
 
 	// **** PUBLIC **** //
 	/**
@@ -267,7 +269,7 @@ public inherited sharing class InvocableSoql {
 		/** @description Text, not an enum, since Flow can't pass System.AccessLevel **/
 		@InvocableVariable(
 			label='Access Level'
-			description='USER_MODE (default) enforces the running user\'s object permissions, field-level security, and sharing rules. SYSTEM_MODE ignores all three, like Get Records in a flow that runs in system context without sharing.'
+			description='USER_MODE (default) enforces the running user\'s object permissions, field-level security, and sharing rules. SYSTEM_MODE ignores object permissions and field-level security, but sharing rules still apply unless the InvocableSoqlSystemModeWithoutSharing parameter is true.'
 		)
 		public String accessLevel;
 
@@ -1863,14 +1865,17 @@ public inherited sharing class InvocableSoql {
 
 		/**
 		 * @description Runs SYSTEM_MODE queries without sharing, like Get Records in a flow that runs in system
-		 * context. `Soql` inherits sharing from its caller, and Flow calls the action with none, so it would run with
-		 * sharing. USER_MODE enforces sharing itself
+		 * context, only when the org opts in: anyone with access to this class can call the action through the REST
+		 * API, and choose what it reads. Otherwise `Soql` inherits sharing from its caller, and Flow calls the action
+		 * with none, so it runs with sharing. USER_MODE enforces sharing itself
 		 * @param builder The query
 		 * @return The rows
 		 */
 		private List<SObject> runQuery(Soql builder) {
+			String parameter = DatabaseLayer.Utils?.getParameter(InvocableSoql.WITHOUT_SHARING_PARAMETER);
 			Boolean isSystemMode = this.accessLevel == System.AccessLevel.SYSTEM_MODE;
-			return isSystemMode ? new InvocableSoql.SystemModeRunner().run(builder) : builder?.query();
+			Boolean isWithoutSharing = isSystemMode && parameter == 'true';
+			return isWithoutSharing ? new InvocableSoql.SystemModeRunner().run(builder) : builder?.query();
 		}
 	}
 

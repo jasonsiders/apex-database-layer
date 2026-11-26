@@ -419,23 +419,26 @@ private with sharing class InvocableSoqlTest {
 	}
 
 	@IsTest
-	private static void shouldIgnoreSharingInSystemMode() {
-		// Activities are private by default, so another user can't see this task unless sharing is ignored
-		DatabaseLayer.useRealSoql();
-		insert new Task(Subject = 'Hidden');
-		User viewer = DatabaseLayerTestUtils.insertUser('Standard User');
-		InvocableSoql.Query query = InvocableSoqlTest.initQuery('Task', null);
-		query.conditions.add(InvocableSoqlTest.initCondition('Subject', 'EQUALS', 'Hidden'));
-		InvocableSoql.Input systemMode = InvocableSoqlTest.initInput(query);
-		systemMode.accessLevel = 'SYSTEM_MODE';
-		InvocableSoql.Input userMode = InvocableSoqlTest.initInput(query);
-		List<InvocableSoql.Input> inputs = new List<InvocableSoql.Input>{ systemMode, userMode };
-		List<InvocableSoql.Output> outputs;
+	private static void shouldApplySharingInSystemModeByDefault() {
+		Test.startTest();
+		List<InvocableSoql.Output> outputs = InvocableSoqlTest.queryHiddenTask();
+		Test.stopTest();
+
+		Assert.areEqual(0, outputs?.get(0)?.records?.size(), 'SYSTEM_MODE ignored sharing without the parameter');
+		Assert.areEqual(0, outputs?.get(1)?.records?.size(), 'USER_MODE ignored sharing');
+	}
+
+	@IsTest
+	private static void shouldIgnoreSharingInSystemModeWhenConfigured() {
+		DatabaseLayerParameter__mdt parameter = new DatabaseLayerParameter__mdt(
+			DeveloperName = 'InvocableSoqlSystemModeWithoutSharing',
+			Value__c = 'true'
+		);
+		MockCmdt.mock(DatabaseLayerParameter__mdt.SObjectType)?.add(parameter);
+		DatabaseLayer.Utils.Plugins.init();
 
 		Test.startTest();
-		System.runAs(viewer) {
-			outputs = InvocableSoql.invoke(inputs);
-		}
+		List<InvocableSoql.Output> outputs = InvocableSoqlTest.queryHiddenTask();
 		Test.stopTest();
 
 		Assert.areEqual(1, outputs?.get(0)?.records?.size(), 'SYSTEM_MODE applied sharing');
@@ -2249,6 +2252,24 @@ private with sharing class InvocableSoqlTest {
 		InvocableSoql.Query query = InvocableSoqlTest.initQuery('Account', new List<String>{ 'Name' });
 		query.conditions.add(InvocableSoqlTest.initCondition('Name', operator, value));
 		return InvocableSoqlTest.invoke(InvocableSoqlTest.initInput(query));
+	}
+
+	private static List<InvocableSoql.Output> queryHiddenTask() {
+		// Activities are private by default, so another user can't see this task unless sharing is ignored
+		DatabaseLayer.useRealSoql();
+		insert new Task(Subject = 'Hidden');
+		User viewer = DatabaseLayerTestUtils.insertUser('Standard User');
+		InvocableSoql.Query query = InvocableSoqlTest.initQuery('Task', null);
+		query.conditions.add(InvocableSoqlTest.initCondition('Subject', 'EQUALS', 'Hidden'));
+		InvocableSoql.Input systemMode = InvocableSoqlTest.initInput(query);
+		systemMode.accessLevel = 'SYSTEM_MODE';
+		InvocableSoql.Input userMode = InvocableSoqlTest.initInput(query);
+		List<InvocableSoql.Input> inputs = new List<InvocableSoql.Input>{ systemMode, userMode };
+		List<InvocableSoql.Output> outputs;
+		System.runAs(viewer) {
+			outputs = InvocableSoql.invoke(inputs);
+		}
+		return outputs;
 	}
 
 	private static InvocableSoqlTest.QuerySpy mockRows(List<SObject> rows) {
