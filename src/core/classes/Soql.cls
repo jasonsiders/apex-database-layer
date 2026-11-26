@@ -455,9 +455,10 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	 * @description Abstract base class providing fluent interface for building SOQL queries.
 	 */
 	global abstract class Builder {
-		// Backing state for selectClauses:
-		private transient Set<String> resolvedSelectClauses;
-		// The pending selectAll requests, which wait for the final access level
+		// Backing state for selectClauses, which renders it on each read, so selectAll expands at the latest access level
+		@TestVisible
+		private transient Set<Soql.Selectable> selectables;
+		// The selectAll requests, which expand at each read of selectClauses
 		private transient Soql.SelectAll pendingSelectAll;
 		/**
 		 * @description The configured access level for the query execution.
@@ -497,16 +498,24 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		global Soql.Scope scope { get; protected set; }
 		/**
-		 * @description Set of SELECT clause field names. Reading this resolves any pending
-		 * {@link selectAll} call, so callers always observe the fully expanded clause list.
+		 * @description Set of SELECT clause field names, rendered on each read: {@link selectAll} expands at the
+		 * current access level, so changes to the returned set don't change the query.
 		 */
 		global Set<String> selectClauses {
 			get {
-				this.resolveSelectAll();
-				return this.resolvedSelectClauses;
+				Set<String> clauses = new Set<String>{};
+				for (Soql.Selectable selectable : this.selectables ?? new Set<Soql.Selectable>{}) {
+					List<String> rendered = this.renderSelectable(selectable);
+					clauses?.addAll(rendered);
+				}
+				return clauses;
 			}
 			protected set {
-				this.resolvedSelectClauses = value;
+				this.pendingSelectAll = null;
+				this.selectables = new Set<Soql.Selectable>{};
+				for (String clause : value ?? new Set<String>{}) {
+					this.addSelect(clause);
+				}
 			}
 		}
 		/**
@@ -598,7 +607,6 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			this.groupByClauses = new List<String>();
 			this.havingCriteria = new Soql.ConditionalLogic();
 			this.orderByClauses = new List<String>();
-			this.pendingSelectAll = new Soql.SelectAll();
 			this.selectClauses = new Set<String>{ ID_REFERENCE };
 			this.whereCriteria = new Soql.ConditionalLogic();
 			return this;
@@ -789,23 +797,26 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		/**
-		 * @description Gets the pending {@link selectAll} requests, which a deserialized builder lacks
+		 * @description Gets the {@link selectAll} requests, adding them to the SELECT clause at the first request
 		 * @return The pending requests
 		 */
 		private Soql.SelectAll getPendingSelectAll() {
-			this.pendingSelectAll = this.pendingSelectAll ?? new Soql.SelectAll();
+			if (this.pendingSelectAll == null) {
+				this.pendingSelectAll = new Soql.SelectAll(this);
+				this.selectables?.add(this.pendingSelectAll);
+			}
 			return this.pendingSelectAll;
 		}
 
 		/**
-		 * @description Expands the pending {@link selectAll} requests, if any, now that the access level is final
+		 * @description Renders an item of the SELECT clause
+		 * @param selectable The item: a {@link selectAll} request, or a clause added as text
+		 * @return The item's clauses
 		 */
-		private void resolveSelectAll() {
-			if (this.pendingSelectAll?.isEmpty() == false) {
-				List<String> clauses = this.pendingSelectAll?.expand(this.entity, this.accessLevel);
-				this.pendingSelectAll = new Soql.SelectAll();
-				this.resolvedSelectClauses?.addAll(clauses);
-			}
+		private List<String> renderSelectable(Soql.Selectable selectable) {
+			return (selectable instanceof Soql.SelectAll)
+				? ((Soql.SelectAll) selectable)?.expand()
+				: new List<String>{ selectable?.toString() };
 		}
 
 		/**
@@ -816,7 +827,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		global Soql.Builder addSelect(String fieldName, String alias) {
 			String clause = String.join(new List<String>{ fieldName, alias }, ' ')?.trim();
-			this.selectClauses?.add(clause);
+			this.selectables?.add(new Soql.SelectClause(clause));
 			return this;
 		}
 
@@ -1023,19 +1034,20 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		global Soql.Builder deselectAll() {
 			// Remove all SELECT fields from the current query
-			this.pendingSelectAll = new Soql.SelectAll();
-			this.resolvedSelectClauses?.clear();
+			this.pendingSelectAll = null;
+			this.selectables?.clear();
 			return this;
 		}
 
 		/**
-		 * @description Removes a specific field from the SELECT clause.
+		 * @description Removes a specific field from the SELECT clause, including from earlier {@link selectAll}
+		 * requests. A later selectAll request selects it again.
 		 * @param fieldName The field name to remove
 		 * @return This Builder instance for method chaining
 		 */
 		global Soql.Builder deselect(String fieldName) {
-			// Remove a field from the current query
-			this.selectClauses?.remove(fieldName);
+			this.selectables?.remove(new Soql.SelectClause(fieldName));
+			this.pendingSelectAll?.exclude(fieldName);
 			return this;
 		}
 
@@ -2176,16 +2188,49 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	 * through its lookups. In user mode, fields the running user cannot read are omitted, since user mode SOQL rejects
 	 * the entire query rather than dropping inaccessible fields from the results.
 	 */
-	private class SelectAll {
+	@TestVisible
+	private class SelectAll implements Soql.Selectable {
+		// The query, read at each expansion for its object and access level
+		private Soql.Builder builder;
+		// Clauses deselected after these requests
+		private Set<String> exclusions;
+		// The last expansion, reused while the object, access level, and requests stay the same, since logging plugins
+		// read the query several times per run
+		// shortcut: ignores the running user, so a builder read on both sides of System.runAs reuses stale USER_MODE
+		// fields; add UserInfo.getUserId() to the check if that comes up outside tests
+		private System.AccessLevel expandedAccessLevel;
+		private List<String> expandedClauses;
+		private String expandedEntity;
 		private Boolean includesQueriedObject;
 		private List<Soql.ParentField> lookupFields;
 
 		/**
 		 * @description Starts with no requests
+		 * @param builder The query, whose object and access level decide the fields at each expansion
 		 */
-		public SelectAll() {
+		public SelectAll(Soql.Builder builder) {
+			this.builder = builder;
+			this.exclusions = new Set<String>{};
 			this.includesQueriedObject = false;
 			this.lookupFields = new List<Soql.ParentField>{};
+		}
+
+		/**
+		 * @description Expands every request into SELECT clauses
+		 * @return The clauses, joined by commas
+		 */
+		public override String toString() {
+			List<String> clauses = this.expand();
+			return String.join(clauses, ', ');
+		}
+
+		/**
+		 * @description Leaves a clause out of every expansion
+		 * @param clause The clause, ex: `Name` or `Contact.Account.Name`
+		 */
+		public void exclude(String clause) {
+			this.exclusions?.add(clause);
+			this.expandedClauses = null;
 		}
 
 		/**
@@ -2193,6 +2238,8 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		public void addQueriedObject() {
 			this.includesQueriedObject = true;
+			this.reinclude('');
+			this.expandedClauses = null;
 		}
 
 		/**
@@ -2204,18 +2251,36 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		public void addParent(Soql.ParentField lookupField) {
 			this.validateLookups(lookupField);
 			this.lookupFields?.add(lookupField);
+			String prefix = lookupField?.getRelationshipName() + '.';
+			this.reinclude(prefix);
+			this.expandedClauses = null;
+		}
+
+		/**
+		 * @description Expands every request into SELECT clauses, at the query's current access level
+		 * @return The clauses, ex: `Name` or `Contact.Account.Name`
+		 */
+		public List<String> expand() {
+			System.AccessLevel accessLevel = this.builder?.accessLevel;
+			String entity = this.builder?.entity;
+			Boolean isStale = this.expandedAccessLevel != accessLevel || this.expandedEntity != entity;
+			if (this.expandedClauses == null || isStale) {
+				this.expandedClauses = this.expandRequests(accessLevel);
+				this.expandedAccessLevel = accessLevel;
+				this.expandedEntity = entity;
+			}
+			return this.expandedClauses;
 		}
 
 		/**
 		 * @description Expands every request into SELECT clauses
-		 * @param entity The queried object
-		 * @param accessLevel The query's access level
-		 * @return The clauses, ex: `Name` or `Contact.Account.Name`
+		 * @param accessLevel The access level to expand at
+		 * @return The clauses
 		 */
-		public List<String> expand(String entity, System.AccessLevel accessLevel) {
+		private List<String> expandRequests(System.AccessLevel accessLevel) {
 			Boolean isSystemMode = accessLevel == System.AccessLevel.SYSTEM_MODE;
 			List<String> clauses = this.includesQueriedObject
-				? this.expandObject(entity, '', isSystemMode)
+				? this.expandObject(this.builder?.entity, '', isSystemMode)
 				: new List<String>{};
 			List<String> parentClauses = this.expandParents(isSystemMode);
 			clauses?.addAll(parentClauses);
@@ -2223,11 +2288,18 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		/**
-		 * @description Checks for requests
-		 * @return True when nothing has been requested
+		 * @description Selects deselected fields again when a request adds them, so a selectAll after a deselect
+		 * selects the field again, while fields of other objects stay deselected
+		 * @param prefix The relationships to the requested object, ex: 'Contact.'; blank for the queried object
 		 */
-		public Boolean isEmpty() {
-			return this.includesQueriedObject == false && this.lookupFields?.isEmpty() == true;
+		private void reinclude(String prefix) {
+			for (String clause : this.exclusions?.clone()) {
+				String fieldName = clause?.removeStart(prefix);
+				Boolean isRequested = clause?.startsWith(prefix) == true && fieldName?.contains('.') == false;
+				if (isRequested) {
+					this.exclusions?.remove(clause);
+				}
+			}
 		}
 
 		/**
@@ -2245,7 +2317,8 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		}
 
 		/**
-		 * @description Expands a parent into SELECT clauses, through its relationships, ex: `Contact.Account.Name`
+		 * @description Expands a parent into SELECT clauses, through its relationships, ex: `Contact.Account.Name`.
+		 * USER_MODE can't follow a lookup the running user can't read, so a parent behind one adds no clauses
 		 * @param lookupField The lookups to the parent
 		 * @param isSystemMode Whether the query ignores field-level security
 		 * @return The parent's clauses
@@ -2253,11 +2326,13 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		private List<String> expandParent(Soql.ParentField lookupField, Boolean isSystemMode) {
 			String prefix = lookupField?.getRelationshipName() + '.';
 			String entityName = this.findParentEntity(lookupField);
-			return this.expandObject(entityName, prefix, isSystemMode);
+			List<SObjectField> lookups = lookupField?.fieldChain;
+			Boolean isReachable = isSystemMode || this.filterAccessible(lookups)?.size() == lookups?.size();
+			return isReachable ? this.expandObject(entityName, prefix, isSystemMode) : new List<String>{};
 		}
 
 		/**
-		 * @description Prefixes each of an object's readable fields with the relationships to it
+		 * @description Prefixes each of an object's readable fields with the relationships to it, except excluded ones
 		 * @param entityName The object
 		 * @param prefix The relationships to the object, ex: 'Contact.Account.'; blank for the queried object
 		 * @param isSystemMode Whether the query ignores field-level security
@@ -2266,7 +2341,10 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		private List<String> expandObject(String entityName, String prefix, Boolean isSystemMode) {
 			List<String> clauses = new List<String>{};
 			for (SObjectField field : this.getReadableFields(entityName, isSystemMode)) {
-				clauses?.add(prefix + field);
+				String clause = prefix + field;
+				if (this.exclusions?.contains(clause) == false) {
+					clauses?.add(clause);
+				}
 			}
 			return clauses;
 		}
@@ -2342,6 +2420,49 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			if (String.isBlank(relationshipName)) {
 				throw new IllegalArgumentException('selectAll takes lookup fields, not ' + field);
 			}
+		}
+	}
+
+	/**
+	 * @description A SELECT clause added as text, ex: `Name`, `Owner.Name`, or a subquery, as it read when added.
+	 * Equal to any clause with the same text, matching case, so the SELECT clause holds each once.
+	 */
+	private class SelectClause implements Soql.Selectable {
+		// The clause's text, ex: `Name` or `Owner.Name`
+		private String clause;
+
+		/**
+		 * @description Wraps the clause
+		 * @param clause The clause's text
+		 */
+		public SelectClause(String clause) {
+			this.clause = clause;
+		}
+
+		/**
+		 * @description Returns the clause
+		 * @return The clause's text
+		 */
+		public override String toString() {
+			return this.clause;
+		}
+
+		/**
+		 * @description Compares the clauses' text, matching case, as a Set of String does
+		 * @param other The object to compare
+		 * @return True when the other is a SelectClause with the same text
+		 */
+		public Boolean equals(Object other) {
+			String otherClause = (other instanceof Soql.SelectClause) ? other?.toString() : null;
+			return this.clause?.equals(otherClause) == true;
+		}
+
+		/**
+		 * @description Hashes the clause's text, so equal clauses share a hash
+		 * @return The text's hash
+		 */
+		public Integer hashCode() {
+			return this.clause?.hashCode() ?? 0;
 		}
 	}
 

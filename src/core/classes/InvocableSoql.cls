@@ -40,22 +40,23 @@ public inherited sharing class InvocableSoql {
 	/** @description Takes true or false, like Get Records: false finds the records whose field has a value **/
 	private static final String NULL_CHECK = 'IS_NULL';
 	private static final Pattern TOKEN_PATTERN = Pattern.compile('(?i)\\d+|AND|OR|NOT|\\(|\\)');
-	private static final Map<String, String> TOKENS = new Map<String, String>{
-		'CONTAINS' => 'LIKE',
-		'ENDS_WITH' => 'LIKE',
-		'EQUALS' => '=',
-		'EXCLUDES' => 'EXCLUDES',
-		'GREATER_OR_EQUAL' => '>=',
-		'GREATER_THAN' => '>',
-		'IN' => 'IN',
-		'INCLUDES' => 'INCLUDES',
-		'IS_NULL' => '=',
-		'LESS_OR_EQUAL' => '<=',
-		'LESS_THAN' => '<',
-		'LIKE' => 'LIKE',
-		'NOT_EQUALS' => '!=',
-		'NOT_IN' => 'NOT IN',
-		'STARTS_WITH' => 'LIKE'
+	/** @description Each operator's SOQL token, from `Soql` where it has one **/
+	private static final Map<String, Soql.Operator> OPERATORS = new Map<String, Soql.Operator>{
+		'CONTAINS' => Soql.CONTAINS,
+		'ENDS_WITH' => Soql.ENDS_WITH,
+		'EQUALS' => Soql.EQUALS,
+		'EXCLUDES' => new InvocableSoql.Operator('EXCLUDES'),
+		'GREATER_OR_EQUAL' => Soql.GREATER_OR_EQUAL,
+		'GREATER_THAN' => Soql.GREATER_THAN,
+		'IN' => Soql.IN_COLLECTION,
+		'INCLUDES' => new InvocableSoql.Operator('INCLUDES'),
+		'IS_NULL' => Soql.EQUALS,
+		'LESS_OR_EQUAL' => Soql.LESS_OR_EQUAL,
+		'LESS_THAN' => Soql.LESS_THAN,
+		'LIKE' => new InvocableSoql.Operator('LIKE'),
+		'NOT_EQUALS' => Soql.NOT_EQUALS,
+		'NOT_IN' => Soql.NOT_IN_COLLECTION,
+		'STARTS_WITH' => Soql.STARTS_WITH
 	};
 	/** @description SOQL binds are strictly typed, ex: a Decimal can't bind to an Integer field; the rest are text **/
 	private static final Map<Schema.DisplayType, Type> VALUE_TYPES = new Map<Schema.DisplayType, Type>{
@@ -71,6 +72,8 @@ public inherited sharing class InvocableSoql {
 		Schema.DisplayType.REFERENCE => Id.class,
 		Schema.DisplayType.TIME => Time.class
 	};
+	/** @description Opts the org into SYSTEM_MODE without sharing; off by default, see `InvocableSoql.Batch.runQuery` **/
+	private static final String WITHOUT_SHARING_PARAMETER = 'InvocableSoqlSystemModeWithoutSharing';
 
 	// **** PUBLIC **** //
 	/**
@@ -99,7 +102,7 @@ public inherited sharing class InvocableSoql {
 	public static List<InvocableSoql.ObjectOption> getObjects() {
 		List<InvocableSoql.ObjectOption> options = new List<InvocableSoql.ObjectOption>{};
 		for (SObjectType objectType : Schema.getGlobalDescribe()?.values()) {
-			DescribeSObjectResult describe = objectType?.getDescribe(SObjectDescribeOptions.DEFERRED);
+			DescribeSObjectResult describe = DatabaseLayer.Utils.Schema.describeObject(objectType);
 			if (describe?.isQueryable() == true && describe?.isDeprecatedAndHidden() == false) {
 				InvocableSoql.ObjectOption option = new InvocableSoql.ObjectOption(describe);
 				options?.add(option);
@@ -130,22 +133,6 @@ public inherited sharing class InvocableSoql {
 
 	// **** PRIVATE **** //
 	/**
-	 * @description Lists a field's active picklist values
-	 * @param entries The field's picklist entries; empty for other fields
-	 * @return The active values, in the field's order
-	 */
-	private static List<InvocableSoql.PicklistOption> initPicklistOptions(List<Schema.PicklistEntry> entries) {
-		List<InvocableSoql.PicklistOption> options = new List<InvocableSoql.PicklistOption>{};
-		for (Schema.PicklistEntry entry : entries) {
-			if (entry?.isActive() == true) {
-				InvocableSoql.PicklistOption option = new InvocableSoql.PicklistOption(entry);
-				options?.add(option);
-			}
-		}
-		return options;
-	}
-
-	/**
 	 * @description Parses and checks a query from the action's editor, describing its object and condition fields
 	 * @param definition The query, as JSON
 	 * @return The parsed query
@@ -158,196 +145,6 @@ public inherited sharing class InvocableSoql {
 		}
 		InvocableSoql.Query query = (InvocableSoql.Query) JSON.deserialize(definition, InvocableSoql.Query.class);
 		return query?.describe();
-	}
-
-	/**
-	 * @description JSON would truncate a fraction for a whole-number field, ex: `< 42.5` would run as `< 42`, so it
-	 * fails instead
-	 * @param value A value for a condition
-	 * @param valueType The field's Apex type
-	 * @throws System.IllegalArgumentException When a whole-number field gets a value with a fraction
-	 */
-	private static void checkWholeNumber(Object value, Type valueType) {
-		Boolean isWholeType = valueType == Integer.class || valueType == Long.class;
-		String text = String.valueOf(value);
-		Decimal amount = (isWholeType && value != null) ? Decimal.valueOf(text) : null;
-		if (amount != null && amount != amount.round(System.RoundingMode.DOWN)) {
-			throw new IllegalArgumentException('Whole-number fields take no fractions: ' + value);
-		}
-	}
-
-	/**
-	 * @description Builds an empty list of a field's type, since SOQL can't bind a `List<Object>`
-	 * @param valueType The field's Apex type
-	 * @return The list
-	 */
-	private static List<Object> initList(Type valueType) {
-		String listTypeName = 'List<' + valueType?.getName() + '>';
-		return (List<Object>) Type.forName(listTypeName)?.newInstance();
-	}
-
-	/**
-	 * @description Whether a typed list takes the values as they are, the same as `InvocableSoql.Query.coerceValue`
-	 * would convert them: a `List<Id>` checks and lengthens each ID it's given, and text and numbers already of their
-	 * field's type need no conversion
-	 * @param values A collection of values
-	 * @param valueType The field's Apex type
-	 * @return True if the values can be added to the field's list as they are
-	 */
-	private static Boolean isNativeList(Iterable<Object> values, Type valueType) {
-		Boolean isText = valueType == String.class && values instanceof List<String>;
-		Boolean isNumber = valueType == Decimal.class && values instanceof List<Decimal>;
-		return valueType == Id.class || isText || isNumber;
-	}
-
-	/**
-	 * @description Joins tokens with spaces, except inside parentheses, ex: `(A OR B)`
-	 * @param output The criteria so far
-	 * @param token The next token
-	 * @return The criteria, with the token
-	 */
-	private static String appendToken(String output, String token) {
-		Boolean isTight = output == '' || output?.endsWith('(') == true || token == ')';
-		return output + (isTight ? '' : ' ') + token;
-	}
-
-	/**
-	 * @description Whether logic joins anything with OR outside parentheses, ex: `1 OR 2` but not `1 AND (2 OR 3)`
-	 * @param logic The logic, by condition number
-	 * @return True if any OR is outside parentheses
-	 */
-	private static Boolean hasTopLevelOr(String logic) {
-		Integer depth = 0;
-		Boolean hasOr = false;
-		Matcher tokens = InvocableSoql.TOKEN_PATTERN.matcher(logic);
-		while (tokens?.find() == true) {
-			String token = tokens?.group()?.toUpperCase();
-			depth += (token == '(') ? 1 : 0;
-			depth -= (token == ')') ? 1 : 0;
-			hasOr = hasOr || (token == 'OR' && depth == 0);
-		}
-		return hasOr;
-	}
-
-	/**
-	 * @description Checks custom logic's grammar: operands, ex: `1`, `NOT 1`, or `(1 OR 2)`, joined by AND or OR, with
-	 * balanced parentheses, since SOQL fails every query that isn't, on a syntax error that doesn't name the logic
-	 * @param logic The custom logic, holding only numbers, AND, OR, NOT, and parentheses
-	 * @return True if the logic is well formed
-	 */
-	private static Boolean isWellFormed(String logic) {
-		Integer depth = 0;
-		Boolean isOperandNext = true;
-		Boolean isValid = true;
-		Matcher tokens = InvocableSoql.TOKEN_PATTERN.matcher(logic);
-		while (tokens?.find() == true) {
-			String token = tokens?.group()?.toUpperCase();
-			Boolean isOperand = token == 'NOT' || token == '(' || token?.isNumeric() == true;
-			depth += (token == '(') ? 1 : 0;
-			depth -= (token == ')') ? 1 : 0;
-			isValid = isValid && isOperand == isOperandNext && depth >= 0;
-			isOperandNext = token == 'AND' || token == 'OR' || token == 'NOT' || token == '(';
-		}
-		return isValid && isOperandNext == false && depth == 0;
-	}
-
-	/**
-	 * @description Renders a LIKE pattern, escaping only quotes, since its backslashes are LIKE escapes, ex: `\%`
-	 * @param value The pattern
-	 * @return The literal
-	 */
-	private static String formatPattern(Object value) {
-		String pattern = String.valueOf(value)?.replace('\'', '\\\'');
-		return (value == null) ? 'null' : '\'' + pattern + '\'';
-	}
-
-	/**
-	 * @description Renders a value as a SOQL literal. Dates format directly, not via a DateTime, which would shift them
-	 * a day in time zones ahead of GMT
-	 * @param value The value
-	 * @return The literal
-	 */
-	private static String formatLiteral(Object value) {
-		String literal;
-		if (value == null) {
-			literal = 'null';
-		} else if (value instanceof Iterable<Object>) {
-			literal = InvocableSoql.formatList((Iterable<Object>) value);
-		} else if (value instanceof Date) {
-			// Checked before DateTime, since a Date is also an instanceof DateTime
-			literal = String.valueOf((Date) value);
-		} else if (value instanceof DateTime) {
-			literal = ((DateTime) value)?.formatGmt('yyyy-MM-dd\'T\'HH:mm:ss\'Z\'');
-		} else if (value instanceof String) {
-			literal = '\'' + String.escapeSingleQuotes((String) value) + '\'';
-		} else {
-			literal = String.valueOf(value);
-		}
-		return literal;
-	}
-
-	/**
-	 * @description Renders a collection as a SOQL list, ex: `('a', 'b')`
-	 * @param values The values
-	 * @return The list
-	 */
-	private static String formatList(Iterable<Object> values) {
-		List<String> literals = new List<String>{};
-		for (Object value : values) {
-			String literal = InvocableSoql.formatLiteral(value);
-			literals?.add(literal);
-		}
-		return '(' + String.join(literals, ', ') + ')';
-	}
-
-	/**
-	 * @description Normalizes a value so equal values match: decimals ignore scale, ex: 100 and 100.00, and text
-	 * ignores case unless its field is case-sensitive, like SOQL. IDs are already 18 characters, via
-	 * `InvocableSoql.Query.coerce`, so their case-insensitive form is still unique
-	 * @param value A field value, or a value the field was compared to
-	 * @param isCaseSensitive Whether the field compares text case-sensitively
-	 * @return The value's key, or null for a null value
-	 */
-	@TestVisible
-	private static String toKey(Object value, Boolean isCaseSensitive) {
-		String text = (value instanceof Decimal)
-			? ((Decimal) value)?.stripTrailingZeros()?.toPlainString()
-			: String.valueOf(value);
-		return (isCaseSensitive == true) ? text : text?.toLowerCase();
-	}
-
-	/**
-	 * @description Converts a value to a number that orders like it, so ranges compare numbers, dates, date/times,
-	 * and times alike
-	 * @param value A number, date, date/time, or time
-	 * @return The value's order, or null for a null value
-	 */
-	private static Decimal toOrdinal(Object value) {
-		Decimal ordinal;
-		if (value instanceof Time) {
-			ordinal = DateTime.newInstanceGmt(InvocableSoql.EPOCH, (Time) value)?.getTime();
-		} else if (value instanceof Date) {
-			// Checked before DateTime, since a Date is also an instanceof DateTime
-			ordinal = InvocableSoql.EPOCH.daysBetween((Date) value);
-		} else if (value instanceof DateTime) {
-			// SOQL drops a bound's milliseconds, and stores none, so date/times compare whole seconds
-			Decimal milliseconds = ((DateTime) value)?.getTime();
-			ordinal = (milliseconds / 1000)?.round(System.RoundingMode.FLOOR);
-		} else {
-			ordinal = (Decimal) value;
-		}
-		return ordinal;
-	}
-
-	/**
-	 * @description Treats a single value as a one-item list, so EQUALS and IN values merge alike. In values are
-	 * lists, via `InvocableSoql.Query.coerce`, and come back as is, so callers only read the result
-	 * @param value A value, or a list of values
-	 * @return The values
-	 */
-	private static List<Object> toList(Object value) {
-		Boolean isList = value instanceof List<Object>;
-		return isList ? (List<Object>) value : new List<Object>{ value };
 	}
 
 	// **** INNER **** //
@@ -401,10 +198,26 @@ public inherited sharing class InvocableSoql {
 			this.isPolymorphic = parents?.size() > 1 || parentName != firstParent;
 			this.isSortable = field?.isSortable();
 			this.label = field?.getLabel();
-			this.picklistValues = InvocableSoql.initPicklistOptions(entries);
+			this.picklistValues = this.initPicklistOptions(entries);
 			this.referenceTo = isId ? objectApiName : parentName;
 			this.relationshipName = field?.getRelationshipName();
 			this.type = field?.getType()?.name();
+		}
+
+		/**
+		 * @description Lists a field's active picklist values
+		 * @param entries The field's picklist entries; empty for other fields
+		 * @return The active values, in the field's order
+		 */
+		private List<InvocableSoql.PicklistOption> initPicklistOptions(List<Schema.PicklistEntry> entries) {
+			List<InvocableSoql.PicklistOption> options = new List<InvocableSoql.PicklistOption>{};
+			for (Schema.PicklistEntry entry : entries) {
+				if (entry?.isActive() == true) {
+					InvocableSoql.PicklistOption option = new InvocableSoql.PicklistOption(entry);
+					options?.add(option);
+				}
+			}
+			return options;
 		}
 	}
 
@@ -456,7 +269,7 @@ public inherited sharing class InvocableSoql {
 		/** @description Text, not an enum, since Flow can't pass System.AccessLevel **/
 		@InvocableVariable(
 			label='Access Level'
-			description='USER_MODE (default) enforces the running user\'s object permissions, field-level security, and sharing rules. SYSTEM_MODE ignores all three, like Get Records in a flow that runs in system context without sharing.'
+			description='USER_MODE (default) enforces the running user\'s object permissions, field-level security, and sharing rules. SYSTEM_MODE ignores object permissions and field-level security, but sharing rules still apply unless the InvocableSoqlSystemModeWithoutSharing parameter is true.'
 		)
 		public String accessLevel;
 
@@ -934,15 +747,16 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description Copies the records, so one interview's changes to the collection don't reach another's
+		 * @description Shares the records with interviews that ran the same query, since Flow copies each output into
+		 * its interview's own variables
 		 * @param records The records found for this interview
 		 * @param queryString This interview's query, with its values filled in
 		 */
 		public Output(List<SObject> records, String queryString) {
 			this();
 			this.queryString = queryString;
-			this.records?.addAll(records);
-			this.record = records?.isEmpty() == false ? records?.get(0) : null;
+			this.records = records ?? this.records;
+			this.record = this.records?.isEmpty() == false ? this.records?.get(0) : null;
 		}
 	}
 
@@ -972,6 +786,8 @@ public inherited sharing class InvocableSoql {
 		private transient List<DescribeFieldResult> conditionFields;
 		/** @description Each condition's field path, split once, since a merged query reads it from every row **/
 		private transient List<List<String>> conditionPaths;
+		/** @description The condition logic by condition number, validated once, which each WHERE clause renders **/
+		private transient InvocableSoql.ConditionLogic logic;
 		/** @description The condition logic, parsed once, which a merged query checks for each variant **/
 		private transient InvocableSoql.LogicNode logicTree;
 		private transient DescribeSObjectResult objectDescribe;
@@ -986,9 +802,7 @@ public inherited sharing class InvocableSoql {
 		 */
 		private Object coerce(Integer index, Object value) {
 			Type valueType = this.getValueType(index);
-			return (value instanceof Iterable<Object>)
-				? this.coerceList((Iterable<Object>) value, valueType)
-				: this.coerceValue(value, valueType);
+			return new InvocableSoql.ValueCoercer(valueType)?.coerce(value);
 		}
 
 		/**
@@ -1019,12 +833,14 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description SOQL compares text case-insensitively, except on case-sensitive fields
+		 * @description SOQL compares text case-insensitively, except on case-sensitive fields, where LIKE still ignores
+		 * case
 		 * @param index The condition's index
-		 * @return Whether the condition's field compares text case-sensitively
+		 * @return Whether the condition compares text case-sensitively
 		 */
 		private Boolean isCaseSensitive(Integer index) {
-			return this.conditionFields?.get(index)?.isCaseSensitive() == true;
+			Boolean isCaseSensitiveField = this.conditionFields?.get(index)?.isCaseSensitive() == true;
+			return isCaseSensitiveField && this.isPattern(index) == false;
 		}
 
 		/**
@@ -1069,7 +885,7 @@ public inherited sharing class InvocableSoql {
 			Boolean isPattern = this.isPattern(index);
 			String pattern = isPattern ? (String) value : null;
 			Boolean isBlank = isPattern ? String.isEmpty(pattern) : value == null;
-			Boolean isSimple = isPattern == false || new InvocableSoql.LikePattern(pattern, false)?.isSimple == true;
+			Boolean isSimple = isPattern == false || new InvocableSoql.LikePattern(pattern)?.isSimple == true;
 			Boolean hasBlankBound = isBlank && (isRange || isPattern);
 			return hasBlankBound ? isVarying : isSimple;
 		}
@@ -1080,8 +896,7 @@ public inherited sharing class InvocableSoql {
 		 * @return Whether the condition's value is a LIKE pattern
 		 */
 		private Boolean isPattern(Integer index) {
-			String operator = this.getOperator(index);
-			return InvocableSoql.TOKENS?.get(operator) == 'LIKE';
+			return this.conditions?.get(index)?.isPattern() == true;
 		}
 
 		/**
@@ -1109,13 +924,13 @@ public inherited sharing class InvocableSoql {
 		@TestVisible
 		private Soql toSoql(List<Object> values, System.AccessLevel accessLevel) {
 			InvocableSoql.Filter whereClause = new InvocableSoql.Filter(this, values, false);
-			Map<String, Object> binds = this.initBinds(values);
+			Map<String, Object> binds = this.initBinds(values, null);
 			return (Soql) this.initSoql(whereClause, accessLevel)?.addBind(binds);
 		}
 
 		/**
-		 * @description Builds a merged query: without LIMIT and OFFSET, which `page` applies to each interview's rows,
-		 * and without the conditions the split applies alone
+		 * @description Builds a merged query: without OFFSET, which `page` applies to each interview's rows, and without
+		 * the conditions the split applies alone. The caller sets its LIMIT
 		 * @param values One value per condition, each varying one widened to cover every interview's values
 		 * @param omitted The indexes of the conditions the split applies
 		 * @param accessLevel The access level to query in
@@ -1124,12 +939,9 @@ public inherited sharing class InvocableSoql {
 		private Soql toMergedSoql(List<Object> values, Set<Integer> omitted, System.AccessLevel accessLevel) {
 			InvocableSoql.Filter whereClause = new InvocableSoql.Filter(this, values, false);
 			whereClause.omitted = omitted;
-			Map<String, Object> binds = this.initBinds(values);
-			for (Integer index : omitted) {
-				binds?.remove(InvocableSoql.BIND_PREFIX + index);
-			}
+			Map<String, Object> binds = this.initBinds(values, omitted);
 			Soql builder = this.initSoql(whereClause, accessLevel);
-			return (Soql) builder?.setRowLimit(null)?.setRowOffset(null)?.addBind(binds);
+			return (Soql) builder?.setRowOffset(null)?.addBind(binds);
 		}
 
 		/**
@@ -1182,12 +994,21 @@ public inherited sharing class InvocableSoql {
 			Set<String> cached = this.selectClausesByAccessLevel?.get(accessLevel);
 			if (cached == null) {
 				this.addFields(builder);
-				Set<String> clauses = builder?.selectClauses?.clone();
+				Set<String> clauses = builder?.selectClauses;
 				this.selectClausesByAccessLevel?.put(accessLevel, clauses);
 			} else {
-				for (String clause : cached) {
-					builder?.addSelect(clause);
-				}
+				this.addClauses(builder, cached);
+			}
+		}
+
+		/**
+		 * @description Adds SELECT clauses as text
+		 * @param builder The query being built
+		 * @param clauses The clauses, already expanded
+		 */
+		private void addClauses(Soql builder, Set<String> clauses) {
+			for (String clause : clauses) {
+				builder?.addSelect(clause);
 			}
 		}
 
@@ -1235,49 +1056,6 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description Coerces each value in a collection, since a list can't be converted to another element type.
-		 * Values a typed list takes as they are skip `coerceValue`, which costs about 100 times as much per value
-		 * @param values The values
-		 * @param valueType The field's Apex type
-		 * @return A list of the field's type
-		 */
-		private List<Object> coerceList(Iterable<Object> values, Type valueType) {
-			List<Object> coerced = InvocableSoql.initList(valueType);
-			Boolean isNative = InvocableSoql.isNativeList(values, valueType);
-			for (Object value : values) {
-				Object element = isNative ? value : this.coerceValue(value, valueType);
-				coerced?.add(element);
-			}
-			return coerced;
-		}
-
-		/**
-		 * @description JSON converts flow values and the editor's text alike; Id.valueOf also lengthens 15-character
-		 * IDs, so they match the 18-character IDs that queries return. A blank stays null, since JSON can't read null
-		 * as a date, date/time, or time
-		 * @param value A single value
-		 * @param valueType The field's Apex type
-		 * @return The value as the field's type
-		 */
-		private Object coerceValue(Object value, Type valueType) {
-			Object coerced;
-			if (value != null) {
-				InvocableSoql.checkWholeNumber(value, valueType);
-				Boolean isId = valueType == Id.class;
-				// JSON reads a zoneless time, ex: "10:30", in the user's time zone; Time fields hold the time as typed
-				Boolean isLocalTime =
-					value instanceof String &&
-					valueType == Time.class &&
-					((String) value).endsWith('Z') == false;
-				Object zoned = isLocalTime ? value + 'Z' : value;
-				String text = String.valueOf(value);
-				String serialized = isId ? null : JSON.serialize(zoned);
-				coerced = isId ? Id.valueOf(text) : JSON.deserialize(serialized, valueType);
-			}
-			return coerced;
-		}
-
-		/**
 		 * @description Describes the object and each condition's field once, checking every name and operator
 		 * @return This query
 		 * @throws System.IllegalArgumentException When the definition names an unknown field or operator
@@ -1297,12 +1075,8 @@ public inherited sharing class InvocableSoql {
 			}
 			this.describeOtherFields();
 			this.validatePaging();
-			// Renders the WHERE clause once, so bad condition logic fails before any query runs
-			List<Object> blankValues = new List<Object>(this.conditions?.size());
-			InvocableSoql.Filter blankFilter = new InvocableSoql.Filter(this, blankValues, true);
-			blankFilter?.toString();
-			String logic = blankFilter?.getLogic();
-			this.logicTree = new InvocableSoql.LogicParser(logic)?.parse();
+			this.logic = this.initLogic();
+			this.logicTree = new InvocableSoql.LogicParser(this.logic)?.parse();
 			return this;
 		}
 
@@ -1408,7 +1182,8 @@ public inherited sharing class InvocableSoql {
 
 		/**
 		 * @description Contains, Starts With, and Ends With match their text literally, so `%` and `_` in it are
-		 * escaped before the wildcards are added
+		 * escaped before the wildcards are added. Empty text binds null, like an unset resource, so it matches blank
+		 * fields, where `%%` would match every value
 		 * @param index The condition's index
 		 * @param value The coerced value
 		 * @return The LIKE pattern, or the value for other operators
@@ -1421,7 +1196,7 @@ public inherited sharing class InvocableSoql {
 			String text = isPattern
 				? ((String) value).replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
 				: null;
-			String pattern = (isLeading ? '%' : '') + text + (isTrailing ? '%' : '');
+			String pattern = String.isEmpty(text) ? null : (isLeading ? '%' : '') + text + (isTrailing ? '%' : '');
 			return isPattern ? pattern : value;
 		}
 
@@ -1460,6 +1235,29 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
+		 * @description AND and OR join every condition; anything else is custom logic
+		 * @return The logic, by condition number, ex: "1 AND 2"
+		 * @throws System.IllegalArgumentException When custom logic holds anything but numbers, AND, OR, NOT, and
+		 * parentheses, isn't well formed, or names a missing condition
+		 */
+		private InvocableSoql.ConditionLogic initLogic() {
+			String logic = this.getLogicName();
+			List<String> numbers = new List<String>{};
+			for (Integer index = 1; index <= this.conditions?.size(); index++) {
+				String conditionNumber = String.valueOf(index);
+				numbers?.add(conditionNumber);
+			}
+			Boolean isPreset = logic == 'AND' || logic == 'OR';
+			String expanded = isPreset ? String.join(numbers, ' ' + logic + ' ') : logic;
+			InvocableSoql.ConditionLogic conditionLogic = new InvocableSoql.ConditionLogic(expanded);
+			Integer conditionCount = this.conditions?.size();
+			if (isPreset == false && conditionLogic?.isValid(conditionCount) == false) {
+				throw new IllegalArgumentException('Invalid condition logic: ' + this.conditionLogic);
+			}
+			return conditionLogic;
+		}
+
+		/**
 		 * @description The condition logic, upper-cased; blank means AND
 		 * @return AND, OR, or custom logic
 		 */
@@ -1481,12 +1279,14 @@ public inherited sharing class InvocableSoql {
 		/**
 		 * @description Binds each condition's value by its index, ex: `:bind0`
 		 * @param values One value per condition
+		 * @param omitted The indexes of conditions a merged query leaves out, which bind nothing
 		 * @return The binds
 		 */
-		private Map<String, Object> initBinds(List<Object> values) {
+		private Map<String, Object> initBinds(List<Object> values, Set<Integer> omitted) {
 			Map<String, Object> binds = new Map<String, Object>{};
 			for (Integer index = 0; index < this.conditions?.size(); index++) {
-				if (this.conditions?.get(index)?.isBound() == true) {
+				Boolean isBound = this.conditions?.get(index)?.isBound() == true;
+				if (isBound && omitted?.contains(index) != true) {
 					Object value = values?.get(index);
 					binds?.put(InvocableSoql.BIND_PREFIX + index, value);
 				}
@@ -1524,7 +1324,8 @@ public inherited sharing class InvocableSoql {
 			Object value = hasSlot ? input?.getSlotValue(condition?.slot) : condition?.getStaticValue();
 			Object boundValue = isBound ? this.prepareValue(index, value) : null;
 			// Anything but false checks for null, including no value
-			return isNullCheck ? this.coerceValue(value, Boolean.class) != false : boundValue;
+			InvocableSoql.ValueCoercer booleanCoercer = new InvocableSoql.ValueCoercer(Boolean.class);
+			return isNullCheck ? booleanCoercer?.coerce(value) != false : boundValue;
 		}
 	}
 
@@ -1534,7 +1335,7 @@ public inherited sharing class InvocableSoql {
 		public String dateLiteral;
 		/** @description The field API name, including parent fields, ex: "Account.Name" **/
 		public String field;
-		/** @description A key of `TOKENS`, ex: EQUALS **/
+		/** @description A key of `OPERATORS`, ex: EQUALS **/
 		public String operator;
 		/** @description The slot holding the value, ex: "text1", when it comes from a flow resource **/
 		public String slot;
@@ -1552,6 +1353,14 @@ public inherited sharing class InvocableSoql {
 				InvocableSoql.LITERAL_OPERATORS?.contains(this.operator) == true ||
 				this.operator == InvocableSoql.NULL_CHECK;
 			return isLiteral == false && String.isBlank(this.dateLiteral);
+		}
+
+		/**
+		 * @description Contains, Starts With, Ends With, and Like bind a LIKE pattern; the rest bind values
+		 * @return Whether the condition's value is a LIKE pattern
+		 */
+		private Boolean isPattern() {
+			return InvocableSoql.OPERATORS?.get(this.operator)?.toString() == 'LIKE';
 		}
 
 		/**
@@ -1577,13 +1386,13 @@ public inherited sharing class InvocableSoql {
 			} else if (String.isNotBlank(this.dateLiteral)) {
 				operand = this.dateLiteral;
 			} else if (InvocableSoql.LITERAL_OPERATORS?.contains(this.operator) == true) {
-				operand = InvocableSoql.formatLiteral(this.values);
+				operand = new InvocableSoql.Literal(this.values)?.toString();
 			} else if (isLiteral == false) {
 				operand = ':' + InvocableSoql.BIND_PREFIX + index;
-			} else if (InvocableSoql.TOKENS?.get(this.operator) == 'LIKE') {
-				operand = InvocableSoql.formatPattern(value);
+			} else if (this.isPattern()) {
+				operand = new InvocableSoql.Literal(value)?.toPattern();
 			} else {
-				operand = InvocableSoql.formatLiteral(value);
+				operand = new InvocableSoql.Literal(value)?.toString();
 			}
 			return operand;
 		}
@@ -1598,7 +1407,7 @@ public inherited sharing class InvocableSoql {
 		private String render(Integer index, Object value, Boolean isLiteral) {
 			Boolean isNotNull = this.operator == InvocableSoql.NULL_CHECK && value == false;
 			String tokenKey = isNotNull ? 'NOT_EQUALS' : this.operator;
-			String token = InvocableSoql.TOKENS?.get(tokenKey);
+			String token = InvocableSoql.OPERATORS?.get(tokenKey)?.toString();
 			String operand = this.renderOperand(index, value, isLiteral);
 			return this.field + ' ' + token + ' ' + operand;
 		}
@@ -1608,7 +1417,7 @@ public inherited sharing class InvocableSoql {
 		 * @throws System.IllegalArgumentException When the operator is unknown, or the date literal is malformed
 		 */
 		private void validate() {
-			if (InvocableSoql.TOKENS?.containsKey(this.operator) == false) {
+			if (InvocableSoql.OPERATORS?.containsKey(this.operator) == false) {
 				throw new IllegalArgumentException('Invalid operator: ' + this.operator);
 			}
 			if (this.dateLiteral != null && DatabaseLayer.Utils.isDateLiteral(this.dateLiteral) == false) {
@@ -1637,6 +1446,194 @@ public inherited sharing class InvocableSoql {
 				? null
 				: Soql.NullOrder.valueOf(this.nullOrder);
 			return (nullOrderType == null) ? order : order?.setNullOrder(nullOrderType);
+		}
+	}
+
+	/** @description A value as SOQL text, for the query string Flow's debug panel shows; queries bind values **/
+	private class Literal {
+		private Object value;
+
+		/**
+		 * @description Holds the value
+		 * @param value A value, or a collection of values
+		 */
+		private Literal(Object value) {
+			this.value = value;
+		}
+
+		/**
+		 * @description Renders the value as a SOQL literal. Dates format directly, not via a DateTime, which would
+		 * shift them a day in time zones ahead of GMT
+		 * @return The literal
+		 */
+		public override String toString() {
+			String literal;
+			if (this.value == null) {
+				literal = 'null';
+			} else if (this.value instanceof Iterable<Object>) {
+				literal = this.formatList((Iterable<Object>) this.value);
+			} else if (this.value instanceof Date) {
+				// Checked before DateTime, since a Date is also an instanceof DateTime
+				literal = String.valueOf((Date) this.value);
+			} else if (this.value instanceof DateTime) {
+				literal = ((DateTime) this.value)?.formatGmt('yyyy-MM-dd\'T\'HH:mm:ss\'Z\'');
+			} else if (this.value instanceof String) {
+				literal = '\'' + String.escapeSingleQuotes((String) this.value) + '\'';
+			} else {
+				literal = String.valueOf(this.value);
+			}
+			return literal;
+		}
+
+		/**
+		 * @description Renders a LIKE pattern, escaping only quotes, since its backslashes are LIKE escapes, ex: `\%`
+		 * @return The literal
+		 */
+		private String toPattern() {
+			String pattern = String.valueOf(this.value)?.replace('\'', '\\\'');
+			return (this.value == null) ? 'null' : '\'' + pattern + '\'';
+		}
+
+		/**
+		 * @description Renders a collection as a SOQL list, ex: `('a', 'b')`
+		 * @param values The values
+		 * @return The list
+		 */
+		private String formatList(Iterable<Object> values) {
+			List<String> literals = new List<String>{};
+			for (Object value : values) {
+				String literal = new InvocableSoql.Literal(value)?.toString();
+				literals?.add(literal);
+			}
+			return '(' + String.join(literals, ', ') + ')';
+		}
+	}
+
+	/** @description Converts flow values and the editor's text to a field's type, since SOQL binds are typed **/
+	private class ValueCoercer {
+		private Type valueType;
+
+		/**
+		 * @description Holds the type to convert to
+		 * @param valueType The field's Apex type
+		 */
+		private ValueCoercer(Type valueType) {
+			this.valueType = valueType;
+		}
+
+		/**
+		 * @description Converts a value, or each value in a collection
+		 * @param value A value, or a collection of values
+		 * @return The value as the field's type; a collection becomes a list of that type
+		 */
+		private Object coerce(Object value) {
+			return (value instanceof Iterable<Object>)
+				? this.coerceList((Iterable<Object>) value)
+				: this.coerceValue(value);
+		}
+
+		/**
+		 * @description Coerces each value in a collection, since a list can't be converted to another element type.
+		 * Values a typed list takes as they are skip `coerceValue`, which costs about 100 times as much per value
+		 * @param values The values
+		 * @return A list of the field's type
+		 */
+		private List<Object> coerceList(Iterable<Object> values) {
+			List<Object> coerced = this.initList();
+			Boolean isNative = this.isNativeList(values);
+			for (Object value : values) {
+				Object element = isNative ? value : this.coerceValue(value);
+				coerced?.add(element);
+			}
+			return coerced;
+		}
+
+		/**
+		 * @description JSON converts flow values and the editor's text alike; Id.valueOf also lengthens 15-character
+		 * IDs, so they match the 18-character IDs that queries return. A blank stays null, since JSON can't read null
+		 * as a date, date/time, or time
+		 * @param value A single value
+		 * @return The value as the field's type
+		 */
+		private Object coerceValue(Object value) {
+			Object coerced;
+			if (value != null) {
+				this.checkWholeNumber(value);
+				Boolean isId = this.valueType == Id.class;
+				// JSON reads a zoneless time, ex: "10:30", in the user's time zone; Time fields hold the time as typed
+				Boolean isLocalTime =
+					value instanceof String &&
+					this.valueType == Time.class &&
+					((String) value).endsWith('Z') == false;
+				Object zoned = isLocalTime ? value + 'Z' : value;
+				String text = String.valueOf(value);
+				String serialized = isId ? null : JSON.serialize(zoned);
+				coerced = isId ? this.coerceId(text) : JSON.deserialize(serialized, this.valueType);
+			}
+			return coerced;
+		}
+
+		/**
+		 * @description Reads an ID; a blank one, ex: Flow's Blank Value, is null, since an empty string isn't an ID
+		 * @param text The ID, 15 or 18 characters, or blank
+		 * @return The 18-character ID, or null when blank
+		 */
+		private Id coerceId(String text) {
+			return String.isBlank(text) ? null : Id.valueOf(text);
+		}
+
+		/**
+		 * @description JSON would truncate a fraction for a whole-number field, ex: `< 42.5` would run as `< 42`, so it
+		 * fails instead
+		 * @param value A value for a condition
+		 * @throws System.IllegalArgumentException When a whole-number field gets a value with a fraction
+		 */
+		private void checkWholeNumber(Object value) {
+			Boolean isWholeType = this.valueType == Integer.class || this.valueType == Long.class;
+			String text = String.valueOf(value);
+			Decimal amount = (isWholeType && value != null) ? Decimal.valueOf(text) : null;
+			if (amount != null && amount != amount.round(System.RoundingMode.DOWN)) {
+				throw new IllegalArgumentException('Whole-number fields take no fractions: ' + value);
+			}
+		}
+
+		/**
+		 * @description Builds an empty list of a field's type, since SOQL can't bind a `List<Object>`
+		 * @return The list
+		 */
+		private List<Object> initList() {
+			String listTypeName = 'List<' + this.valueType?.getName() + '>';
+			return (List<Object>) Type.forName(listTypeName)?.newInstance();
+		}
+
+		/**
+		 * @description Whether a typed list takes the values as they are, the same as `coerceValue` would convert
+		 * them: text, numbers, dates, and date/times already of their field's type need no conversion. IDs always
+		 * convert, since a blank one is null
+		 * @param values A collection of values
+		 * @return True if the values can be added to the field's list as they are
+		 */
+		private Boolean isNativeList(Iterable<Object> values) {
+			Boolean isText = this.valueType == String.class && values instanceof List<String>;
+			Boolean isNumber = this.valueType == Decimal.class && values instanceof List<Decimal>;
+			Boolean isDate = this.valueType == Date.class && values instanceof List<Date>;
+			// A List<Date> is also an instance of List<DateTime>, so it's ruled out
+			Boolean isDateTime =
+				this.valueType == DateTime.class &&
+				values instanceof List<DateTime> &&
+				(values instanceof List<Date>) == false;
+			return isText || isNumber || isDate || isDateTime;
+		}
+	}
+
+	/** @description Operators `Soql` doesn't define: LIKE with a pattern as is, INCLUDES, and EXCLUDES **/
+	private class Operator extends Soql.Operator {
+		/**
+		 * @description Builds the operator
+		 * @param token The SOQL operator token, ex: INCLUDES
+		 */
+		private Operator(String token) {
+			super(token);
 		}
 	}
 
@@ -1675,21 +1672,19 @@ public inherited sharing class InvocableSoql {
 			Integer depth = 0;
 			// The depth of each NOT still waiting for its operand to end
 			List<Integer> openNots = new List<Integer>{};
-			String logic = this.getLogic();
-			Matcher tokens = InvocableSoql.TOKEN_PATTERN.matcher(logic);
-			while (tokens?.find() == true) {
-				String token = tokens?.group()?.toUpperCase();
+			InvocableSoql.ConditionLogic logic = this.query?.logic;
+			for (String token : logic?.tokens) {
 				depth += (token == '(') ? 1 : 0;
 				depth -= (token == ')') ? 1 : 0;
 				String rendered = this.renderToken(token);
-				output = InvocableSoql.appendToken(output, rendered);
+				output = this.appendToken(output, rendered);
 				Boolean isOperandEnd = token == ')' || token?.isNumeric() == true;
 				output = isOperandEnd ? this.closeNots(output, openNots, depth) : output;
 				if (token == 'NOT') {
 					openNots?.add(depth);
 				}
 			}
-			Boolean isGrouped = InvocableSoql.hasTopLevelOr(logic);
+			Boolean isGrouped = logic?.hasTopLevelOr();
 			return isGrouped ? '(' + output + ')' : output;
 		}
 
@@ -1705,7 +1700,7 @@ public inherited sharing class InvocableSoql {
 			Integer lastIndex = openNots?.size() - 1;
 			while (lastIndex >= 0 && openNots?.get(lastIndex) == depth) {
 				openNots?.remove(lastIndex);
-				closed = InvocableSoql.appendToken(closed, ')');
+				closed = this.appendToken(closed, ')');
 				lastIndex--;
 			}
 			return closed;
@@ -1722,42 +1717,27 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description AND and OR join every condition; anything else is custom logic
-		 * @return The logic, by condition number, ex: "1 AND 2"
-		 * @throws System.IllegalArgumentException When custom logic holds anything but numbers, AND, OR, NOT, and
-		 * parentheses, or isn't well formed
-		 */
-		private String getLogic() {
-			String logic = this.query?.getLogicName();
-			List<String> numbers = new List<String>{};
-			for (Integer index = 1; index <= this.query?.conditions?.size(); index++) {
-				String conditionNumber = String.valueOf(index);
-				numbers?.add(conditionNumber);
-			}
-			Boolean isPreset = logic == 'AND' || logic == 'OR';
-			Boolean isValidCustom =
-				InvocableSoql.CUSTOM_LOGIC_PATTERN.matcher(logic).matches() && InvocableSoql.isWellFormed(logic);
-			if (isPreset == false && isValidCustom == false) {
-				throw new IllegalArgumentException('Invalid condition logic: ' + this.query?.conditionLogic);
-			}
-			return isPreset ? String.join(numbers, ' ' + logic + ' ') : logic;
-		}
-
-		/**
 		 * @description Renders a condition by its number in the logic. A left-out condition renders as one every row
 		 * passes, which keeps the logic around it, ex: under OR
 		 * @param conditionNumber The condition's number, starting at 1
 		 * @return The condition, as SOQL
-		 * @throws System.IllegalArgumentException When no condition has that number
 		 */
 		private String renderCondition(String conditionNumber) {
 			Integer index = Integer.valueOf(conditionNumber) - 1;
-			if (index < 0 || index >= this.query?.conditions?.size()) {
-				throw new IllegalArgumentException('Invalid condition logic: ' + this.query?.conditionLogic);
-			}
 			Boolean isOmitted = this.omitted?.contains(index) == true;
 			Object value = this.values?.get(index);
 			return isOmitted ? 'Id != null' : this.query?.conditions?.get(index)?.render(index, value, this.isLiteral);
+		}
+
+		/**
+		 * @description Joins tokens with spaces, except inside parentheses, ex: `(A OR B)`
+		 * @param output The criteria so far
+		 * @param token The next token
+		 * @return The criteria, with the token
+		 */
+		private String appendToken(String output, String token) {
+			Boolean isTight = output == '' || output?.endsWith('(') == true || token == ')';
+			return output + (isTight ? '' : ' ') + token;
 		}
 	}
 
@@ -1894,14 +1874,17 @@ public inherited sharing class InvocableSoql {
 
 		/**
 		 * @description Runs SYSTEM_MODE queries without sharing, like Get Records in a flow that runs in system
-		 * context. `Soql` inherits sharing from its caller, and Flow calls the action with none, so it would run with
-		 * sharing. USER_MODE enforces sharing itself
+		 * context, only when the org opts in: anyone with access to this class can call the action through the REST
+		 * API, and choose what it reads. Otherwise `Soql` inherits sharing from its caller, and Flow calls the action
+		 * with none, so it runs with sharing. USER_MODE enforces sharing itself
 		 * @param builder The query
 		 * @return The rows
 		 */
 		private List<SObject> runQuery(Soql builder) {
+			String parameter = DatabaseLayer.Utils?.getParameter(InvocableSoql.WITHOUT_SHARING_PARAMETER);
 			Boolean isSystemMode = this.accessLevel == System.AccessLevel.SYSTEM_MODE;
-			return isSystemMode ? new InvocableSoql.SystemModeRunner().run(builder) : builder?.query();
+			Boolean isWithoutSharing = isSystemMode && parameter == 'true';
+			return isWithoutSharing ? new InvocableSoql.SystemModeRunner().run(builder) : builder?.query();
 		}
 	}
 
@@ -1920,16 +1903,15 @@ public inherited sharing class InvocableSoql {
 		/**
 		 * @description Parses the pattern
 		 * @param pattern The pattern, as bound
-		 * @param isCaseSensitive Whether the field compares text case-sensitively
 		 */
 		@TestVisible
-		private LikePattern(String pattern, Boolean isCaseSensitive) {
-			this.parse(pattern, isCaseSensitive);
+		private LikePattern(String pattern) {
+			this.parse(pattern);
 		}
 
 		/**
 		 * @description Matches like SOQL would: a blank pattern, as `LIKE null` or `LIKE ''`, matches blank values
-		 * @param candidate A field value's key, from `InvocableSoql.toKey`
+		 * @param candidate A field value's key, from a case-insensitive `ValueComparer.toKey`
 		 * @return Whether the value matches
 		 */
 		@TestVisible
@@ -1948,11 +1930,11 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description Reads the pattern's wildcards and literal text
+		 * @description Reads the pattern's wildcards and literal text, as a key that ignores case, since SOQL's LIKE
+		 * does, even on case-sensitive fields
 		 * @param pattern The pattern, as bound
-		 * @param isCaseSensitive Whether the field compares text case-sensitively
 		 */
-		private void parse(String pattern, Boolean isCaseSensitive) {
+		private void parse(String pattern) {
 			this.isLeading = pattern?.startsWith('%') == true;
 			String rest = this.isLeading ? pattern?.substring(1) : pattern;
 			// Escaped backslashes go first, so `\\%` ends in a wildcard, and `\%` in a literal %
@@ -1964,7 +1946,7 @@ public inherited sharing class InvocableSoql {
 			String unescaped = body?.replace('\\\\', '')?.replace('\\%', '')?.replace('\\_', '');
 			this.isSimple = unescaped?.containsAny('%_\\') == false;
 			String text = this.unescape(body);
-			this.key = InvocableSoql.toKey(text, isCaseSensitive) ?? '';
+			this.key = new InvocableSoql.ValueComparer(false)?.toKey(text) ?? '';
 		}
 
 		/**
@@ -2022,7 +2004,7 @@ public inherited sharing class InvocableSoql {
 		/**
 		 * @description Lists the patterns a value matches. A prefix or suffix longer than the value is the whole
 		 * value, which can't equal a key of that length, so it needs no length check
-		 * @param key A field value's key, from `InvocableSoql.toKey`
+		 * @param key A field value's key, from `InvocableSoql.ValueComparer.toKey`
 		 * @return The matching patterns' positions; only blank patterns for a null key, as SOQL matches `LIKE null`
 		 */
 		@TestVisible
@@ -2608,6 +2590,85 @@ public inherited sharing class InvocableSoql {
 		}
 	}
 
+	/** @description Condition logic by number, ex: "1 AND (2 OR NOT 3)", split into its tokens once **/
+	private class ConditionLogic {
+		private String text;
+		/** @description Numbers, AND, OR, NOT, and parentheses, upper-cased, in order **/
+		private List<String> tokens = new List<String>{};
+
+		/**
+		 * @description Splits the logic into tokens
+		 * @param text The logic, ex: "1 AND 2"
+		 */
+		private ConditionLogic(String text) {
+			this.text = text ?? '';
+			Matcher matcher = InvocableSoql.TOKEN_PATTERN.matcher(this.text);
+			while (matcher?.find() == true) {
+				String token = matcher?.group()?.toUpperCase();
+				this.tokens?.add(token);
+			}
+		}
+
+		/**
+		 * @description Custom logic holds only numbers, AND, OR, NOT, and parentheses, each where SOQL allows it
+		 * @param conditionCount The number of conditions
+		 * @return Whether the logic is valid custom logic
+		 */
+		private Boolean isValid(Integer conditionCount) {
+			Boolean isAllowed = InvocableSoql.CUSTOM_LOGIC_PATTERN.matcher(this.text).matches();
+			return isAllowed && this.isWellFormed() && this.namesConditions(conditionCount);
+		}
+
+		/**
+		 * @description Whether each number in the logic names a condition
+		 * @param conditionCount The number of conditions
+		 * @return True if every number is from 1 to the number of conditions
+		 */
+		private Boolean namesConditions(Integer conditionCount) {
+			Boolean isNamed = true;
+			for (String token : this.tokens) {
+				Integer conditionNumber = (token?.isNumeric() == true) ? Integer.valueOf(token) : 1;
+				isNamed = isNamed && conditionNumber >= 1 && conditionNumber <= conditionCount;
+			}
+			return isNamed;
+		}
+
+		/**
+		 * @description Whether logic joins anything with OR outside parentheses, ex: `1 OR 2` but not `1 AND (2 OR 3)`
+		 * @return True if any OR is outside parentheses
+		 */
+		private Boolean hasTopLevelOr() {
+			Integer depth = 0;
+			Boolean hasOr = false;
+			for (String token : this.tokens) {
+				depth += (token == '(') ? 1 : 0;
+				depth -= (token == ')') ? 1 : 0;
+				hasOr = hasOr || (token == 'OR' && depth == 0);
+			}
+			return hasOr;
+		}
+
+		/**
+		 * @description Checks custom logic's grammar: operands, ex: `1`, `NOT 1`, or `(1 OR 2)`, joined by AND or OR,
+		 * with balanced parentheses, since SOQL fails every query that isn't, on a syntax error that doesn't name the
+		 * logic
+		 * @return True if the logic is well formed
+		 */
+		private Boolean isWellFormed() {
+			Integer depth = 0;
+			Boolean isOperandNext = true;
+			Boolean isValid = true;
+			for (String token : this.tokens) {
+				Boolean isOperand = token == 'NOT' || token == '(' || token?.isNumeric() == true;
+				depth += (token == '(') ? 1 : 0;
+				depth -= (token == ')') ? 1 : 0;
+				isValid = isValid && isOperand == isOperandNext && depth >= 0;
+				isOperandNext = token == 'AND' || token == 'OR' || token == 'NOT' || token == '(';
+			}
+			return isValid && isOperandNext == false && depth == 0;
+		}
+	}
+
 	/** @description A part of the condition logic: a condition, or an AND, OR, or NOT of other parts **/
 	private class LogicNode {
 		private List<InvocableSoql.LogicNode> children = new List<InvocableSoql.LogicNode>{};
@@ -2644,14 +2705,11 @@ public inherited sharing class InvocableSoql {
 		private List<String> tokens = new List<String>{};
 
 		/**
-		 * @description Splits the logic into tokens
+		 * @description Reads the logic's tokens
 		 * @param logic Well-formed logic, by condition number, ex: "1 AND (2 OR NOT 3)"
 		 */
-		private LogicParser(String logic) {
-			Matcher matcher = InvocableSoql.TOKEN_PATTERN.matcher(logic ?? '');
-			while (matcher?.find() == true) {
-				this.tokens?.add(matcher?.group()?.toUpperCase());
-			}
+		private LogicParser(InvocableSoql.ConditionLogic logic) {
+			this.tokens = logic?.tokens ?? this.tokens;
 		}
 
 		/**
@@ -2722,13 +2780,66 @@ public inherited sharing class InvocableSoql {
 		}
 	}
 
+	/** @description Reduces values to what Apex compares them by, the way SOQL compares them **/
+	@TestVisible
+	private class ValueComparer {
+		private Boolean isCaseSensitive;
+
+		/**
+		 * @description Holds how text compares
+		 * @param isCaseSensitive Whether the field compares text by case
+		 */
+		@TestVisible
+		private ValueComparer(Boolean isCaseSensitive) {
+			this.isCaseSensitive = isCaseSensitive;
+		}
+
+		/**
+		 * @description Normalizes a value so equal values match: decimals ignore scale, ex: 100 and 100.00, and text
+		 * ignores case unless its field is case-sensitive, like SOQL. IDs are already 18 characters, via
+		 * `InvocableSoql.Query.coerce`, so their case-insensitive form is still unique
+		 * @param value A field value, or a value the field was compared to
+		 * @return The value's key, or null for a null value
+		 */
+		@TestVisible
+		private String toKey(Object value) {
+			String text = (value instanceof Decimal)
+				? ((Decimal) value)?.stripTrailingZeros()?.toPlainString()
+				: String.valueOf(value);
+			return (this.isCaseSensitive == true) ? text : text?.toLowerCase();
+		}
+
+		/**
+		 * @description Converts a value to a number that orders like it, so ranges compare numbers, dates, date/times,
+		 * and times alike
+		 * @param value A number, date, date/time, or time
+		 * @return The value's order, or null for a null value
+		 */
+		private Decimal toOrdinal(Object value) {
+			Decimal ordinal;
+			if (value instanceof Time) {
+				ordinal = DateTime.newInstanceGmt(InvocableSoql.EPOCH, (Time) value)?.getTime();
+			} else if (value instanceof Date) {
+				// Checked before DateTime, since a Date is also an instanceof DateTime
+				ordinal = InvocableSoql.EPOCH.daysBetween((Date) value);
+			} else if (value instanceof DateTime) {
+				// SOQL drops a bound's milliseconds, and stores none, so date/times compare whole seconds
+				Decimal milliseconds = ((DateTime) value)?.getTime();
+				ordinal = (milliseconds / 1000)?.round(System.RoundingMode.FLOOR);
+			} else {
+				ordinal = (Decimal) value;
+			}
+			return ordinal;
+		}
+	}
+
 	/**
 	 * @description Checks one condition on a merged query's rows, for each variant. It holds no reference back to the
 	 * splitter, whose variants collect every row, so what it reaches doesn't grow as the split runs
 	 */
 	private abstract class ConditionMatcher {
+		protected InvocableSoql.ValueComparer comparer;
 		protected Integer index;
-		protected Boolean isCaseSensitive;
 		/** @description Whether the merged query leaves the condition out when its values vary **/
 		protected Boolean isDropped = false;
 		/** @description Whether a lookup finds few variants, so an AND can check the rest for just those **/
@@ -2749,7 +2860,8 @@ public inherited sharing class InvocableSoql {
 		 */
 		protected ConditionMatcher(InvocableSoql.Query query, Integer index, List<Object> values) {
 			this.index = index;
-			this.isCaseSensitive = query?.isCaseSensitive(index);
+			Boolean isCaseSensitive = query?.isCaseSensitive(index);
+			this.comparer = new InvocableSoql.ValueComparer(isCaseSensitive);
 			this.query = query;
 			this.values = values;
 			for (Integer position = 0; position < values?.size(); position++) {
@@ -2764,9 +2876,9 @@ public inherited sharing class InvocableSoql {
 		 */
 		public virtual Object getMergedValue() {
 			Type valueType = this.query?.getValueType(this.index);
-			List<Object> merged = InvocableSoql.initList(valueType);
+			List<Object> merged = new InvocableSoql.ValueCoercer(valueType)?.initList();
 			for (Object value : this.values) {
-				List<Object> elements = InvocableSoql.toList(value);
+				List<Object> elements = this.toList(value);
 				merged?.addAll(elements);
 			}
 			return merged;
@@ -2809,6 +2921,17 @@ public inherited sharing class InvocableSoql {
 		 * @return True or false, or null when unknown, ex: a range on a blank field
 		 */
 		public abstract Boolean test(Integer position);
+
+		/**
+		 * @description Treats a single value as a one-item list, so EQUALS and IN values merge alike. In values are
+		 * lists, via `InvocableSoql.Query.coerce`, and come back as is, so callers only read the result
+		 * @param value A value, or a list of values
+		 * @return The values
+		 */
+		protected List<Object> toList(Object value) {
+			Boolean isList = value instanceof List<Object>;
+			return isList ? (List<Object>) value : new List<Object>{ value };
+		}
 	}
 
 	/** @description Checks Equals, In, Not Equals, and Not In by key, so a row's key looks up its variants **/
@@ -2845,7 +2968,7 @@ public inherited sharing class InvocableSoql {
 			Boolean isIdField = this.query?.conditions?.get(this.index)?.field == 'Id';
 			Integer most = 0;
 			for (Object value : this.values) {
-				Integer excluded = InvocableSoql.toList(value)?.size();
+				Integer excluded = this.toList(value)?.size();
 				most = Math.max(most, excluded);
 			}
 			return (this.isNegated && isIdField) ? most : null;
@@ -2886,7 +3009,7 @@ public inherited sharing class InvocableSoql {
 		 */
 		private void addVariant(Integer position) {
 			Object value = this.values?.get(position);
-			for (Object element : InvocableSoql.toList(value)) {
+			for (Object element : this.toList(value)) {
 				String key = this.toKey(element);
 				Set<Integer> positions = this.positionsByKey?.get(key) ?? new Set<Integer>{};
 				positions?.add(position);
@@ -2895,12 +3018,12 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description Keys a value per `InvocableSoql.toKey`, with '' as null, since SOQL matches '' to blank fields
+		 * @description Keys a value per `InvocableSoql.ValueComparer.toKey`, with '' as null, since SOQL matches '' to blank fields
 		 * @param value A value
 		 * @return Its key
 		 */
 		private String toKey(Object value) {
-			String key = InvocableSoql.toKey(value, this.isCaseSensitive);
+			String key = this.comparer?.toKey(value);
 			return String.isEmpty(key) ? null : key;
 		}
 	}
@@ -2975,7 +3098,7 @@ public inherited sharing class InvocableSoql {
 			this.isSelective = true;
 			for (Integer position = 0; position < values?.size(); position++) {
 				String value = (String) this.values?.get(position);
-				InvocableSoql.LikePattern pattern = new InvocableSoql.LikePattern(value, this.isCaseSensitive);
+				InvocableSoql.LikePattern pattern = new InvocableSoql.LikePattern(value);
 				this.patterns?.add(pattern);
 				this.patternIndex?.add(pattern, position);
 			}
@@ -2995,7 +3118,7 @@ public inherited sharing class InvocableSoql {
 		 */
 		public override void prepare(SObject row) {
 			super.prepare(row);
-			this.rowKey = InvocableSoql.toKey(this.rowValue, this.isCaseSensitive);
+			this.rowKey = this.comparer?.toKey(this.rowValue);
 		}
 
 		/**
@@ -3037,7 +3160,7 @@ public inherited sharing class InvocableSoql {
 			Integer direction = this.isUpward ? 1 : -1;
 			for (Integer position = 0; position < values?.size(); position++) {
 				Object value = this.values?.get(position);
-				Decimal ordinal = InvocableSoql.toOrdinal(value);
+				Decimal ordinal = this.comparer?.toOrdinal(value);
 				InvocableSoql.RangeBound bound = new InvocableSoql.RangeBound(ordinal, position, direction);
 				this.bounds?.add(bound);
 				if (ordinal == null) {
@@ -3099,7 +3222,7 @@ public inherited sharing class InvocableSoql {
 		 */
 		public override void prepare(SObject row) {
 			super.prepare(row);
-			this.rowOrdinal = InvocableSoql.toOrdinal(this.rowValue);
+			this.rowOrdinal = this.comparer?.toOrdinal(this.rowValue);
 		}
 
 		/**
@@ -3120,7 +3243,7 @@ public inherited sharing class InvocableSoql {
 
 		/**
 		 * @description Compares the row's value with a bound by the operator
-		 * @param bound A bound, per `InvocableSoql.toOrdinal`
+		 * @param bound A bound, per `InvocableSoql.ValueComparer.toOrdinal`
 		 * @return Whether the row's value passes
 		 */
 		private Boolean passes(Decimal bound) {
@@ -3137,7 +3260,7 @@ public inherited sharing class InvocableSoql {
 
 		/**
 		 * @description Holds a bound
-		 * @param ordinal The bound, per `InvocableSoql.toOrdinal`
+		 * @param ordinal The bound, per `InvocableSoql.ValueComparer.toOrdinal`
 		 * @param position Its variant's position
 		 * @param direction 1 to sort lowest first, or -1 for highest first
 		 */

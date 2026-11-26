@@ -419,23 +419,26 @@ private with sharing class InvocableSoqlTest {
 	}
 
 	@IsTest
-	private static void shouldIgnoreSharingInSystemMode() {
-		// Activities are private by default, so another user can't see this task unless sharing is ignored
-		DatabaseLayer.useRealSoql();
-		insert new Task(Subject = 'Hidden');
-		User viewer = InvocableSoqlTest.initStandardUser();
-		InvocableSoql.Query query = InvocableSoqlTest.initQuery('Task', null);
-		query.conditions.add(InvocableSoqlTest.initCondition('Subject', 'EQUALS', 'Hidden'));
-		InvocableSoql.Input systemMode = InvocableSoqlTest.initInput(query);
-		systemMode.accessLevel = 'SYSTEM_MODE';
-		InvocableSoql.Input userMode = InvocableSoqlTest.initInput(query);
-		List<InvocableSoql.Input> inputs = new List<InvocableSoql.Input>{ systemMode, userMode };
-		List<InvocableSoql.Output> outputs;
+	private static void shouldApplySharingInSystemModeByDefault() {
+		Test.startTest();
+		List<InvocableSoql.Output> outputs = InvocableSoqlTest.queryHiddenTask();
+		Test.stopTest();
+
+		Assert.areEqual(0, outputs?.get(0)?.records?.size(), 'SYSTEM_MODE ignored sharing without the parameter');
+		Assert.areEqual(0, outputs?.get(1)?.records?.size(), 'USER_MODE ignored sharing');
+	}
+
+	@IsTest
+	private static void shouldIgnoreSharingInSystemModeWhenConfigured() {
+		DatabaseLayerParameter__mdt parameter = new DatabaseLayerParameter__mdt(
+			DeveloperName = 'InvocableSoqlSystemModeWithoutSharing',
+			Value__c = 'true'
+		);
+		MockCmdt.mock(DatabaseLayerParameter__mdt.SObjectType)?.add(parameter);
+		DatabaseLayer.Utils.Plugins.init();
 
 		Test.startTest();
-		System.runAs(viewer) {
-			outputs = InvocableSoql.invoke(inputs);
-		}
+		List<InvocableSoql.Output> outputs = InvocableSoqlTest.queryHiddenTask();
 		Test.stopTest();
 
 		Assert.areEqual(1, outputs?.get(0)?.records?.size(), 'SYSTEM_MODE applied sharing');
@@ -489,6 +492,47 @@ private with sharing class InvocableSoqlTest {
 		for (Exception error : errors) {
 			Assert.isInstanceOfType(error, IllegalArgumentException.class, 'Wrong error: ' + error);
 		}
+	}
+
+	@IsTest
+	private static void shouldBindBlankIdsAsNull() {
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(new List<SObject>{});
+		InvocableSoql.Query query = InvocableSoqlTest.initQuery('Contact', null);
+		// Flow's Blank Value is an empty string, which isn't an ID:
+		query.conditions.add(InvocableSoqlTest.initCondition('AccountId', 'EQUALS', ''));
+		query.conditions.add(InvocableSoqlTest.initSlotCondition('AccountId', 'IN', 'textCollection1'));
+		InvocableSoql.Input input = InvocableSoqlTest.initInput(query);
+		input.textCollection1 = new List<String>{ '' };
+
+		Test.startTest();
+		InvocableSoqlTest.invoke(input);
+		Test.stopTest();
+
+		Map<String, Object> binds = spy.queries?.get(0)?.binds;
+		Assert.isNull(binds?.get('bind0'), 'A blank ID should bind as null');
+		Assert.areEqual(new List<Id>{ null }, binds?.get('bind1'), 'Blank IDs should bind as null');
+	}
+
+	@IsTest
+	private static void shouldBindDateCollections() {
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(new List<SObject>{});
+		InvocableSoql.Query query = InvocableSoqlTest.initQuery('Contact', null);
+		query.conditions.add(InvocableSoqlTest.initSlotCondition('Birthdate', 'IN', 'dateCollection1'));
+		query.conditions.add(InvocableSoqlTest.initSlotCondition('LastModifiedDate', 'IN', 'dateTimeCollection1'));
+		InvocableSoql.Input input = InvocableSoqlTest.initInput(query);
+		List<Date> dates = new List<Date>{ Date.newInstance(2000, 1, 15) };
+		input.dateCollection1 = dates;
+		List<DateTime> dateTimes = new List<DateTime>{ DateTime.newInstanceGmt(2000, 1, 1, 12, 30, 0) };
+		input.dateTimeCollection1 = dateTimes;
+
+		Test.startTest();
+		InvocableSoqlTest.invoke(input);
+		Test.stopTest();
+
+		Map<String, Object> binds = spy.queries?.get(0)?.binds;
+		Assert.areEqual(dates, binds?.get('bind0'), 'Wrong dates');
+		Assert.isInstanceOfType(binds?.get('bind1'), List<DateTime>.class, 'Wrong date/time list type');
+		Assert.areEqual(dateTimes, binds?.get('bind1'), 'Wrong date/times');
 	}
 
 	@IsTest
@@ -878,6 +922,25 @@ private with sharing class InvocableSoqlTest {
 		Assert.areEqual(1, spy.queries?.size(), 'Wrong # of queries');
 		Assert.areEqual(new List<String>{ 'Acme' }, InvocableSoqlTest.getNames(outputs[0]), 'Wrong 1st output');
 		Assert.areEqual(new List<String>{ 'Gamma' }, InvocableSoqlTest.getNames(outputs[1]), 'Wrong blank output');
+	}
+
+	@IsTest
+	private static void shouldBindEmptyTextPatternsAsNull() {
+		InvocableSoqlTest.QuerySpy spy = InvocableSoqlTest.mockRows(new List<SObject>{});
+		InvocableSoql.Query query = InvocableSoqlTest.initQuery('Account', null);
+		// Flow's Empty String is as blank as an unset resource, so it matches blank fields, not every value:
+		query.conditions.add(InvocableSoqlTest.initCondition('Site', 'CONTAINS', ''));
+		query.conditions.add(InvocableSoqlTest.initCondition('Site', 'STARTS_WITH', ''));
+		query.conditions.add(InvocableSoqlTest.initCondition('Site', 'ENDS_WITH', ''));
+
+		Test.startTest();
+		InvocableSoqlTest.invoke(InvocableSoqlTest.initInput(query));
+		Test.stopTest();
+
+		Map<String, Object> binds = spy.queries?.get(0)?.binds;
+		Assert.isNull(binds?.get('bind0'), 'Empty Contains should bind as null');
+		Assert.isNull(binds?.get('bind1'), 'Empty Starts With should bind as null');
+		Assert.isNull(binds?.get('bind2'), 'Empty Ends With should bind as null');
 	}
 
 	@IsTest
@@ -1893,17 +1956,16 @@ private with sharing class InvocableSoqlTest {
 	@IsTest
 	private static void shouldCompareCaseSensitiveFieldsExactly() {
 		Test.startTest();
-		String insensitive = InvocableSoql.toKey('ABC', false);
-		String sensitive = InvocableSoql.toKey('ABC', true);
-		String candidate = InvocableSoql.toKey('xABC', false);
-		Boolean isInsensitiveMatch = new InvocableSoql.LikePattern('%bc', false).matches(candidate);
-		Boolean isSensitiveMatch = new InvocableSoql.LikePattern('%bc', true).matches('xABC');
+		String insensitive = new InvocableSoql.ValueComparer(false).toKey('ABC');
+		String sensitive = new InvocableSoql.ValueComparer(true).toKey('ABC');
+		String candidate = new InvocableSoql.ValueComparer(false).toKey('xABC');
+		Boolean isPatternMatch = new InvocableSoql.LikePattern('%bc').matches(candidate);
 		Test.stopTest();
 
 		Assert.areEqual('abc', insensitive, 'Wrong case-insensitive key');
 		Assert.areEqual('ABC', sensitive, 'Wrong case-sensitive key');
-		Assert.isTrue(isInsensitiveMatch, 'Case-insensitive pattern did not match');
-		Assert.isFalse(isSensitiveMatch, 'Case-sensitive pattern matched the wrong case');
+		// SOQL's LIKE ignores case, even on case-sensitive fields:
+		Assert.isTrue(isPatternMatch, 'Pattern did not ignore case');
 	}
 
 	@IsTest
@@ -1932,8 +1994,8 @@ private with sharing class InvocableSoqlTest {
 	private static void shouldReadAnEscapedBackslashBeforeATrailingWildcard() {
 		Test.startTest();
 		// `Back\\%` is the text `Back\`, then a wildcard; `Back\%` is the text `Back%`:
-		InvocableSoql.LikePattern wildcard = new InvocableSoql.LikePattern('Back\\\\%', false);
-		InvocableSoql.LikePattern literal = new InvocableSoql.LikePattern('Back\\%', false);
+		InvocableSoql.LikePattern wildcard = new InvocableSoql.LikePattern('Back\\\\%');
+		InvocableSoql.LikePattern literal = new InvocableSoql.LikePattern('Back\\%');
 		Test.stopTest();
 
 		Assert.isTrue(wildcard.matches('back\\slash ltd'), 'Escaped backslash hid the trailing wildcard');
@@ -2165,26 +2227,9 @@ private with sharing class InvocableSoqlTest {
 	private static InvocableSoql.LikePatternIndex initPatternIndex(List<String> patterns) {
 		InvocableSoql.LikePatternIndex index = new InvocableSoql.LikePatternIndex();
 		for (Integer position = 0; position < patterns.size(); position++) {
-			index.add(new InvocableSoql.LikePattern(patterns[position], false), position);
+			index.add(new InvocableSoql.LikePattern(patterns[position]), position);
 		}
 		return index;
-	}
-
-	private static User initStandardUser() {
-		Profile standard = [SELECT Id FROM Profile WHERE Name = 'Standard User' LIMIT 1];
-		User viewer = new User(
-			Alias = 'viewer',
-			EmailEncodingKey = 'UTF-8',
-			Email = 'viewer@example.com.invalid',
-			LanguageLocaleKey = 'en_US',
-			LastName = 'Viewer',
-			LocaleSidKey = 'en_US',
-			ProfileId = standard?.Id,
-			TimeZoneSidKey = 'America/New_York',
-			Username = 'viewer' + DateTime.now()?.getTime() + '@example.com.invalid'
-		);
-		insert viewer;
-		return viewer;
 	}
 
 	private static InvocableSoql.Input initTextInput(InvocableSoql.Query query, String text1) {
@@ -2220,6 +2265,24 @@ private with sharing class InvocableSoqlTest {
 		InvocableSoql.Query query = InvocableSoqlTest.initQuery('Account', new List<String>{ 'Name' });
 		query.conditions.add(InvocableSoqlTest.initCondition('Name', operator, value));
 		return InvocableSoqlTest.invoke(InvocableSoqlTest.initInput(query));
+	}
+
+	private static List<InvocableSoql.Output> queryHiddenTask() {
+		// Activities are private by default, so another user can't see this task unless sharing is ignored
+		DatabaseLayer.useRealSoql();
+		insert new Task(Subject = 'Hidden');
+		User viewer = DatabaseLayerTestUtils.insertUser('Standard User');
+		InvocableSoql.Query query = InvocableSoqlTest.initQuery('Task', null);
+		query.conditions.add(InvocableSoqlTest.initCondition('Subject', 'EQUALS', 'Hidden'));
+		InvocableSoql.Input systemMode = InvocableSoqlTest.initInput(query);
+		systemMode.accessLevel = 'SYSTEM_MODE';
+		InvocableSoql.Input userMode = InvocableSoqlTest.initInput(query);
+		List<InvocableSoql.Input> inputs = new List<InvocableSoql.Input>{ systemMode, userMode };
+		List<InvocableSoql.Output> outputs;
+		System.runAs(viewer) {
+			outputs = InvocableSoql.invoke(inputs);
+		}
+		return outputs;
 	}
 
 	private static InvocableSoqlTest.QuerySpy mockRows(List<SObject> rows) {

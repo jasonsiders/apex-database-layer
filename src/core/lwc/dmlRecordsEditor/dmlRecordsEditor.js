@@ -5,7 +5,7 @@ import getMatchFields from "@salesforce/apex/InvocableDmlUpsertRecords.getMatchF
 import { REFERENCE, REQUIRED_ERROR, compareLabels, toBooleanConstant } from "c/flowResourceMenu";
 import FlowPropertyEditor, { ACCESS_LEVELS, NONE_OPTION } from "c/flowPropertyEditor";
 
-/** @description Unlike the query's SYSTEM_MODE, the DML actions' still applies sharing, until #208 */
+/** @description Unlike the query's SYSTEM_MODE, the DML actions' has no opt-out of sharing, until #208 */
 const ACCESS_LEVEL_HELP =
 	"USER_MODE (default) enforces the running user's object permissions, field-level security, and sharing rules. SYSTEM_MODE ignores object permissions and field-level security, but sharing rules still apply.";
 const FALSE = toBooleanConstant(false);
@@ -264,10 +264,8 @@ export default class DmlRecordsEditor extends FlowPropertyEditor {
 	 */
 	@api
 	validate() {
-		const errors = [this._validateRecords(), this._validateMatchField()].filter(Boolean);
-		const errorEntries = errors.map((error) => [error.key, error.errorString]);
-		this._errors = Object.fromEntries(errorEntries);
-		return errors;
+		const checks = [this._validateRecords(), this._validateMatchField()];
+		return this._setErrors(checks);
 	}
 
 	// **** WIRED **** //

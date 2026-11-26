@@ -9,6 +9,8 @@ global class DatabaseLayerTestUtils {
 	public static final PreAndPostProcessorSpy DmlPluginSpy = new PreAndPostProcessorSpy();
 	@SuppressWarnings('PMD.FieldNamingConventions')
 	public static final PreAndPostProcessorSpy SoqlPluginSpy = new PreAndPostProcessorSpy();
+	/** @description Users inserted so far, which keeps each username unique within a millisecond **/
+	private static Integer userCount = 0;
 
 	/**
 	 * @description Mocks DatabaseLayerParameter__mdt records for DML and SOQL plugins and re-initializes plugins.
@@ -25,6 +27,31 @@ global class DatabaseLayerTestUtils {
 		);
 		MockCmdt.mock(DatabaseLayerParameter__mdt.SObjectType)?.add(dmlParam)?.add(soqlParam);
 		DatabaseLayer.Utils.Plugins.init();
+	}
+
+	/**
+	 * @description Inserts a user with a profile, for `System.runAs` tests of what the profile can access
+	 * @param profileName The profile's name, ex: 'Standard User'
+	 * @return The user
+	 */
+	public static User insertUser(String profileName) {
+		// Inline SOQL and DML, since tests that mock DatabaseLayer still need a real user
+		Profile userProfile = [SELECT Id FROM Profile WHERE Name = :profileName LIMIT 1];
+		DatabaseLayerTestUtils.userCount++;
+		String username = 'user' + DatabaseLayerTestUtils.userCount + '.' + DateTime.now()?.getTime();
+		User testUser = new User(
+			Alias = 'testuser',
+			EmailEncodingKey = 'UTF-8',
+			Email = 'test@example.com.invalid',
+			LanguageLocaleKey = 'en_US',
+			LastName = profileName,
+			LocaleSidKey = 'en_US',
+			ProfileId = userProfile?.Id,
+			TimeZoneSidKey = 'America/New_York',
+			Username = username + '@example.com.invalid'
+		);
+		insert testUser;
+		return testUser;
 	}
 
 	// **** INNER **** //

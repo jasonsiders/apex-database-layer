@@ -377,6 +377,29 @@ private class SoqlTest {
 	}
 
 	@IsTest
+	private static void shouldOmitParentFieldsBehindAnInaccessibleLookup() {
+		// The user can read Account.Industry, but not Contact.AccountId, the only way USER_MODE reaches it
+		User restrictedUser = SoqlTest.buildUserWithoutAccountLookup();
+		Set<String> userModeFields;
+		Exception caught;
+
+		Test.startTest();
+		System.runAs(restrictedUser) {
+			Soql soql = DatabaseLayer.Soql.newQuery(Contact.SObjectType)?.selectAll(Contact.AccountId)?.toSoql();
+			userModeFields = soql?.selectClauses;
+			try {
+				soql?.query();
+			} catch (System.QueryException error) {
+				caught = error;
+			}
+		}
+		Test.stopTest();
+
+		Assert.areEqual(0, SoqlTest.countFieldsUnder(userModeFields, 'Account.'), 'Selected unreachable fields');
+		Assert.isNull(caught, 'USER_MODE query failed: ' + caught?.getMessage());
+	}
+
+	@IsTest
 	private static void shouldSelectAllParentFields() {
 		Integer numContactFields = SObjectType.Contact?.fields?.getMap()?.size();
 		Integer numAccountFields = SObjectType.Account?.fields?.getMap()?.size();
@@ -499,6 +522,113 @@ private class SoqlTest {
 		Test.stopTest();
 
 		Assert.areEqual(numAllFields, numFields, 'Wrong # of SELECT clauses');
+	}
+
+	@IsTest
+	private static void shouldSelectAllFieldsAtTheLatestAccessLevel() {
+		// Adding, removing, or reading fields doesn't fix selectAll() to the access level at that moment
+		Integer numAllFields = SObjectType.Account?.fields?.getMap()?.size();
+		User restrictedUser = SoqlTest.buildRestrictedUser();
+		Integer numSystemModeFields;
+		Integer numUserModeFields;
+
+		Test.startTest();
+		System.runAs(restrictedUser) {
+			Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)
+				?.selectAll()
+				?.addSelect(Account.Name)
+				?.deselect(Account.Description)
+				?.deselect(Account.Industry)
+				?.setAccessLevel(System.AccessLevel.SYSTEM_MODE)
+				?.toSoql();
+			numSystemModeFields = soql?.selectClauses?.size();
+			soql?.setAccessLevel(System.AccessLevel.USER_MODE);
+			numUserModeFields = soql?.selectClauses?.size();
+		}
+		Test.stopTest();
+
+		Assert.areEqual(numAllFields - 2, numSystemModeFields, 'SYSTEM_MODE should select all but the deselected');
+		Assert.isTrue(numUserModeFields < numSystemModeFields, 'USER_MODE should omit inaccessible fields');
+	}
+
+	@IsTest
+	private static void shouldSelectAllFieldsOfTheLatestRequestsAndObject() {
+		Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)
+			?.setAccessLevel(System.AccessLevel.SYSTEM_MODE)
+			?.selectAll()
+			?.toSoql();
+		Set<String> accountFields = soql?.selectClauses;
+
+		Test.startTest();
+		soql?.selectAll(Account.OwnerId);
+		Set<String> withOwnerFields = soql?.selectClauses;
+		soql?.setFrom(Contact.SObjectType);
+		Set<String> contactFields = soql?.selectClauses;
+		Test.stopTest();
+
+		Assert.isFalse(accountFields?.contains('Owner.Name'), 'Selected Owner fields before requesting them');
+		Assert.isTrue(withOwnerFields?.contains('Owner.Name'), 'Did not select Owner fields requested after a read');
+		Assert.isTrue(contactFields?.contains('LastName'), 'Did not select the fields of the new object');
+	}
+
+	@IsTest
+	private static void shouldRenderSelectAllAsItsClauses() {
+		Integer numAllFields = SObjectType.Account?.fields?.getMap()?.size();
+		Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)
+			?.setAccessLevel(System.AccessLevel.SYSTEM_MODE)
+			?.toSoql();
+		Soql.SelectAll selectAll = new Soql.SelectAll(soql);
+		selectAll?.addQueriedObject();
+
+		Test.startTest();
+		String rendered = selectAll?.toString();
+		Test.stopTest();
+
+		Integer numRendered = rendered?.split(', ')?.size();
+		Assert.areEqual(numAllFields, numRendered, 'Wrong # of rendered clauses');
+	}
+
+	@IsTest
+	private static void shouldSelectAllFieldsAgainAfterDeselect() {
+		Test.startTest();
+		Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)
+			?.selectAll()
+			?.deselect(Account.Name)
+			?.selectAll()
+			?.toSoql();
+		Test.stopTest();
+
+		Assert.isTrue(soql?.selectClauses?.contains('Name'), 'selectAll() after deselect should select Name');
+		Assert.isFalse(soql?.toString()?.contains('Name, Name'), 'Selected Name twice');
+	}
+
+	@IsTest
+	private static void shouldReselectOnlyTheFieldsALaterSelectAllAdds() {
+		Test.startTest();
+		Soql soql = DatabaseLayer.Soql.newQuery(Case.SObjectType)
+			?.setAccessLevel(System.AccessLevel.SYSTEM_MODE)
+			?.selectAll(Case.ContactId, Contact.AccountId)
+			?.deselect('Contact.Account.Name')
+			?.deselect('Contact.Name')
+			?.selectAll(Case.ContactId)
+			?.toSoql();
+		Test.stopTest();
+
+		Set<String> fields = soql?.selectClauses;
+		Integer numSelectables = ((Soql.Builder) soql)?.selectables?.size();
+		Assert.isTrue(fields?.contains('Contact.Name'), 'selectAll(Case.ContactId) should select Contact.Name again');
+		Assert.isFalse(fields?.contains('Contact.Account.Name'), 'Selected Contact.Account.Name again');
+		Assert.areEqual(2, numSelectables, 'Should keep Id and one set of selectAll requests');
+	}
+
+	@IsTest
+	private static void shouldReplaceSelectClausesWhenASubclassAssignsThem() {
+		Test.startTest();
+		Soql soql = new SoqlTest.AssigningSoql();
+		Test.stopTest();
+
+		Set<String> expected = new Set<String>{ 'Id', 'Name' };
+		Assert.areEqual(expected, soql?.selectClauses, 'Wrong SELECT clauses');
 	}
 
 	@IsTest
@@ -2042,19 +2172,26 @@ private class SoqlTest {
 
 	private static User buildRestrictedUser() {
 		// Chatter Free grants no access to Account, so every one of its fields is inaccessible
-		Profile chatterFree = [SELECT Id FROM Profile WHERE Name = 'Chatter Free User' LIMIT 1];
-		User restrictedUser = new User(
-			Alias = 'restrict',
-			EmailEncodingKey = 'UTF-8',
-			Email = 'restricted@example.com.invalid',
-			LanguageLocaleKey = 'en_US',
-			LastName = 'Restricted',
-			LocaleSidKey = 'en_US',
-			ProfileId = chatterFree?.Id,
-			TimeZoneSidKey = 'America/New_York',
-			Username = 'restricted' + DateTime.now()?.getTime() + '@example.com.invalid'
-		);
-		insert restrictedUser;
+		return DatabaseLayerTestUtils.insertUser('Chatter Free User');
+	}
+
+	private static User buildUserWithoutAccountLookup() {
+		// Minimum Access grants nothing, so the permission set's access is all the user has
+		User restrictedUser = DatabaseLayerTestUtils.insertUser('Minimum Access - Salesforce');
+		PermissionSet access = new PermissionSet(Label = 'Accounts and Contacts', Name = 'AccountsAndContacts');
+		insert access;
+		List<SObject> permissions = new List<SObject>{
+			new ObjectPermissions(ParentId = access?.Id, SobjectType = 'Account', PermissionsRead = true),
+			new ObjectPermissions(ParentId = access?.Id, SobjectType = 'Contact', PermissionsRead = true),
+			new FieldPermissions(
+				ParentId = access?.Id,
+				SobjectType = 'Account',
+				Field = 'Account.Industry',
+				PermissionsRead = true
+			),
+			new PermissionSetAssignment(AssigneeId = restrictedUser?.Id, PermissionSetId = access?.Id)
+		};
+		insert permissions;
 		return restrictedUser;
 	}
 
@@ -2256,6 +2393,22 @@ private class SoqlTest {
 	}
 
 	// **** INNER **** //
+	/**
+	 * @description A subclass that assigns its SELECT clauses, as subscriber subclasses could before they were
+	 * rendered on each read
+	 */
+	private class AssigningSoql extends Soql {
+		/**
+		 * @description Assigns the clauses, replacing any selection, including selectAll requests made before
+		 */
+		private AssigningSoql() {
+			super();
+			this.setFrom(Account.SObjectType);
+			this.selectAll();
+			this.selectClauses = new Set<String>{ 'Id', 'Name' };
+		}
+	}
+
 	private class SampleWrapper {
 		public Integer numRecords;
 		public String profileName;

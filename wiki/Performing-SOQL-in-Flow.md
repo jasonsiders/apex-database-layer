@@ -18,8 +18,8 @@ Because the action uses `DatabaseLayer.Soql`, [plugins](./Plugin:-Soql.PreAndPos
 
 The action looks like Get Records, but doesn't always behave like it. Check these before you swap one for the other:
 
-- **Access level**: the action defaults to `USER_MODE`. In a record-triggered flow, Get Records runs in system context without sharing, so the same query can find fewer records, or fail the user's save when it selects a field they can't read. Set Access Level to `SYSTEM_MODE` to match Get Records. See [Inputs](#inputs).
-- **Blank values**: a blank value on **Contains**, **Starts With**, or **Ends With** matches only records where the field is blank, where Get Records matches every record. A blank value on a range, ex: Greater Than an unset date, matches every record. See [Operators](#operators).
+- **Access level**: the action defaults to `USER_MODE`. In a record-triggered flow, Get Records runs in system context without sharing, so the same query can find fewer records, or fail the user's save when it selects a field they can't read. `SYSTEM_MODE` skips object permissions and field-level security, but still applies sharing unless the org opts out. See [Inputs](#inputs).
+- **Blank values**: a blank value, ex: an unset resource or Empty String, on **Contains**, **Starts With**, or **Ends With** matches only records where the field is blank, where Get Records matches every record. A blank value on a range, ex: Greater Than an unset date, matches every record. See [Operators](#operators).
 - **Bulk runs**: like Get Records, interviews share a query where they can. Some conditions prevent that, and then a bulk run has the potential to exceed SOQL's 100-query or 50,000-row limit, which fails the transaction. See [Bulk Behavior](#bulk-behavior) to avoid it.
 - **Text case**: a merged query's rows are matched in Apex, which ignores case the same way in every locale, where SOQL follows the running user's. For a few letters, ex: the Turkish `İ` and `ı`, a merged query can miss rows a lone query finds, or, for Does Not Equal and Not In, keep rows it leaves out.
 - **Rows**: **For Update** locks every row the query reads until the transaction ends, and can't sort. **All Rows** includes deleted and archived records.
@@ -57,7 +57,7 @@ The operators depend on the field's type, in Get Records' wording:
 
 **Contains**, **Starts With**, and **Ends With** match their value literally, so a `%` or `_` in it is a character, not a wildcard. **Like** passes its value through as a SOQL pattern, wildcards and all.
 
-Unlike Get Records, a blank value, ex: an unset resource, makes **Contains**, **Starts With**, and **Ends With** match only records where the field is blank, since the condition becomes `LIKE null`. Get Records matches every record instead. A blank value on a range, ex: Greater Than an unset date, matches every record.
+Unlike Get Records, a blank value, ex: an unset resource or Empty String, makes **Contains**, **Starts With**, and **Ends With** match only records where the field is blank, since the condition becomes `LIKE null`. Get Records matches every record instead. A blank value on a range, ex: Greater Than an unset date, matches every record.
 
 ### Values
 
@@ -73,18 +73,22 @@ The action binds every value, typed or not, so no value becomes part of the SOQL
 
 ### Inputs
 
-| Input                                        | Type                  | Description                                                                                                                                                                                                                                               |
-| -------------------------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Query Definition                             | Text                  | The query, as JSON. The editor writes it; see [Query Definition](#query-definition).                                                                                                                                                                      |
-| Access Level                                 | Text                  | `USER_MODE` (default) enforces the running user's object permissions, field-level security, and sharing rules. `SYSTEM_MODE` ignores all three, like Get Records in a flow that runs in system context without sharing. Any other value fails the action. |
-| Text 1-5                                     | Text                  | Values for conditions. The editor assigns them.                                                                                                                                                                                                           |
-| Number 1-5                                   | Number                | Values for conditions. The editor assigns them.                                                                                                                                                                                                           |
-| Date 1-5, Date/Time 1-5, Time 1-5            | Date, Date/Time, Time | Values for conditions. The editor assigns them.                                                                                                                                                                                                           |
-| Boolean 1-5                                  | Boolean               | Values for conditions. The editor assigns them.                                                                                                                                                                                                           |
-| Text, Number, Date, Date/Time Collection 1-5 | Collections           | Values for In and Not In conditions. The editor assigns them.                                                                                                                                                                                             |
-| Record Collection 1-5                        | SObject Collection    | Values for In and Not In conditions on ID and lookup fields, matched by the records' IDs. The editor assigns them.                                                                                                                                        |
+| Input                                        | Type                  | Description                                                                                                                                                                                                                                                                       |
+| -------------------------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Query Definition                             | Text                  | The query, as JSON. The editor writes it; see [Query Definition](#query-definition).                                                                                                                                                                                              |
+| Access Level                                 | Text                  | `USER_MODE` (default) enforces the running user's object permissions, field-level security, and sharing rules. `SYSTEM_MODE` ignores object permissions and field-level security, but sharing rules still apply unless the org opts out, below. Any other value fails the action. |
+| Text 1-5                                     | Text                  | Values for conditions. The editor assigns them.                                                                                                                                                                                                                                   |
+| Number 1-5                                   | Number                | Values for conditions. The editor assigns them.                                                                                                                                                                                                                                   |
+| Date 1-5, Date/Time 1-5, Time 1-5            | Date, Date/Time, Time | Values for conditions. The editor assigns them.                                                                                                                                                                                                                                   |
+| Boolean 1-5                                  | Boolean               | Values for conditions. The editor assigns them.                                                                                                                                                                                                                                   |
+| Text, Number, Date, Date/Time Collection 1-5 | Collections           | Values for In and Not In conditions. The editor assigns them.                                                                                                                                                                                                                     |
+| Record Collection 1-5                        | SObject Collection    | Values for In and Not In conditions on ID and lookup fields, matched by the records' IDs. The editor assigns them.                                                                                                                                                                |
 
-In a record-triggered flow, Get Records runs in system context without sharing, whoever saved the record. To match it, set Access Level to `SYSTEM_MODE`. With `USER_MODE`, the query finds only the records that user can see, and fails their save if it selects a field they can't read.
+In a record-triggered flow, Get Records runs in system context without sharing, whoever saved the record. With `USER_MODE`, the query finds only the records that user can see, and fails their save if it selects a field they can't read. `SYSTEM_MODE` reads every field, but still finds only the records that user can see.
+
+To match Get Records, set Access Level to `SYSTEM_MODE` and set the [`InvocableSoqlSystemModeWithoutSharing`](./DatabaseLayerParameter__mdt#invocablesoqlsystemmodewithoutsharing) parameter to `true`. Then `SYSTEM_MODE` ignores sharing too.
+
+> _**Warning**: Flow isn't the only caller. Anyone with access to the `InvocableSoql` Apex class can call the action through the REST API and choose the query. With the parameter on, they can read any record in the org. Grant that class only to users who may see every record._
 
 ### Outputs
 
@@ -104,6 +108,7 @@ When many interviews run the action at once, ex: a record-triggered flow on a 20
 
 - **Run too many queries**: interviews that can't merge run one query each. Past 100 queries in a synchronous transaction, or 200 in an asynchronous one, the transaction fails.
 - **Read too many rows**: a merged query reads every row any interview could need. Past 50,000 rows, the transaction fails.
+- **Use too much CPU time**: Apex checks a merged query's rows against each interview's conditions. Past 10 seconds in a synchronous transaction, or 60 in an asynchronous one, the transaction fails.
 
 A query that fails for any other reason, ex: an invalid value, fails every interview that shares it.
 
@@ -123,6 +128,7 @@ Interviews merge when Apex can check each condition whose value differs between 
 
 - Join broad conditions to a selective one by AND. When their values differ, a merged query leaves out Does Not Equal and Not In, and reads a range from its loosest value, ex: the earliest birthdate. Alone, either can read most of a large table. Pair them with a selective Equals, ex: Account ID Equals {!$Record.AccountId}.
 - Vary as few conditions as you can. When several differ, a merged query also reads their combinations, ex: rows with one contact's account and another contact's title.
+- When ranges or Contains differ, also vary an Equals or In joined to them by AND. Without one, Apex checks every row against most interviews' ranges or patterns. In testing, 200 interviews took about 4 seconds of CPU time over 600 rows, and 9 over 1,000.
 - Don't rely on a limit. The limit applies to each interview after the split, so a limit of 1 over accounts with thousands of contacts each still reads every contact. The exception is when only exclusions by ID differ, ex: Contact ID Does Not Equal {!$Record.Id}.
 
 ### Testing a Bulk Run

@@ -245,6 +245,8 @@ public without sharing class DatabaseLayerUtils {
 	 * @description Utility for describing objects and fields the way SOQL reads them.
 	 */
 	public class Schema {
+		/** @description Each object's lookups by relationship name, since indexing them describes every field **/
+		private final Map<String, Map<String, SObjectField>> lookupsByObject;
 		/** @description The object SOQL resolves a name-pointing lookup to, ex: Case.Owner **/
 		private final String polymorphicEntity;
 		/** @description Objects SOQL resolves their name-pointing lookups to, ex: ObjectPermissions.Parent **/
@@ -254,6 +256,7 @@ public without sharing class DatabaseLayerUtils {
 		 * @description Private, so only this file constructs it
 		 */
 		private Schema() {
+			this.lookupsByObject = new Map<String, Map<String, SObjectField>>{};
 			this.polymorphicEntity = 'Name';
 			this.selfResolvingEntities = new Set<String>{ 'LegalEntity', 'PermissionSet' };
 		}
@@ -306,13 +309,38 @@ public without sharing class DatabaseLayerUtils {
 		 * @return The lookup, or null when the object has no relationship by that name
 		 */
 		public SObjectField findLookup(DescribeSObjectResult objectDescribe, String relationshipName) {
+			Map<String, SObjectField> lookups = this.mapLookups(objectDescribe);
+			return lookups?.get(relationshipName?.toLowerCase());
+		}
+
+		/**
+		 * @description Maps an object's lookups by relationship name, once per object per transaction
+		 * @param objectDescribe The object holding the lookups
+		 * @return The lookups, by lower-cased relationship name
+		 */
+		private Map<String, SObjectField> mapLookups(DescribeSObjectResult objectDescribe) {
+			String objectName = objectDescribe?.getName();
+			Map<String, SObjectField> lookups = this.lookupsByObject?.get(objectName) ??
+				this.indexLookups(objectDescribe);
+			this.lookupsByObject?.put(objectName, lookups);
+			return lookups;
+		}
+
+		/**
+		 * @description Indexes an object's lookups by relationship name, describing each of its fields
+		 * @param objectDescribe The object holding the lookups
+		 * @return The lookups, by lower-cased relationship name
+		 */
+		private Map<String, SObjectField> indexLookups(DescribeSObjectResult objectDescribe) {
+			Map<String, SObjectField> lookups = new Map<String, SObjectField>{};
 			List<SObjectField> fields = objectDescribe?.fields?.getMap()?.values() ?? new List<SObjectField>{};
-			SObjectField lookup;
 			for (SObjectField field : fields) {
-				String candidate = field?.getDescribe()?.getRelationshipName();
-				lookup = (relationshipName?.equalsIgnoreCase(candidate) == true) ? field : lookup;
+				String relationshipName = field?.getDescribe()?.getRelationshipName();
+				if (relationshipName != null) {
+					lookups?.put(relationshipName?.toLowerCase(), field);
+				}
 			}
-			return lookup;
+			return lookups;
 		}
 
 		/**

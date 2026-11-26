@@ -1,7 +1,7 @@
 import { api, wire } from "lwc";
 import getObjects from "@salesforce/apex/InvocableSoql.getObjects";
 import { DATE_LITERAL_PATTERN, REFERENCE, REQUIRED_ERROR, compareLabels, toBooleanConstant } from "c/flowResourceMenu";
-import FlowPropertyEditor, { ACCESS_LEVELS, ACCESS_LEVEL_HELP, NONE_OPTION } from "c/flowPropertyEditor";
+import FlowPropertyEditor, { ACCESS_LEVELS, NONE_OPTION } from "c/flowPropertyEditor";
 import { resolveField } from "c/soqlFieldMenu";
 import {
 	OPERATORS,
@@ -19,6 +19,9 @@ import {
 	validateRange
 } from "c/soqlQueryDefinition";
 
+/** @description Help for the Access Level input, matching its description in Apex */
+const ACCESS_LEVEL_HELP =
+	"USER_MODE (default) enforces the running user's object permissions, field-level security, and sharing rules. SYSTEM_MODE ignores object permissions and field-level security, but sharing rules still apply unless the InvocableSoqlSystemModeWithoutSharing parameter is true.";
 const CUSTOM = "CUSTOM";
 const DATE_LITERALS = [
 	"TODAY",
@@ -120,6 +123,8 @@ export default class SoqlQueryEditor extends FlowPropertyEditor {
 	directions = DIRECTIONS;
 	logicOptions = LOGIC_OPTIONS;
 	nullOrders = NULL_ORDERS;
+	rowLimitRange = ROW_LIMIT_RANGE;
+	rowOffsetRange = ROW_OFFSET_RANGE;
 	usages = USAGES;
 	_definition = parseDefinition();
 	// Each condition's field, by path, once resolved
@@ -590,10 +595,7 @@ export default class SoqlQueryEditor extends FlowPropertyEditor {
 		const limitError = validateRange("rowLimit", this.rowLimit, ROW_LIMIT_RANGE);
 		const offsetError = validateRange("rowOffset", this.rowOffset, ROW_OFFSET_RANGE);
 		const checks = [objectError, ...conditionErrors, logicError, limitError, offsetError, usageError];
-		const errors = checks.filter(Boolean);
-		const errorEntries = errors.map((error) => [error.key, error.errorString]);
-		this._errors = Object.fromEntries(errorEntries);
-		return errors;
+		return this._setErrors(checks);
 	}
 
 	/**
