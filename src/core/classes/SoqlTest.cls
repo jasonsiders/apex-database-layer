@@ -572,23 +572,6 @@ private class SoqlTest {
 	}
 
 	@IsTest
-	private static void shouldRenderSelectAllAsItsClauses() {
-		Integer numAllFields = SObjectType.Account?.fields?.getMap()?.size();
-		Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)
-			?.setAccessLevel(System.AccessLevel.SYSTEM_MODE)
-			?.toSoql();
-		Soql.SelectAll selectAll = new Soql.SelectAll(soql);
-		selectAll?.addQueriedObject();
-
-		Test.startTest();
-		String rendered = selectAll?.toString();
-		Test.stopTest();
-
-		Integer numRendered = rendered?.split(', ')?.size();
-		Assert.areEqual(numAllFields, numRendered, 'Wrong # of rendered clauses');
-	}
-
-	@IsTest
 	private static void shouldSelectAllFieldsAgainAfterDeselect() {
 		Test.startTest();
 		Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)

@@ -22,6 +22,8 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	// Other constants
 	private static final Soql.LogicType DEFAULT_LOGIC_TYPE = Soql.LogicType.ALL_CONDITIONS;
 	private static final String ID_REFERENCE = 'Id';
+	// Holds the selectAll requests' place in the SELECT clause; braces can't appear in a field name
+	private static final String SELECT_ALL_PLACEHOLDER = '{selectAll}';
 
 	// Member Properties:
 	/**
@@ -455,9 +457,10 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	 * @description Abstract base class providing fluent interface for building SOQL queries.
 	 */
 	global abstract class Builder {
-		// Backing state for selectClauses, which renders it on each read, so selectAll expands at the latest access level
+		// Backing state for selectClauses, which renders it on each read, so selectAll expands at the latest access level;
+		// SELECT_ALL_PLACEHOLDER marks where the selectAll requests go
 		@TestVisible
-		private transient Set<Soql.Selectable> selectables;
+		private transient Set<String> selectables;
 		// The selectAll requests, which expand at each read of selectClauses
 		private transient Soql.SelectAll pendingSelectAll;
 		/**
@@ -503,19 +506,11 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		global Set<String> selectClauses {
 			get {
-				Set<String> clauses = new Set<String>{};
-				for (Soql.Selectable selectable : this.selectables ?? new Set<Soql.Selectable>{}) {
-					List<String> rendered = this.renderSelectable(selectable);
-					clauses?.addAll(rendered);
-				}
-				return clauses;
+				return (this.pendingSelectAll == null) ? this.selectables?.clone() : this.renderSelectAll();
 			}
 			protected set {
 				this.pendingSelectAll = null;
-				this.selectables = new Set<Soql.Selectable>{};
-				for (String clause : value ?? new Set<String>{}) {
-					this.addSelect(clause);
-				}
+				this.selectables = value?.clone() ?? new Set<String>{};
 			}
 		}
 		/**
@@ -803,20 +798,26 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		private Soql.SelectAll getPendingSelectAll() {
 			if (this.pendingSelectAll == null) {
 				this.pendingSelectAll = new Soql.SelectAll(this);
-				this.selectables?.add(this.pendingSelectAll);
+				this.selectables?.add(SELECT_ALL_PLACEHOLDER);
 			}
 			return this.pendingSelectAll;
 		}
 
 		/**
-		 * @description Renders an item of the SELECT clause
-		 * @param selectable The item: a {@link selectAll} request, or a clause added as text
-		 * @return The item's clauses
+		 * @description Renders the SELECT clause, with the {@link selectAll} requests expanded in their place
+		 * @return The clauses
 		 */
-		private List<String> renderSelectable(Soql.Selectable selectable) {
-			return (selectable instanceof Soql.SelectAll)
-				? ((Soql.SelectAll) selectable)?.expand()
-				: new List<String>{ selectable?.toString() };
+		private Set<String> renderSelectAll() {
+			Set<String> clauses = new Set<String>{};
+			for (String clause : this.selectables) {
+				if (clause?.equals(SELECT_ALL_PLACEHOLDER) == true) {
+					List<String> expanded = this.pendingSelectAll?.expand();
+					clauses?.addAll(expanded);
+				} else {
+					clauses?.add(clause);
+				}
+			}
+			return clauses;
 		}
 
 		/**
@@ -827,7 +828,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		global Soql.Builder addSelect(String fieldName, String alias) {
 			String clause = String.join(new List<String>{ fieldName, alias }, ' ')?.trim();
-			this.selectables?.add(new Soql.SelectClause(clause));
+			this.selectables?.add(clause);
 			return this;
 		}
 
@@ -1046,7 +1047,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @return This Builder instance for method chaining
 		 */
 		global Soql.Builder deselect(String fieldName) {
-			this.selectables?.remove(new Soql.SelectClause(fieldName));
+			this.selectables?.remove(fieldName);
 			this.pendingSelectAll?.exclude(fieldName);
 			return this;
 		}
@@ -2188,8 +2189,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	 * through its lookups. In user mode, fields the running user cannot read are omitted, since user mode SOQL rejects
 	 * the entire query rather than dropping inaccessible fields from the results.
 	 */
-	@TestVisible
-	private class SelectAll implements Soql.Selectable {
+	private class SelectAll {
 		// The query, read at each expansion for its object and access level
 		private Soql.Builder builder;
 		// Clauses deselected after these requests
@@ -2213,15 +2213,6 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			this.exclusions = new Set<String>{};
 			this.includesQueriedObject = false;
 			this.lookupFields = new List<Soql.ParentField>{};
-		}
-
-		/**
-		 * @description Expands every request into SELECT clauses
-		 * @return The clauses, joined by commas
-		 */
-		public override String toString() {
-			List<String> clauses = this.expand();
-			return String.join(clauses, ', ');
 		}
 
 		/**
@@ -2420,49 +2411,6 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			if (String.isBlank(relationshipName)) {
 				throw new IllegalArgumentException('selectAll takes lookup fields, not ' + field);
 			}
-		}
-	}
-
-	/**
-	 * @description A SELECT clause added as text, ex: `Name`, `Owner.Name`, or a subquery, as it read when added.
-	 * Equal to any clause with the same text, matching case, so the SELECT clause holds each once.
-	 */
-	private class SelectClause implements Soql.Selectable {
-		// The clause's text, ex: `Name` or `Owner.Name`
-		private String clause;
-
-		/**
-		 * @description Wraps the clause
-		 * @param clause The clause's text
-		 */
-		public SelectClause(String clause) {
-			this.clause = clause;
-		}
-
-		/**
-		 * @description Returns the clause
-		 * @return The clause's text
-		 */
-		public override String toString() {
-			return this.clause;
-		}
-
-		/**
-		 * @description Compares the clauses' text, matching case, as a Set of String does
-		 * @param other The object to compare
-		 * @return True when the other is a SelectClause with the same text
-		 */
-		public Boolean equals(Object other) {
-			String otherClause = (other instanceof Soql.SelectClause) ? other?.toString() : null;
-			return this.clause?.equals(otherClause) == true;
-		}
-
-		/**
-		 * @description Hashes the clause's text, so equal clauses share a hash
-		 * @return The text's hash
-		 */
-		public Integer hashCode() {
-			return this.clause?.hashCode() ?? 0;
 		}
 	}
 
