@@ -9,6 +9,8 @@ public inherited sharing class InvocableSoql {
 	/** @description Ends a stored field that selects every field of its object, ex: "*" or "Account.Owner.*" **/
 	public static final String ALL_FIELDS = '*';
 	private static final String BIND_PREFIX = 'bind';
+	/** @description Stands in for the WHERE clause in a rendered query; braces can't appear in a field name **/
+	private static final String WHERE_PLACEHOLDER = '{where}';
 	/** @description Only condition numbers, AND, OR, NOT, and parentheses, so custom logic can't add SOQL **/
 	private static final Pattern CUSTOM_LOGIC_PATTERN = Pattern.compile('(?i)^(\\s|\\d+|AND|OR|NOT|\\(|\\))*$');
 	private static final Set<String> COLLECTION_OPERATORS = new Set<String>{ 'IN', 'NOT_IN' };
@@ -793,6 +795,8 @@ public inherited sharing class InvocableSoql {
 		private transient DescribeSObjectResult objectDescribe;
 		/** @description Expanded SELECT clauses by access level, since user mode omits fields the user can't read **/
 		private transient Map<System.AccessLevel, Set<String>> selectClausesByAccessLevel;
+		/** @description The rendered query by access level, with `WHERE_PLACEHOLDER` for each variant's WHERE clause **/
+		private transient Map<System.AccessLevel, String> queryTemplatesByAccessLevel;
 
 		/**
 		 * @description Coerces a value to its condition field's type, since SOQL binds are strictly typed
@@ -962,15 +966,33 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description Renders the query with values in place of binds, for Flow's debug panel
+		 * @description Renders the query with values in place of binds, for Flow's debug panel. Only the WHERE clause
+		 * is rendered per variant, since rendering hundreds of all-field clauses for each of 200 variants exceeds the
+		 * CPU limit
 		 * @param values One value per condition, from `resolveValues`
 		 * @param accessLevel The access level to query in, which decides the fields that all-field selections include
 		 * @return The query, with values filled in
 		 */
 		@TestVisible
 		private String toQueryString(List<Object> values, System.AccessLevel accessLevel) {
-			InvocableSoql.Filter whereClause = new InvocableSoql.Filter(this, values, true);
-			return this.initSoql(whereClause, accessLevel)?.toString();
+			String template = this.getQueryTemplate(accessLevel);
+			String whereClause = new InvocableSoql.Filter(this, values, true)?.toString();
+			return template?.replace(InvocableSoql.WHERE_PLACEHOLDER, whereClause);
+		}
+
+		/**
+		 * @description Renders the query once per access level, with a placeholder for the WHERE clause
+		 * @param accessLevel The access level to query in
+		 * @return The query, with `WHERE_PLACEHOLDER` as its WHERE clause, or none when there are no conditions
+		 */
+		private String getQueryTemplate(System.AccessLevel accessLevel) {
+			String template = this.queryTemplatesByAccessLevel?.get(accessLevel);
+			if (template == null) {
+				InvocableSoql.Placeholder whereClause = new InvocableSoql.Placeholder();
+				template = this.initSoql(whereClause, accessLevel)?.toString();
+				this.queryTemplatesByAccessLevel?.put(accessLevel, template);
+			}
+			return template;
 		}
 
 		/**
@@ -985,8 +1007,8 @@ public inherited sharing class InvocableSoql {
 		}
 
 		/**
-		 * @description Adds the SELECT clauses, expanded once per access level, since a batch builds a query and a
-		 * query string for each variant, and each all-field selection describes every field of its object
+		 * @description Adds the SELECT clauses, expanded once per access level, since a batch can build a query for
+		 * each variant, and each all-field selection describes every field of its object
 		 * @param builder The query being built
 		 */
 		private void addSelect(Soql builder) {
@@ -1049,7 +1071,7 @@ public inherited sharing class InvocableSoql {
 		 * @param builder The query being built
 		 * @param whereClause The WHERE clause, with binds or values
 		 */
-		private void addWhere(Soql builder, InvocableSoql.Filter whereClause) {
+		private void addWhere(Soql builder, Soql.Criteria whereClause) {
 			if (this.conditions?.isEmpty() == false) {
 				builder?.addWhere(whereClause);
 			}
@@ -1064,6 +1086,7 @@ public inherited sharing class InvocableSoql {
 			this.conditions = this.conditions ?? new List<InvocableSoql.Condition>{};
 			this.objectDescribe = this.describeObject();
 			this.selectClausesByAccessLevel = new Map<System.AccessLevel, Set<String>>{};
+			this.queryTemplatesByAccessLevel = new Map<System.AccessLevel, String>{};
 			this.conditionFields = new List<DescribeFieldResult>{};
 			this.conditionPaths = new List<List<String>>{};
 			for (InvocableSoql.Condition condition : this.conditions) {
@@ -1296,11 +1319,11 @@ public inherited sharing class InvocableSoql {
 
 		/**
 		 * @description Builds everything but the binds, shared by the query and its debug string
-		 * @param whereClause The WHERE clause, with binds or values
+		 * @param whereClause The WHERE clause, with binds, or a placeholder for the debug string's values
 		 * @param accessLevel The access level to query in
 		 * @return The query
 		 */
-		private Soql initSoql(InvocableSoql.Filter whereClause, System.AccessLevel accessLevel) {
+		private Soql initSoql(Soql.Criteria whereClause, System.AccessLevel accessLevel) {
 			SObjectType objectType = this.objectDescribe?.getSObjectType();
 			Soql builder = (Soql) DatabaseLayer.Soql?.newQuery(objectType)?.setAccessLevel(accessLevel);
 			this.addSelect(builder);
@@ -1634,6 +1657,17 @@ public inherited sharing class InvocableSoql {
 		 */
 		private Operator(String token) {
 			super(token);
+		}
+	}
+
+	/** @description Renders as `WHERE_PLACEHOLDER`, so a rendered query can take each variant's WHERE clause **/
+	private class Placeholder implements Soql.Criteria {
+		/**
+		 * @description Renders the placeholder
+		 * @return `WHERE_PLACEHOLDER`
+		 */
+		public override String toString() {
+			return InvocableSoql.WHERE_PLACEHOLDER;
 		}
 	}
 
