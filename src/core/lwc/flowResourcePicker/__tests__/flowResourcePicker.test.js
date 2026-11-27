@@ -596,6 +596,33 @@ describe("c-flow-resource-picker", () => {
 		}
 	});
 
+	it.each([
+		["Date", "2026-13-01"],
+		["Date", "2026-02-30"],
+		["Date", "2025-02-29"],
+		["DateTime", "2026-04-31T09:30:00Z"],
+		["DateTime", "2026-11-22T24:00:00Z"],
+		["Time", "25:00"],
+		["Time", "12:61:00"],
+		["Time", "12:00:60"]
+	])("discards a typed %s that doesn't exist, which Apex can't parse: %s", async (dataType, text) => {
+		const { element, onChange } = await render({ type: dataType });
+
+		await type(element, text);
+		await blur(element);
+
+		expect(onChange).not.toHaveBeenCalled();
+	});
+
+	it("saves a typed leap day", async () => {
+		const { element, onChange } = await render({ type: "Date" });
+
+		await type(element, "2028-02-29");
+		await blur(element);
+
+		expect(lastChange(onChange)).toEqual({ name: "accessLevel", value: "2028-02-29", valueDataType: "Date" });
+	});
+
 	it("trims spaces around typed literals that aren't text, which Apex can't parse, and keeps text as typed", async () => {
 		const number = await render({ type: "Number" });
 		const date = await render({ type: "Date", allowsDateLiterals: true });

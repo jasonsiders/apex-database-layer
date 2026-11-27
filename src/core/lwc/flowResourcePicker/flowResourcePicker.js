@@ -15,13 +15,15 @@ import {
 } from "c/flowResourceMenu";
 
 const GLOBAL_CONSTANT_PREFIX = "$GlobalConstant.";
-// The text each typed input takes as a literal of its type; anything else is text
+const DATE_TYPES = ["Date", "DateTime"];
+// The text each typed input takes as a literal of its type; anything else is text. Dates also need a real day,
+// which isCalendarDate checks
 const LITERAL_PATTERNS = {
 	Boolean: /^(true|false)$/i,
 	Date: /^\d{4}-\d{2}-\d{2}$/,
-	DateTime: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:?\d{2})$/,
+	DateTime: /^\d{4}-\d{2}-\d{2}T([01]\d|2[0-3]):[0-5]\d(:[0-5]\d(\.\d{1,3})?)?(Z|[+-]\d{2}:?\d{2})$/,
 	Number: /^[+-]?(\d+(\.\d*)?|\.\d+)$/,
-	Time: /^\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?Z?$/
+	Time: /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d(\.\d{1,3})?)?Z?$/
 };
 const ROOT_LABEL = "All Resources";
 
@@ -47,9 +49,23 @@ function initDeferred() {
  */
 function toLiteralType(text, type, allowsDateLiterals) {
 	const trimmed = text.trim();
-	const isDateLiteral =
-		allowsDateLiterals && ["Date", "DateTime"].includes(type) && DATE_LITERAL_PATTERN.test(trimmed);
-	return isDateLiteral || LITERAL_PATTERNS[type]?.test(trimmed) ? type : "String";
+	const isDateType = DATE_TYPES.includes(type);
+	const isDateLiteral = allowsDateLiterals && isDateType && DATE_LITERAL_PATTERN.test(trimmed);
+	const isLiteral = LITERAL_PATTERNS[type]?.test(trimmed) && (!isDateType || isCalendarDate(trimmed));
+	return isDateLiteral || isLiteral ? type : "String";
+}
+
+/**
+ * @description Whether a date's day exists, ex: not 2026-02-30, which Apex can't parse. Years before 100 fail, since
+ * Date.UTC reads them as 19xx
+ * @param {String} text A Date or DateTime literal, which starts with `yyyy-mm-dd`
+ * @returns {Boolean} True if the day exists
+ */
+function isCalendarDate(text) {
+	const day = text.slice(0, 10);
+	const [year, month, date] = day.split("-").map(Number);
+	const timestamp = Date.UTC(year, month - 1, date);
+	return new Date(timestamp).toISOString().startsWith(day);
 }
 
 /**
