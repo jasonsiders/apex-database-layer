@@ -22,7 +22,6 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	// Other constants
 	private static final Soql.LogicType DEFAULT_LOGIC_TYPE = Soql.LogicType.ALL_CONDITIONS;
 	private static final String ID_REFERENCE = 'Id';
-	// Holds the selectAll requests' place in the SELECT clause; braces can't appear in a field name
 
 	// Member Properties:
 	/**
@@ -2233,8 +2232,10 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @param clause The clause, ex: `Name` or `Contact.Account.Name`
 		 */
 		public void exclude(String clause) {
-			this.exclusions?.add(clause);
-			this.expandedClauses = null;
+			// Keeps the last expansion when the clause was already left out, so repeat calls don't describe again
+			if (this.exclusions?.add(clause) == true) {
+				this.expandedClauses = null;
+			}
 		}
 
 		/**
