@@ -576,7 +576,9 @@ describe("c-flow-resource-picker", () => {
 		const cases = [
 			{ type: "Number", valid: "-42.5", invalid: "forty" },
 			{ type: "Date", valid: "2026-11-22", invalid: "11/22/2026" },
+			{ type: "Date", valid: "2028-02-29", invalid: "2025-02-29" },
 			{ type: "DateTime", valid: "2026-11-22T09:30:00Z", invalid: "2026-11-22" },
+			{ type: "DateTime", valid: "2026-11-22T09:30:00-05:30", invalid: "2026-11-22T09:30:00+25:00" },
 			{ type: "Time", valid: "09:30:00", invalid: "9am" },
 			{ type: "Boolean", valid: "TRUE", invalid: "yes" }
 		];
@@ -594,6 +596,24 @@ describe("c-flow-resource-picker", () => {
 			await blur(element);
 			expect(lastChange(onChange)).toEqual({ name: "accessLevel", value: valid, valueDataType: dataType });
 		}
+	});
+
+	it.each([
+		["Date", "2026-13-01"],
+		["Date", "2026-02-30"],
+		["DateTime", "2026-04-31T09:30:00Z"],
+		["DateTime", "2026-11-22T24:00:00Z"],
+		["DateTime", "2026-11-22T09:30:00+09:99"],
+		["Time", "25:00"],
+		["Time", "12:61:00"],
+		["Time", "12:00:60"]
+	])("discards a typed %s that doesn't exist, which Apex can't parse: %s", async (dataType, text) => {
+		const { element, onChange } = await render({ type: dataType });
+
+		await type(element, text);
+		await blur(element);
+
+		expect(onChange).not.toHaveBeenCalled();
 	});
 
 	it("trims spaces around typed literals that aren't text, which Apex can't parse, and keeps text as typed", async () => {

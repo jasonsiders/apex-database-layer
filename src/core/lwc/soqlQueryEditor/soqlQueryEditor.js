@@ -58,12 +58,13 @@ const FLOW_TYPES = {
 	PERCENT: "Number",
 	TIME: "Time"
 };
-// Flow saves Boolean and blank literals as global constants; the definition holds their text
-const GLOBAL_CONSTANT_VALUES = {
-	"$GlobalConstant.EmptyString": "",
-	"$GlobalConstant.False": "false",
-	"$GlobalConstant.True": "true"
-};
+// Flow saves Boolean and blank literals as global constants; the definition holds their text. A Map, since typed text
+// like "toString" would read an inherited property of an object
+const GLOBAL_CONSTANT_VALUES = new Map([
+	["$GlobalConstant.EmptyString", ""],
+	["$GlobalConstant.False", "false"],
+	["$GlobalConstant.True", "true"]
+]);
 const LOGIC_OPTIONS = [
 	{ label: "All Conditions Are Met (AND)", value: "AND" },
 	{ label: "Any Condition Is Met (OR)", value: "OR" },
@@ -103,8 +104,12 @@ const OPERATOR_OPTIONS = Object.fromEntries(
 );
 const RECORD_SLOTS = toSlotNames(RECORD_SLOT_PREFIX);
 // The Limit and Offset inputs' bounds, which they show but don't enforce; SOQL rejects an offset over 2,000
-const ROW_LIMIT_RANGE = { min: 1, max: 50000, errorString: "Enter a limit from 1 to 50,000." };
-const ROW_OFFSET_RANGE = { min: 0, max: 2000, errorString: "Enter an offset from 0 to 2,000, the most SOQL can skip." };
+const ROW_LIMIT_RANGE = { min: 1, max: 50000, errorString: "Enter a whole-number limit from 1 to 50,000." };
+const ROW_OFFSET_RANGE = {
+	min: 0,
+	max: 2000,
+	errorString: "Enter a whole-number offset from 0 to 2,000, the most SOQL can skip."
+};
 const USAGES = [
 	NONE_OPTION,
 	{ label: "All Rows (include deleted and archived records)", value: "ALL_ROWS" },
@@ -351,7 +356,7 @@ export default class SoqlQueryEditor extends FlowPropertyEditor {
 	 * @param {CustomEvent} event Change on the limit input
 	 */
 	handleLimitChange(event) {
-		const rowLimit = this._toInteger(event.detail.value);
+		const rowLimit = this._toNumber(event.detail.value);
 		this._updateDefinition({ rowLimit });
 	}
 
@@ -388,7 +393,7 @@ export default class SoqlQueryEditor extends FlowPropertyEditor {
 	 * @param {CustomEvent} event Change on the offset input
 	 */
 	handleOffsetChange(event) {
-		const rowOffset = this._toInteger(event.detail.value);
+		const rowOffset = this._toNumber(event.detail.value);
 		this._updateDefinition({ rowOffset });
 	}
 
@@ -544,7 +549,7 @@ export default class SoqlQueryEditor extends FlowPropertyEditor {
 		const fieldType = toValueField(this._fields[condition.field], condition.operator)?.type;
 		// A typed boolean saves in lowercase, ex: TRUE as true, which is all Apex's JSON parser reads
 		const constant = fieldType === "BOOLEAN" ? (toBooleanConstant(value) ?? value) : value;
-		const text = GLOBAL_CONSTANT_VALUES[constant] ?? value;
+		const text = GLOBAL_CONSTANT_VALUES.get(constant) ?? value;
 		const isDateField = ["DATE", "DATETIME"].includes(fieldType);
 		const isDateLiteral = isDateField && DATE_LITERAL_PATTERN.test(text ?? "");
 		const isMultiValue = MULTI_VALUE_OPERATORS.includes(condition.operator);
@@ -671,12 +676,12 @@ export default class SoqlQueryEditor extends FlowPropertyEditor {
 	}
 
 	/**
-	 * @description Reads a number input, which blank clears
+	 * @description Reads a number input, which blank clears. A fraction stays as typed, so validate flags it
 	 * @param {String} value The input's value
-	 * @returns {Number} The whole number, or null
+	 * @returns {Number} The number, or null
 	 */
-	_toInteger(value) {
-		return value === "" || value == null ? null : parseInt(value, 10);
+	_toNumber(value) {
+		return value === "" || value == null ? null : Number(value);
 	}
 
 	/**
