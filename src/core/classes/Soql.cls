@@ -2540,7 +2540,10 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @param relationship The child relationship to query
 		 */
 		global Subquery(Schema.ChildRelationship relationship) {
+			SObjectType childObject = relationship?.getChildSObject();
 			this.addSelect(ID_REFERENCE);
+			// Sets the object selectAll expands; getFrom renders the relationship name instead
+			this.setFrom(childObject);
 			this.relationshipName = relationship?.getRelationshipName();
 		}
 

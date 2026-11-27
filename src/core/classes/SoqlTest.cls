@@ -1236,6 +1236,31 @@ private class SoqlTest {
 	}
 
 	@IsTest
+	private static void shouldSelectAllFieldsOfSubqueryObject() {
+		Integer numCaseFields = SObjectType.Case?.fields?.getMap()?.size();
+
+		Test.startTest();
+		Soql.Builder subquery = new Soql.Subquery(Case.AccountId)
+			?.setAccessLevel(System.AccessLevel.SYSTEM_MODE)
+			?.selectAll();
+		Test.stopTest();
+
+		Assert.areEqual(numCaseFields, subquery?.selectClauses?.size(), 'Wrong # of SELECT clauses');
+		Assert.isTrue(subquery?.toString()?.endsWith(' FROM Cases)'), 'Should query the child relationship');
+	}
+
+	@IsTest
+	private static void shouldSelectAllParentFieldsBySubqueryRelationshipPath() {
+		Test.startTest();
+		Soql.Builder subquery = new Soql.Subquery(Case.AccountId)
+			?.setAccessLevel(System.AccessLevel.SYSTEM_MODE)
+			?.selectAll('CreatedBy');
+		Test.stopTest();
+
+		Assert.isTrue(subquery?.selectClauses?.contains('CreatedBy.Username'), 'Should select CreatedBy fields');
+	}
+
+	@IsTest
 	private static void shouldOutputLogicWithSingleCondition() {
 		Soql.ParentField field = new Soql.ParentField(Account.OwnerId, User.ProfileId, Profile.Name);
 		Soql.Condition condition = new Soql.Condition(field, Soql.EQUALS, 'System Administrator');
