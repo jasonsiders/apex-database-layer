@@ -2650,7 +2650,8 @@ public inherited sharing class InvocableSoql {
 		 */
 		private Boolean isValid(Integer conditionCount) {
 			Boolean isAllowed = InvocableSoql.CUSTOM_LOGIC_PATTERN.matcher(this.text).matches();
-			return isAllowed && this.isWellFormed() && this.namesConditions(conditionCount);
+			Boolean isGrouped = this.hasMixedOperators() == false;
+			return isAllowed && this.isWellFormed() && isGrouped && this.namesConditions(conditionCount);
 		}
 
 		/**
@@ -2700,6 +2701,30 @@ public inherited sharing class InvocableSoql {
 				isOperandNext = token == 'AND' || token == 'OR' || token == 'NOT' || token == '(';
 			}
 			return isValid && isOperandNext == false && depth == 0;
+		}
+
+		/**
+		 * @description Checks for AND and OR side by side without parentheses, ex: `1 AND 2 OR 3`, since SOQL fails
+		 * every query that has them, on a syntax error that doesn't name the logic
+		 * @return True if any level of parentheses joins its operands with both AND and OR
+		 */
+		private Boolean hasMixedOperators() {
+			// The operator joining each open level of parentheses, blank until one is seen
+			List<String> operators = new List<String>{ '' };
+			Boolean isMixed = false;
+			for (String token : this.tokens) {
+				Integer level = operators.size() - 1;
+				Boolean isJoin = token == 'AND' || token == 'OR';
+				isMixed = isMixed || (isJoin && String.isNotBlank(operators[level]) && operators[level] != token);
+				if (isJoin) {
+					operators[level] = token;
+				} else if (token == '(') {
+					operators.add('');
+				} else if (token == ')' && level > 0) {
+					operators.remove(level);
+				}
+			}
+			return isMixed;
 		}
 	}
 
