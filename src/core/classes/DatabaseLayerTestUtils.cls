@@ -40,7 +40,7 @@ global class DatabaseLayerTestUtils {
 		DatabaseLayerTestUtils.userCount++;
 		// Usernames are unique across every org, so the org ID and a random number keep parallel runs from colliding
 		String orgId = UserInfo.getOrganizationId();
-		Integer salt = Math.abs(Crypto.getRandomInteger());
+		Integer salt = Crypto.getRandomInteger();
 		String username = 'user' + DatabaseLayerTestUtils.userCount + '.' + orgId + '.' + salt;
 		User testUser = new User(
 			Alias = 'testuser',

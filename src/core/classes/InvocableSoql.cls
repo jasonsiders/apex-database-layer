@@ -2768,7 +2768,8 @@ public inherited sharing class InvocableSoql {
 			while (this.isJoinNext()) {
 				String operator = this.next();
 				InvocableSoql.LogicNode operand = this.parseOperand();
-				if (joined != null && joined?.operator != operator) {
+				String joinedOperator = joined?.operator ?? operator;
+				if (joinedOperator != operator) {
 					throw new IllegalArgumentException('Invalid condition logic: ' + this.text);
 				}
 				if (joined?.operator != operator) {

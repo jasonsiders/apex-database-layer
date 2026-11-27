@@ -624,6 +624,19 @@ private class SoqlTest {
 	}
 
 	@IsTest
+	private static void shouldSelectAllFieldsRemovedFromSelectClausesAgain() {
+		Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)?.selectAll()?.toSoql();
+		soql?.selectClauses?.remove('Name');
+
+		Test.startTest();
+		soql?.selectAll();
+		Set<String> fields = soql?.selectClauses;
+		Test.stopTest();
+
+		Assert.isTrue(fields?.contains('Name'), 'selectAll() should select a field removed from selectClauses again');
+	}
+
+	@IsTest
 	private static void shouldReplaceSelectClausesWhenASubclassAssignsThem() {
 		Test.startTest();
 		Soql soql = new SoqlTest.AssigningSoql();
