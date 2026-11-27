@@ -54,14 +54,15 @@ export function toSlotNames(prefix) {
 }
 
 /**
- * @description Checks a saved limit or offset against its input's bounds
+ * @description Checks a saved limit or offset against its input's bounds; a fraction fails, since Apex reads them as
+ * Integers
  * @param {String} key The input's `data-name`
  * @param {Number} value The saved number, or null
  * @param {Object} range `{ min, max, errorString }`
  * @returns {Object} An error, or null
  */
 export function validateRange(key, value, range) {
-	const isValid = value == null || (value >= range.min && value <= range.max);
+	const isValid = value == null || (Number.isInteger(value) && value >= range.min && value <= range.max);
 	return isValid ? null : { key, errorString: range.errorString };
 }
 

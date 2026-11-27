@@ -643,10 +643,25 @@ describe("c-soql-query-editor", () => {
 
 		expect(element.validate().map((error) => error.key)).toEqual(["rowLimit", "rowOffset"]);
 		await flush();
-		expect(element.shadowRoot.textContent).toContain("Enter an offset from 0 to 2,000");
+		expect(element.shadowRoot.textContent).toContain("Enter a whole-number offset from 0 to 2,000");
 		await fire(element.shadowRoot.querySelector('[data-name="rowLimit"]'), { value: "50000" });
 		await fire(element.shadowRoot.querySelector('[data-name="rowOffset"]'), { value: "2000" });
 		expect(element.validate()).toEqual([]);
+	});
+
+	it("flags a fractional limit instead of truncating it, and reads scientific notation in full", async () => {
+		const { element, events } = await render({
+			objectApiName: "Contact",
+			fields: [],
+			conditions: [],
+			orderBy: []
+		});
+
+		await fire(element.shadowRoot.querySelector('[data-name="rowLimit"]'), { value: "1.9" });
+		await fire(element.shadowRoot.querySelector('[data-name="rowOffset"]'), { value: "1e3" });
+
+		expect(savedDefinition(events)).toMatchObject({ rowLimit: 1.9, rowOffset: 1000 });
+		expect(element.validate().map((error) => error.key)).toEqual(["rowLimit"]);
 	});
 
 	it("rejects a long run of digits in custom logic without stalling the browser", async () => {
