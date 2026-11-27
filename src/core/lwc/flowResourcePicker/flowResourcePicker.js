@@ -560,7 +560,9 @@ export default class FlowResourcePicker extends LightningElement {
 	/**
 	 * @description Chooses the highlighted option, or commits the typed text if none is highlighted.
 	 */
-	_chooseActive() {
+	async _chooseActive() {
+		// Waits for the latest load, so Enter doesn't choose an option the typing replaced
+		await this._menuLoad;
 		const item = this.options[this._activeIndex];
 		if (item) {
 			this._choose(item);
