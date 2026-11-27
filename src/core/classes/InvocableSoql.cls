@@ -1016,7 +1016,8 @@ public inherited sharing class InvocableSoql {
 			Set<String> cached = this.selectClausesByAccessLevel?.get(accessLevel);
 			if (cached == null) {
 				this.addFields(builder);
-				Set<String> clauses = builder?.selectClauses;
+				// A copy, since the builder's set is live
+				Set<String> clauses = builder?.selectClauses?.clone();
 				this.selectClausesByAccessLevel?.put(accessLevel, clauses);
 			} else {
 				this.addClauses(builder, cached);
