@@ -827,7 +827,8 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		global Soql.Builder addSelect(String fieldName, String alias) {
 			String clause = String.join(new List<String>{ fieldName, alias }, ' ')?.trim();
-			this.selectables?.add(new Soql.SelectClause(clause));
+			Soql.SelectClause selectClause = new Soql.SelectClause(clause);
+			this.selectables?.add(selectClause);
 			return this;
 		}
 
@@ -1046,7 +1047,8 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @return This Builder instance for method chaining
 		 */
 		global Soql.Builder deselect(String fieldName) {
-			this.selectables?.remove(new Soql.SelectClause(fieldName));
+			Soql.SelectClause selectClause = new Soql.SelectClause(fieldName);
+			this.selectables?.remove(selectClause);
 			this.pendingSelectAll?.exclude(fieldName);
 			return this;
 		}

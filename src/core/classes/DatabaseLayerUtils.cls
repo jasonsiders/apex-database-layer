@@ -310,7 +310,8 @@ public without sharing class DatabaseLayerUtils {
 		 */
 		public SObjectField findLookup(DescribeSObjectResult objectDescribe, String relationshipName) {
 			Map<String, SObjectField> lookups = this.mapLookups(objectDescribe);
-			return lookups?.get(relationshipName?.toLowerCase());
+			String key = relationshipName?.toLowerCase();
+			return lookups?.get(key);
 		}
 
 		/**
@@ -335,9 +336,9 @@ public without sharing class DatabaseLayerUtils {
 			Map<String, SObjectField> lookups = new Map<String, SObjectField>{};
 			List<SObjectField> fields = objectDescribe?.fields?.getMap()?.values() ?? new List<SObjectField>{};
 			for (SObjectField field : fields) {
-				String relationshipName = field?.getDescribe()?.getRelationshipName();
-				if (relationshipName != null) {
-					lookups?.put(relationshipName?.toLowerCase(), field);
+				String key = field?.getDescribe()?.getRelationshipName()?.toLowerCase();
+				if (key != null) {
+					lookups?.put(key, field);
 				}
 			}
 			return lookups;

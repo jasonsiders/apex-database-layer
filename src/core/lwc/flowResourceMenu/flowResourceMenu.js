@@ -430,7 +430,8 @@ function applyTarget(sections, target, context) {
 function toListedValues(picklistValues) {
 	if (!LISTED_VALUES.has(picklistValues)) {
 		const values = picklistValues.map(({ value }) => value);
-		LISTED_VALUES.set(picklistValues, new Set(values));
+		const valueSet = new Set(values);
+		LISTED_VALUES.set(picklistValues, valueSet);
 	}
 	return LISTED_VALUES.get(picklistValues);
 }

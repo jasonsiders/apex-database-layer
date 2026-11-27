@@ -2227,7 +2227,8 @@ private with sharing class InvocableSoqlTest {
 	private static InvocableSoql.LikePatternIndex initPatternIndex(List<String> patterns) {
 		InvocableSoql.LikePatternIndex index = new InvocableSoql.LikePatternIndex();
 		for (Integer position = 0; position < patterns.size(); position++) {
-			index.add(new InvocableSoql.LikePattern(patterns[position]), position);
+			InvocableSoql.LikePattern pattern = new InvocableSoql.LikePattern(patterns[position]);
+			index.add(pattern, position);
 		}
 		return index;
 	}
