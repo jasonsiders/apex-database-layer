@@ -15,13 +15,12 @@ import {
 } from "c/flowResourceMenu";
 
 const GLOBAL_CONSTANT_PREFIX = "$GlobalConstant.";
-const DATE_TYPES = ["Date", "DateTime"];
 // The text each typed input takes as a literal of its type; anything else is text. Dates also need a real day,
 // which isCalendarDate checks
 const LITERAL_PATTERNS = {
 	Boolean: /^(true|false)$/i,
 	Date: /^\d{4}-\d{2}-\d{2}$/,
-	DateTime: /^\d{4}-\d{2}-\d{2}T([01]\d|2[0-3]):[0-5]\d(:[0-5]\d(\.\d{1,3})?)?(Z|[+-]\d{2}:?\d{2})$/,
+	DateTime: /^\d{4}-\d{2}-\d{2}T([01]\d|2[0-3]):[0-5]\d(:[0-5]\d(\.\d{1,3})?)?(Z|[+-]([01]\d|2[0-3]):?[0-5]\d)$/,
 	Number: /^[+-]?(\d+(\.\d*)?|\.\d+)$/,
 	Time: /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d(\.\d{1,3})?)?Z?$/
 };
@@ -49,7 +48,7 @@ function initDeferred() {
  */
 function toLiteralType(text, type, allowsDateLiterals) {
 	const trimmed = text.trim();
-	const isDateType = DATE_TYPES.includes(type);
+	const isDateType = ["Date", "DateTime"].includes(type);
 	const isDateLiteral = allowsDateLiterals && isDateType && DATE_LITERAL_PATTERN.test(trimmed);
 	const isLiteral = LITERAL_PATTERNS[type]?.test(trimmed) && (!isDateType || isCalendarDate(trimmed));
 	return isDateLiteral || isLiteral ? type : "String";
