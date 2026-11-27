@@ -38,7 +38,11 @@ global class DatabaseLayerTestUtils {
 		// Inline SOQL and DML, since tests that mock DatabaseLayer still need a real user
 		Profile userProfile = [SELECT Id FROM Profile WHERE Name = :profileName LIMIT 1];
 		DatabaseLayerTestUtils.userCount++;
-		String username = 'user' + DatabaseLayerTestUtils.userCount + '.' + DateTime.now()?.getTime();
+		// Usernames are unique across every org, so the org ID and a random number keep parallel runs from colliding
+		String orgId = UserInfo.getOrganizationId();
+		Integer salt = Math.abs(Crypto.getRandomInteger());
+		Long now = DateTime.now()?.getTime();
+		String username = 'user' + DatabaseLayerTestUtils.userCount + '.' + orgId + '.' + salt + '.' + now;
 		User testUser = new User(
 			Alias = 'testuser',
 			EmailEncodingKey = 'UTF-8',
