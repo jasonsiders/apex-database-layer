@@ -9,7 +9,7 @@ global class DatabaseLayerTestUtils {
 	public static final PreAndPostProcessorSpy DmlPluginSpy = new PreAndPostProcessorSpy();
 	@SuppressWarnings('PMD.FieldNamingConventions')
 	public static final PreAndPostProcessorSpy SoqlPluginSpy = new PreAndPostProcessorSpy();
-	/** @description Users inserted so far, which keeps each username unique within a millisecond **/
+	/** @description Users inserted so far, which keeps each username unique within a run **/
 	private static Integer userCount = 0;
 
 	/**
@@ -38,7 +38,10 @@ global class DatabaseLayerTestUtils {
 		// Inline SOQL and DML, since tests that mock DatabaseLayer still need a real user
 		Profile userProfile = [SELECT Id FROM Profile WHERE Name = :profileName LIMIT 1];
 		DatabaseLayerTestUtils.userCount++;
-		String username = 'user' + DatabaseLayerTestUtils.userCount + '.' + DateTime.now()?.getTime();
+		// Usernames are unique across every org, so the org ID and a random number keep parallel runs from colliding
+		String orgId = UserInfo.getOrganizationId();
+		Integer salt = Crypto.getRandomInteger();
+		String username = 'user' + DatabaseLayerTestUtils.userCount + '.' + orgId + '.' + salt;
 		User testUser = new User(
 			Alias = 'testuser',
 			EmailEncodingKey = 'UTF-8',

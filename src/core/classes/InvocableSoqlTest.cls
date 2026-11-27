@@ -271,20 +271,27 @@ private with sharing class InvocableSoqlTest {
 			JSON.serialize(query),
 			InvocableSoql.Query.class
 		);
+		InvocableSoql.Query mixed = (InvocableSoql.Query) JSON.deserialize(
+			JSON.serialize(query),
+			InvocableSoql.Query.class
+		);
 		outOfRange.conditionLogic = '1 AND 2';
 		// SOQL would fail every query on a syntax error, so the action fails first, naming the logic
 		unbalanced.conditionLogic = 'NOT (1';
+		mixed.conditionLogic = '(1 OR 1) AND 1 OR 1';
 		query.conditionLogic = '1 OR Name != null';
 
 		Test.startTest();
 		Exception injectedError = InvocableSoqlTest.invokeAndCatch(InvocableSoqlTest.initInput(query));
 		Exception outOfRangeError = InvocableSoqlTest.invokeAndCatch(InvocableSoqlTest.initInput(outOfRange));
 		Exception unbalancedError = InvocableSoqlTest.invokeAndCatch(InvocableSoqlTest.initInput(unbalanced));
+		Exception mixedError = InvocableSoqlTest.invokeAndCatch(InvocableSoqlTest.initInput(mixed));
 		Test.stopTest();
 
 		Assert.isInstanceOfType(injectedError, IllegalArgumentException.class, 'Wrong error: ' + injectedError);
 		Assert.isInstanceOfType(outOfRangeError, IllegalArgumentException.class, 'Wrong error: ' + outOfRangeError);
 		Assert.isInstanceOfType(unbalancedError, IllegalArgumentException.class, 'Wrong error: ' + unbalancedError);
+		Assert.isInstanceOfType(mixedError, IllegalArgumentException.class, 'Wrong error: ' + mixedError);
 	}
 
 	@IsTest

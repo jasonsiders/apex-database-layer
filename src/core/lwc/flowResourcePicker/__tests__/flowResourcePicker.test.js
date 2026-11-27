@@ -497,6 +497,27 @@ describe("c-flow-resource-picker", () => {
 			expect(input(element).value).toBe("");
 		});
 
+		it("waits for options to load before Enter chooses one", async () => {
+			let resolveLoad;
+			const slowLoadOptions = jest.fn(loadOptions);
+			const { element, onChange } = await render({
+				name: "field",
+				loadOptions: slowLoadOptions,
+				builderContext: undefined
+			});
+			await open(element);
+			await press(element, "ArrowDown");
+
+			slowLoadOptions.mockImplementationOnce(() => new Promise((resolve) => (resolveLoad = resolve)));
+			await type(element, "LastName");
+			await press(element, "Enter");
+			resolveLoad(OPTIONS[""]);
+			await flush();
+
+			expect(lastChange(onChange)).toEqual({ name: "field", value: "LastName", valueDataType: "reference" });
+			expect(pillLabel(element)).toBe("Last Name");
+		});
+
 		it("saves a typed path that names an option, and discards one that doesn't or is unfinished", async () => {
 			const { element, onChange } = await renderWithOptions();
 			await open(element);

@@ -22,8 +22,6 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	// Other constants
 	private static final Soql.LogicType DEFAULT_LOGIC_TYPE = Soql.LogicType.ALL_CONDITIONS;
 	private static final String ID_REFERENCE = 'Id';
-	// Holds the selectAll requests' place in the SELECT clause; braces can't appear in a field name
-	private static final String SELECT_ALL_PLACEHOLDER = '{selectAll}';
 
 	// Member Properties:
 	/**
@@ -457,12 +455,12 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	 * @description Abstract base class providing fluent interface for building SOQL queries.
 	 */
 	global abstract class Builder {
-		// Backing state for selectClauses, which renders it on each read, so selectAll expands at the latest access level;
-		// SELECT_ALL_PLACEHOLDER marks where the selectAll requests go
-		@TestVisible
+		// Backing state for selectClauses, which callers can edit in place
 		private transient Set<String> selectables;
-		// The selectAll requests, which expand at each read of selectClauses
+		// The selectAll requests, expanded into selectables at the next read after they or the query change
 		private transient Soql.SelectAll pendingSelectAll;
+		// The selectAll fields now in selectables, swapped out when the requests expand again
+		private transient List<String> appliedSelectAll;
 		/**
 		 * @description The configured access level for the query execution.
 		 */
@@ -502,15 +500,17 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		global Soql.Scope scope { get; protected set; }
 		/**
-		 * @description Set of SELECT clause field names, rendered on each read: {@link selectAll} expands at the
-		 * current access level, so changes to the returned set don't change the query.
+		 * @description Set of SELECT clause field names. Changes to it change the query. {@link selectAll} expands
+		 * at the current object and access level, and keeps fields removed from this set out.
 		 */
 		global Set<String> selectClauses {
 			get {
-				return (this.pendingSelectAll == null) ? this.selectables?.clone() : this.renderSelectAll();
+				this.applySelectAll();
+				return this.selectables;
 			}
 			protected set {
 				this.pendingSelectAll = null;
+				this.appliedSelectAll = null;
 				this.selectables = value?.clone() ?? new Set<String>{};
 			}
 		}
@@ -589,6 +589,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @return This Builder instance for method chaining
 		 */
 		global Soql.Builder setAccessLevel(System.AccessLevel accessLevel) {
+			this.excludeRemovedFields();
 			this.accessLevel = accessLevel;
 			return this;
 		}
@@ -797,28 +798,36 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @return The pending requests
 		 */
 		private Soql.SelectAll getPendingSelectAll() {
-			if (this.pendingSelectAll == null) {
-				this.pendingSelectAll = new Soql.SelectAll(this);
-				this.selectables?.add(SELECT_ALL_PLACEHOLDER);
-			}
+			this.excludeRemovedFields();
+			this.pendingSelectAll = this.pendingSelectAll ?? new Soql.SelectAll(this);
 			return this.pendingSelectAll;
 		}
 
 		/**
-		 * @description Renders the SELECT clause, with the {@link selectAll} requests expanded in their place
-		 * @return The clauses
+		 * @description Swaps the {@link selectAll} fields in the SELECT clause for a new expansion, when the requests,
+		 * object, or access level changed since the last one
 		 */
-		private Set<String> renderSelectAll() {
-			Set<String> clauses = new Set<String>{};
-			for (String clause : this.selectables) {
-				if (clause?.equals(SELECT_ALL_PLACEHOLDER) == true) {
-					List<String> expanded = this.pendingSelectAll?.expand();
-					clauses?.addAll(expanded);
-				} else {
-					clauses?.add(clause);
+		private void applySelectAll() {
+			List<String> expanded = this.pendingSelectAll?.expand();
+			// SelectAll returns the same list until something changes, so a reference check skips unchanged reads
+			if (expanded !== this.appliedSelectAll) {
+				List<String> applied = this.appliedSelectAll ?? new List<String>{};
+				this.selectables?.removeAll(applied);
+				this.selectables?.addAll(expanded ?? new List<String>{});
+				this.appliedSelectAll = expanded;
+			}
+		}
+
+		/**
+		 * @description Excludes {@link selectAll} fields that callers removed from selectClauses, so they stay out of
+		 * the next expansion. Runs before each change that expands again, so a later request can select them again
+		 */
+		private void excludeRemovedFields() {
+			for (String clause : this.appliedSelectAll ?? new List<String>{}) {
+				if (this.selectables?.contains(clause) == false) {
+					this.pendingSelectAll?.exclude(clause);
 				}
 			}
-			return clauses;
 		}
 
 		/**
@@ -1037,6 +1046,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		global Soql.Builder deselectAll() {
 			// Remove all SELECT fields from the current query
 			this.pendingSelectAll = null;
+			this.appliedSelectAll = null;
 			this.selectables?.clear();
 			return this;
 		}
@@ -1078,8 +1088,8 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @return This Builder instance for method chaining
 		 */
 		global Soql.Builder setFrom(SObjectType objectType) {
-			this.entity = objectType?.toString();
-			return this;
+			String entityName = objectType?.toString();
+			return this.setFrom(entityName);
 		}
 
 		/**
@@ -1088,6 +1098,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @return This Builder instance for method chaining
 		 */
 		global Soql.Builder setFrom(String entityName) {
+			this.excludeRemovedFields();
 			this.entity = entityName;
 			return this;
 		}
@@ -2221,8 +2232,10 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @param clause The clause, ex: `Name` or `Contact.Account.Name`
 		 */
 		public void exclude(String clause) {
-			this.exclusions?.add(clause);
-			this.expandedClauses = null;
+			// Keeps the last expansion when the clause was already left out, so repeat calls don't describe again
+			if (this.exclusions?.add(clause) == true) {
+				this.expandedClauses = null;
+			}
 		}
 
 		/**

@@ -1016,7 +1016,8 @@ public inherited sharing class InvocableSoql {
 			Set<String> cached = this.selectClausesByAccessLevel?.get(accessLevel);
 			if (cached == null) {
 				this.addFields(builder);
-				Set<String> clauses = builder?.selectClauses;
+				// A copy, since the builder's set is live
+				Set<String> clauses = builder?.selectClauses?.clone();
 				this.selectClausesByAccessLevel?.put(accessLevel, clauses);
 			} else {
 				this.addClauses(builder, cached);
@@ -2731,11 +2732,12 @@ public inherited sharing class InvocableSoql {
 	}
 
 	/**
-	 * @description Parses condition logic into `InvocableSoql.LogicNode`s. SOQL rejects AND and OR side by side
-	 * without parentheses, so which binds first doesn't matter
+	 * @description Parses condition logic into `InvocableSoql.LogicNode`s. Rejects AND and OR side by side without
+	 * parentheses, as SOQL does, so which binds first doesn't matter
 	 */
 	private class LogicParser {
 		private Integer position = 0;
+		private String text;
 		private List<String> tokens = new List<String>{};
 
 		/**
@@ -2743,6 +2745,7 @@ public inherited sharing class InvocableSoql {
 		 * @param logic Well-formed logic, by condition number, ex: "1 AND (2 OR NOT 3)"
 		 */
 		private LogicParser(InvocableSoql.ConditionLogic logic) {
+			this.text = logic?.text;
 			this.tokens = logic?.tokens ?? this.tokens;
 		}
 
@@ -2757,6 +2760,7 @@ public inherited sharing class InvocableSoql {
 		/**
 		 * @description Parses operands joined by AND or OR, joining a run of the same one into one part
 		 * @return The part
+		 * @throws System.IllegalArgumentException When AND and OR join operands without parentheses, ex: `1 AND 2 OR 3`
 		 */
 		private InvocableSoql.LogicNode parseGroup() {
 			InvocableSoql.LogicNode result = this.parseOperand();
@@ -2764,6 +2768,10 @@ public inherited sharing class InvocableSoql {
 			while (this.isJoinNext()) {
 				String operator = this.next();
 				InvocableSoql.LogicNode operand = this.parseOperand();
+				String joinedOperator = joined?.operator ?? operator;
+				if (joinedOperator != operator) {
+					throw new IllegalArgumentException('Invalid condition logic: ' + this.text);
+				}
 				if (joined?.operator != operator) {
 					joined = new InvocableSoql.LogicNode(operator, null);
 					joined?.children?.add(result);

@@ -557,11 +557,12 @@ private class SoqlTest {
 			?.setAccessLevel(System.AccessLevel.SYSTEM_MODE)
 			?.selectAll()
 			?.toSoql();
-		Set<String> accountFields = soql?.selectClauses;
+		// Copies, since selectClauses is live
+		Set<String> accountFields = soql?.selectClauses?.clone();
 
 		Test.startTest();
 		soql?.selectAll(Account.OwnerId);
-		Set<String> withOwnerFields = soql?.selectClauses;
+		Set<String> withOwnerFields = soql?.selectClauses?.clone();
 		soql?.setFrom(Contact.SObjectType);
 		Set<String> contactFields = soql?.selectClauses;
 		Test.stopTest();
@@ -598,10 +599,41 @@ private class SoqlTest {
 		Test.stopTest();
 
 		Set<String> fields = soql?.selectClauses;
-		Integer numSelectables = ((Soql.Builder) soql)?.selectables?.size();
 		Assert.isTrue(fields?.contains('Contact.Name'), 'selectAll(Case.ContactId) should select Contact.Name again');
 		Assert.isFalse(fields?.contains('Contact.Account.Name'), 'Selected Contact.Account.Name again');
-		Assert.areEqual(2, numSelectables, 'Should keep Id and one set of selectAll requests');
+	}
+
+	@IsTest
+	private static void shouldKeepEditsToSelectClausesAcrossAccessLevels() {
+		Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)
+			?.setAccessLevel(System.AccessLevel.SYSTEM_MODE)
+			?.selectAll()
+			?.toSoql();
+
+		Test.startTest();
+		soql?.selectClauses?.remove('Name');
+		soql?.selectClauses?.add('Owner.Name');
+		soql?.setAccessLevel(System.AccessLevel.USER_MODE);
+		Set<String> fields = soql?.selectClauses;
+		Test.stopTest();
+
+		Assert.isFalse(fields?.contains('Name'), 'Selected a field removed from selectClauses again');
+		Assert.isTrue(fields?.contains('Owner.Name'), 'Dropped a field added to selectClauses');
+		Assert.isTrue(fields?.contains('Industry'), 'Did not expand selectAll at the new access level');
+		Assert.isTrue(soql?.toString()?.contains('Owner.Name'), 'Query does not select the added field');
+	}
+
+	@IsTest
+	private static void shouldSelectAllFieldsRemovedFromSelectClausesAgain() {
+		Soql soql = DatabaseLayer.Soql.newQuery(Account.SObjectType)?.selectAll()?.toSoql();
+		soql?.selectClauses?.remove('Name');
+
+		Test.startTest();
+		soql?.selectAll();
+		Set<String> fields = soql?.selectClauses;
+		Test.stopTest();
+
+		Assert.isTrue(fields?.contains('Name'), 'selectAll() should select a field removed from selectClauses again');
 	}
 
 	@IsTest
