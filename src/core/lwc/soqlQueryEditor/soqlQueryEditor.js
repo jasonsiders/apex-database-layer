@@ -58,12 +58,13 @@ const FLOW_TYPES = {
 	PERCENT: "Number",
 	TIME: "Time"
 };
-// Flow saves Boolean and blank literals as global constants; the definition holds their text
-const GLOBAL_CONSTANT_VALUES = {
-	"$GlobalConstant.EmptyString": "",
-	"$GlobalConstant.False": "false",
-	"$GlobalConstant.True": "true"
-};
+// Flow saves Boolean and blank literals as global constants; the definition holds their text. A Map, since typed text
+// like "toString" would read an inherited property of an object
+const GLOBAL_CONSTANT_VALUES = new Map([
+	["$GlobalConstant.EmptyString", ""],
+	["$GlobalConstant.False", "false"],
+	["$GlobalConstant.True", "true"]
+]);
 const LOGIC_OPTIONS = [
 	{ label: "All Conditions Are Met (AND)", value: "AND" },
 	{ label: "Any Condition Is Met (OR)", value: "OR" },
@@ -544,7 +545,7 @@ export default class SoqlQueryEditor extends FlowPropertyEditor {
 		const fieldType = toValueField(this._fields[condition.field], condition.operator)?.type;
 		// A typed boolean saves in lowercase, ex: TRUE as true, which is all Apex's JSON parser reads
 		const constant = fieldType === "BOOLEAN" ? (toBooleanConstant(value) ?? value) : value;
-		const text = GLOBAL_CONSTANT_VALUES[constant] ?? value;
+		const text = GLOBAL_CONSTANT_VALUES.get(constant) ?? value;
 		const isDateField = ["DATE", "DATETIME"].includes(fieldType);
 		const isDateLiteral = isDateField && DATE_LITERAL_PATTERN.test(text ?? "");
 		const isMultiValue = MULTI_VALUE_OPERATORS.includes(condition.operator);

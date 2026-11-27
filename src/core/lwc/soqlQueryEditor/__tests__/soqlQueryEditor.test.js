@@ -496,6 +496,17 @@ describe("c-soql-query-editor", () => {
 		});
 	});
 
+	it.each(["constructor", "toString", "valueOf", "__proto__"])(
+		"saves typed text that names an Object property: %s",
+		async (value) => {
+			const { element, events } = await render(withCondition({ field: "LastName", operator: "EQUALS" }));
+
+			await fire(valuePicker(element, 0), { value, valueDataType: "String" });
+
+			expect(savedDefinition(events).conditions[0]).toEqual({ field: "LastName", operator: "EQUALS", value });
+		}
+	);
+
 	it("flags a missing object, and incomplete conditions", async () => {
 		const { element } = await render();
 		expect(element.validate()).toEqual([{ key: "objectApiName", errorString: "Enter a value." }]);
