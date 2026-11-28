@@ -145,13 +145,15 @@ function isRelationship(field) {
  * @returns {Array} An All Fields section, then "Relationship Fields" and "Record Fields"
  */
 function initSections(level, filter, isCovered) {
+	// A level whose fields are all stored already offers only its parents' fields, through its lookups
 	const isUsable = (field) =>
 		!isCovered && (!filter || (filter === "filterable" ? field.isFilterable : field.isSortable));
 	const canDrill = level.depth < MAX_RELATIONSHIPS;
 	const usable = level.fields.filter(isUsable);
-	// A level whose fields are all stored already offers only its parents' fields, through its lookups
-	const lookups = level.fields.filter((field) => isRelationship(field) && (canDrill || isUsable(field)));
-	const lookupOptions = lookups.map((field) => initLookupOption(field, level.option, isUsable(field), canDrill));
+	const lookupOptions = level.fields
+		.filter(isRelationship)
+		.map((field) => initLookupOption(field, level.option, isUsable(field), canDrill))
+		.filter((option) => option.isSelectable || option.isDrillable);
 	const recordOptions = usable
 		.filter((field) => !isRelationship(field))
 		.map((field) => initFieldOption(field, level.option));

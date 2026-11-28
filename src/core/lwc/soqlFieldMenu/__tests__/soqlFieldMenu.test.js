@@ -4,8 +4,8 @@ import FIELDS from "./data/fields.json";
 
 jest.mock("@salesforce/apex/InvocableSoql.getFields", () => ({ default: jest.fn() }), { virtual: true });
 
-function values(sections) {
-	return sections.flatMap((section) => section.items).map((item) => item.value);
+function values(sections, key = "value") {
+	return sections.flatMap((section) => section.items).map((item) => item[key]);
 }
 
 beforeEach(() => {
@@ -71,8 +71,7 @@ describe("getFieldOptions", () => {
 		const sixth = await getFieldOptions("Contact", "Account.Owner.Manager.Manager.Manager.Manager");
 		const seventh = await getFieldOptions("Contact", "Account.Owner.Manager.Manager.Manager.Manager.Manager");
 
-		const drillValues = (sections) => sections.flatMap((section) => section.items).map((item) => item.drillValue);
-		expect(drillValues(fifth.sections)).toContain("Account.Owner.Manager.Manager.Manager.Manager");
+		expect(values(fifth.sections, "drillValue")).toContain("Account.Owner.Manager.Manager.Manager.Manager");
 		expect(sixth.parent.pathLabel).toBe(
 			"Account ID > Owner ID > Manager ID > Manager ID > Manager ID > Manager ID"
 		);

@@ -379,7 +379,7 @@ export default class SoqlQueryEditor extends FlowPropertyEditor {
 		const mode = event.detail.value;
 		this._isCustomLogic = mode === CUSTOM;
 		if (mode === NO_FILTER) {
-			this._definition.conditions.forEach((condition) => this._releaseSlot(condition));
+			this._releaseAllSlots();
 			this._updateDefinition({ conditions: [], conditionLogic: "AND" });
 		} else {
 			this._filterBy(mode);
@@ -393,7 +393,7 @@ export default class SoqlQueryEditor extends FlowPropertyEditor {
 	handleObjectChange(event) {
 		const objectApiName = event.detail.value;
 		if (objectApiName !== this.objectApiName) {
-			this._definition.conditions.forEach((condition) => this._releaseSlot(condition));
+			this._releaseAllSlots();
 			this._isCustomLogic = false;
 			// Replaced, not merged, so the old object's logic and options go too
 			this._definition = parseDefinition();
@@ -636,6 +636,13 @@ export default class SoqlQueryEditor extends FlowPropertyEditor {
 		const offsetError = validateRange("rowOffset", this.rowOffset, ROW_OFFSET_RANGE);
 		const checks = [objectError, ...conditionErrors, logicError, limitError, offsetError, usageError];
 		return this._setErrors(checks);
+	}
+
+	/**
+	 * @description Removes every condition's slot input, before the conditions are cleared
+	 */
+	_releaseAllSlots() {
+		this._definition.conditions.forEach((condition) => this._releaseSlot(condition));
 	}
 
 	/**
