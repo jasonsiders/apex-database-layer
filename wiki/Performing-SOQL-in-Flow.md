@@ -33,12 +33,12 @@ The action looks like Get Records, but doesn't always behave like it. Check thes
 In Flow Builder, add an **Action** element and search for `SOQL:`, under the **Database Layer** category. The action's editor mirrors Get Records. Below the object, click a section's heading to open or close it; only **Filter Records** starts open:
 
 1. **Get Records of This Object**: search for the object to query.
-2. **Select Fields to Store**: add the fields to include in the records. Records always include their ID, and every field used in a condition. **All Fields** stores every field of the object, or of a parent, ex: **Account > All Fields**, and replaces that object's fields already in the list. After it, that object offers only its relationships, to store its parents' fields. In user mode, it stores only the fields the running user can read.
-3. **Filter Records**: add conditions, and choose whether all of them, any of them, or custom logic must be met. Each condition has a field, an operator, and a value.
-4. **Sort and Limit Records**: add the fields to sort by, each ascending or descending, with blank values first or last. Then set a limit, the most records to get, and an offset, how many to skip. Without a sort, which records those are is up to the database.
+2. **Select Fields to Store**: add the fields to include in the records. Records always include their ID, and every field used in a condition. **All Fields** stores every field of the object, or of a parent, ex: **Account ID > All Fields**, and replaces that object's fields already in the list. After it, that object offers only its lookups, to store its parents' fields. In user mode, it stores only the fields the running user can read.
+3. **Filter Records**: choose **None** to get every record, or add conditions, and choose whether all of them, any of them, or custom logic must be met. Each condition has a field, an operator, and a value.
+4. **Sort and Limit Records**: add the fields to sort by, each ascending or descending, with blank values first or last. Then set a limit, the most records to get, and an offset, how many to skip. In a bulk run, each applies to each interview; see [Bulk Behavior](#bulk-behavior). Without a sort, which records those are is up to the database.
 5. **Advanced Query Options**: set the access level and **Rows**: **All Rows** includes deleted and archived records, and **For Update** locks the records for the rest of the transaction, but can't sort them. SOQL allows one of the two at a time.
 
-To use a parent's field, pick its relationship, ex: **Account**, and the menu lists the parent's fields, like Flow Builder's resource menu. You can also type the path, ex: `Account.Owner.`. Relationships go as deep as SOQL allows: six. A relationship to several objects, ex: a task's **Who**, offers only the fields SOQL allows on it without `TYPEOF`, such as Name and Type.
+Like Get Records, the menu lists each lookup once, by its label, ex: **Account ID**. Click it to pick the ID, or click its arrow to list the parent's fields, like Flow Builder's resource menu. You can also type the path, ex: `Account.Owner.`. Relationships go as deep as SOQL allows: six. A relationship to several objects, ex: a task's **Who**, offers only the fields SOQL allows on it without `TYPEOF`, such as Name and Type.
 
 ### Operators
 
