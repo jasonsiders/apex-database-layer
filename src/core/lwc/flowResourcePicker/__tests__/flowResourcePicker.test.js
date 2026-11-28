@@ -506,7 +506,10 @@ describe("c-flow-resource-picker", () => {
 			const lookupOptions = (parentPath) =>
 				parentPath
 					? loadOptions(parentPath)
-					: Promise.resolve({ parent: null, sections: [{ items: [lookupOption] }] });
+					: Promise.resolve({
+							parent: null,
+							sections: [{ label: "Relationship Fields", items: [lookupOption] }]
+						});
 			const { element, onChange } = await render({
 				name: "field",
 				loadOptions: lookupOptions,
