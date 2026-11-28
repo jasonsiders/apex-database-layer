@@ -184,7 +184,8 @@ export default class SoqlQueryEditor extends FlowPropertyEditor {
 	}
 
 	get logicOptions() {
-		const none = { label: `None—Get All ${this._getObjectLabel()} Records`, value: NO_FILTER };
+		const objectLabel = this._getObjectLabel();
+		const none = { label: `None—Get All ${objectLabel} Records`, value: NO_FILTER };
 		return [none, ...LOGIC_OPTIONS];
 	}
 

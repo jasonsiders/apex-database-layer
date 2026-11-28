@@ -503,8 +503,8 @@ export default class FlowResourcePicker extends LightningElement {
 	handleOptionClick(event) {
 		const key = event.currentTarget.dataset.key;
 		const item = this.options.find((option) => option.key === key);
-		const isChevron = Boolean(event.target.closest('[data-role="drill"]'));
-		if (isChevron) {
+		const chevron = event.target.closest('[data-role="drill"]');
+		if (chevron) {
 			this._drill(item);
 		} else {
 			this._choose(item);
@@ -566,16 +566,6 @@ export default class FlowResourcePicker extends LightningElement {
 	}
 
 	/**
-	 * @description Lists a container's children; a host option drills to `drillValue` when it differs from the value
-	 * it selects, ex: a lookup selects `AccountId` and drills into `Account`
-	 * @param {Object} item The container
-	 */
-	_drill(item) {
-		this._text = this._toDrillText(item.drillValue ?? item.value);
-		this._loadMenu();
-	}
-
-	/**
 	 * @description Chooses the highlighted option, or commits the typed text if none is highlighted.
 	 */
 	async _chooseActive() {
@@ -619,6 +609,16 @@ export default class FlowResourcePicker extends LightningElement {
 	_dismiss(event) {
 		event.stopPropagation();
 		this._close();
+	}
+
+	/**
+	 * @description Lists a container's children; a host option drills to `drillValue` when it differs from the value
+	 * it selects, ex: a lookup selects `AccountId` and drills into `Account`
+	 * @param {Object} item The container
+	 */
+	_drill(item) {
+		this._text = this._toDrillText(item.drillValue ?? item.value);
+		this._loadMenu();
 	}
 
 	/**

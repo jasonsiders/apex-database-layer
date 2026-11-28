@@ -152,7 +152,10 @@ function initSections(level, filter, isCovered) {
 	const usable = level.fields.filter(isUsable);
 	const lookupOptions = level.fields
 		.filter(isRelationship)
-		.map((field) => initLookupOption(field, level.option, isUsable(field), canDrill))
+		.map((field) => {
+			const isSelectable = isUsable(field);
+			return initLookupOption(field, level.option, isSelectable, canDrill);
+		})
 		.filter((option) => option.isSelectable || option.isDrillable);
 	const recordOptions = usable
 		.filter((field) => !isRelationship(field))
@@ -202,8 +205,9 @@ function initRelationshipOption(field, parent) {
  */
 function initLookupOption(field, parent, isSelectable, isDrillable) {
 	const relationship = initRelationshipOption(field, parent);
+	const fieldOption = initFieldOption(field, parent);
 	return {
-		...initFieldOption(field, parent),
+		...fieldOption,
 		drillValue: relationship.value,
 		icon: "utility:record_lookup",
 		isSelectable,

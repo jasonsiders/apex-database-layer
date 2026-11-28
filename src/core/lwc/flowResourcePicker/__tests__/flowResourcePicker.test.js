@@ -503,13 +503,8 @@ describe("c-flow-resource-picker", () => {
 				drillValue: "Account",
 				isDrillable: true
 			};
-			const lookupOptions = (parentPath) =>
-				parentPath
-					? loadOptions(parentPath)
-					: Promise.resolve({
-							parent: null,
-							sections: [{ label: "Relationship Fields", items: [lookupOption] }]
-						});
+			const topLevel = { parent: null, sections: [{ label: "Relationship Fields", items: [lookupOption] }] };
+			const lookupOptions = (parentPath) => (parentPath ? loadOptions(parentPath) : Promise.resolve(topLevel));
 			const { element, onChange } = await render({
 				name: "field",
 				loadOptions: lookupOptions,
