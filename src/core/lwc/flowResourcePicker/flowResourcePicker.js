@@ -1,17 +1,29 @@
 import { LightningElement, api, wire } from "lwc";
 import { getObjectInfos } from "lightning/uiObjectInfoApi";
 import {
+	DATE_LITERAL_PATTERN,
 	filterSections,
+	findItem,
 	getChildSections,
 	getRootSections,
 	isAssignable,
 	parseInput,
+	parsePath,
 	REFERENCE,
 	REQUIRED_ERROR,
 	resolveItem
 } from "c/flowResourceMenu";
 
 const GLOBAL_CONSTANT_PREFIX = "$GlobalConstant.";
+// The text each typed input takes as a literal of its type; anything else is text. Dates also need a real day,
+// which isCalendarDate checks
+const LITERAL_PATTERNS = {
+	Boolean: /^(true|false)$/i,
+	Date: /^\d{4}-\d{2}-\d{2}$/,
+	DateTime: /^\d{4}-\d{2}-\d{2}T([01]\d|2[0-3]):[0-5]\d(:[0-5]\d(\.\d{1,3})?)?(Z|[+-]([01]\d|2[0-3]):?[0-5]\d)$/,
+	Number: /^[+-]?(\d+(\.\d*)?|\.\d+)$/,
+	Time: /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d(\.\d{1,3})?)?Z?$/
+};
 const ROOT_LABEL = "All Resources";
 
 /**
@@ -25,6 +37,34 @@ function initDeferred() {
 		Object.assign(deferred, { resolve, reject });
 	});
 	return deferred;
+}
+
+/**
+ * @description The data type of typed text: the input's type, if the text is a literal of it, or else text
+ * @param {String} text The typed text
+ * @param {String} type The input's data type
+ * @param {Boolean} allowsDateLiterals Whether a date input also takes SOQL date literals
+ * @returns {String} The literal's data type
+ */
+function toLiteralType(text, type, allowsDateLiterals) {
+	const trimmed = text.trim();
+	const isDateType = ["Date", "DateTime"].includes(type);
+	const isDateLiteral = allowsDateLiterals && isDateType && DATE_LITERAL_PATTERN.test(trimmed);
+	const isLiteral = LITERAL_PATTERNS[type]?.test(trimmed) && (!isDateType || isCalendarDate(trimmed));
+	return isDateLiteral || isLiteral ? type : "String";
+}
+
+/**
+ * @description Whether a date's day exists, ex: not 2026-02-30, which Apex can't parse. Years before 100 fail, since
+ * Date.UTC reads them as 19xx
+ * @param {String} text A Date or DateTime literal, which starts with `yyyy-mm-dd`
+ * @returns {Boolean} True if the day exists
+ */
+function isCalendarDate(text) {
+	const day = text.slice(0, 10);
+	const [year, month, date] = day.split("-").map(Number);
+	const timestamp = Date.UTC(year, month - 1, date);
+	return new Date(timestamp).toISOString().startsWith(day);
 }
 
 /**
@@ -43,6 +83,17 @@ function toValueDataType(item) {
  * with `{ name, value, valueDataType }`, where `valueDataType` is `reference` for resources.
  */
 export default class FlowResourcePicker extends LightningElement {
+	/**
+	 * @description Whether a collection input also takes record collections, ex: for their IDs; `objectType` limits
+	 * them to one object
+	 * @type {Boolean}
+	 */
+	@api acceptsRecords = false;
+	/**
+	 * @description Whether a Date or DateTime input also takes SOQL date literals, ex: `LAST_N_DAYS:30`
+	 * @type {Boolean}
+	 */
+	@api allowsDateLiterals = false;
 	/**
 	 * @description The CPE's `automaticOutputVariables`, for drilling into action outputs
 	 * @type {Object}
@@ -123,6 +174,8 @@ export default class FlowResourcePicker extends LightningElement {
 	_isEditing = false;
 	_isTouched = false;
 	_isOpen = false;
+	_loadOptions;
+	_menuLoad = Promise.resolve();
 	_objectLabels = {};
 	_refreshId = 0;
 	_requestId = 0;
@@ -227,6 +280,8 @@ export default class FlowResourcePicker extends LightningElement {
 		let index = 0;
 		return this._sections.map((section) => ({
 			...section,
+			// A section without a label, ex: a host's leading shortcut, has no header
+			hasHeader: this.isResourceMenu && Boolean(section.label),
 			items: section.items.map((item) => {
 				const isActive = index === this._activeIndex;
 				const activeClass = isActive ? " slds-has-focus" : "";
@@ -265,6 +320,7 @@ export default class FlowResourcePicker extends LightningElement {
 
 	get target() {
 		return {
+			acceptsRecords: this.acceptsRecords,
 			dataType: this.type,
 			isCollection: this.isCollection,
 			isPicklistOnly: this.isPicklistOnly,
@@ -289,6 +345,23 @@ export default class FlowResourcePicker extends LightningElement {
 	set builderContext(value) {
 		this._builderContext = value;
 		this._loadObjectLabels();
+		this._refreshSelection();
+	}
+
+	/**
+	 * @description Lists the host's own options in place of the flow's resources, ex: an object's fields:
+	 * `(parentPath) => Promise<{ parent, sections }>`. `parentPath` is a dotted path, blank at the top; `parent` is the
+	 * drilled-into option's `{ value, pathLabel, trailLabels? }`, or null; each section is `{ label, items }`, and each item
+	 * `{ key, value, label, pathLabel, icon, description?, drillValue?, isDrillable?, isSelectable? }`. Typed text is a dotted path,
+	 * and picked options show as pills.
+	 * @type {Function}
+	 */
+	@api
+	get loadOptions() {
+		return this._loadOptions;
+	}
+	set loadOptions(value) {
+		this._loadOptions = value;
 		this._refreshSelection();
 	}
 
@@ -342,13 +415,20 @@ export default class FlowResourcePicker extends LightningElement {
 
 	// **** HANDLERS **** //
 	/**
+	 * @description Reopens the menu on a click, like a combobox, since focus stays in the input after Escape closes it
+	 */
+	handleClick() {
+		this._open();
+	}
+
+	/**
 	 * @description Climbs back up the drill-down to the clicked step
 	 * @param {Event} event Click on a breadcrumb, whose `data-index` is -1 for All Resources
 	 */
 	handleCrumbClick(event) {
 		const index = Number(event.currentTarget.dataset.index);
 		const step = this._trail[index];
-		this._text = step ? `{!${step.value}.` : "";
+		this._text = step ? this._toDrillText(step.value) : "";
 		this._shouldFocus = true;
 		this._loadMenu();
 	}
@@ -380,21 +460,28 @@ export default class FlowResourcePicker extends LightningElement {
 	 */
 	handleInput(event) {
 		this._isDirty = true;
+		// The highlighted option belongs to the old text, so ArrowRight can't drill into it while the new menu loads
+		this._activeIndex = -1;
 		this._text = event.target.value;
 		this._isOpen = true;
 		this._loadMenu();
 	}
 
 	/**
-	 * @description Arrow keys move the highlight, Enter chooses it, and Escape closes the menu
+	 * @description Arrow keys move the highlight, ArrowRight drills into it, Enter chooses it, and Escape closes the
+	 * menu
 	 * @param {KeyboardEvent} event Keydown on the text field
 	 */
 	handleKeyDown(event) {
+		const active = this.isOpen ? this.options[this._activeIndex] : null;
 		const actions = {
 			ArrowDown: () => this._moveActive(1),
 			ArrowUp: () => this._moveActive(-1),
+			// Otherwise ArrowRight moves the caret, so keyboard users can drill into a row that Enter selects
+			ArrowRight: active?.isDrillable ? () => this._drill(active) : null,
 			Enter: () => this._chooseActive(),
-			Escape: () => this._close()
+			// Flow Builder closes its editor on Escape, so an open menu keeps it; a closed one passes it on
+			Escape: this.isOpen ? () => this._dismiss(event) : null
 		};
 		const action = actions[event.key];
 		if (action) {
@@ -418,7 +505,12 @@ export default class FlowResourcePicker extends LightningElement {
 	handleOptionClick(event) {
 		const key = event.currentTarget.dataset.key;
 		const item = this.options.find((option) => option.key === key);
-		this._choose(item);
+		const chevron = event.target.closest('[data-role="drill"]');
+		if (chevron) {
+			this._drill(item);
+		} else {
+			this._choose(item);
+		}
 	}
 
 	/**
@@ -428,7 +520,8 @@ export default class FlowResourcePicker extends LightningElement {
 	handlePillClick(event) {
 		event.preventDefault();
 		this._isEditing = true;
-		this._text = `{!${this._selection.value}}`;
+		const path = this._selection.value;
+		this._text = this._loadOptions ? path : `{!${path}}`;
 		this._shouldFocus = true;
 		this._open();
 	}
@@ -470,15 +563,16 @@ export default class FlowResourcePicker extends LightningElement {
 		if (item?.isSelectable) {
 			this._select(item);
 		} else if (item?.isDrillable) {
-			this._text = `{!${item.value}.`;
-			this._loadMenu();
+			this._drill(item);
 		}
 	}
 
 	/**
 	 * @description Chooses the highlighted option, or commits the typed text if none is highlighted.
 	 */
-	_chooseActive() {
+	async _chooseActive() {
+		// Waits for the latest load, so Enter doesn't choose an option the typing replaced
+		await this._menuLoad;
 		const item = this.options[this._activeIndex];
 		if (item) {
 			this._choose(item);
@@ -511,13 +605,34 @@ export default class FlowResourcePicker extends LightningElement {
 	}
 
 	/**
+	 * @description Closes the menu on Escape, keeping the key from Flow Builder's editor
+	 * @param {KeyboardEvent} event The Escape keydown
+	 */
+	_dismiss(event) {
+		event.stopPropagation();
+		this._close();
+	}
+
+	/**
+	 * @description Lists a container's children; a host option drills to `drillValue` when it differs from the value
+	 * it selects, ex: a lookup selects `AccountId` and drills into `Account`
+	 * @param {Object} item The container
+	 */
+	_drill(item) {
+		this._text = this._toDrillText(item.drillValue ?? item.value);
+		this._loadMenu();
+	}
+
+	/**
 	 * @description Fires `change`, unless the value is unchanged.
 	 * @param {String} value The new value, or null to clear it
 	 * @param {String} valueDataType `reference`, the literal's data type, or null
 	 * @param {Object} selection For references, the chosen item; records add its `objectType` and `isCollection`
 	 */
 	_emitChange(value, valueDataType, selection) {
-		const isUnchanged = value === this._value && valueDataType === this._valueDataType;
+		// The host's options are always paths, so only the value can change; hosts needn't pass a valueDataType
+		const isSameType = Boolean(this._loadOptions) || valueDataType === this._valueDataType;
+		const isUnchanged = value === this._value && isSameType;
 		if (!isUnchanged) {
 			this._value = value;
 			this._valueDataType = valueDataType;
@@ -530,23 +645,51 @@ export default class FlowResourcePicker extends LightningElement {
 	}
 
 	/**
-	 * @description Rebuilds the menu for the current text: the resources in the drilled-into item, or at the root.
+	 * @description Rebuilds the menu for the current text, remembering the load so keys can wait for it
 	 */
-	async _loadMenu() {
+	_loadMenu() {
+		this._menuLoad = this._buildMenu();
+	}
+
+	/**
+	 * @description Builds the menu for the current text: the options in the drilled-into item, or at the top
+	 */
+	async _buildMenu() {
 		const requestId = ++this._requestId;
-		const { parentPath, path, searchTerm } = parseInput(this._text);
-		const parent = parentPath ? await resolveItem(parentPath, this.context, this._describeObject) : null;
-		const sections = parent
-			? await getChildSections(parent, this.context, this.target, this._describeObject)
-			: getRootSections(this.context, this.target);
+		const { parentPath, path, searchTerm } = this._parseText();
+		const { parent, sections } = this._loadOptions
+			? await this._loadOptions(parentPath)
+			: await this._loadResources(parentPath);
 		// An unresolved parent (ex: "$GlobalConstant") searches the root for the whole path instead
 		const term = parent || !parentPath ? searchTerm : path;
 		if (requestId === this._requestId) {
 			this._sections = filterSections(sections, term);
 			this._trail = this._initTrail(parent);
-			// Flow Builder's field pickers highlight the first field; its resource menu highlights nothing
-			this._activeIndex = this.isPicklistOnly && this._sections.length > 0 ? 0 : -1;
+			this._activeIndex = this._findActiveIndex();
 		}
+	}
+
+	/**
+	 * @description The option to highlight. Like Flow Builder, a resource menu highlights nothing, and a field picker
+	 * highlights the current value if listed, else the first option, so Enter on open doesn't swap the value.
+	 * @returns {Number} The option's index, or -1 for none
+	 */
+	_findActiveIndex() {
+		const currentIndex = this.options.findIndex((item) => item.value === this._value);
+		return this.isPicklistOnly && this.options.length > 0 ? Math.max(currentIndex, 0) : -1;
+	}
+
+	/**
+	 * @description Lists the flow's resources in the drilled-into item, or at the root
+	 * @param {String} parentPath The drilled-into item's path, blank at the root
+	 * @returns {Promise<Object>} `{ parent, sections }`, where `parent` is null at the root or if it doesn't resolve
+	 */
+	async _loadResources(parentPath) {
+		const parent = parentPath ? await resolveItem(parentPath, this.context, this._describeObject) : null;
+		const sections = parent
+			? await getChildSections(parent, this.context, this.target, this._describeObject)
+			: getRootSections(this.context, this.target);
+		return { parent, sections };
 	}
 
 	/**
@@ -578,20 +721,34 @@ export default class FlowResourcePicker extends LightningElement {
 	 * @returns {Array} `{ label, value }` for each step
 	 */
 	_initTrail(parent) {
-		const labels = parent?.pathLabel?.split(" > ") ?? [];
+		// A host's trailLabels keep a label that contains the separator in one breadcrumb
+		const labels = parent?.trailLabels ?? parent?.pathLabel?.split(" > ") ?? [];
 		const segments = parent?.value?.split(".") ?? [];
 		return labels.map((label, index) => ({ label, value: segments.slice(0, index + 1).join(".") }));
+	}
+
+	/**
+	 * @description Finds the item for a reference: one of the host's options, or a flow resource
+	 * @param {String} path The reference path
+	 * @returns {Promise<Object>} The item, or null if the path doesn't name one
+	 */
+	async _findItem(path) {
+		const { parentPath } = parsePath(path);
+		const level = this._loadOptions ? await this._loadOptions(parentPath) : null;
+		return level ? (findItem(level.sections, path) ?? null) : resolveItem(path, this.context, this._describeObject);
 	}
 
 	/**
 	 * @description Moves the highlight through the options, opening the menu first if it's closed.
 	 * @param {Number} offset 1 to move down, -1 to move up
 	 */
-	_moveActive(offset) {
-		const count = this.options.length;
+	async _moveActive(offset) {
 		const wasOpen = this._isOpen;
 		this._open();
-		const next = wasOpen ? (this._activeIndex + offset + count) % count : 0;
+		// Waits for the latest load, so the highlight lands on fresh options, not ones the typing replaced
+		await this._menuLoad;
+		const count = this.options.length;
+		const next = wasOpen ? (this._activeIndex + offset + count) % count : Math.max(this._activeIndex, 0);
 		this._activeIndex = count ? next : -1;
 	}
 
@@ -607,13 +764,22 @@ export default class FlowResourcePicker extends LightningElement {
 	}
 
 	/**
+	 * @description Reads the typed text: a dotted path through the host's options, or else a merge field or search term
+	 * @returns {Object} `{ isReference, isComplete, path, parentPath, searchTerm }`
+	 */
+	_parseText() {
+		return this._loadOptions ? parsePath(this._text) : parseInput(this._text);
+	}
+
+	/**
 	 * @description Shows the current value: a pill for references, or text for literals.
 	 */
 	async _refreshSelection() {
 		const refreshId = ++this._refreshId;
 		const value = this._value;
 		const isConstant = String(value).startsWith(GLOBAL_CONSTANT_PREFIX);
-		const path = this._valueDataType === REFERENCE || isConstant ? value : null;
+		const isPath = this._valueDataType === REFERENCE || isConstant || Boolean(this._loadOptions);
+		const path = isPath ? value : null;
 		this._text = path || value == null ? "" : String(value);
 		// Flow Builder sets builderContext, value, and valueDataType together, so only the last one's refresh resolves
 		await Promise.resolve();
@@ -626,22 +792,27 @@ export default class FlowResourcePicker extends LightningElement {
 	}
 
 	/**
-	 * @description Saves the typed text as a reference (`{!path}`) or a text literal. An unfinished merge field (ex:
-	 * `{!accountVar.`), or a literal the input doesn't take, is discarded, restoring the previous value.
+	 * @description Saves the typed text as a reference (`{!path}`) or a literal of the input's type, ex: `42` in a
+	 * Number input. An unfinished merge field (ex: `{!accountVar.`), or a literal the input doesn't take, is discarded,
+	 * restoring the previous value.
 	 */
 	_saveText() {
-		const parsed = parseInput(this._text);
+		const parsed = this._parseText();
 		const referencePath = parsed.isComplete ? parsed.path : null;
 		const isUnfinished = parsed.isReference && !parsed.isComplete;
-		const hasText = this._text.trim() !== "";
-		const literal = { value: this._text, dataType: "String", isLiteral: true };
+		const trimmed = this._text.trim();
+		const hasText = trimmed !== "";
+		const dataType = toLiteralType(this._text, this.type, this.allowsDateLiterals);
+		// Apex parses other literals strictly, so spaces around them would fail every run
+		const text = dataType === "String" ? this._text : trimmed;
+		const literal = { value: text, dataType, isLiteral: true };
 		const isInvalid = isUnfinished || (hasText && !isAssignable(literal, this.target));
 		if (referencePath) {
 			this._selectReference(referencePath);
 		} else if (isInvalid) {
 			this._refreshSelection();
 		} else {
-			this._emitChange(hasText ? this._text : null, hasText ? "String" : null);
+			this._emitChange(hasText ? text : null, hasText ? dataType : null);
 		}
 	}
 
@@ -652,7 +823,7 @@ export default class FlowResourcePicker extends LightningElement {
 	 */
 	async _resolveSelection(path) {
 		// A deleted resource or inaccessible object still shows, as its raw path, so the user can replace it
-		const item = await resolveItem(path, this.context, this._describeObject).catch(() => null);
+		const item = await this._findItem(path).catch(() => null);
 		return item ?? { value: path, pathLabel: path, icon: "utility:text" };
 	}
 
@@ -685,10 +856,20 @@ export default class FlowResourcePicker extends LightningElement {
 		this._text = "";
 		// The raw path that stands in for a missing resource has no data type, so the input never takes it
 		const item = await this._resolveSelection(path);
-		if (isAssignable(item, this.target)) {
+		const isAccepted = this._loadOptions ? Boolean(item.isSelectable) : isAssignable(item, this.target);
+		if (isAccepted) {
 			this._select(item);
 		} else {
 			this._refreshSelection();
 		}
+	}
+
+	/**
+	 * @description The text that drills into an item: a dotted path for the host's options, or else a merge field
+	 * @param {String} path The item's path
+	 * @returns {String} The text to show while drilled in, ex: `Account.` or `{!accountVar.`
+	 */
+	_toDrillText(path) {
+		return this._loadOptions ? `${path}.` : `{!${path}.`;
 	}
 }

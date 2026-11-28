@@ -1,0 +1,178 @@
+{
+	"Contact": [
+		{
+			"apiName": "AccountId",
+			"label": "Account ID",
+			"type": "REFERENCE",
+			"relationshipName": "Account",
+			"referenceTo": "Account",
+			"isFilterable": true,
+			"isSortable": true,
+			"picklistValues": []
+		},
+		{
+			"apiName": "Birthdate",
+			"label": "Birthdate",
+			"type": "DATE",
+			"isFilterable": true,
+			"isSortable": true,
+			"picklistValues": []
+		},
+		{
+			"apiName": "Description",
+			"label": "Contact Description",
+			"type": "TEXTAREA",
+			"isFilterable": false,
+			"isSortable": false,
+			"picklistValues": []
+		},
+		{
+			"apiName": "DoNotCall",
+			"label": "Do Not Call",
+			"type": "BOOLEAN",
+			"isFilterable": true,
+			"isSortable": true,
+			"picklistValues": []
+		},
+		{
+			"apiName": "Id",
+			"label": "Contact ID",
+			"type": "ID",
+			"isFilterable": true,
+			"isSortable": true,
+			"picklistValues": [],
+			"referenceTo": "Contact"
+		},
+		{
+			"apiName": "Interests__c",
+			"label": "Interests",
+			"type": "MULTIPICKLIST",
+			"isFilterable": true,
+			"isSortable": false,
+			"picklistValues": [
+				{
+					"label": "Golf",
+					"value": "Golf"
+				},
+				{
+					"label": "Tennis",
+					"value": "Tennis"
+				}
+			]
+		},
+		{
+			"apiName": "LastName",
+			"label": "Last Name",
+			"type": "STRING",
+			"isFilterable": true,
+			"isSortable": true,
+			"picklistValues": []
+		},
+		{
+			"apiName": "LeadSource",
+			"label": "Lead Source",
+			"type": "PICKLIST",
+			"isFilterable": true,
+			"isSortable": true,
+			"picklistValues": [
+				{
+					"label": "Web",
+					"value": "Web"
+				},
+				{
+					"label": "Phone Inquiry",
+					"value": "Phone Inquiry"
+				}
+			]
+		},
+		{
+			"apiName": "LastModifiedDate",
+			"label": "Last Modified Date",
+			"type": "DATETIME",
+			"isFilterable": true,
+			"isSortable": true,
+			"picklistValues": []
+		},
+		{
+			"apiName": "Lunch__c",
+			"label": "Lunch Time",
+			"type": "TIME",
+			"isFilterable": true,
+			"isSortable": true,
+			"picklistValues": []
+		}
+	],
+	"Account": [
+		{
+			"apiName": "NumberOfEmployees",
+			"label": "Employees",
+			"type": "INTEGER",
+			"isFilterable": true,
+			"isSortable": true,
+			"picklistValues": []
+		},
+		{
+			"apiName": "AnnualRevenue",
+			"label": "Annual Revenue",
+			"type": "CURRENCY",
+			"isFilterable": true,
+			"isSortable": true,
+			"picklistValues": []
+		},
+		{
+			"apiName": "Name",
+			"label": "Account Name",
+			"type": "STRING",
+			"isFilterable": true,
+			"isSortable": true,
+			"picklistValues": []
+		},
+		{
+			"apiName": "OwnerId",
+			"label": "Owner ID",
+			"type": "REFERENCE",
+			"relationshipName": "Owner",
+			"referenceTo": "User",
+			"isFilterable": true,
+			"isSortable": true,
+			"picklistValues": []
+		},
+		{
+			"apiName": "Id",
+			"label": "Account ID",
+			"type": "ID",
+			"referenceTo": "Account",
+			"isFilterable": true,
+			"isSortable": true,
+			"picklistValues": []
+		}
+	],
+	"User": [
+		{
+			"apiName": "IsActive",
+			"label": "Active",
+			"type": "BOOLEAN",
+			"isFilterable": true,
+			"isSortable": true,
+			"picklistValues": []
+		},
+		{
+			"apiName": "Name",
+			"label": "Full Name",
+			"type": "STRING",
+			"isFilterable": true,
+			"isSortable": true,
+			"picklistValues": []
+		},
+		{
+			"apiName": "ManagerId",
+			"label": "Manager ID",
+			"type": "REFERENCE",
+			"relationshipName": "Manager",
+			"referenceTo": "User",
+			"isFilterable": true,
+			"isSortable": true,
+			"picklistValues": []
+		}
+	]
+}

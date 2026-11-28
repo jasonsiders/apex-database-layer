@@ -1,0 +1,54 @@
+/* Flow pads the editor; bleeding past it gives full-width dividers, like native sections */
+.editor-section,
+.editor-sections {
+	margin: 0 calc(-1 * var(--slds-g-spacing-3, 0.75rem));
+}
+
+/* As wide as c-flow-resource-picker's input, so every input in the panel lines up */
+.editor-input {
+	max-width: 23rem;
+}
+
+/* A condition, sort field, or stored field on one line, like Get Records: prefix, inputs, then remove button */
+.editor-row {
+	gap: var(--slds-g-spacing-2, 0.5rem);
+}
+
+/* Lets the inputs shrink below their content's width, so long values don't push the remove button out */
+.editor-row-inputs {
+	min-width: 0;
+}
+
+/* Columns keep their place when a row has no operator or value yet, so rows line up; SLDS has no grid utility */
+.editor-row-columns {
+	align-items: start;
+	display: grid;
+	gap: var(--slds-g-spacing-2, 0.5rem);
+}
+
+/* Get Records' proportions: Field, Operator, Value */
+.condition-columns {
+	grid-template-columns: minmax(0, 3fr) minmax(0, 2fr) minmax(0, 3fr);
+}
+
+/* Sort By, Sort Order, Blank Values */
+.sort-columns {
+	grid-template-columns: minmax(0, 3fr) minmax(0, 2fr) minmax(0, 2fr);
+}
+
+/* Limit and Offset side by side, together as wide as one .editor-input */
+.limit-columns {
+	grid-template-columns: repeat(2, minmax(0, 11.25rem));
+}
+
+/* Prefix and remove button sit level with the inputs, below their 1.75rem labels */
+.editor-row-prefix,
+.editor-row-remove {
+	padding-top: 1.75rem;
+}
+
+/* As tall as an input, so the prefix's text centers on it */
+.editor-row-prefix {
+	line-height: 2rem;
+	min-width: var(--slds-g-sizing-9, 2rem);
+}

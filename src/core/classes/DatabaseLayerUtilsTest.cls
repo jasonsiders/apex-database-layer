@@ -194,4 +194,180 @@ private class DatabaseLayerUtilsTest {
 		Assert.isInstanceOfType(record, User.class, 'Did not create a User');
 		Assert.areEqual(record?.Id, recordId, 'Wrong Id');
 	}
+
+	@IsTest
+	private static void shouldNameTheObjectALookupPointsTo() {
+		DescribeFieldResult lookup = Contact.AccountId?.getDescribe();
+
+		Test.startTest();
+		String entityName = DatabaseLayer.Utils.Schema.toEntityName(lookup);
+		Test.stopTest();
+
+		Assert.areEqual('Account', entityName, 'Wrong lookup object');
+	}
+
+	@IsTest
+	private static void shouldNameTheNameObjectForAPolymorphicLookup() {
+		DescribeFieldResult lookup = Case.OwnerId?.getDescribe();
+
+		Test.startTest();
+		String entityName = DatabaseLayer.Utils.Schema.toEntityName(lookup);
+		Test.stopTest();
+
+		Assert.areEqual('Name', entityName, 'Wrong polymorphic lookup object');
+	}
+
+	@IsTest
+	private static void shouldNameTheNameObjectForANamePointingLookupToOneObject() {
+		// SOQL resolves by isNamePointing, not by how many objects the lookup references
+		DescribeFieldResult lookup = AccountHistory.CreatedById?.getDescribe();
+
+		Test.startTest();
+		String entityName = DatabaseLayer.Utils.Schema.toEntityName(lookup);
+		Test.stopTest();
+
+		Assert.areEqual('Name', entityName, 'Wrong name-pointing lookup object');
+	}
+
+	@IsTest
+	private static void shouldNameTheFirstObjectForALookupToSeveralObjects() {
+		DescribeFieldResult lookup = Document.FolderId?.getDescribe();
+
+		Test.startTest();
+		String entityName = DatabaseLayer.Utils.Schema.toEntityName(lookup);
+		Test.stopTest();
+
+		Assert.areEqual('Folder', entityName, 'Wrong multi-object lookup object');
+	}
+
+	@IsTest
+	private static void shouldNameTheObjectForASelfResolvingLookup() {
+		DescribeFieldResult lookup = ObjectPermissions.ParentId?.getDescribe();
+
+		Test.startTest();
+		String entityName = DatabaseLayer.Utils.Schema.toEntityName(lookup);
+		Test.stopTest();
+
+		Assert.areEqual('PermissionSet', entityName, 'Wrong object for a name-pointing lookup SOQL resolves directly');
+	}
+
+	@IsTest
+	private static void shouldNameNoObjectForAFieldThatIsNotALookup() {
+		DescribeFieldResult field = Account.Name?.getDescribe();
+
+		Test.startTest();
+		String entityName = DatabaseLayer.Utils.Schema.toEntityName(field);
+		Test.stopTest();
+
+		Assert.isNull(entityName, 'Named an object for a field that is not a lookup');
+	}
+
+	@IsTest
+	private static void shouldDescribeAnObjectByName() {
+		Test.startTest();
+		DescribeSObjectResult describe = DatabaseLayer.Utils.Schema.describeObject('Contact');
+		Test.stopTest();
+
+		Assert.areEqual(Contact.SObjectType, describe?.getSObjectType(), 'Wrong object');
+	}
+
+	@IsTest
+	private static void shouldFindALookupByItsRelationshipName() {
+		DescribeSObjectResult contactDescribe = Contact.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED);
+
+		Test.startTest();
+		SObjectField lookup = DatabaseLayer.Utils.Schema.findLookup(contactDescribe, 'account');
+		Test.stopTest();
+
+		Assert.areEqual(Contact.AccountId, lookup, 'Wrong lookup');
+	}
+
+	@IsTest
+	private static void shouldNotFindALookupByAFieldName() {
+		DescribeSObjectResult contactDescribe = Contact.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED);
+
+		Test.startTest();
+		SObjectField lookup = DatabaseLayer.Utils.Schema.findLookup(contactDescribe, 'LastName');
+		Test.stopTest();
+
+		Assert.isNull(lookup, 'Found a lookup by a field name, not a relationship name');
+	}
+
+	@IsTest
+	private static void shouldNotFindALookupWithoutAnObject() {
+		Test.startTest();
+		SObjectField lookup = DatabaseLayer.Utils.Schema.findLookup(null, 'Account');
+		Test.stopTest();
+
+		Assert.isNull(lookup, 'Found a lookup without an object');
+	}
+
+	@IsTest
+	private static void shouldFindTheLookupsAlongARelationshipPath() {
+		List<SObjectField> expected = new List<SObjectField>{ Case.ContactId, Contact.AccountId, Account.OwnerId };
+		DescribeSObjectResult caseDescribe = Case.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED);
+
+		Test.startTest();
+		List<SObjectField> lookups = DatabaseLayer.Utils.Schema.findLookups(caseDescribe, 'contact.Account.Owner');
+		Test.stopTest();
+
+		Assert.areEqual(expected, lookups, 'Wrong lookups');
+	}
+
+	@IsTest
+	private static void shouldFindLookupsThroughAPolymorphicRelationship() {
+		List<SObjectField> expected = new List<SObjectField>{ Case.OwnerId };
+		DescribeSObjectResult caseDescribe = Case.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED);
+
+		Test.startTest();
+		List<SObjectField> lookups = DatabaseLayer.Utils.Schema.findLookups(caseDescribe, 'Owner');
+		Test.stopTest();
+
+		Assert.areEqual(expected, lookups, 'Wrong lookups');
+	}
+
+	@IsTest
+	private static void shouldRejectAnUnknownRelationshipInAPath() {
+		DescribeSObjectResult caseDescribe = Case.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED);
+		Exception caught;
+
+		Test.startTest();
+		try {
+			DatabaseLayer.Utils.Schema.findLookups(caseDescribe, 'Contact.Bogus');
+		} catch (IllegalArgumentException error) {
+			caught = error;
+		}
+		Test.stopTest();
+
+		Assert.isNotNull(caught, 'Did not reject an unknown relationship');
+	}
+
+	@IsTest
+	private static void shouldFindNoLookupsForABlankRelationshipPath() {
+		DescribeSObjectResult caseDescribe = Case.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED);
+
+		Test.startTest();
+		List<SObjectField> lookups = DatabaseLayer.Utils.Schema.findLookups(caseDescribe, null);
+		Test.stopTest();
+
+		Assert.isTrue(lookups?.isEmpty(), 'Found lookups for a blank path');
+	}
+
+	@IsTest
+	private static void shouldDescribeTheObjectALookupPointsTo() {
+		Test.startTest();
+		DescribeSObjectResult parent = DatabaseLayer.Utils.Schema.describeParent(Contact.AccountId);
+		Test.stopTest();
+
+		Assert.areEqual(Account.SObjectType, parent?.getSObjectType(), 'Wrong parent object');
+	}
+
+	@IsTest
+	private static void shouldDescribeAnObjectByItsToken() {
+		Test.startTest();
+		DescribeSObjectResult describe = DatabaseLayer.Utils.Schema.describeObject(Contact.SObjectType);
+		Test.stopTest();
+
+		Assert.areEqual(Contact.SObjectType, describe?.getSObjectType(), 'Wrong object');
+	}
 }

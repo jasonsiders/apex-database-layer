@@ -22,13 +22,6 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	// Other constants
 	private static final Soql.LogicType DEFAULT_LOGIC_TYPE = Soql.LogicType.ALL_CONDITIONS;
 	private static final String ID_REFERENCE = 'Id';
-	// Matches the SOQL date literal grammar: the fixed keywords, plus the parameterized <LITERAL>:<n> forms.
-	// See https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_select_dateformats.htm
-	private static final Pattern DATE_LITERAL_PATTERN = Pattern.compile(
-		'(?i)^(YESTERDAY|TODAY|TOMORROW|(LAST|THIS|NEXT)_(WEEK|MONTH|QUARTER|YEAR|FISCAL_QUARTER|FISCAL_YEAR)|' +
-			'(LAST|NEXT)_90_DAYS|(LAST_N|NEXT_N)_(DAYS|WEEKS|MONTHS|QUARTERS|YEARS|FISCAL_QUARTERS|FISCAL_YEARS):\\d+|' +
-			'N_(DAYS|WEEKS|MONTHS|QUARTERS|YEARS|FISCAL_QUARTERS|FISCAL_YEARS)_AGO:\\d+)$'
-	);
 
 	// Member Properties:
 	/**
@@ -462,9 +455,12 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	 * @description Abstract base class providing fluent interface for building SOQL queries.
 	 */
 	global abstract class Builder {
-		// Backing state for selectClauses:
-		private transient Set<String> resolvedSelectClauses;
-		private transient Boolean selectAllPending = false;
+		// Backing state for selectClauses, which callers can edit in place
+		private transient Set<String> selectables;
+		// The selectAll requests, expanded into selectables at the next read after they or the query change
+		private transient Soql.SelectAll pendingSelectAll;
+		// The selectAll fields now in selectables, swapped out when the requests expand again
+		private transient List<String> appliedSelectAll;
 		/**
 		 * @description The configured access level for the query execution.
 		 */
@@ -475,7 +471,8 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		global Map<String, Object> binds { get; protected set; }
 		/**
-		 * @description The SObjectType name for the FROM clause.
+		 * @description The queried SObjectType's name, which the FROM clause renders, except in a Subquery, whose FROM
+		 * clause renders its child relationship name.
 		 */
 		global String entity { get; protected set; }
 		/**
@@ -503,16 +500,18 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		global Soql.Scope scope { get; protected set; }
 		/**
-		 * @description Set of SELECT clause field names. Reading this resolves any pending
-		 * {@link selectAll} call, so callers always observe the fully expanded clause list.
+		 * @description Set of SELECT clause field names. Changes to it change the query. {@link selectAll} expands
+		 * at the current object and access level, and keeps fields removed from this set out.
 		 */
 		global Set<String> selectClauses {
 			get {
-				this.resolveSelectAll();
-				return this.resolvedSelectClauses;
+				this.applySelectAll();
+				return this.selectables;
 			}
 			protected set {
-				this.resolvedSelectClauses = value;
+				this.pendingSelectAll = null;
+				this.appliedSelectAll = null;
+				this.selectables = value?.clone() ?? new Set<String>{};
 			}
 		}
 		/**
@@ -535,7 +534,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			// Note: System.AccessLevel is a weird enum - it isn't serializable,
 			// it does not have an enum name() property, and toString() does not output its name either:
 			get {
-				return (this.accessLevel == System.AccessLevel.SYSTEM_MODE) ? 'SYSTEM_MODE' : 'USER_MODE';
+				return DatabaseLayer.Utils.AccessLevels.getName(this.accessLevel);
 			}
 		}
 
@@ -590,6 +589,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @return This Builder instance for method chaining
 		 */
 		global Soql.Builder setAccessLevel(System.AccessLevel accessLevel) {
+			this.excludeRemovedFields();
 			this.accessLevel = accessLevel;
 			return this;
 		}
@@ -604,7 +604,6 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 			this.groupByClauses = new List<String>();
 			this.havingCriteria = new Soql.ConditionalLogic();
 			this.orderByClauses = new List<String>();
-			this.selectAllPending = false;
 			this.selectClauses = new Set<String>{ ID_REFERENCE };
 			this.whereCriteria = new Soql.ConditionalLogic();
 			return this;
@@ -640,48 +639,195 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @return This Builder instance for method chaining
 		 */
 		global Soql.Builder selectAll() {
-			this.selectAllPending = true;
+			this.getPendingSelectAll()?.addQueriedObject();
 			return this;
 		}
 
 		/**
-		 * @description Expands a pending {@link selectAll} request, if one is outstanding.
+		 * @description Adds all fields of a parent object to the SELECT clause, 6 relationships away, SOQL's limit.
+		 * @param relationship1 First lookup
+		 * @param relationship2 Second lookup
+		 * @param relationship3 Third lookup
+		 * @param relationship4 Fourth lookup
+		 * @param relationship5 Fifth lookup
+		 * @param relationship6 Sixth lookup
+		 * @return This Builder instance for method chaining
 		 */
-		private void resolveSelectAll() {
-			if (this.selectAllPending == true) {
-				// Clear the flag first; addSelect() reads selectClauses, which would recurse back into here
-				this.selectAllPending = false;
-				this.expandSelectAll();
+		// One parameter per lookup, like Soql.ParentField's constructors, so callers can skip building a list
+		@SuppressWarnings('PMD.ExcessiveParameterList')
+		global Soql.Builder selectAll(
+			SObjectField relationship1,
+			SObjectField relationship2,
+			SObjectField relationship3,
+			SObjectField relationship4,
+			SObjectField relationship5,
+			SObjectField relationship6
+		) {
+			Soql.ParentField lookupField = new Soql.ParentField(
+				relationship1,
+				relationship2,
+				relationship3,
+				relationship4,
+				relationship5,
+				relationship6
+			);
+			return this.selectAll(lookupField);
+		}
+
+		/**
+		 * @description Adds all fields of a parent object to the SELECT clause, 5 relationships away.
+		 * @param relationship1 First lookup
+		 * @param relationship2 Second lookup
+		 * @param relationship3 Third lookup
+		 * @param relationship4 Fourth lookup
+		 * @param relationship5 Fifth lookup
+		 * @return This Builder instance for method chaining
+		 */
+		// One parameter per lookup, like Soql.ParentField's constructors, so callers can skip building a list
+		@SuppressWarnings('PMD.ExcessiveParameterList')
+		global Soql.Builder selectAll(
+			SObjectField relationship1,
+			SObjectField relationship2,
+			SObjectField relationship3,
+			SObjectField relationship4,
+			SObjectField relationship5
+		) {
+			Soql.ParentField lookupField = new Soql.ParentField(
+				relationship1,
+				relationship2,
+				relationship3,
+				relationship4,
+				relationship5
+			);
+			return this.selectAll(lookupField);
+		}
+
+		/**
+		 * @description Adds all fields of a parent object to the SELECT clause, 4 relationships away.
+		 * @param relationship1 First lookup
+		 * @param relationship2 Second lookup
+		 * @param relationship3 Third lookup
+		 * @param relationship4 Fourth lookup
+		 * @return This Builder instance for method chaining
+		 */
+		// One parameter per lookup, like Soql.ParentField's constructors, so callers can skip building a list
+		@SuppressWarnings('PMD.ExcessiveParameterList')
+		global Soql.Builder selectAll(
+			SObjectField relationship1,
+			SObjectField relationship2,
+			SObjectField relationship3,
+			SObjectField relationship4
+		) {
+			Soql.ParentField lookupField = new Soql.ParentField(
+				relationship1,
+				relationship2,
+				relationship3,
+				relationship4
+			);
+			return this.selectAll(lookupField);
+		}
+
+		/**
+		 * @description Adds all fields of a parent object to the SELECT clause, 3 relationships away.
+		 * @param relationship1 First lookup
+		 * @param relationship2 Second lookup
+		 * @param relationship3 Third lookup
+		 * @return This Builder instance for method chaining
+		 */
+		global Soql.Builder selectAll(
+			SObjectField relationship1,
+			SObjectField relationship2,
+			SObjectField relationship3
+		) {
+			Soql.ParentField lookupField = new Soql.ParentField(relationship1, relationship2, relationship3);
+			return this.selectAll(lookupField);
+		}
+
+		/**
+		 * @description Adds all fields of a parent object to the SELECT clause, 2 relationships away.
+		 * @param relationship1 First lookup
+		 * @param relationship2 Second lookup
+		 * @return This Builder instance for method chaining
+		 */
+		global Soql.Builder selectAll(SObjectField relationship1, SObjectField relationship2) {
+			Soql.ParentField lookupField = new Soql.ParentField(relationship1, relationship2);
+			return this.selectAll(lookupField);
+		}
+
+		/**
+		 * @description Adds all fields of a parent object to the SELECT clause, ex: Case.ContactId adds `Contact.Name`.
+		 * @param relationship1 The lookup
+		 * @return This Builder instance for method chaining
+		 */
+		global Soql.Builder selectAll(SObjectField relationship1) {
+			List<SObjectField> lookups = new List<SObjectField>{ relationship1 };
+			Soql.ParentField lookupField = new Soql.ParentField(lookups);
+			return this.selectAll(lookupField);
+		}
+
+		/**
+		 * @description Adds all fields of a parent object to the SELECT clause, by its relationship path from the queried
+		 * object, ex: 'CreatedBy', or 'Contact.Account' for `Contact.Account.Name`, and so on.
+		 * @param relationshipPath Relationship names joined by dots, in any case
+		 * @return This Builder instance for method chaining
+		 * @throws System.IllegalArgumentException When the path is blank, or a relationship doesn't exist
+		 */
+		global Soql.Builder selectAll(String relationshipPath) {
+			DescribeSObjectResult objectDescribe = DatabaseLayer.Utils.Schema.describeObject(this.entity);
+			List<SObjectField> lookups = DatabaseLayer.Utils.Schema.findLookups(objectDescribe, relationshipPath);
+			// A blank path has no lookups, which selectAll(Soql.ParentField) rejects
+			Soql.ParentField lookupField = (lookups?.isEmpty() == false) ? new Soql.ParentField(lookups) : null;
+			return this.selectAll(lookupField);
+		}
+
+		/**
+		 * @description Adds all fields of a parent object to the SELECT clause, by a parent field that ends in its
+		 * lookup, ex: `new Soql.ParentField(Case.ContactId, Contact.AccountId)` adds `Contact.Account.Name`. A polymorphic
+		 * lookup, ex: Case.OwnerId, takes the fields SOQL allows on it without TYPEOF.
+		 * @param lookupField The lookup, after any relationships to its object
+		 * @return This Builder instance for method chaining
+		 * @throws System.IllegalArgumentException When a field in the chain isn't a lookup
+		 */
+		global Soql.Builder selectAll(Soql.ParentField lookupField) {
+			this.getPendingSelectAll()?.addParent(lookupField);
+			return this;
+		}
+
+		/**
+		 * @description Gets the {@link selectAll} requests, adding them to the SELECT clause at the first request
+		 * @return The pending requests
+		 */
+		private Soql.SelectAll getPendingSelectAll() {
+			this.excludeRemovedFields();
+			this.pendingSelectAll = this.pendingSelectAll ?? new Soql.SelectAll(this);
+			return this.pendingSelectAll;
+		}
+
+		/**
+		 * @description Swaps the {@link selectAll} fields in the SELECT clause for a new expansion, when the requests,
+		 * object, or access level changed since the last one
+		 */
+		private void applySelectAll() {
+			List<String> expanded = this.pendingSelectAll?.expand();
+			// SelectAll returns the same list until something changes, so a reference check skips unchanged reads
+			if (expanded !== this.appliedSelectAll) {
+				List<String> applied = this.appliedSelectAll ?? new List<String>{};
+				this.selectables?.removeAll(applied);
+				this.selectables?.addAll(expanded ?? new List<String>{});
+				this.appliedSelectAll = expanded;
 			}
 		}
 
 		/**
-		 * @description Adds each of the entity's fields to the SELECT clause. In user mode, fields the
-		 * running user cannot read are omitted, since user mode SOQL rejects the entire query rather
-		 * than dropping inaccessible fields from the results.
+		 * @description Excludes {@link selectAll} fields that callers removed from selectClauses, so they stay out of
+		 * the next expansion. Runs before each change that expands again, so a later request can select them again
 		 */
-		private void expandSelectAll() {
-			Boolean isSystemMode = this.accessLevel == System.AccessLevel.SYSTEM_MODE;
-			for (SObjectField field : this.getAllFields()) {
-				if (isSystemMode || field?.getDescribe()?.isAccessible() == true) {
-					this.addSelect(field);
+		private void excludeRemovedFields() {
+			for (String clause : this.appliedSelectAll ?? new List<String>{}) {
+				if (this.selectables?.contains(clause) == false) {
+					this.pendingSelectAll?.exclude(clause);
 				}
 			}
-		}
-
-		/**
-		 * @description Returns every field defined on the query's entity.
-		 * @return All fields on the entity, or an empty list if the entity cannot be described
-		 */
-		@SuppressWarnings('PMD.EagerlyLoadedDescribeSObjectResult')
-		private List<SObjectField> getAllFields() {
-			// Note: Not sure why this PMD rule is flagging; the describe is explicitly deferred
-			List<Schema.DescribeSObjectResult> describes = Schema.describeSObjects(
-				new List<String>{ this.entity },
-				Schema.SObjectDescribeOptions.DEFERRED
-			);
-			Schema.DescribeSObjectResult describe = describes?.isEmpty() == false ? describes?.get(0) : null;
-			return describe?.fields?.getMap()?.values() ?? new List<SObjectField>();
 		}
 
 		/**
@@ -692,7 +838,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		global Soql.Builder addSelect(String fieldName, String alias) {
 			String clause = String.join(new List<String>{ fieldName, alias }, ' ')?.trim();
-			this.selectClauses?.add(clause);
+			this.selectables?.add(clause);
 			return this;
 		}
 
@@ -899,19 +1045,21 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 */
 		global Soql.Builder deselectAll() {
 			// Remove all SELECT fields from the current query
-			this.selectAllPending = false;
-			this.resolvedSelectClauses?.clear();
+			this.pendingSelectAll = null;
+			this.appliedSelectAll = null;
+			this.selectables?.clear();
 			return this;
 		}
 
 		/**
-		 * @description Removes a specific field from the SELECT clause.
+		 * @description Removes a specific field from the SELECT clause, including from earlier {@link selectAll}
+		 * requests. A later selectAll request selects it again.
 		 * @param fieldName The field name to remove
 		 * @return This Builder instance for method chaining
 		 */
 		global Soql.Builder deselect(String fieldName) {
-			// Remove a field from the current query
-			this.selectClauses?.remove(fieldName);
+			this.selectables?.remove(fieldName);
+			this.pendingSelectAll?.exclude(fieldName);
 			return this;
 		}
 
@@ -940,8 +1088,8 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @return This Builder instance for method chaining
 		 */
 		global Soql.Builder setFrom(SObjectType objectType) {
-			this.entity = objectType?.toString();
-			return this;
+			String entityName = objectType?.toString();
+			return this.setFrom(entityName);
 		}
 
 		/**
@@ -950,6 +1098,7 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @return This Builder instance for method chaining
 		 */
 		global Soql.Builder setFrom(String entityName) {
+			this.excludeRemovedFields();
 			this.entity = entityName;
 			return this;
 		}
@@ -1449,17 +1598,14 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 
 		private String processString(String value) {
 			// Allow special modifiers (bind variables, inner queries, & relative date literals) to pass through unmodified
-			if (value?.startsWith(':') == true || value?.startsWith('(') == true || this.isDateLiteral(value)) {
+			Boolean isDateLiteral = DatabaseLayer.Utils.isDateLiteral(value);
+			if (value?.startsWith(':') == true || value?.startsWith('(') == true || isDateLiteral) {
 				return value;
 			}
 			if (value != null && value.length() >= 19 && value.contains('T') && this.isValidDateTimePrefix(value)) {
 				return value;
 			}
 			return this.operator?.processStringValue(value);
-		}
-
-		private Boolean isDateLiteral(String value) {
-			return value != null && DATE_LITERAL_PATTERN.matcher(value)?.matches() == true;
 		}
 
 		private Boolean isValidDateTimePrefix(String value) {
@@ -1748,6 +1894,8 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	 */
 	@SuppressWarnings('PMD.ExcessiveParameterList')
 	global class ParentField implements Soql.Selectable {
+		// Read by Soql.SelectAll, which expands the parent at the end of a chain of lookups
+		private transient List<SObjectField> fieldChain;
 		private String fieldReference;
 		private String relationshipReference;
 
@@ -1756,8 +1904,10 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @param relationshipFieldChain List of SObjectFields representing the relationship chain
 		 */
 		global ParentField(List<SObjectField> relationshipFieldChain) {
-			relationshipFieldChain = relationshipFieldChain ?? new List<SObjectField>();
-			this.computeReferences(relationshipFieldChain);
+			// A copy, so a caller that reuses its list can't change this field's lookups
+			List<SObjectField> fields = relationshipFieldChain ?? new List<SObjectField>{};
+			this.fieldChain = new List<SObjectField>(fields);
+			this.computeReferences(this.fieldChain);
 		}
 
 		/**
@@ -2047,6 +2197,238 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 	}
 
 	/**
+	 * @description The pending {@link Builder.selectAll} requests: every field of the queried object, or of a parent
+	 * through its lookups. In user mode, fields the running user cannot read are omitted, since user mode SOQL rejects
+	 * the entire query rather than dropping inaccessible fields from the results.
+	 */
+	private class SelectAll {
+		// The query, read at each expansion for its object and access level
+		private Soql.Builder builder;
+		// Clauses deselected after these requests
+		private Set<String> exclusions;
+		// The last expansion, reused while the object, access level, and requests stay the same, since logging plugins
+		// read the query several times per run
+		// shortcut: ignores the running user, so a builder read on both sides of System.runAs reuses stale USER_MODE
+		// fields; add UserInfo.getUserId() to the check if that comes up outside tests
+		private System.AccessLevel expandedAccessLevel;
+		private List<String> expandedClauses;
+		private String expandedEntity;
+		private Boolean includesQueriedObject;
+		private List<Soql.ParentField> lookupFields;
+
+		/**
+		 * @description Starts with no requests
+		 * @param builder The query, whose object and access level decide the fields at each expansion
+		 */
+		public SelectAll(Soql.Builder builder) {
+			this.builder = builder;
+			this.exclusions = new Set<String>{};
+			this.includesQueriedObject = false;
+			this.lookupFields = new List<Soql.ParentField>{};
+		}
+
+		/**
+		 * @description Leaves a clause out of every expansion
+		 * @param clause The clause, ex: `Name` or `Contact.Account.Name`
+		 */
+		public void exclude(String clause) {
+			// Keeps the last expansion when the clause was already left out, so repeat calls don't describe again
+			if (this.exclusions?.add(clause) == true) {
+				this.expandedClauses = null;
+			}
+		}
+
+		/**
+		 * @description Requests every field of the queried object
+		 */
+		public void addQueriedObject() {
+			this.includesQueriedObject = true;
+			this.reinclude('');
+			this.expandedClauses = null;
+		}
+
+		/**
+		 * @description Requests every field of the parent at the end of a chain of lookups
+		 * @param lookupField The lookups from the queried object to the parent, ex: Case.ContactId, then
+		 * Contact.AccountId
+		 * @throws System.IllegalArgumentException When a field in the chain isn't a lookup
+		 */
+		public void addParent(Soql.ParentField lookupField) {
+			this.validateLookups(lookupField);
+			this.lookupFields?.add(lookupField);
+			String prefix = lookupField?.getRelationshipName() + '.';
+			this.reinclude(prefix);
+			this.expandedClauses = null;
+		}
+
+		/**
+		 * @description Expands every request into SELECT clauses, at the query's current access level
+		 * @return The clauses, ex: `Name` or `Contact.Account.Name`
+		 */
+		public List<String> expand() {
+			System.AccessLevel accessLevel = this.builder?.accessLevel;
+			String entity = this.builder?.entity;
+			Boolean isStale = this.expandedAccessLevel != accessLevel || this.expandedEntity != entity;
+			if (this.expandedClauses == null || isStale) {
+				this.expandedClauses = this.expandRequests(accessLevel);
+				this.expandedAccessLevel = accessLevel;
+				this.expandedEntity = entity;
+			}
+			return this.expandedClauses;
+		}
+
+		/**
+		 * @description Expands every request into SELECT clauses
+		 * @param accessLevel The access level to expand at
+		 * @return The clauses
+		 */
+		private List<String> expandRequests(System.AccessLevel accessLevel) {
+			Boolean isSystemMode = accessLevel == System.AccessLevel.SYSTEM_MODE;
+			List<String> clauses = this.includesQueriedObject
+				? this.expandObject(this.builder?.entity, '', isSystemMode)
+				: new List<String>{};
+			List<String> parentClauses = this.expandParents(isSystemMode);
+			clauses?.addAll(parentClauses);
+			return clauses;
+		}
+
+		/**
+		 * @description Selects deselected fields again when a request adds them, so a selectAll after a deselect
+		 * selects the field again, while fields of other objects stay deselected
+		 * @param prefix The relationships to the requested object, ex: 'Contact.'; blank for the queried object
+		 */
+		private void reinclude(String prefix) {
+			for (String clause : this.exclusions?.clone()) {
+				String fieldName = clause?.removeStart(prefix);
+				Boolean isRequested = clause?.startsWith(prefix) == true && fieldName?.contains('.') == false;
+				if (isRequested) {
+					this.exclusions?.remove(clause);
+				}
+			}
+		}
+
+		/**
+		 * @description Expands each requested parent into SELECT clauses
+		 * @param isSystemMode Whether the query ignores field-level security
+		 * @return The parents' clauses
+		 */
+		private List<String> expandParents(Boolean isSystemMode) {
+			List<String> clauses = new List<String>{};
+			for (Soql.ParentField lookupField : this.lookupFields) {
+				List<String> parentClauses = this.expandParent(lookupField, isSystemMode);
+				clauses?.addAll(parentClauses);
+			}
+			return clauses;
+		}
+
+		/**
+		 * @description Expands a parent into SELECT clauses, through its relationships, ex: `Contact.Account.Name`.
+		 * USER_MODE can't follow a lookup the running user can't read, so a parent behind one adds no clauses
+		 * @param lookupField The lookups to the parent
+		 * @param isSystemMode Whether the query ignores field-level security
+		 * @return The parent's clauses
+		 */
+		private List<String> expandParent(Soql.ParentField lookupField, Boolean isSystemMode) {
+			String prefix = lookupField?.getRelationshipName() + '.';
+			String entityName = this.findParentEntity(lookupField);
+			List<SObjectField> lookups = lookupField?.fieldChain;
+			Boolean isReachable = isSystemMode || this.filterAccessible(lookups)?.size() == lookups?.size();
+			return isReachable ? this.expandObject(entityName, prefix, isSystemMode) : new List<String>{};
+		}
+
+		/**
+		 * @description Prefixes each of an object's readable fields with the relationships to it, except excluded ones
+		 * @param entityName The object
+		 * @param prefix The relationships to the object, ex: 'Contact.Account.'; blank for the queried object
+		 * @param isSystemMode Whether the query ignores field-level security
+		 * @return The object's clauses
+		 */
+		private List<String> expandObject(String entityName, String prefix, Boolean isSystemMode) {
+			List<String> clauses = new List<String>{};
+			for (SObjectField field : this.getReadableFields(entityName, isSystemMode)) {
+				String clause = prefix + field;
+				if (this.exclusions?.contains(clause) == false) {
+					clauses?.add(clause);
+				}
+			}
+			return clauses;
+		}
+
+		/**
+		 * @description Lists the fields the query can select: all of them in system mode, else those the running user
+		 * can read
+		 * @param entityName The object
+		 * @param isSystemMode Whether the query ignores field-level security
+		 * @return The fields
+		 */
+		private List<SObjectField> getReadableFields(String entityName, Boolean isSystemMode) {
+			List<SObjectField> allFields = this.getAllFields(entityName);
+			return isSystemMode ? allFields : this.filterAccessible(allFields);
+		}
+
+		/**
+		 * @description Keeps the fields the running user can read
+		 * @param fields The fields to check
+		 * @return The readable fields
+		 */
+		private List<SObjectField> filterAccessible(List<SObjectField> fields) {
+			List<SObjectField> accessible = new List<SObjectField>{};
+			for (SObjectField field : fields) {
+				if (field?.getDescribe()?.isAccessible() == true) {
+					accessible?.add(field);
+				}
+			}
+			return accessible;
+		}
+
+		/**
+		 * @description Returns every field defined on an object.
+		 * @param entityName The object
+		 * @return All fields on the object, or an empty list if it cannot be described
+		 */
+		private List<SObjectField> getAllFields(String entityName) {
+			DescribeSObjectResult objectDescribe = DatabaseLayer.Utils.Schema.describeObject(entityName);
+			return objectDescribe?.fields?.getMap()?.values() ?? new List<SObjectField>{};
+		}
+
+		/**
+		 * @description Finds the object at the end of a chain of lookups
+		 * @param lookupField The lookups to the object
+		 * @return The object's name: 'Name' for a polymorphic lookup, whose fields SOQL allows without TYPEOF
+		 */
+		private String findParentEntity(Soql.ParentField lookupField) {
+			List<SObjectField> lookups = lookupField?.fieldChain;
+			Integer lastIndex = lookups?.size() - 1;
+			DescribeFieldResult lookup = lookups?.get(lastIndex)?.getDescribe();
+			return DatabaseLayer.Utils.Schema.toEntityName(lookup);
+		}
+
+		/**
+		 * @description Rejects a chain with a field that isn't a lookup, which has no fields to select
+		 * @param lookupField The chain to check
+		 * @throws System.IllegalArgumentException When a field isn't a lookup, or there's no chain
+		 */
+		private void validateLookups(Soql.ParentField lookupField) {
+			List<SObjectField> lookups = lookupField?.fieldChain ?? new List<SObjectField>{ null };
+			for (SObjectField lookup : lookups) {
+				this.validateLookup(lookup);
+			}
+		}
+
+		/**
+		 * @description Rejects a field that isn't a lookup
+		 * @param field The field to check
+		 * @throws System.IllegalArgumentException When the field isn't a lookup
+		 */
+		private void validateLookup(SObjectField field) {
+			String relationshipName = field?.getDescribe()?.getRelationshipName();
+			if (String.isBlank(relationshipName)) {
+				throw new IllegalArgumentException('selectAll takes lookup fields, not ' + field);
+			}
+		}
+	}
+
+	/**
 	 * @description Represents an ORDER BY clause specification with field names, sort direction, and null ordering.
 	 */
 	global class SortOrder {
@@ -2172,6 +2554,8 @@ global inherited sharing virtual class Soql extends Soql.Builder {
 		 * @param relationship The child relationship to query
 		 */
 		global Subquery(Schema.ChildRelationship relationship) {
+			// The child object is the entity selectAll expands; getFrom renders the relationship name instead
+			super(relationship?.getChildSObject());
 			this.addSelect(ID_REFERENCE);
 			this.relationshipName = relationship?.getRelationshipName();
 		}

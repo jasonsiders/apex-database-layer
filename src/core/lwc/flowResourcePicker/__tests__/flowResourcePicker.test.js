@@ -232,6 +232,38 @@ describe("c-flow-resource-picker", () => {
 		expect(lastChange(onChange)).toEqual({ name: "accessLevel", value: "Legacy_Id__c", valueDataType: "String" });
 	});
 
+	it("highlights the current value in picklist-only mode, so Enter on open keeps it", async () => {
+		const picklistValues = [
+			{ label: "Account Contact Role", value: "AccountContactRole" },
+			{ label: "Contact", value: "Contact" }
+		];
+		const props = { isPicklistOnly: true, picklistValues, value: "Contact", valueDataType: "String" };
+		const { element, onChange } = await render(props);
+
+		await open(element);
+		expect(optionLabels(element)).toEqual(["Account Contact Role", "Contact"]);
+		expect(options(element).map((candidate) => candidate.getAttribute("aria-selected"))).toEqual(["false", "true"]);
+		await press(element, "Enter");
+		// ArrowDown opens a closed menu on the same highlight
+		await press(element, "ArrowDown");
+		expect(options(element).map((candidate) => candidate.getAttribute("aria-selected"))).toEqual(["false", "true"]);
+		await press(element, "Enter");
+
+		expect(onChange).not.toHaveBeenCalled();
+	});
+
+	it("reopens its menu on a click after Escape closes it, with focus still in the input", async () => {
+		const { element } = await render();
+		await open(element);
+		await press(element, "Escape");
+		expect(input(element).getAttribute("aria-expanded")).toBe("false");
+
+		input(element).click();
+		await flush();
+
+		expect(input(element).getAttribute("aria-expanded")).toBe("true");
+	});
+
 	it("stays closed in picklist-only mode when there's nothing to pick", async () => {
 		const { element } = await render({ isPicklistOnly: true, picklistValues: [] });
 
@@ -341,6 +373,35 @@ describe("c-flow-resource-picker", () => {
 		expect(lastChange(onChange)).toEqual({ name: "accessLevel", value: "boolVar", valueDataType: "reference" });
 	});
 
+	it("highlights from the menu the latest typing loads, not the one it replaces", async () => {
+		const { element, onChange } = await render({ type: "Boolean" });
+		await open(element);
+
+		input(element).value = "boolVar";
+		input(element).dispatchEvent(new CustomEvent("input"));
+		input(element).dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown" }));
+		await flush();
+		await press(element, "Enter");
+
+		expect(lastChange(onChange)).toEqual({ name: "accessLevel", value: "boolVar", valueDataType: "reference" });
+	});
+
+	it("keeps Escape from closing Flow Builder's editor while the menu is open", async () => {
+		const { element } = await render();
+		const onKeyDown = jest.fn();
+		element.addEventListener("keydown", onKeyDown);
+		const escape = () => new KeyboardEvent("keydown", { key: "Escape", bubbles: true, composed: true });
+		await open(element);
+
+		input(element).dispatchEvent(escape());
+		await flush();
+		expect(onKeyDown).not.toHaveBeenCalled();
+		expect(input(element).getAttribute("aria-expanded")).toBe("false");
+
+		input(element).dispatchEvent(escape());
+		expect(onKeyDown).toHaveBeenCalledTimes(1);
+	});
+
 	it("keeps a chosen resource when the input loses focus to its pill", async () => {
 		const { element, onChange } = await render();
 		await open(element);
@@ -377,6 +438,215 @@ describe("c-flow-resource-picker", () => {
 		expect(input(element).value).toBe("{!accountVar.");
 	});
 
+	describe("with host-supplied options", () => {
+		const relationshipOption = {
+			key: "r:Account",
+			value: "Account",
+			label: "Account",
+			pathLabel: "Account",
+			icon: "utility:record_lookup",
+			isDrillable: true
+		};
+		const fieldOption = (value, label, pathLabel) => ({
+			key: `f:${value}`,
+			value,
+			label,
+			pathLabel,
+			icon: "utility:text",
+			isSelectable: true
+		});
+		const OPTIONS = {
+			"": {
+				parent: null,
+				sections: [
+					{ label: "Relationship Fields", items: [relationshipOption] },
+					{ label: "Record Fields", items: [fieldOption("LastName", "Last Name", "Last Name")] }
+				]
+			},
+			Account: {
+				parent: { value: "Account", pathLabel: "Account" },
+				sections: [
+					{
+						label: "Record Fields",
+						items: [fieldOption("Account.Name", "Account Name", "Account > Account Name")]
+					}
+				]
+			}
+		};
+		const loadOptions = (parentPath) => Promise.resolve(OPTIONS[parentPath] ?? { parent: null, sections: [] });
+		const renderWithOptions = () => render({ name: "field", loadOptions, builderContext: undefined });
+
+		it("lists the host's options instead of resources, and drills into them in place", async () => {
+			const { element } = await renderWithOptions();
+			await open(element);
+			expect(optionLabels(element)).toEqual(["Account", "Last Name"]);
+
+			await type(element, "Acc");
+			await press(element, "ArrowDown");
+			await press(element, "Enter");
+
+			expect(input(element).value).toBe("Account.");
+			expect(optionLabels(element)).toEqual(["Account Name"]);
+			const crumbs = [...element.shadowRoot.querySelectorAll("lightning-breadcrumb")].map((crumb) => crumb.label);
+			expect(crumbs).toEqual(["All Resources", "Account"]);
+
+			element.shadowRoot
+				.querySelector('lightning-breadcrumb[data-index="-1"]')
+				.dispatchEvent(new CustomEvent("click"));
+			await flush();
+			expect(input(element).value).toBe("");
+		});
+
+		it("selects a lookup row on click, and drills into it from its chevron", async () => {
+			const lookupOption = {
+				...fieldOption("AccountId", "Account ID", "Account ID"),
+				drillValue: "Account",
+				isDrillable: true
+			};
+			const topLevel = { parent: null, sections: [{ label: "Relationship Fields", items: [lookupOption] }] };
+			const lookupOptions = (parentPath) => (parentPath ? loadOptions(parentPath) : Promise.resolve(topLevel));
+			const { element, onChange } = await render({
+				name: "field",
+				loadOptions: lookupOptions,
+				builderContext: undefined
+			});
+			await open(element);
+			const lookup = () => element.shadowRoot.querySelector('[role="option"][data-label="Account ID"]');
+
+			lookup().querySelector('[data-role="drill"]').click();
+			await flush();
+			expect(input(element).value).toBe("Account.");
+			expect(optionLabels(element)).toEqual(["Account Name"]);
+
+			await type(element, "");
+			await press(element, "ArrowDown");
+			await press(element, "ArrowRight");
+			expect(input(element).value).toBe("Account.");
+
+			await type(element, "");
+			lookup().click();
+			await flush();
+			expect(lastChange(onChange)).toEqual({ name: "field", value: "AccountId", valueDataType: "reference" });
+		});
+
+		it("leaves ArrowRight to the text field when no drillable option is highlighted", async () => {
+			const { element } = await renderWithOptions();
+			await open(element);
+			await type(element, "Last");
+			const event = new KeyboardEvent("keydown", { key: "ArrowRight", cancelable: true });
+
+			input(element).dispatchEvent(event);
+
+			expect(event.defaultPrevented).toBe(false);
+		});
+
+		it("leaves typed text alone when ArrowRight is pressed before its options load", async () => {
+			const slowLoadOptions = jest.fn(loadOptions);
+			const { element } = await render({
+				name: "field",
+				loadOptions: slowLoadOptions,
+				builderContext: undefined
+			});
+			await open(element);
+			await press(element, "ArrowDown");
+
+			slowLoadOptions.mockImplementationOnce(() => new Promise(() => {}));
+			await type(element, "LastName");
+			await press(element, "ArrowRight");
+
+			expect(input(element).value).toBe("LastName");
+		});
+
+		it("builds breadcrumbs from the host's trail labels, which may contain the separator", async () => {
+			const parent = { value: "Broker__r", pathLabel: "Billing > Broker", trailLabels: ["Billing > Broker"] };
+			const trailOptions = () => Promise.resolve({ parent, sections: [] });
+			const { element } = await render({ name: "field", loadOptions: trailOptions, builderContext: undefined });
+			await open(element);
+			await type(element, "Broker__r.");
+
+			const crumbs = [...element.shadowRoot.querySelectorAll("lightning-breadcrumb")].map((crumb) => crumb.label);
+			expect(crumbs).toEqual(["All Resources", "Billing > Broker"]);
+		});
+
+		it("waits for options to load before Enter chooses one", async () => {
+			let resolveLoad;
+			const slowLoadOptions = jest.fn(loadOptions);
+			const { element, onChange } = await render({
+				name: "field",
+				loadOptions: slowLoadOptions,
+				builderContext: undefined
+			});
+			await open(element);
+			await press(element, "ArrowDown");
+
+			slowLoadOptions.mockImplementationOnce(() => new Promise((resolve) => (resolveLoad = resolve)));
+			await type(element, "LastName");
+			await press(element, "Enter");
+			resolveLoad(OPTIONS[""]);
+			await flush();
+
+			expect(lastChange(onChange)).toEqual({ name: "field", value: "LastName", valueDataType: "reference" });
+			expect(pillLabel(element)).toBe("Last Name");
+		});
+
+		it("saves a typed path that names an option, and discards one that doesn't or is unfinished", async () => {
+			const { element, onChange } = await renderWithOptions();
+			await open(element);
+
+			await type(element, "Account.Name");
+			await blur(element);
+			expect(lastChange(onChange)).toEqual({ name: "field", value: "Account.Name", valueDataType: "reference" });
+			expect(pillLabel(element)).toBe("Account > Account Name");
+
+			await editPill(element);
+			expect(input(element).value).toBe("Account.Name");
+			await type(element, "Account.Nope");
+			await blur(element);
+			await editPill(element);
+			await type(element, "Account.");
+			await blur(element);
+
+			expect(onChange).toHaveBeenCalledTimes(1);
+			expect(pillLabel(element)).toBe("Account > Account Name");
+		});
+
+		it("keeps a saved path when its pill is edited and left unchanged", async () => {
+			const { element, onChange } = await render({
+				name: "field",
+				value: "Account.Name",
+				loadOptions,
+				builderContext: undefined
+			});
+
+			await editPill(element);
+			await blur(element);
+
+			expect(onChange).not.toHaveBeenCalled();
+			expect(pillLabel(element)).toBe("Account > Account Name");
+		});
+
+		it("shows a saved path as-is when its options fail to load", async () => {
+			const failing = () => Promise.reject(new Error("No access"));
+			const { element } = await render({
+				name: "field",
+				value: "Account.Name",
+				loadOptions: failing,
+				builderContext: undefined
+			});
+
+			expect(pillLabel(element)).toBe("Account.Name");
+		});
+
+		it("shows a saved path as a pill once its options load", async () => {
+			const { element } = await render({ name: "field", value: "Account.Name", builderContext: undefined });
+
+			element.loadOptions = loadOptions;
+			await flush();
+
+			expect(pillLabel(element)).toBe("Account > Account Name");
+		});
+	});
+
 	it("commits typed text when focus leaves", async () => {
 		const { element, onChange } = await render();
 		await open(element);
@@ -392,6 +662,92 @@ describe("c-flow-resource-picker", () => {
 		await type(element, "plain text");
 		await press(element, "Enter");
 		expect(lastChange(onChange)).toEqual({ name: "accessLevel", value: "plain text", valueDataType: "String" });
+	});
+
+	it("saves typed literals of the input's type, and discards text that isn't one", async () => {
+		const cases = [
+			{ type: "Number", valid: "-42.5", invalid: "forty" },
+			{ type: "Date", valid: "2026-11-22", invalid: "11/22/2026" },
+			{ type: "Date", valid: "2028-02-29", invalid: "2025-02-29" },
+			{ type: "DateTime", valid: "2026-11-22T09:30:00Z", invalid: "2026-11-22" },
+			{ type: "DateTime", valid: "2026-11-22T09:30:00-05:30", invalid: "2026-11-22T09:30:00+25:00" },
+			{ type: "Time", valid: "09:30:00", invalid: "9am" },
+			{ type: "Boolean", valid: "TRUE", invalid: "yes" }
+		];
+		for (const { type: dataType, valid, invalid } of cases) {
+			// eslint-disable-next-line no-await-in-loop
+			const { element, onChange } = await render({ type: dataType });
+			// eslint-disable-next-line no-await-in-loop
+			await type(element, invalid);
+			// eslint-disable-next-line no-await-in-loop
+			await blur(element);
+			expect(onChange).not.toHaveBeenCalled();
+			// eslint-disable-next-line no-await-in-loop
+			await type(element, valid);
+			// eslint-disable-next-line no-await-in-loop
+			await blur(element);
+			expect(lastChange(onChange)).toEqual({ name: "accessLevel", value: valid, valueDataType: dataType });
+		}
+	});
+
+	it.each([
+		["Date", "2026-13-01"],
+		["Date", "2026-02-30"],
+		["DateTime", "2026-04-31T09:30:00Z"],
+		["DateTime", "2026-11-22T24:00:00Z"],
+		["DateTime", "2026-11-22T09:30:00+09:99"],
+		["Time", "25:00"],
+		["Time", "12:61:00"],
+		["Time", "12:00:60"]
+	])("discards a typed %s that doesn't exist, which Apex can't parse: %s", async (dataType, text) => {
+		const { element, onChange } = await render({ type: dataType });
+
+		await type(element, text);
+		await blur(element);
+
+		expect(onChange).not.toHaveBeenCalled();
+	});
+
+	it("trims spaces around typed literals that aren't text, which Apex can't parse, and keeps text as typed", async () => {
+		const number = await render({ type: "Number" });
+		const date = await render({ type: "Date", allowsDateLiterals: true });
+		const text = await render({ type: "String" });
+
+		await type(number.element, " 42 ");
+		await blur(number.element);
+		await type(date.element, " TODAY");
+		await blur(date.element);
+		await type(text.element, " padded ");
+		await blur(text.element);
+
+		expect(lastChange(number.onChange)).toEqual({ name: "accessLevel", value: "42", valueDataType: "Number" });
+		expect(lastChange(date.onChange)).toEqual({ name: "accessLevel", value: "TODAY", valueDataType: "Date" });
+		expect(lastChange(text.onChange)).toEqual({ name: "accessLevel", value: " padded ", valueDataType: "String" });
+	});
+
+	it("takes SOQL date literals in a date input that allows them", async () => {
+		const { element, onChange } = await render({ type: "Date", allowsDateLiterals: true });
+
+		await type(element, "LAST_N_DAYS:30");
+		await blur(element);
+
+		expect(lastChange(onChange)).toEqual({ name: "accessLevel", value: "LAST_N_DAYS:30", valueDataType: "Date" });
+	});
+
+	it("takes a record collection of any object in a text collection input that accepts records", async () => {
+		const { element, onChange } = await render({ isCollection: true, acceptsRecords: true });
+
+		await open(element);
+		option(element, "accountsVar").click();
+		await flush();
+
+		expect(lastChange(onChange)).toEqual({
+			name: "accessLevel",
+			value: "accountsVar",
+			valueDataType: "reference",
+			objectType: "Account",
+			isCollection: true
+		});
 	});
 
 	it("discards typed values a record input wouldn't offer, keeping the previous value", async () => {

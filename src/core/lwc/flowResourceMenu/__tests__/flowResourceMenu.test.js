@@ -17,7 +17,9 @@ const context = { ...CONTEXT, objectLabels: { Account: { label: "Account", label
 const BOOLEAN = { dataType: "Boolean" };
 const RECORD = { dataType: "SObject", isCollection: false };
 const RECORDS = { dataType: "SObject", isCollection: true };
+const NUMBER = { dataType: "Number" };
 const TEXT = { dataType: "String" };
+const TEXTS = { dataType: "String", isCollection: true };
 
 function labelsBySection(sections) {
 	return Object.fromEntries(sections.map((section) => [section.label, section.items.map((item) => item.label)]));
@@ -102,6 +104,36 @@ describe("c-flow-resource-menu", () => {
 				isCollection: true,
 				objectType: "Account"
 			});
+		});
+
+		it("lists text collections for a text collection input, without drilling into records", () => {
+			const sections = getRootSections(context, TEXTS);
+
+			expect(labelsBySection(sections)).toEqual({ "Simple Variables": ["textCollectionVar"] });
+		});
+
+		it("also lists record collections of any object for a text collection input that accepts records", () => {
+			const sections = getRootSections(context, { ...TEXTS, acceptsRecords: true });
+
+			expect(labelsBySection(sections)).toEqual({
+				Action: ["Outputs from Insert Records"],
+				"Get Records": ["Accounts from Get Accounts"],
+				"Record Collections": ["accountsVar"],
+				"Simple Variables": ["textCollectionVar"]
+			});
+		});
+
+		it("restricts the record collections a text collection input accepts to its object, when it has one", () => {
+			const sections = getRootSections(context, { ...TEXTS, acceptsRecords: true, objectType: "Contact" });
+
+			expect(labelsBySection(sections)).toEqual({ "Simple Variables": ["textCollectionVar"] });
+		});
+
+		it("offers the host's listed values in a typed input, ex: date literals in a Date input", () => {
+			const target = { dataType: "Date", picklistValues: [{ label: "TODAY", value: "TODAY" }] };
+			const sections = getRootSections(context, target);
+
+			expect(findItem(sections, "TODAY")).toMatchObject({ isLiteral: true, isSelectable: true });
 		});
 
 		it("restricts records to the input's object, when it has one", () => {
@@ -299,14 +331,15 @@ describe("c-flow-resource-menu", () => {
 			});
 		});
 
-		it("lists only text fields, and relationships, for a text input", async () => {
+		it("lists only text and picklist fields, and relationships, for a text input", async () => {
 			const accountVar = findItem(getRootSections(context, TEXT), "accountVar");
 
 			const sections = await getChildSections(accountVar, context, TEXT, describeObject);
 
 			expect(labelsBySection(sections)).toEqual({
 				"Relationship Fields": ["Owner ID", "Parent Account ID", "Owner ID", "Parent Account ID"],
-				"Record Fields": ["Account ID", "Account Name"]
+				// Flow passes a picklist to a text input as text
+				"Record Fields": ["Industry", "Account ID", "Account Name"]
 			});
 			expect(sections[0].items[0]).toMatchObject({
 				value: "accountVar.Owner",
@@ -320,6 +353,14 @@ describe("c-flow-resource-menu", () => {
 				icon: "utility:text",
 				isSelectable: true
 			});
+		});
+
+		it("lists number and currency fields for a number input", async () => {
+			const accountVar = findItem(getRootSections(context, NUMBER), "accountVar");
+
+			const sections = await getChildSections(accountVar, context, NUMBER, describeObject);
+
+			expect(labelsBySection(sections)["Record Fields"]).toEqual(["Annual Revenue", "Employees"]);
 		});
 
 		it("lists only matching fields, and relationships, for a boolean input", async () => {
@@ -406,6 +447,13 @@ describe("c-flow-resource-menu", () => {
 				"Quick Resources": ["Current Item from Loop Loop Accounts"],
 				"Record Variables": ["accountVar"]
 			});
+		});
+
+		it("matches the relationship a lookup drills into", () => {
+			const lookup = { label: "Broker", value: "Broker__c", drillValue: "Broker__r" };
+			const sections = filterSections([{ label: "Relationship Fields", items: [lookup] }], "broker__r");
+
+			expect(sections[0].items).toEqual([lookup]);
 		});
 
 		it("finds global resources by their $ prefix", () => {

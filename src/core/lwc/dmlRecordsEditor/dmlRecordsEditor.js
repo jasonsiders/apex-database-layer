@@ -1,9 +1,13 @@
-import { LightningElement, api, wire } from "lwc";
+import { api, wire } from "lwc";
 import { getPicklistValues } from "lightning/uiObjectInfoApi";
 import LOCALE_FIELD from "@salesforce/schema/User.LocaleSidKey";
 import getMatchFields from "@salesforce/apex/InvocableDmlUpsertRecords.getMatchFields";
 import { REFERENCE, REQUIRED_ERROR, compareLabels, toBooleanConstant } from "c/flowResourceMenu";
+import FlowPropertyEditor, { ACCESS_LEVELS, NONE_OPTION } from "c/flowPropertyEditor";
 
+/** @description Unlike the query's SYSTEM_MODE, the DML actions' has no opt-out of sharing, until #208 */
+const ACCESS_LEVEL_HELP =
+	"USER_MODE (default) enforces the running user's object permissions, field-level security, and sharing rules. SYSTEM_MODE ignores object permissions and field-level security, but sharing rules still apply.";
 const FALSE = toBooleanConstant(false);
 const TRUE = toBooleanConstant(true);
 // Labeled like Flow Builder's boolean global constants
@@ -11,18 +15,12 @@ const BOOLEANS = [
 	{ label: "True", value: TRUE },
 	{ label: "False", value: FALSE }
 ];
-const ACCESS_LEVELS = [
-	{ label: "User Mode", value: "USER_MODE" },
-	{ label: "System Mode", value: "SYSTEM_MODE" }
-];
 const EXTERNAL_ID = "externalId";
 const EXTERNAL_ID_FIELD = "externalIdField";
 const GENERIC_TYPES = ["T__record", "T__recordCollection", "U__record", "U__recordCollection"];
 const MASTER_RECORD_TYPE_ID = "012000000000000AAA";
 const MAX_LOCALE_LENGTH = 5;
 const MULTIPLE = "multiple";
-// Flow Builder can't save a blank literal, so choosing None removes the input
-const NONE = { label: "--None--", value: "" };
 const ONE = "one";
 const RECORD_ID = "recordId";
 const STANDARD_FIELD = "standardField";
@@ -63,8 +61,7 @@ const SETTINGS = [
 		type: "String",
 		defaultValue: "USER_MODE",
 		picklistValues: ACCESS_LEVELS,
-		helpText:
-			"USER_MODE (default) enforces the running user's object permissions, field-level security, and sharing rules. SYSTEM_MODE ignores object permissions and field-level security, but sharing rules still apply."
+		helpText: ACCESS_LEVEL_HELP
 	},
 	{
 		name: "allOrNone",
@@ -180,45 +177,17 @@ const ACTIONS = {
  * being edited. Mirrors Flow Builder's Create, Update, and Delete Records elements: one records input that saves to
  * `record` or `recordCollection`, and types the action's generic inputs and outputs to the chosen object.
  */
-export default class DmlRecordsEditor extends LightningElement {
-	/**
-	 * @description From Flow Builder: outputs of actions that store them automatically, for drilling into
-	 * @type {Object}
-	 */
-	@api automaticOutputVariables;
-	/**
-	 * @description From Flow Builder: the flow's resources
-	 * @type {Object}
-	 */
-	@api builderContext;
-	/**
-	 * @description From Flow Builder: the element being edited, so pickers offer only resources available at that point
-	 * @type {Object}
-	 */
-	@api elementInfo;
-	/**
-	 * @description From Flow Builder: the action's generic object types, which give the records' object
-	 * @type {Array}
-	 */
-	@api genericTypeMappings;
-
+export default class DmlRecordsEditor extends FlowPropertyEditor {
 	howManyOptions = HOW_MANY_OPTIONS;
-	_errors = {};
 	_howMany = ONE;
-	_inputVariables = [];
 	_locales = [];
 	_matchFields = [];
 	_matchMode;
 	_objectType;
-	_values = {};
 
 	// **** GETTERS **** //
 	get action() {
 		return ACTIONS[this.elementInfo?.actionName] ?? ACTIONS.InvocableDmlInsertRecords;
-	}
-
-	get elementName() {
-		return this.elementInfo?.apiName;
 	}
 
 	get howMany() {
@@ -295,10 +264,8 @@ export default class DmlRecordsEditor extends LightningElement {
 	 */
 	@api
 	validate() {
-		const errors = [this._validateRecords(), this._validateMatchField()].filter(Boolean);
-		const errorEntries = errors.map((error) => [error.key, error.errorString]);
-		this._errors = Object.fromEntries(errorEntries);
-		return errors;
+		const checks = [this._validateRecords(), this._validateMatchField()];
+		return this._setErrors(checks);
 	}
 
 	// **** WIRED **** //
@@ -312,7 +279,7 @@ export default class DmlRecordsEditor extends LightningElement {
 		// The DmlOptions docs allow 2-5 characters, which rules out locales like zh_CN_PINYIN; Apex doesn't check
 		const values = (response?.data?.values ?? []).filter(({ value }) => value.length <= MAX_LOCALE_LENGTH);
 		const locales = values.map(({ value }) => ({ label: value, value }));
-		this._locales = [NONE, ...locales.sort(compareLabels)];
+		this._locales = [NONE_OPTION, ...locales.sort(compareLabels)];
 	}
 
 	/**
@@ -347,8 +314,9 @@ export default class DmlRecordsEditor extends LightningElement {
 	 * @param {CustomEvent} event Change on the match field picker
 	 */
 	handleMatchFieldChange(event) {
+		const { name, value, valueDataType } = event.detail;
 		this._matchMode = this.matchMode;
-		this._saveInput(event.detail);
+		this._saveInput(name, value, valueDataType);
 	}
 
 	/**
@@ -364,7 +332,8 @@ export default class DmlRecordsEditor extends LightningElement {
 	 * @param {CustomEvent} event Change on a picker: `{ name, value, valueDataType }`
 	 */
 	handleInputChange(event) {
-		this._saveInput(event.detail);
+		const { name, value, valueDataType } = event.detail;
+		this._saveInput(name, value, valueDataType);
 	}
 
 	/**
@@ -373,8 +342,7 @@ export default class DmlRecordsEditor extends LightningElement {
 	 */
 	handleOptionChange(event) {
 		const { name, type } = event.target.dataset;
-		const value = event.detail.value || null;
-		this._saveInput({ name, value, valueDataType: type });
+		this._saveInput(name, event.detail.value, type);
 	}
 
 	/**
@@ -383,33 +351,16 @@ export default class DmlRecordsEditor extends LightningElement {
 	 * @param {CustomEvent} event Change on the records picker, with the records' `objectType` and `isCollection`
 	 */
 	handleRecordsChange(event) {
-		const { isCollection, objectType, value } = event.detail;
+		const { isCollection, objectType, value, valueDataType } = event.detail;
 		this._setObjectType(objectType);
 		if (!this.action.howManyLabel && value != null) {
 			this._setHowMany(isCollection ? MULTIPLE : ONE);
 		}
-		this._saveInput({ ...event.detail, name: RECORDS_INPUTS[this._howMany].name });
+		this._saveInput(RECORDS_INPUTS[this._howMany].name, value, valueDataType);
 		this._setGenericTypes(event.detail);
 	}
 
 	// **** PRIVATE **** //
-	/**
-	 * @description Tells Flow Builder to remove an input's value.
-	 * @param {String} name The input's name
-	 */
-	_deleteInput(name) {
-		this._dispatch("configuration_editor_input_value_deleted", { name });
-	}
-
-	/**
-	 * @description Fires a Custom Property Editor event to Flow Builder.
-	 * @param {String} type The event type
-	 * @param {Object} detail The event's details
-	 */
-	_dispatch(type, detail) {
-		this.dispatchEvent(new CustomEvent(type, { bubbles: true, cancelable: false, composed: true, detail }));
-	}
-
 	/**
 	 * @description Combines input definitions with their saved values and errors.
 	 * @param {Array} definitions The inputs to show
@@ -474,33 +425,15 @@ export default class DmlRecordsEditor extends LightningElement {
 	}
 
 	/**
-	 * @description Indexes the saved inputs by name. A new action's inputs arrive blank, not null; Flow Builder can't
-	 * save a blank literal, so blank means unset.
-	 * @returns {Object} Each saved input, by name
+	 * @description Saves a value to the action, or removes it when cleared, and clears the input's error
+	 * @param {String} name The input's name
+	 * @param {String} value The value
+	 * @param {String} valueDataType The value's data type
 	 */
-	_initValues() {
-		const saved = this._inputVariables.filter((input) => input.value !== "");
-		const entries = saved.map((input) => [input.name, input]);
-		return Object.fromEntries(entries);
-	}
-
-	/**
-	 * @description Saves a value to the action, or removes it when cleared.
-	 * @param {Object} detail `{ name, value, valueDataType }`
-	 */
-	_saveInput(detail) {
-		const { name, value, valueDataType } = detail;
+	_saveInput(name, value, valueDataType) {
 		// Errors only refresh in validate(), which runs when the panel closes, so a fixed input clears its own
 		this._errors = { ...this._errors, [name]: undefined };
-		if (value == null) {
-			this._deleteInput(name);
-		} else {
-			this._dispatch("configuration_editor_input_value_changed", {
-				name,
-				newValue: value,
-				newValueDataType: valueDataType
-			});
-		}
+		super._saveInput(name, value, valueDataType);
 	}
 
 	/**
@@ -546,15 +479,8 @@ export default class DmlRecordsEditor extends LightningElement {
 	 * @param {Object} detail The records picker's change: `{ value, objectType }`
 	 */
 	_setGenericTypes(detail) {
-		const hasObject = detail.value != null && Boolean(detail.objectType);
-		if (hasObject) {
-			GENERIC_TYPES.forEach((typeName) => {
-				this._dispatch("configuration_editor_generic_type_mapping_changed", {
-					typeName,
-					typeValue: detail.objectType
-				});
-			});
-		}
+		const objectType = detail.value == null ? null : detail.objectType;
+		GENERIC_TYPES.forEach((typeName) => this._setGenericType(typeName, objectType));
 	}
 
 	/**

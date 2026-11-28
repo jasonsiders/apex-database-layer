@@ -16,6 +16,15 @@ export const REFERENCE = "reference";
 // Shared, since creating a collator per comparison makes sorting large menus slow
 const LABEL_COLLATOR = new Intl.Collator(undefined, { sensitivity: "base" });
 const TYPE_ORDER = ["Boolean", "Currency", "Date", "DateTime", "Multipicklist", "Number", "Picklist", "String", "Time"];
+// Flow passes these resources to an input of the key's type, ex: a Currency field to a Number input
+const COMPATIBLE_TYPES = { Number: ["Currency", "Number"], String: ["Picklist", "String"] };
+// SOQL's date literal grammar, ex: TODAY or LAST_N_DAYS:30, mirroring DatabaseLayerUtils.DATE_LITERAL_PATTERN in Apex
+export const DATE_LITERAL_PATTERN = new RegExp(
+	"^(YESTERDAY|TODAY|TOMORROW|(LAST|THIS|NEXT)_(WEEK|MONTH|QUARTER|YEAR|FISCAL_QUARTER|FISCAL_YEAR)|" +
+		"(LAST|NEXT)_90_DAYS|(LAST_N|NEXT_N)_(DAYS|WEEKS|MONTHS|QUARTERS|YEARS|FISCAL_QUARTERS|FISCAL_YEARS):\\d+|" +
+		"N_(DAYS|WEEKS|MONTHS|QUARTERS|YEARS|FISCAL_QUARTERS|FISCAL_YEARS)_AGO:\\d+)$",
+	"i"
+);
 
 // UI API field data types that Flow treats as something other than text
 const FLOW_TYPES_BY_FIELD_TYPE = {
@@ -192,6 +201,8 @@ const GLOBAL_ENTRIES = GLOBAL_VARIABLES.map((global) => [global.value, initGloba
 const GLOBALS_BY_VALUE = new Map(GLOBAL_ENTRIES);
 // Scopes walk the flow's connectors, so each builder context gets one per element, not one per keystroke
 const SCOPES = new WeakMap();
+// Each target's listed values as a set, since every menu item checks them, ex: thousands of objects
+const LISTED_VALUES = new WeakMap();
 
 const GLOBAL_CONSTANTS = [
 	{ value: "$GlobalConstant.False", label: "False", dataType: "Boolean" },
@@ -202,8 +213,8 @@ const GLOBAL_CONSTANTS = [
 /**
  * @description Builds the top-level menu: each resource that fits the target input, or contains one that does.
  * @param {Object} context `{ builderContext, automaticOutputVariables, objectLabels }`
- * @param {Object} target The input being configured: `{ dataType, isCollection, isPicklistOnly, objectType,
- * picklistValues }`. Null includes everything; a record target without `isCollection` takes either.
+ * @param {Object} target The input being configured: `{ acceptsRecords, dataType, isCollection, isPicklistOnly,
+ * objectType, picklistValues }`. Null includes everything; a record target without `isCollection` takes either.
  * @returns {Array} Sections of `{ label, items, hasDivider }`, in Flow Builder's order
  */
 export function getRootSections(context, target) {
@@ -309,6 +320,25 @@ export function parseInput(text) {
 }
 
 /**
+ * @description Reads typed text as a dotted path through a host's own options, like `parseInput` reads a merge field,
+ * ex: `Account.Ow` searches `Account` for `Ow`
+ * @param {String} text The text in the picker's input
+ * @returns {Object} `{ isReference, isComplete, path, parentPath, searchTerm }`; a path ending in a dot is unfinished
+ */
+export function parsePath(text) {
+	const path = text?.trim() ?? "";
+	const lastDot = path.lastIndexOf(".");
+	const hasPath = path !== "";
+	return {
+		isReference: hasPath,
+		isComplete: hasPath && !path.endsWith("."),
+		path,
+		parentPath: path.slice(0, Math.max(lastDot, 0)),
+		searchTerm: path.slice(lastDot + 1)
+	};
+}
+
+/**
  * @description Orders items alphabetically by label, ignoring case.
  * @param {Object} first An item or field
  * @param {Object} second Another item or field
@@ -329,13 +359,44 @@ export function isAssignable(item, target) {
 	const matchesObject = !target?.objectType || item.objectType === target.objectType;
 	const matchesShape = target?.isCollection == null || item.isCollection === target.isCollection;
 	const matchesRecord = item.dataType === SOBJECT && matchesShape && matchesObject;
-	const isScalar = Boolean(item.dataType) && !item.isCollection && ![SOBJECT, "Apex"].includes(item.dataType);
-	const matchesScalar = isScalar && item.dataType === target?.dataType;
-	// Typing mustn't reach values that a picklist-only target doesn't list
+	// A collection input that accepts records takes record collections of its object, if any, for their IDs
+	const isRecordCollection = item.dataType === SOBJECT && item.isCollection === true;
+	const matchesRecordIds = Boolean(target?.acceptsRecords) && isRecordCollection && matchesObject;
+	const isScalar = Boolean(item.dataType) && ![SOBJECT, "Apex"].includes(item.dataType);
+	const types = COMPATIBLE_TYPES[target?.dataType] ?? [target?.dataType];
+	const matchesScalarShape = Boolean(item.isCollection) === Boolean(target?.isCollection);
+	// The host lists values its input takes, ex: date literals for a Date input; typing mustn't reach unlisted values
+	// of a picklist-only target
 	const isListed =
-		Boolean(item.isLiteral) && (target?.picklistValues ?? []).some(({ value }) => value === item.value);
+		Boolean(item.isLiteral) &&
+		Boolean(target?.picklistValues) &&
+		toListedValues(target.picklistValues).has(item.value);
+	const matchesScalar =
+		(isScalar && matchesScalarShape && types.includes(item.dataType)) || matchesRecordIds || isListed;
 	const matchesMode = !target?.isPicklistOnly || isListed;
 	return !target || (matchesMode && (isRecordTarget ? matchesRecord : matchesScalar));
+}
+
+/**
+ * @description Finds the item with the given value.
+ * @param {Array} sections The sections to search
+ * @param {String} value The value to find
+ * @returns {Object} The matching item, if any
+ */
+export function findItem(sections, value) {
+	return sections.flatMap((section) => section.items).find((item) => item.value === value);
+}
+
+/**
+ * @description Wraps items in a section, sorted by label unless Flow Builder uses a fixed order.
+ * @param {String} label The section's label
+ * @param {Array} items The section's items
+ * @param {Boolean} isSorted Whether to sort the items by label
+ * @returns {Object} `{ label, items }`, with a unique key on each item
+ */
+export function initSection(label, items, isSorted = true) {
+	const ordered = isSorted ? [...items].sort(compareLabels) : items;
+	return { label, items: ordered.map((item) => ({ ...item, key: `${label}:${item.value}` })) };
 }
 
 // **** PRIVATE **** //
@@ -362,6 +423,20 @@ function applyTarget(sections, target, context) {
 }
 
 /**
+ * @description The values a target lists, as a set, built once per list
+ * @param {Array} picklistValues The target's `{ value }` options
+ * @returns {Set} The values
+ */
+function toListedValues(picklistValues) {
+	if (!LISTED_VALUES.has(picklistValues)) {
+		const values = picklistValues.map(({ value }) => value);
+		const valueSet = new Set(values);
+		LISTED_VALUES.set(picklistValues, valueSet);
+	}
+	return LISTED_VALUES.get(picklistValues);
+}
+
+/**
  * @description Whether an item could contain something the target accepts.
  * @param {Object} item The item to evaluate
  * @param {Object} target The input being configured
@@ -376,19 +451,10 @@ function canDrill(item, target, context) {
 			initOutputItems(item, context).some(
 				(output) => isAssignable(output, target) || canDrill(output, target, context)
 			),
-		[DRILL_RECORD]: () => !item.isCollection && !isRecordTarget
+		// A record's fields are single values, so they can't fill a collection input
+		[DRILL_RECORD]: () => !item.isCollection && !isRecordTarget && !target?.isCollection
 	};
 	return checks[item.drillType]?.() ?? false;
-}
-
-/**
- * @description Finds the item with the given value.
- * @param {Array} sections The sections to search
- * @param {String} value The value to find
- * @returns {Object} The matching item, if any
- */
-function findItem(sections, value) {
-	return sections.flatMap((section) => section.items).find((item) => item.value === value);
 }
 
 /**
@@ -640,7 +706,12 @@ function initOutputItems(action, context) {
  * @returns {Object} The picklist value's item
  */
 function initPicklistItem(picklistValue) {
-	return initItem({ icon: "utility:picklist_type", ...picklistValue, dataType: "String", isLiteral: true });
+	return initItem({
+		icon: "utility:picklist_type",
+		...picklistValue,
+		dataType: "String",
+		isLiteral: true
+	});
 }
 
 /**
@@ -723,18 +794,6 @@ function initScreenItems(builderContext, scope) {
 }
 
 /**
- * @description Wraps items in a section, sorted by label unless Flow Builder uses a fixed order.
- * @param {String} label The section's label
- * @param {Array} items The section's items
- * @param {Boolean} isSorted Whether to sort the items by label
- * @returns {Object} `{ label, items }`, with a unique key on each item
- */
-function initSection(label, items, isSorted = true) {
-	const ordered = isSorted ? [...items].sort(compareLabels) : items;
-	return { label, items: ordered.map((item) => ({ ...item, key: `${label}:${item.value}` })) };
-}
-
-/**
  * @description Builds a stage's item.
  * @param {Object} stage The stage
  * @returns {Object} The stage's item
@@ -783,7 +842,7 @@ function initVariableItem(variable) {
  * @returns {Boolean} True if the item matches
  */
 function matchesSearch(item, term) {
-	return `${item.label}\n${item.value}`.toLowerCase().includes(term);
+	return `${item.label}\n${item.value}\n${item.drillValue ?? ""}`.toLowerCase().includes(term);
 }
 
 /**

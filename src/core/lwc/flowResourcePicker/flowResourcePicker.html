@@ -52,6 +52,7 @@
 								aria-activedescendant={activeDescendant}
 								placeholder={placeholder}
 								value={text}
+								onclick={handleClick}
 								onfocus={handleFocus}
 								oninput={handleInput}
 								onkeydown={handleKeyDown}
@@ -88,7 +89,7 @@
 						<template lwc:if={hasOptions}>
 							<template for:each={menu} for:item="section">
 								<ul key={section.label} class={groupClass} role="group" aria-label={section.label}>
-									<li lwc:if={isResourceMenu} role="presentation" class="slds-listbox__item">
+									<li lwc:if={section.hasHeader} role="presentation" class="slds-listbox__item">
 										<h3 class="slds-listbox__option-header picker-section" role="presentation">
 											{section.label}
 										</h3>
@@ -137,11 +138,12 @@
 												<span
 													lwc:if={option.isDrillable}
 													class="slds-media__figure slds-media__figure_reverse"
+													data-role="drill"
 												>
 													<lightning-icon
 														icon-name="utility:chevronright"
 														size="x-small"
-														alternative-text=""
+														alternative-text="Press Right Arrow to open"
 													></lightning-icon>
 												</span>
 											</div>
@@ -151,6 +153,9 @@
 								</ul>
 							</template>
 						</template>
+						<p lwc:elseif={loadOptions} class="picker-empty slds-var-p-around_small slds-text-align_center">
+							We couldn't find any matching fields.
+						</p>
 						<p lwc:else class="picker-empty slds-var-p-around_small slds-text-align_center">
 							We couldn't find any matching resources,<br />but you can enter a value.
 						</p>

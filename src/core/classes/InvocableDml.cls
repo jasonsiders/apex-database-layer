@@ -3,12 +3,6 @@
  * operation, via `doDml`
  */
 public abstract inherited sharing class InvocableDml {
-	/** @description Flow passes the access level as text, so each valid value maps to its System.AccessLevel **/
-	private static final Map<String, System.AccessLevel> ACCESS_LEVELS = new Map<String, System.AccessLevel>{
-		'SYSTEM_MODE' => System.AccessLevel.SYSTEM_MODE,
-		'USER_MODE' => System.AccessLevel.USER_MODE
-	};
-
 	// **** PUBLIC **** //
 	/**
 	 * @description Flow bulkifies interviews into one call; they share one DML operation, so a bulk run can't exhaust
@@ -177,18 +171,12 @@ public abstract inherited sharing class InvocableDml {
 		}
 
 		/**
-		 * @description Blank runs in the safer USER_MODE; anything else must name an access level exactly, so a typo
-		 * fails instead of running in a mode the flow didn't ask for
+		 * @description Parsed by `DatabaseLayerUtils.AccessLevels.parse`
 		 * @return The matching System.AccessLevel
 		 * @throws System.IllegalArgumentException When the value isn't blank, USER_MODE, or SYSTEM_MODE
 		 */
 		public System.AccessLevel getAccessLevel() {
-			String name = String.isBlank(this.accessLevel) ? 'USER_MODE' : this.accessLevel;
-			System.AccessLevel level = InvocableDml.ACCESS_LEVELS?.get(name);
-			if (level == null) {
-				throw new IllegalArgumentException('Invalid access level: ' + name);
-			}
-			return level;
+			return DatabaseLayer.Utils.AccessLevels.parse(this.accessLevel);
 		}
 
 		/**
