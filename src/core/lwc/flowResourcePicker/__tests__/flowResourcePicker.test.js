@@ -497,6 +497,77 @@ describe("c-flow-resource-picker", () => {
 			expect(input(element).value).toBe("");
 		});
 
+		it("selects a lookup row on click, and drills into it from its chevron", async () => {
+			const lookupOption = {
+				...fieldOption("AccountId", "Account ID", "Account ID"),
+				drillValue: "Account",
+				isDrillable: true
+			};
+			const topLevel = { parent: null, sections: [{ label: "Relationship Fields", items: [lookupOption] }] };
+			const lookupOptions = (parentPath) => (parentPath ? loadOptions(parentPath) : Promise.resolve(topLevel));
+			const { element, onChange } = await render({
+				name: "field",
+				loadOptions: lookupOptions,
+				builderContext: undefined
+			});
+			await open(element);
+			const lookup = () => element.shadowRoot.querySelector('[role="option"][data-label="Account ID"]');
+
+			lookup().querySelector('[data-role="drill"]').click();
+			await flush();
+			expect(input(element).value).toBe("Account.");
+			expect(optionLabels(element)).toEqual(["Account Name"]);
+
+			await type(element, "");
+			await press(element, "ArrowDown");
+			await press(element, "ArrowRight");
+			expect(input(element).value).toBe("Account.");
+
+			await type(element, "");
+			lookup().click();
+			await flush();
+			expect(lastChange(onChange)).toEqual({ name: "field", value: "AccountId", valueDataType: "reference" });
+		});
+
+		it("leaves ArrowRight to the text field when no drillable option is highlighted", async () => {
+			const { element } = await renderWithOptions();
+			await open(element);
+			await type(element, "Last");
+			const event = new KeyboardEvent("keydown", { key: "ArrowRight", cancelable: true });
+
+			input(element).dispatchEvent(event);
+
+			expect(event.defaultPrevented).toBe(false);
+		});
+
+		it("leaves typed text alone when ArrowRight is pressed before its options load", async () => {
+			const slowLoadOptions = jest.fn(loadOptions);
+			const { element } = await render({
+				name: "field",
+				loadOptions: slowLoadOptions,
+				builderContext: undefined
+			});
+			await open(element);
+			await press(element, "ArrowDown");
+
+			slowLoadOptions.mockImplementationOnce(() => new Promise(() => {}));
+			await type(element, "LastName");
+			await press(element, "ArrowRight");
+
+			expect(input(element).value).toBe("LastName");
+		});
+
+		it("builds breadcrumbs from the host's trail labels, which may contain the separator", async () => {
+			const parent = { value: "Broker__r", pathLabel: "Billing > Broker", trailLabels: ["Billing > Broker"] };
+			const trailOptions = () => Promise.resolve({ parent, sections: [] });
+			const { element } = await render({ name: "field", loadOptions: trailOptions, builderContext: undefined });
+			await open(element);
+			await type(element, "Broker__r.");
+
+			const crumbs = [...element.shadowRoot.querySelectorAll("lightning-breadcrumb")].map((crumb) => crumb.label);
+			expect(crumbs).toEqual(["All Resources", "Billing > Broker"]);
+		});
+
 		it("waits for options to load before Enter chooses one", async () => {
 			let resolveLoad;
 			const slowLoadOptions = jest.fn(loadOptions);

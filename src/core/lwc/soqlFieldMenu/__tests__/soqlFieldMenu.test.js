@@ -4,8 +4,8 @@ import FIELDS from "./data/fields.json";
 
 jest.mock("@salesforce/apex/InvocableSoql.getFields", () => ({ default: jest.fn() }), { virtual: true });
 
-function values(sections) {
-	return sections.flatMap((section) => section.items).map((item) => item.value);
+function values(sections, key = "value") {
+	return sections.flatMap((section) => section.items).map((item) => item[key]);
 }
 
 beforeEach(() => {
@@ -27,7 +27,7 @@ describe("getFieldOptions", () => {
 
 		expect(findAll(top)).toMatchObject({ value: "*", label: "All Fields", isSelectable: true });
 		expect(top.sections[0].items.map((item) => item.value)).toEqual(["*"]);
-		expect(findAll(account)).toMatchObject({ value: "Account.*", pathLabel: "Account > All Fields" });
+		expect(findAll(account)).toMatchObject({ value: "Account.*", pathLabel: "Account ID > All Fields" });
 		expect(findAll(filterable)).toBeUndefined();
 		expect(findAll(sortable)).toBeUndefined();
 	});
@@ -36,8 +36,27 @@ describe("getFieldOptions", () => {
 		const covered = await getFieldOptions("Contact", "", null, [""]);
 		const parent = await getFieldOptions("Contact", "Account", null, [""]);
 
-		expect(values(covered.sections)).toEqual(["Account"]);
+		expect(values(covered.sections)).toEqual(["AccountId"]);
+		expect(covered.sections[1].items[0]).toMatchObject({ isDrillable: true, isSelectable: false });
 		expect(values(parent.sections)).toContain("Account.*");
+	});
+
+	it("offers each lookup once, by its label, to select its ID or drill into its object", async () => {
+		const { sections } = await getFieldOptions("Contact", "");
+		const account = await getFieldOptions("Contact", "Account");
+
+		expect(sections[1].items).toEqual([
+			expect.objectContaining({
+				value: "AccountId",
+				drillValue: "Account",
+				label: "Account ID",
+				pathLabel: "Account ID",
+				isSelectable: true,
+				isDrillable: true
+			})
+		]);
+		expect(account.parent).toEqual({ value: "Account", pathLabel: "Account ID", trailLabels: ["Account ID"] });
+		expect(values(account.sections)).toContain("Account.OwnerId");
 	});
 
 	it("offers only sortable fields for sorting", async () => {
@@ -52,8 +71,10 @@ describe("getFieldOptions", () => {
 		const sixth = await getFieldOptions("Contact", "Account.Owner.Manager.Manager.Manager.Manager");
 		const seventh = await getFieldOptions("Contact", "Account.Owner.Manager.Manager.Manager.Manager.Manager");
 
-		expect(values(fifth.sections)).toContain("Account.Owner.Manager.Manager.Manager.Manager");
-		expect(sixth.parent.pathLabel).toBe("Account > Owner > Manager > Manager > Manager > Manager");
+		expect(values(fifth.sections, "drillValue")).toContain("Account.Owner.Manager.Manager.Manager.Manager");
+		expect(sixth.parent.pathLabel).toBe(
+			"Account ID > Owner ID > Manager ID > Manager ID > Manager ID > Manager ID"
+		);
 		expect(values(sixth.sections)).toEqual(
 			expect.arrayContaining(["Account.Owner.Manager.Manager.Manager.Manager.ManagerId"])
 		);

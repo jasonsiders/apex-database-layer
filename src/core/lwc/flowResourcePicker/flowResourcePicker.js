@@ -351,8 +351,8 @@ export default class FlowResourcePicker extends LightningElement {
 	/**
 	 * @description Lists the host's own options in place of the flow's resources, ex: an object's fields:
 	 * `(parentPath) => Promise<{ parent, sections }>`. `parentPath` is a dotted path, blank at the top; `parent` is the
-	 * drilled-into option's `{ value, pathLabel }`, or null; each section is `{ label, items }`, and each item
-	 * `{ key, value, label, pathLabel, icon, description?, isDrillable?, isSelectable? }`. Typed text is a dotted path,
+	 * drilled-into option's `{ value, pathLabel, trailLabels? }`, or null; each section is `{ label, items }`, and each item
+	 * `{ key, value, label, pathLabel, icon, description?, drillValue?, isDrillable?, isSelectable? }`. Typed text is a dotted path,
 	 * and picked options show as pills.
 	 * @type {Function}
 	 */
@@ -460,19 +460,25 @@ export default class FlowResourcePicker extends LightningElement {
 	 */
 	handleInput(event) {
 		this._isDirty = true;
+		// The highlighted option belongs to the old text, so ArrowRight can't drill into it while the new menu loads
+		this._activeIndex = -1;
 		this._text = event.target.value;
 		this._isOpen = true;
 		this._loadMenu();
 	}
 
 	/**
-	 * @description Arrow keys move the highlight, Enter chooses it, and Escape closes the menu
+	 * @description Arrow keys move the highlight, ArrowRight drills into it, Enter chooses it, and Escape closes the
+	 * menu
 	 * @param {KeyboardEvent} event Keydown on the text field
 	 */
 	handleKeyDown(event) {
+		const active = this.isOpen ? this.options[this._activeIndex] : null;
 		const actions = {
 			ArrowDown: () => this._moveActive(1),
 			ArrowUp: () => this._moveActive(-1),
+			// Otherwise ArrowRight moves the caret, so keyboard users can drill into a row that Enter selects
+			ArrowRight: active?.isDrillable ? () => this._drill(active) : null,
 			Enter: () => this._chooseActive(),
 			// Flow Builder closes its editor on Escape, so an open menu keeps it; a closed one passes it on
 			Escape: this.isOpen ? () => this._dismiss(event) : null
@@ -499,7 +505,12 @@ export default class FlowResourcePicker extends LightningElement {
 	handleOptionClick(event) {
 		const key = event.currentTarget.dataset.key;
 		const item = this.options.find((option) => option.key === key);
-		this._choose(item);
+		const chevron = event.target.closest('[data-role="drill"]');
+		if (chevron) {
+			this._drill(item);
+		} else {
+			this._choose(item);
+		}
 	}
 
 	/**
@@ -552,8 +563,7 @@ export default class FlowResourcePicker extends LightningElement {
 		if (item?.isSelectable) {
 			this._select(item);
 		} else if (item?.isDrillable) {
-			this._text = this._toDrillText(item.value);
-			this._loadMenu();
+			this._drill(item);
 		}
 	}
 
@@ -601,6 +611,16 @@ export default class FlowResourcePicker extends LightningElement {
 	_dismiss(event) {
 		event.stopPropagation();
 		this._close();
+	}
+
+	/**
+	 * @description Lists a container's children; a host option drills to `drillValue` when it differs from the value
+	 * it selects, ex: a lookup selects `AccountId` and drills into `Account`
+	 * @param {Object} item The container
+	 */
+	_drill(item) {
+		this._text = this._toDrillText(item.drillValue ?? item.value);
+		this._loadMenu();
 	}
 
 	/**
@@ -701,7 +721,8 @@ export default class FlowResourcePicker extends LightningElement {
 	 * @returns {Array} `{ label, value }` for each step
 	 */
 	_initTrail(parent) {
-		const labels = parent?.pathLabel?.split(" > ") ?? [];
+		// A host's trailLabels keep a label that contains the separator in one breadcrumb
+		const labels = parent?.trailLabels ?? parent?.pathLabel?.split(" > ") ?? [];
 		const segments = parent?.value?.split(".") ?? [];
 		return labels.map((label, index) => ({ label, value: segments.slice(0, index + 1).join(".") }));
 	}

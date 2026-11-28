@@ -3,7 +3,7 @@
  * parents' fields through its relationships, as deep as SOQL allows.
  */
 import getFields from "@salesforce/apex/InvocableSoql.getFields";
-import { compareLabels, initSection, parsePath } from "c/flowResourceMenu";
+import { initSection, parsePath } from "c/flowResourceMenu";
 
 // SOQL rejects a seventh relationship: "cannot query foreign key relationships more than 5 levels away from the root"
 const MAX_RELATIONSHIPS = 6;
@@ -137,33 +137,37 @@ function isRelationship(field) {
 }
 
 /**
- * @description Lists a level's options: All Fields, then, like Flow Builder's field menus, relationships and lookup
- * IDs, then the other fields, each by label
+ * @description Lists a level's options: All Fields, then, like Flow Builder's field menus, lookups, then the other
+ * fields, each by label
  * @param {Object} level The level from `resolveLevel`
  * @param {String} filter `filterable` or `sortable` to offer only fields that can filter or sort; blank for any
  * @param {Boolean} isCovered Whether the level's fields are all stored already
  * @returns {Array} An All Fields section, then "Relationship Fields" and "Record Fields"
  */
 function initSections(level, filter, isCovered) {
-	const isUsable = (field) => !filter || (filter === "filterable" ? field.isFilterable : field.isSortable);
+	// A level whose fields are all stored already offers only its parents' fields, through its lookups
+	const isUsable = (field) =>
+		!isCovered && (!filter || (filter === "filterable" ? field.isFilterable : field.isSortable));
 	const canDrill = level.depth < MAX_RELATIONSHIPS;
-	const relationships = canDrill ? level.fields.filter(isRelationship) : [];
-	// A level whose fields are all stored already offers only its parents' fields, through its relationships
-	const usable = isCovered ? [] : level.fields.filter(isUsable);
-	const toFieldOption = (field) => initFieldOption(field, level.option);
-	const relationshipOptions = relationships.map((field) => initRelationshipOption(field, level.option));
-	const lookupOptions = usable.filter(isRelationship).map(toFieldOption);
-	const recordOptions = usable.filter((field) => !isRelationship(field)).map(toFieldOption);
+	const usable = level.fields.filter(isUsable);
+	const lookupOptions = level.fields
+		.filter(isRelationship)
+		.map((field) => {
+			const isSelectable = isUsable(field);
+			return initLookupOption(field, level.option, isSelectable, canDrill);
+		})
+		.filter((option) => option.isSelectable || option.isDrillable);
+	const recordOptions = usable
+		.filter((field) => !isRelationship(field))
+		.map((field) => initFieldOption(field, level.option));
 	// Conditions and sorts take one field, so only stored fields offer All Fields, and only for an object with fields
 	const canSelectAll = !filter && usable.length > 0;
 	const allFieldsOptions = canSelectAll ? [initAllFieldsOption(level)] : [];
-	// Relationships come before lookup IDs, like Flow Builder, so the section sorts each group, not the whole list
-	const relationshipItems = [...relationshipOptions.sort(compareLabels), ...lookupOptions.sort(compareLabels)];
 	// All Fields leads the menu in a section of its own, which has no header, set apart by a divider
 	const allFieldsSection = { ...initSection("", allFieldsOptions), hasDivider: true };
 	return [
 		allFieldsSection,
-		initSection("Relationship Fields", relationshipItems, false),
+		initSection("Relationship Fields", lookupOptions),
 		initSection("Record Fields", recordOptions)
 	];
 }
@@ -173,29 +177,42 @@ function initSections(level, filter, isCovered) {
  * @param {Object} parent The drilled-into relationship's option, or null at the top
  * @param {String} name The step's API name
  * @param {String} label The step's label
- * @returns {Object} `{ value, pathLabel }`, ex: `Account.Name` and `Account > Account Name`
+ * @returns {Object} `{ value, pathLabel, trailLabels }`, ex: `Account.Name`, `Account ID > Account Name`, and
+ * each step's label
  */
 function joinPath(parent, name, label) {
-	return parent
-		? { value: `${parent.value}.${name}`, pathLabel: `${parent.pathLabel} > ${label}` }
-		: { value: name, pathLabel: label };
+	const trailLabels = [...(parent?.trailLabels ?? []), label];
+	const value = parent ? `${parent.value}.${name}` : name;
+	return { value, pathLabel: trailLabels.join(" > "), trailLabels };
 }
 
 /**
- * @description Builds the option for a relationship, which drills into its object
+ * @description Builds a level's option for its parent, by its lookup's label, like Flow Builder: `Account ID`
  * @param {Object} field The lookup field
  * @param {Object} parent The drilled-into relationship's option, or null at the top
- * @returns {Object} The option
+ * @returns {Object} `{ value, pathLabel }`, ex: `Account` and `Account ID`
  */
 function initRelationshipOption(field, parent) {
-	const name = field.relationshipName;
-	const path = joinPath(parent, name, name);
+	return joinPath(parent, field.relationshipName, field.label);
+}
+
+/**
+ * @description Builds a lookup's option, which, like Flow Builder, selects its ID and drills into its object
+ * @param {Object} field The lookup field
+ * @param {Object} parent The drilled-into relationship's option, or null at the top
+ * @param {Boolean} isSelectable Whether the ID can be picked
+ * @param {Boolean} isDrillable Whether SOQL allows another relationship
+ * @returns {Object} The option
+ */
+function initLookupOption(field, parent, isSelectable, isDrillable) {
+	const relationship = initRelationshipOption(field, parent);
+	const fieldOption = initFieldOption(field, parent);
 	return {
-		...path,
-		label: name,
-		description: `${field.label} (${field.referenceTo})`,
+		...fieldOption,
+		drillValue: relationship.value,
 		icon: "utility:record_lookup",
-		isDrillable: true
+		isSelectable,
+		isDrillable
 	};
 }
 

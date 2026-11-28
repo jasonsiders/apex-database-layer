@@ -23,6 +23,8 @@ import {
 const ACCESS_LEVEL_HELP =
 	"USER_MODE (default) enforces the running user's object permissions, field-level security, and sharing rules. SYSTEM_MODE ignores object permissions and field-level security, but sharing rules still apply unless the InvocableSoqlSystemModeWithoutSharing parameter is true.";
 const CUSTOM = "CUSTOM";
+// Condition Requirements for a query without a WHERE clause
+const NO_FILTER = "NONE";
 const DATE_LITERALS = [
 	"TODAY",
 	"YESTERDAY",
@@ -126,7 +128,6 @@ export default class SoqlQueryEditor extends FlowPropertyEditor {
 	accessLevelHelp = ACCESS_LEVEL_HELP;
 	accessLevels = ACCESS_LEVELS;
 	directions = DIRECTIONS;
-	logicOptions = LOGIC_OPTIONS;
 	nullOrders = NULL_ORDERS;
 	rowLimitRange = ROW_LIMIT_RANGE;
 	rowOffsetRange = ROW_OFFSET_RANGE;
@@ -171,10 +172,21 @@ export default class SoqlQueryEditor extends FlowPropertyEditor {
 		return this.logicMode === CUSTOM;
 	}
 
+	get isFiltered() {
+		return this.logicMode !== NO_FILTER;
+	}
+
 	get logicMode() {
 		const logic = this._definition.conditionLogic?.trim()?.toUpperCase() || "AND";
 		const isPreset = logic === "AND" || logic === "OR";
-		return isPreset && !this._isCustomLogic ? logic : CUSTOM;
+		const presetMode = this._definition.conditions.length ? logic : NO_FILTER;
+		return isPreset && !this._isCustomLogic ? presetMode : CUSTOM;
+	}
+
+	get logicOptions() {
+		const objectLabel = this._getObjectLabel();
+		const none = { label: `None—Get All ${objectLabel} Records`, value: NO_FILTER };
+		return [none, ...LOGIC_OPTIONS];
 	}
 
 	get objectApiName() {
@@ -204,8 +216,7 @@ export default class SoqlQueryEditor extends FlowPropertyEditor {
 	}
 
 	get sectionLabels() {
-		const object = this._objects.find((candidate) => candidate.value === this.objectApiName);
-		const label = object?.label ?? this.objectApiName;
+		const label = this._getObjectLabel();
 		return {
 			filter: `Filter ${label} Records`,
 			sort: `Sort and Limit ${label} Records`,
@@ -361,15 +372,19 @@ export default class SoqlQueryEditor extends FlowPropertyEditor {
 	}
 
 	/**
-	 * @description Switches between AND, OR, and custom logic; custom logic starts as AND of every condition, like
-	 * Flow Builder
+	 * @description Switches between no filter, AND, OR, and custom logic; no filter removes every condition, and its
+	 * slots
 	 * @param {CustomEvent} event Change on the condition requirements combobox
 	 */
 	handleLogicChange(event) {
 		const mode = event.detail.value;
-		const numbers = this._definition.conditions.map((condition, index) => index + 1);
 		this._isCustomLogic = mode === CUSTOM;
-		this._updateDefinition({ conditionLogic: mode === CUSTOM ? numbers.join(" AND ") : mode });
+		if (mode === NO_FILTER) {
+			this._releaseAllSlots();
+			this._updateDefinition({ conditions: [], conditionLogic: "AND" });
+		} else {
+			this._filterBy(mode);
+		}
 	}
 
 	/**
@@ -379,7 +394,7 @@ export default class SoqlQueryEditor extends FlowPropertyEditor {
 	handleObjectChange(event) {
 		const objectApiName = event.detail.value;
 		if (objectApiName !== this.objectApiName) {
-			this._definition.conditions.forEach((condition) => this._releaseSlot(condition));
+			this._releaseAllSlots();
 			this._isCustomLogic = false;
 			// Replaced, not merged, so the old object's logic and options go too
 			this._definition = parseDefinition();
@@ -474,6 +489,18 @@ export default class SoqlQueryEditor extends FlowPropertyEditor {
 
 	// **** PRIVATE **** //
 	/**
+	 * @description Filters by AND, OR, or custom logic, starting a condition when there are none, like Get Records;
+	 * custom logic starts as AND of every condition
+	 * @param {String} mode `AND`, `OR`, or `CUSTOM`
+	 */
+	_filterBy(mode) {
+		const existing = this._definition.conditions;
+		const conditions = existing.length ? existing : [{ field: null, operator: null }];
+		const numbers = conditions.map((condition, index) => index + 1);
+		this._updateDefinition({ conditions, conditionLogic: mode === CUSTOM ? numbers.join(" AND ") : mode });
+	}
+
+	/**
 	 * @description Finds the lowest slot of a type that no other condition uses
 	 * @param {String} prefix The slot type, ex: `text` or `recordCollection`
 	 * @param {Number} index The condition taking the slot, whose own slot counts as free
@@ -494,6 +521,15 @@ export default class SoqlQueryEditor extends FlowPropertyEditor {
 	_findCoveredPaths(index) {
 		const otherFields = this._definition.fields.filter((_, position) => position !== index);
 		return toCoveredPaths(otherFields);
+	}
+
+	/**
+	 * @description The chosen object's label, for the section headings and None option
+	 * @returns {String} The label, or the API name until the objects load
+	 */
+	_getObjectLabel() {
+		const object = this._objects.find((candidate) => candidate.value === this.objectApiName);
+		return object?.label ?? this.objectApiName;
 	}
 
 	/**
@@ -601,6 +637,13 @@ export default class SoqlQueryEditor extends FlowPropertyEditor {
 		const offsetError = validateRange("rowOffset", this.rowOffset, ROW_OFFSET_RANGE);
 		const checks = [objectError, ...conditionErrors, logicError, limitError, offsetError, usageError];
 		return this._setErrors(checks);
+	}
+
+	/**
+	 * @description Removes every condition's slot input, before the conditions are cleared
+	 */
+	_releaseAllSlots() {
+		this._definition.conditions.forEach((condition) => this._releaseSlot(condition));
 	}
 
 	/**

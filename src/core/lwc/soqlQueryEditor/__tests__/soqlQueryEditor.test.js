@@ -397,6 +397,43 @@ describe("c-soql-query-editor", () => {
 		expect(rows(element, "condition")).toHaveLength(2);
 	});
 
+	it("offers None to get every record, like Get Records, and starts a condition when filtering again", async () => {
+		const { element, events } = await render(
+			withCondition({ field: "LastName", operator: "EQUALS", slot: "text1" })
+		);
+		const logic = element.shadowRoot.querySelector('lightning-combobox[data-name="conditionLogic"]');
+		const addCondition = () => element.shadowRoot.querySelector('lightning-button[data-name="addCondition"]');
+		expect(logic.options[0]).toEqual({ label: "None—Get All Contact Records", value: "NONE" });
+		expect(logic.value).toBe("AND");
+
+		await fire(logic, { value: "NONE" });
+		expect(events).toContainEqual({ type: "configuration_editor_input_value_deleted", detail: { name: "text1" } });
+		expect(savedDefinition(events)).toMatchObject({ conditions: [], conditionLogic: "AND" });
+		expect(logic.value).toBe("NONE");
+		expect(addCondition()).toBeNull();
+		expect(element.validate()).toEqual([]);
+
+		await fire(logic, { value: "OR" });
+		expect(savedDefinition(events)).toMatchObject({
+			conditions: [{ field: null, operator: null }],
+			conditionLogic: "OR"
+		});
+		expect(addCondition()).not.toBeNull();
+	});
+
+	it("starts custom logic from None with one condition", async () => {
+		const { element, events } = await render(withCondition({ field: null, operator: null }));
+		const logic = element.shadowRoot.querySelector('lightning-combobox[data-name="conditionLogic"]');
+		await fire(logic, { value: "NONE" });
+
+		await fire(logic, { value: "CUSTOM" });
+
+		expect(savedDefinition(events)).toMatchObject({
+			conditions: [{ field: null, operator: null }],
+			conditionLogic: "1"
+		});
+	});
+
 	it("switches to custom logic, starting from AND of every condition, and validates it", async () => {
 		const { element, events } = await render({
 			objectApiName: "Contact",

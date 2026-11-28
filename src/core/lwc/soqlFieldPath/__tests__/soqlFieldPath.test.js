@@ -62,6 +62,14 @@ async function choose(element, label) {
 	await flush();
 }
 
+async function drill(element, label) {
+	options(element)
+		.find((option) => option.dataset.label === label)
+		.querySelector('[data-role="drill"]')
+		.click();
+	await flush();
+}
+
 async function type(element, text) {
 	input(element).value = text;
 	input(element).dispatchEvent(new CustomEvent("input"));
@@ -89,7 +97,8 @@ describe("c-soql-field-path", () => {
 
 		const headers = [...menu(element).querySelectorAll(".slds-listbox__option-header")];
 		expect(headers.map((header) => header.textContent.trim())).toEqual(["Relationship Fields", "Record Fields"]);
-		expect(optionLabels(element).slice(0, 2)).toEqual(["Account", "Account ID"]);
+		expect(optionLabels(element)[0]).toBe("Account ID");
+		expect(optionLabels(element)).not.toContain("Account");
 		expect(optionLabels(element)).toContain("Last Name");
 		// Long text fields can't filter:
 		expect(optionLabels(element)).not.toContain("Contact Description");
@@ -101,13 +110,13 @@ describe("c-soql-field-path", () => {
 		const { element, onChange } = await render();
 		await open(element);
 
-		await choose(element, "Account");
+		await drill(element, "Account ID");
 		expect(input(element).value).toBe("Account.");
-		expect(crumbs(element)).toEqual(["All Resources", "Account"]);
+		expect(crumbs(element)).toEqual(["All Resources", "Account ID"]);
 		expect(onChange).not.toHaveBeenCalled();
 
-		await choose(element, "Owner");
-		expect(crumbs(element)).toEqual(["All Resources", "Account", "Owner"]);
+		await drill(element, "Owner ID");
+		expect(crumbs(element)).toEqual(["All Resources", "Account ID", "Owner ID"]);
 		await choose(element, "Full Name");
 
 		expect(onChange.mock.calls.at(-1)[0].detail).toEqual({
@@ -115,7 +124,7 @@ describe("c-soql-field-path", () => {
 			field: expect.objectContaining({ apiName: "Name", label: "Full Name" })
 		});
 		expect(pickers(element)).toHaveLength(1);
-		expect(pillLabel(element)).toBe("Account > Owner > Full Name");
+		expect(pillLabel(element)).toBe("Account ID > Owner ID > Full Name");
 	});
 
 	it("drills and searches as a dotted path is typed", async () => {
@@ -124,13 +133,13 @@ describe("c-soql-field-path", () => {
 
 		await type(element, "Account.Own");
 
-		expect(optionLabels(element)).toEqual(["Owner", "Owner ID"]);
+		expect(optionLabels(element)).toEqual(["Owner ID"]);
 	});
 
 	it("shows a saved path as a pill, and edits it as its API path", async () => {
 		const { element } = await render({ value: "Account.Owner.IsActive" });
 
-		expect(pillLabel(element)).toBe("Account > Owner > Active");
+		expect(pillLabel(element)).toBe("Account ID > Owner ID > Active");
 		menu(element).querySelector(".picker-pill-edit").click();
 		await flush();
 
@@ -139,7 +148,7 @@ describe("c-soql-field-path", () => {
 
 	it("picks All Fields of the object or a parent, for stored fields", async () => {
 		const { element, onChange } = await render({ value: "Account.*" });
-		expect(pillLabel(element)).toBe("Account > All Fields");
+		expect(pillLabel(element)).toBe("Account ID > All Fields");
 
 		menu(element).querySelector(".picker-pill-remove").click();
 		await flush();
@@ -163,7 +172,7 @@ describe("c-soql-field-path", () => {
 		const { element } = await render({ coveredPaths: [""] });
 		await open(element);
 
-		expect(optionLabels(element)).toEqual(["Account"]);
+		expect(optionLabels(element)).toEqual(["Account ID"]);
 	});
 
 	it("fires null when the field is cleared", async () => {
