@@ -352,7 +352,7 @@ export default class FlowResourcePicker extends LightningElement {
 	 * @description Lists the host's own options in place of the flow's resources, ex: an object's fields:
 	 * `(parentPath) => Promise<{ parent, sections }>`. `parentPath` is a dotted path, blank at the top; `parent` is the
 	 * drilled-into option's `{ value, pathLabel }`, or null; each section is `{ label, items }`, and each item
-	 * `{ key, value, label, pathLabel, icon, description?, isDrillable?, isSelectable? }`. Typed text is a dotted path,
+	 * `{ key, value, label, pathLabel, icon, description?, drillValue?, isDrillable?, isSelectable? }`. Typed text is a dotted path,
 	 * and picked options show as pills.
 	 * @type {Function}
 	 */
@@ -499,7 +499,12 @@ export default class FlowResourcePicker extends LightningElement {
 	handleOptionClick(event) {
 		const key = event.currentTarget.dataset.key;
 		const item = this.options.find((option) => option.key === key);
-		this._choose(item);
+		const isChevron = Boolean(event.target.closest('[data-role="drill"]'));
+		if (isChevron) {
+			this._drill(item);
+		} else {
+			this._choose(item);
+		}
 	}
 
 	/**
@@ -552,9 +557,18 @@ export default class FlowResourcePicker extends LightningElement {
 		if (item?.isSelectable) {
 			this._select(item);
 		} else if (item?.isDrillable) {
-			this._text = this._toDrillText(item.value);
-			this._loadMenu();
+			this._drill(item);
 		}
+	}
+
+	/**
+	 * @description Lists a container's children; a host option drills to `drillValue` when it differs from the value
+	 * it selects, ex: a lookup selects `AccountId` and drills into `Account`
+	 * @param {Object} item The container
+	 */
+	_drill(item) {
+		this._text = this._toDrillText(item.drillValue ?? item.value);
+		this._loadMenu();
 	}
 
 	/**

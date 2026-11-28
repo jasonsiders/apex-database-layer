@@ -497,6 +497,35 @@ describe("c-flow-resource-picker", () => {
 			expect(input(element).value).toBe("");
 		});
 
+		it("selects a lookup row on click, and drills into it from its chevron", async () => {
+			const lookupOption = {
+				...fieldOption("AccountId", "Account ID", "Account ID"),
+				drillValue: "Account",
+				isDrillable: true
+			};
+			const lookupOptions = (parentPath) =>
+				parentPath
+					? loadOptions(parentPath)
+					: Promise.resolve({ parent: null, sections: [{ items: [lookupOption] }] });
+			const { element, onChange } = await render({
+				name: "field",
+				loadOptions: lookupOptions,
+				builderContext: undefined
+			});
+			await open(element);
+			const lookup = () => element.shadowRoot.querySelector('[role="option"][data-label="Account ID"]');
+
+			lookup().querySelector('[data-role="drill"]').click();
+			await flush();
+			expect(input(element).value).toBe("Account.");
+			expect(optionLabels(element)).toEqual(["Account Name"]);
+
+			await type(element, "");
+			lookup().click();
+			await flush();
+			expect(lastChange(onChange)).toEqual({ name: "field", value: "AccountId", valueDataType: "reference" });
+		});
+
 		it("waits for options to load before Enter chooses one", async () => {
 			let resolveLoad;
 			const slowLoadOptions = jest.fn(loadOptions);
