@@ -524,9 +524,25 @@ describe("c-flow-resource-picker", () => {
 			expect(optionLabels(element)).toEqual(["Account Name"]);
 
 			await type(element, "");
+			await press(element, "ArrowDown");
+			await press(element, "ArrowRight");
+			expect(input(element).value).toBe("Account.");
+
+			await type(element, "");
 			lookup().click();
 			await flush();
 			expect(lastChange(onChange)).toEqual({ name: "field", value: "AccountId", valueDataType: "reference" });
+		});
+
+		it("leaves ArrowRight to the text field when no drillable option is highlighted", async () => {
+			const { element } = await renderWithOptions();
+			await open(element);
+			await type(element, "Last");
+			const event = new KeyboardEvent("keydown", { key: "ArrowRight", cancelable: true });
+
+			input(element).dispatchEvent(event);
+
+			expect(event.defaultPrevented).toBe(false);
 		});
 
 		it("waits for options to load before Enter chooses one", async () => {

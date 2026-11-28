@@ -466,13 +466,17 @@ export default class FlowResourcePicker extends LightningElement {
 	}
 
 	/**
-	 * @description Arrow keys move the highlight, Enter chooses it, and Escape closes the menu
+	 * @description Arrow keys move the highlight, ArrowRight drills into it, Enter chooses it, and Escape closes the
+	 * menu
 	 * @param {KeyboardEvent} event Keydown on the text field
 	 */
 	handleKeyDown(event) {
+		const active = this.isOpen ? this.options[this._activeIndex] : null;
 		const actions = {
 			ArrowDown: () => this._moveActive(1),
 			ArrowUp: () => this._moveActive(-1),
+			// Otherwise ArrowRight moves the caret, so keyboard users can drill into a row that Enter selects
+			ArrowRight: active?.isDrillable ? () => this._drill(active) : null,
 			Enter: () => this._chooseActive(),
 			// Flow Builder closes its editor on Escape, so an open menu keeps it; a closed one passes it on
 			Escape: this.isOpen ? () => this._dismiss(event) : null

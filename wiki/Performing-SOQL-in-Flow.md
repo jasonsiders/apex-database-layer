@@ -38,7 +38,7 @@ In Flow Builder, add an **Action** element and search for `SOQL:`, under the **D
 4. **Sort and Limit Records**: add the fields to sort by, each ascending or descending, with blank values first or last. Then set a limit, the most records to get, and an offset, how many to skip. In a bulk run, each applies to each interview; see [Bulk Behavior](#bulk-behavior). Without a sort, which records those are is up to the database.
 5. **Advanced Query Options**: set the access level and **Rows**: **All Rows** includes deleted and archived records, and **For Update** locks the records for the rest of the transaction, but can't sort them. SOQL allows one of the two at a time.
 
-Like Get Records, the menu lists each lookup once, by its label, ex: **Account ID**. Click it to pick the ID, or click its arrow to list the parent's fields, like Flow Builder's resource menu. You can also type the path, ex: `Account.Owner.`. Relationships go as deep as SOQL allows: six. A relationship to several objects, ex: a task's **Who**, offers only the fields SOQL allows on it without `TYPEOF`, such as Name and Type.
+Like Get Records, the menu lists each lookup once, by its label, ex: **Account ID**. Click it to pick the ID, or click its arrow or press the right arrow key to list the parent's fields, like Flow Builder's resource menu. You can also type the path, ex: `Account.Owner.`. Relationships go as deep as SOQL allows: six. A relationship to several objects, ex: a task's **Who**, offers only the fields SOQL allows on it without `TYPEOF`, such as Name and Type.
 
 ### Operators
 
