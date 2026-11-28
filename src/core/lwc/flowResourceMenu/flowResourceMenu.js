@@ -842,7 +842,7 @@ function initVariableItem(variable) {
  * @returns {Boolean} True if the item matches
  */
 function matchesSearch(item, term) {
-	return `${item.label}\n${item.value}`.toLowerCase().includes(term);
+	return `${item.label}\n${item.value}\n${item.drillValue ?? ""}`.toLowerCase().includes(term);
 }
 
 /**

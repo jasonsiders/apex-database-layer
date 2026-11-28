@@ -177,12 +177,13 @@ function initSections(level, filter, isCovered) {
  * @param {Object} parent The drilled-into relationship's option, or null at the top
  * @param {String} name The step's API name
  * @param {String} label The step's label
- * @returns {Object} `{ value, pathLabel }`, ex: `Account.Name` and `Account > Account Name`
+ * @returns {Object} `{ value, pathLabel, trailLabels }`, ex: `Account.Name`, `Account ID > Account Name`, and
+ * each step's label
  */
 function joinPath(parent, name, label) {
-	return parent
-		? { value: `${parent.value}.${name}`, pathLabel: `${parent.pathLabel} > ${label}` }
-		: { value: name, pathLabel: label };
+	const trailLabels = [...(parent?.trailLabels ?? []), label];
+	const value = parent ? `${parent.value}.${name}` : name;
+	return { value, pathLabel: trailLabels.join(" > "), trailLabels };
 }
 
 /**

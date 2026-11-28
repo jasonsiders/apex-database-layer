@@ -449,6 +449,13 @@ describe("c-flow-resource-menu", () => {
 			});
 		});
 
+		it("matches the relationship a lookup drills into", () => {
+			const lookup = { label: "Broker", value: "Broker__c", drillValue: "Broker__r" };
+			const sections = filterSections([{ label: "Relationship Fields", items: [lookup] }], "broker__r");
+
+			expect(sections[0].items).toEqual([lookup]);
+		});
+
 		it("finds global resources by their $ prefix", () => {
 			const sections = filterSections(getRootSections(context, BOOLEAN), "$");
 

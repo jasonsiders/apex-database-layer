@@ -55,7 +55,7 @@ describe("getFieldOptions", () => {
 				isDrillable: true
 			})
 		]);
-		expect(account.parent).toEqual({ value: "Account", pathLabel: "Account ID" });
+		expect(account.parent).toEqual({ value: "Account", pathLabel: "Account ID", trailLabels: ["Account ID"] });
 		expect(values(account.sections)).toContain("Account.OwnerId");
 	});
 

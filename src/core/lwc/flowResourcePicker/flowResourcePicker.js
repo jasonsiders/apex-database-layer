@@ -351,7 +351,7 @@ export default class FlowResourcePicker extends LightningElement {
 	/**
 	 * @description Lists the host's own options in place of the flow's resources, ex: an object's fields:
 	 * `(parentPath) => Promise<{ parent, sections }>`. `parentPath` is a dotted path, blank at the top; `parent` is the
-	 * drilled-into option's `{ value, pathLabel }`, or null; each section is `{ label, items }`, and each item
+	 * drilled-into option's `{ value, pathLabel, trailLabels? }`, or null; each section is `{ label, items }`, and each item
 	 * `{ key, value, label, pathLabel, icon, description?, drillValue?, isDrillable?, isSelectable? }`. Typed text is a dotted path,
 	 * and picked options show as pills.
 	 * @type {Function}
@@ -460,6 +460,8 @@ export default class FlowResourcePicker extends LightningElement {
 	 */
 	handleInput(event) {
 		this._isDirty = true;
+		// The highlighted option belongs to the old text, so ArrowRight can't drill into it while the new menu loads
+		this._activeIndex = -1;
 		this._text = event.target.value;
 		this._isOpen = true;
 		this._loadMenu();
@@ -719,7 +721,8 @@ export default class FlowResourcePicker extends LightningElement {
 	 * @returns {Array} `{ label, value }` for each step
 	 */
 	_initTrail(parent) {
-		const labels = parent?.pathLabel?.split(" > ") ?? [];
+		// A host's trailLabels keep a label that contains the separator in one breadcrumb
+		const labels = parent?.trailLabels ?? parent?.pathLabel?.split(" > ") ?? [];
 		const segments = parent?.value?.split(".") ?? [];
 		return labels.map((label, index) => ({ label, value: segments.slice(0, index + 1).join(".") }));
 	}

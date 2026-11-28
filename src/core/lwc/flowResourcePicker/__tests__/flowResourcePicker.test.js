@@ -540,6 +540,34 @@ describe("c-flow-resource-picker", () => {
 			expect(event.defaultPrevented).toBe(false);
 		});
 
+		it("leaves typed text alone when ArrowRight is pressed before its options load", async () => {
+			const slowLoadOptions = jest.fn(loadOptions);
+			const { element } = await render({
+				name: "field",
+				loadOptions: slowLoadOptions,
+				builderContext: undefined
+			});
+			await open(element);
+			await press(element, "ArrowDown");
+
+			slowLoadOptions.mockImplementationOnce(() => new Promise(() => {}));
+			await type(element, "LastName");
+			await press(element, "ArrowRight");
+
+			expect(input(element).value).toBe("LastName");
+		});
+
+		it("builds breadcrumbs from the host's trail labels, which may contain the separator", async () => {
+			const parent = { value: "Broker__r", pathLabel: "Billing > Broker", trailLabels: ["Billing > Broker"] };
+			const trailOptions = () => Promise.resolve({ parent, sections: [] });
+			const { element } = await render({ name: "field", loadOptions: trailOptions, builderContext: undefined });
+			await open(element);
+			await type(element, "Broker__r.");
+
+			const crumbs = [...element.shadowRoot.querySelectorAll("lightning-breadcrumb")].map((crumb) => crumb.label);
+			expect(crumbs).toEqual(["All Resources", "Billing > Broker"]);
+		});
+
 		it("waits for options to load before Enter chooses one", async () => {
 			let resolveLoad;
 			const slowLoadOptions = jest.fn(loadOptions);
